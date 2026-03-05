@@ -91,31 +91,58 @@ export default class MusicManager {
   // CORE: Scheduling + looping
   // ═════════════════════════════════════════════════════════════
 
-  // Stop current music with optional fadeout
+  // Stop current music with optional fadeout (equal-power cosine curve)
   stop(fadeTime = 0.5) {
-    this._loopId++;
-    if (!this.ctx || !this.musicGain) return;
+    this._loopId++
+    if (!this.ctx || !this.musicGain) return
     if (this.loopTimer) {
-      clearTimeout(this.loopTimer);
-      this.loopTimer = null;
+      clearTimeout(this.loopTimer)
+      this.loopTimer = null
     }
-    // Fade out music gain
-    const t = this.ctx.currentTime;
-    this.musicGain.gain.cancelScheduledValues(t);
-    this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, t);
-    this.musicGain.gain.linearRampToValueAtTime(0, t + fadeTime);
+
+    const t = this.ctx.currentTime
+    const currentVol = this.musicGain.gain.value
+
+    // Edge case: immediate stop when fadeTime or volume is negligible
+    if (fadeTime <= 0 || currentVol <= 0.001) {
+      this.musicGain.gain.cancelScheduledValues(t)
+      this.musicGain.gain.value = 0
+      this._cleanupNodes()
+      if (this.ctx && this.musicGain) {
+        this.musicGain.gain.value = 0.5
+      }
+      this.currentTrack = null
+      return
+    }
+
+    // Build equal-power fade-out curve: cos(0..pi/2) scaled by current volume
+    if (!this._fadeOutCurve) {
+      this._fadeOutCurve = new Float32Array(64)
+      for (let i = 0; i < 64; i++) {
+        this._fadeOutCurve[i] = Math.cos((i / 63) * 0.5 * Math.PI)
+      }
+    }
+    const curve = new Float32Array(64)
+    for (let i = 0; i < 64; i++) {
+      curve[i] = this._fadeOutCurve[i] * currentVol
+    }
+
+    // Cancel any pending automations before scheduling new curve (pitfall 1)
+    this.musicGain.gain.cancelScheduledValues(t)
+    this.musicGain.gain.setValueAtTime(currentVol, t)
+    this.musicGain.gain.setValueCurveAtTime(curve, t, fadeTime)
 
     // Schedule cleanup — guarded by loopId so a new _startLoop won't be killed
-    const cleanupId = this._loopId;
+    const cleanupId = this._loopId
     setTimeout(() => {
-      if (this._loopId !== cleanupId) return; // newer track started, skip cleanup
-      this._cleanupNodes();
+      if (this._loopId !== cleanupId) return // newer track started, skip cleanup
+      this._cleanupNodes()
       if (this.ctx && this.musicGain) {
-        this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
-        this.musicGain.gain.value = 0.5;
+        this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime)
+        this.musicGain.gain.value = 0.5
       }
-    }, (fadeTime + 0.2) * 1000);
-    this.currentTrack = null;
+    }, (fadeTime + 0.2) * 1000)
+    this.currentTrack = null
   }
 
   _cleanupNodes() {
@@ -124,6 +151,89 @@ export default class MusicManager {
       try { if (typeof n.disconnect === 'function') n.disconnect(); } catch (e) {}
     }
     this._nodes = [];
+  }
+
+  // Crossfade from current track to a new track with equal-power overlap
+  crossfadeTo(trackName, startFn, duration = 1.5) {
+    if (this.currentTrack === trackName) return
+    this._init()
+    if (!this.ctx) return
+
+    const t = this.ctx.currentTime
+
+    // Capture outgoing state
+    const outGain = this.musicGain
+    const outVol = outGain ? outGain.gain.value : 0
+    const oldNodes = [...this._nodes]
+    const oldLoopTimer = this.loopTimer
+
+    // Create incoming gain node
+    const inGain = this.ctx.createGain()
+    inGain.gain.value = 0
+    inGain.connect(this.masterGain)
+
+    // Build equal-power crossfade curves (64 samples)
+    const outCurve = new Float32Array(64)
+    const inCurve = new Float32Array(64)
+    const targetVol = 0.5
+    for (let i = 0; i < 64; i++) {
+      const pct = i / 63
+      outCurve[i] = Math.cos(pct * 0.5 * Math.PI) * outVol
+      inCurve[i] = Math.sin(pct * 0.5 * Math.PI) * targetVol
+    }
+
+    // Schedule fade curves on both gains
+    if (outGain) {
+      outGain.gain.cancelScheduledValues(t)
+      outGain.gain.setValueAtTime(outVol, t)
+      outGain.gain.setValueCurveAtTime(outCurve, t, duration)
+    }
+    inGain.gain.cancelScheduledValues(t)
+    inGain.gain.setValueAtTime(0, t)
+    inGain.gain.setValueCurveAtTime(inCurve, t, duration)
+
+    // Invalidate old loop
+    this._loopId++
+    if (oldLoopTimer) clearTimeout(oldLoopTimer)
+    this.loopTimer = null
+
+    // Swap musicGain to the incoming gain BEFORE calling startFn
+    this.musicGain = inGain
+    this._nodes = []
+    this.currentTrack = trackName
+
+    // Start the new track (startFn will use _startLoop which connects to this.musicGain)
+    startFn()
+
+    // Schedule cleanup of old nodes and outgoing gain after crossfade completes
+    const cleanupId = this._loopId
+    setTimeout(() => {
+      if (this._loopId !== cleanupId) return
+      for (const n of oldNodes) {
+        try { if (typeof n.stop === 'function') n.stop() } catch (e) {}
+        try { if (typeof n.disconnect === 'function') n.disconnect() } catch (e) {}
+      }
+      if (outGain) {
+        outGain.gain.cancelScheduledValues(0)
+        outGain.gain.value = 0
+        try { outGain.disconnect() } catch (e) {}
+      }
+    }, (duration + 0.2) * 1000)
+  }
+
+  // Hard shutdown: immediate silence + full node cleanup (for scene destroy)
+  shutdown() {
+    this._loopId++
+    if (this.loopTimer) {
+      clearTimeout(this.loopTimer)
+      this.loopTimer = null
+    }
+    if (this.ctx && this.musicGain) {
+      this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime)
+      this.musicGain.gain.value = 0
+    }
+    this._cleanupNodes()
+    this.currentTrack = null
   }
 
   // Schedule a loop: calls generator function every loopDuration seconds
