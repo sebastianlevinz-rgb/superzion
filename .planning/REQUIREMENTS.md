@@ -63,18 +63,18 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUDIO-01 | — | Pending |
-| AUDIO-02 | — | Pending |
-| AUDIO-03 | — | Pending |
-| CINE-01 | — | Pending |
-| CINE-02 | — | Pending |
-| ANIM-01 | — | Pending |
+| AUDIO-01 | Phase 1 | Pending |
+| AUDIO-02 | Phase 2 | Pending |
+| AUDIO-03 | Phase 2 | Pending |
+| CINE-01 | Phase 4 | Pending |
+| CINE-02 | Phase 4 | Pending |
+| ANIM-01 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 6 total
-- Mapped to phases: 0
-- Unmapped: 6 ⚠️
+- Mapped to phases: 6
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-05*
-*Last updated: 2026-03-05 after initial definition*
+*Last updated: 2026-03-05 — traceability mapped to 4-phase roadmap*
