@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "Bash(npx:*)",
+      "Bash(npm ls:*)",
+      "Bash(node:*)",
+      "Bash(python3:*)",
+      "Bash(rm:*)",
+      "Bash(do taskkill:*)",
+      "Bash(start:*)",
+      "Skill(gsd:map-codebase)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Skill(gsd:new-project)",
+      "Skill(gsd:discuss-phase)",
+      "Skill(gsd:plan-phase)"
+    ]
+  }
+}
