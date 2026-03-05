@@ -290,14 +290,17 @@ export default class BossScene extends Phaser.Scene {
         break;
       case 'victory':
         if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
+          MusicManager.get().crossfadeTo('menu', () => MusicManager.get().playMenuMusic())
           this.scene.start('CreditsScene');
         }
         break;
       case 'dead':
         if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
+          MusicManager.get().stop(0.5)
           this.scene.start('MenuScene');
         }
         if (Phaser.Input.Keyboard.JustDown(this.keys.r)) {
+          MusicManager.get().stop(0)
           this.scene.start('BossScene');
         }
         break;

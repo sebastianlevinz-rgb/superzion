@@ -441,6 +441,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.skipPromptActive) {
       if (Phaser.Input.Keyboard.JustDown(this.yKey)) {
         this._clearSkipPrompt();
+        MusicManager.get().stop(0.3)
         const elapsed = this.time.now - this.stats.startTime;
         this.scene.start('ExplosionCinematicScene', {
           stats: {
@@ -476,19 +477,27 @@ export default class GameScene extends Phaser.Scene {
         this.isPaused = false;
         this.physics.world.resume();
         this.tweens.resumeAll();
+        MusicManager.get().stop(0)
         this.scene.restart();
       } else if (Phaser.Input.Keyboard.JustDown(this.quitKey)) {
         this.isPaused = false;
         this.physics.world.resume();
         this.tweens.resumeAll();
+        MusicManager.get().stop(0.5)
         this.scene.start('MenuScene');
       }
       return;
     }
 
     if (this.gameOver) {
-      if (Phaser.Input.Keyboard.JustDown(this.restartKey)) this.scene.restart();
-      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) this.scene.start('MenuScene');
+      if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
+        MusicManager.get().stop(0)
+        this.scene.restart()
+      }
+      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+        MusicManager.get().stop(0.5)
+        this.scene.start('MenuScene')
+      }
       return;
     }
 

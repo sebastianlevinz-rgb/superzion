@@ -75,6 +75,7 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this._handleMuteToggle();
     if (!this.skipped && this.currentAct === 2 && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
       this.skipped = true;
+      MusicManager.get().stop(0.3)
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.time.delayedCall(350, () => this.scene.start(targetScene));
     }
@@ -102,6 +103,7 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this.time.delayedCall(delay, () => {
       if (this.skipped) return;
       this.skipped = true;
+      MusicManager.get().stop(0.3)
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.time.delayedCall(350, () => this.scene.start(targetScene));
     });

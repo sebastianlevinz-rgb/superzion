@@ -239,6 +239,7 @@ export default class EndgameManager {
     flash.setScrollFactor(0); flash.setDepth(300);
 
     // Collect stats and transition
+    MusicManager.get().stop(0.3)
     const elapsed = scene.time.now - scene.stats.startTime;
     scene.time.delayedCall(100, () => {
       scene.scene.start('ExplosionCinematicScene', {
