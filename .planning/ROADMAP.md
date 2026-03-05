@@ -12,7 +12,7 @@ This milestone transforms SuperZion from a functional stealth game into a cinema
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Audio Foundation** - Repair MusicManager with fade/crossfade and fix AudioBufferSourceNode leaks
+- [x] **Phase 1: Audio Foundation** - Repair MusicManager with fade/crossfade and fix AudioBufferSourceNode leaks
 - [ ] **Phase 2: Level Audio** - Author 6 distinct trance themes and per-level ambient layers
 - [ ] **Phase 3: Cinematic Infrastructure** - Build CinematicDirector, TextureRegistry, and BaseCinematicScene refactor
 - [ ] **Phase 4: Cinematics and Animation** - Deliver animated intro showcase, between-level sequences, and motion smear
@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md — Fix MusicManager fade/crossfade and audit all scene transition callsites
+- [x] 01-01-PLAN.md — Fix MusicManager fade/crossfade and audit all scene transition callsites
 
 ### Phase 2: Level Audio
 **Goal**: Each level has a distinct audio identity — unique trance music and an environmental atmosphere layer
@@ -70,7 +70,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Audio Foundation | 0/1 | Planning complete | - |
+| 1. Audio Foundation | 1/1 | Complete | 2026-03-05 |
 | 2. Level Audio | 0/TBD | Not started | - |
 | 3. Cinematic Infrastructure | 0/TBD | Not started | - |
 | 4. Cinematics and Animation | 0/TBD | Not started | - |

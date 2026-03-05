@@ -7,7 +7,7 @@
 
 ### Audio Infrastructure
 
-- [ ] **AUDIO-01**: Music fades out cleanly (over configurable duration) before any scene transition instead of cutting abruptly
+- [x] **AUDIO-01**: Music fades out cleanly (over configurable duration) before any scene transition instead of cutting abruptly
 - [ ] **AUDIO-02**: Each of the 6 levels plays a unique trance theme with distinct BPM, melody line, pad chords, and atmospheric feel
 - [ ] **AUDIO-03**: Each level has ambient environmental audio (wind, city hum, distant aircraft, etc.) that plays during gameplay as a separate audio layer
 
@@ -63,7 +63,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUDIO-01 | Phase 1 | Pending |
+| AUDIO-01 | Phase 1 | Complete |
 | AUDIO-02 | Phase 2 | Pending |
 | AUDIO-03 | Phase 2 | Pending |
 | CINE-01 | Phase 4 | Pending |
