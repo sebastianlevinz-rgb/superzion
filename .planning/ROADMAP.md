@@ -6,7 +6,8 @@
 - ✅ **v1.1 Polish Pass** - Phases 5-8 (shipped 2026-03-19)
 - ✅ **v1.2 Sprite & Polish v2** - Phases 9-14 (shipped 2026-03-19)
 - ✅ **v1.3 Narrative & Audio** - Phases 15-20 (shipped 2026-03-19)
-- **v1.4 Final Polish** - Phases 21-30 (in progress)
+- ✅ **v1.4 Final Polish** - Phases 21-30 (shipped 2026-03-19)
+- **v1.5 Megafix v3** - Phases 31-38 (in progress)
 
 ## Phases
 
@@ -33,105 +34,152 @@ See `.planning/milestones/` for archived phase details.
 
 </details>
 
-### v1.4 Final Polish
+<details>
+<summary>v1.4 Final Polish (Phases 21-30) -- SHIPPED 2026-03-19</summary>
 
-- [ ] **Phase 21: Sprite & Visual Quick Fixes** - Fix beard geometry, Star of David position, B-2 contrast
-- [ ] **Phase 22: Intro Melody System** - Replace psytrance noise with real hummable melody
-- [ ] **Phase 23: Level 3 Missile Rebalance** - Double plane speed, slower missiles, warnings, cap at 2
-- [ ] **Phase 24: Level 4 Drone City Intro** - Playable drone flight through ruined city before boss
-- [ ] **Phase 25: Level 4 Boss Rework + Dodge** - Warden hides/peeks AI + SHIFT dash
-- [ ] **Phase 26: Flight Route Animations** - "En route" mini-animation before each level
-- [ ] **Phase 27: Victory Scene Enhancement** - Sunset, crowd, confetti, fireworks
-- [ ] **Phase 28: Title Screen Overhaul** - Destroyed city bg, glowing star, 3D text, particles
-- [ ] **Phase 29: Intro Text Visual Backgrounds** - Abstract imagery behind intro text pages
-- [ ] **Phase 30: Full Game Verification** - Playthrough all items, fix regressions
+- [x] Phase 21: Sprite & Visual Quick Fixes (1/1 plan) -- completed 2026-03-19
+- [x] Phase 22: Intro Melody System (1/1 plan) -- completed 2026-03-19
+- [x] Phase 23: Level 3 Missile Rebalance (1/1 plan) -- completed 2026-03-19
+- [x] Phase 24: Level 4 Drone City Intro (1/1 plan) -- completed 2026-03-19
+- [x] Phase 25: Level 4 Boss Rework + Dodge (1/1 plan) -- completed 2026-03-19
+- [x] Phase 26: Flight Route Animations (1/1 plan) -- completed 2026-03-19
+- [x] Phase 27: Victory Scene Enhancement (1/1 plan) -- completed 2026-03-19
+- [x] Phase 28: Title Screen Overhaul (1/1 plan) -- completed 2026-03-19
+- [x] Phase 29: Intro Text Visual Backgrounds (1/1 plan) -- completed 2026-03-19
+- [x] Phase 30: Full Game Verification (1/1 plan) -- completed 2026-03-19
+
+</details>
+
+### v1.5 Megafix v3
+
+- [ ] **Phase 31: Intro Audio Fix** - Replace intro music with menu music, silence loud title screen sounds
+- [ ] **Phase 32: Level 1 Platformer Redesign** - Two-phase level: Tehran rooftop platformer then Bomberman
+- [ ] **Phase 33: Level 2 Rename + Level 3 Physics** - Rename Level 2 and add lunar lander physics to Level 3
+- [ ] **Phase 34: Level 4 Complete Redesign** - Daytime drone city scrolling RIGHT plus detailed boss room
+- [ ] **Phase 35: Level 5 B-2 + Explosion** - Flying wing B-2 shape and spectacular mountain explosion
+- [ ] **Phase 36: Supreme Turban Cinematic** - Imposing villain cinematic with war background and dramatic music
+- [ ] **Phase 37: Victory Scene Redesign** - SuperZion facing forward with celebrating people and epic music
+- [ ] **Phase 38: Final Verification** - Full playthrough verifying all areas work correctly
 
 ## Phase Details
 
-### Phase 21: Sprite & Visual Quick Fixes
-**Goal**: Fix beard geometry, Star of David position, and B-2 contrast
-**Requirements**: SPRT-01, SPRT-02, SPRT-03
-**Success Criteria**:
-  1. Beard curves downward (concave) in SpriteGenerator, CinematicTextures, ParadeTextures, BossTextures
-  2. Level 1 top-down sprite has Star of David at chest center
-  3. B-2 sprite has visible moonlight highlights, outline, brighter engine glow
+### Phase 31: Intro Audio Fix
+**Goal**: Intro plays the right music at the right volume from first frame to menu
+**Depends on**: Nothing (first phase of v1.5)
+**Requirements**: INTRO-01, INTRO-02, INTRO-03
+**Success Criteria** (what must be TRUE):
+  1. Intro scene plays the same music as MenuScene (current intro music is deleted)
+  2. Title screen Maguen David appearance has no loud/jarring sounds
+  3. Music plays continuously from first frame of intro through to menu scene without gaps or restarts
+**Plans**: TBD
 
-### Phase 22: Intro Melody System
-**Goal**: Replace psytrance noise with real hummable melody in intro
-**Requirements**: MUSC-01, MUSC-02, MUSC-03
-**Success Criteria**:
-  1. Melodic piano/strings from first text line
-  2. 4 distinct mood transitions audible
-  3. Music never stops until menu transition
+Plans:
+- [ ] 31-01: TBD
 
-### Phase 23: Level 3 Missile Rebalance
-**Goal**: Make Level 3 missiles dodgeable and fair
-**Requirements**: LV3-01, LV3-02, LV3-03, LV3-04
-**Success Criteria**:
-  1. Plane moves noticeably faster
-  2. Missiles visibly slower with wide arcing turns
-  3. Flashing warning appears before each missile
-  4. Never more than 2 missiles visible
+### Phase 32: Level 1 Platformer Redesign
+**Goal**: Level 1 becomes a two-phase experience -- platformer across Tehran rooftops at night, then Bomberman indoors
+**Depends on**: Phase 31
+**Requirements**: LVL1-01, LVL1-02, LVL1-03, LVL1-04, LVL1-05, LVL1-06, LVL1-07, LVL1-08, LVL1-09
+**Success Criteria** (what must be TRUE):
+  1. Player runs and jumps across rooftop platforms in a side-scrolling Tehran night scene with recognizable landmarks (Azadi Tower, Milad Tower, mountains, moon)
+  2. Rooftop platforms look like Iranian architecture (building tops, balconies, mosque domes) with obstacles (cameras, guards, searchlights, electric wire)
+  3. Guards on rooftops walk with feet touching the ground (never floating)
+  4. Reaching the target building triggers a visual transition into top-down Bomberman gameplay where key pickup and Star of David (at chest center) work correctly
+  5. Bomberman phase gameplay is preserved intact from current implementation
+**Plans**: TBD
 
-### Phase 24: Level 4 Drone City Intro
-**Goal**: Add playable drone flight through ruined city before boss
-**Requirements**: LV4-01, LV4-02, LV4-03
-**Success Criteria**:
-  1. Top-down drone navigation scene with rubble and buildings
-  2. Glowing open window is findable
-  3. Enemy drones patrol and shoot on detection
+Plans:
+- [ ] 32-01: TBD
 
-### Phase 25: Level 4 Boss Rework + Dodge
-**Goal**: Fix Warden AI and add dash/dodge mechanic
-**Requirements**: LV4-04, LV4-05
-**Success Criteria**:
-  1. Warden visibly hides behind sofa, peeks, throws, hides again
-  2. SHIFT performs a visible dash with 1s cooldown indicator
+### Phase 33: Level 2 Rename + Level 3 Physics
+**Goal**: Level 2 gets its correct name and Level 3 plane feels like a real aircraft with weight, gravity, and crash consequences
+**Depends on**: Phase 32
+**Requirements**: LVL2-01, LVL3-01, LVL3-02, LVL3-03, LVL3-04, LVL3-05, LVL3-06, LVL3-07, LVL3-08
+**Success Criteria** (what must be TRUE):
+  1. Level 2 shows "Operation Explosive Interception" in all locations (cinematic, HUD, menu, victory screen)
+  2. Plane constantly falls under gravity when no input is held (not floating)
+  3. Up arrow provides thrust (plane rises), left/right arrows tilt the plane
+  4. Plane explodes on hard landing (high vertical speed), water contact, or failed takeoff (falls into water)
+  5. Successful landing requires slow, controlled, aligned descent onto the carrier
+**Plans**: TBD
 
-### Phase 26: Flight Route Animations
-**Goal**: Add "en route" mini-animation before each level
+Plans:
+- [ ] 33-01: TBD
+
+### Phase 34: Level 4 Complete Redesign
+**Goal**: Level 4 is a daytime drone flight RIGHT through detailed ruins followed by a boss fight in a destroyed room
+**Depends on**: Phase 33
+**Requirements**: LVL4-01, LVL4-02, LVL4-03, LVL4-04, LVL4-05, LVL4-06, LVL4-07, LVL4-08, LVL4-09, LVL4-10, LVL4-11
+**Success Criteria** (what must be TRUE):
+  1. Level 4 is set in daytime (not night), drone scrolls RIGHT through a ruined city with detailed destruction (missing walls, collapsed roofs, rubble, craters, hanging cables, destroyed cars, dust)
+  2. Target building is identifiable by subtle glow/marker; entering through open window transitions to boss fight
+  3. Enemy drones patrol the city and shoot on detection
+  4. Boss room is a destroyed building interior with daytime light through holes, detailed debris (broken lamps, cracked mirrors, overturned furniture, rubble, cables)
+  5. The Warden sits in an individual armchair (not sofa), hides behind it, peeks to throw, hides again; SHIFT dodge/dash works
+**Plans**: TBD
+
+Plans:
+- [ ] 34-01: TBD
+
+### Phase 35: Level 5 B-2 + Explosion
+**Goal**: B-2 looks like a real flying wing and the mountain explosion is spectacular
+**Depends on**: Phase 34
+**Requirements**: LVL5-01, LVL5-02, LVL5-03, LVL5-04, LVL5-05
+**Success Criteria** (what must be TRUE):
+  1. B-2 sprite is a wide flat flying wing (boomerang/bat shape) with dark gray coloring, panel lines, and moonlight highlights (not a triangle with a line)
+  2. Mountain has visible texture, vegetation, and rock detail (clearly looks like a mountain)
+  3. Explosion sequence plays out in stages: white flash, fireball, mountain cracks, fire columns, partial collapse, mushroom cloud, falling debris, secondary fires
+  4. Strong prolonged screen shake accompanies the explosion
+**Plans**: TBD
+
+Plans:
+- [ ] 35-01: TBD
+
+### Phase 36: Supreme Turban Cinematic
+**Goal**: Supreme Turban appears as a terrifying final villain with dramatic war backdrop
+**Depends on**: Phase 35
 **Requirements**: CINE-01, CINE-02, CINE-03
-**Success Criteria**:
-  1. Simplified Middle East map with Israel visible
-  2. Animated plane + dotted line to each destination
-  3. SPACE skips, takes 3-4 seconds
+**Success Criteria** (what must be TRUE):
+  1. Dark dramatic music plays -- slow grave drums, ominous brass, minor key, conveying final danger
+  2. Background shows detailed war scene with fire, smoke, army silhouettes, missile trucks, soldiers loading weapons, stacked armaments
+  3. Supreme Turban is larger and more imposing -- brighter red eyes, glowing crescent moon staff, more detail than before
+**Plans**: TBD
 
-### Phase 27: Victory Scene Enhancement
-**Goal**: Make victory screen spectacular with confetti, fireworks, crowd
-**Requirements**: VICT-01, VICT-02, VICT-03, VICT-04, VICT-05
-**Success Criteria**:
-  1. Multi-color sunset gradient with illuminated clouds
-  2. SuperZion lit by sunset colors, details visible
-  3. Small celebrating figures at bottom
-  4. Falling confetti particles (gold, blue, white)
-  5. Fireworks intensify at "Am Yisrael Chai"
+Plans:
+- [ ] 36-01: TBD
 
-### Phase 28: Title Screen Overhaul
-**Goal**: Add depth and atmosphere to title screen
-**Requirements**: TITL-01, TITL-02, TITL-03, TITL-04, TITL-05
-**Success Criteria**:
-  1. Destroyed city scene with smoke and golden light
-  2. Star of David emits light rays
-  3. SUPERZION text has 3D depth effect
-  4. Ember particles float upward
-  5. Screen shakes when title appears
+### Phase 37: Victory Scene Redesign
+**Goal**: Victory scene shows SuperZion facing forward among celebrating people with epic emotional payoff
+**Depends on**: Phase 36
+**Requirements**: VICT-01, VICT-02, VICT-03, VICT-04, VICT-05, VICT-06, VICT-07, VICT-08, VICT-09, VICT-10, VICT-11, VICT-12
+**Success Criteria** (what must be TRUE):
+  1. Opening line is "The weapons are silent. For the first time in years... silence." followed by complete new narrative ending with "Am Yisrael Chai." and "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST."
+  2. SuperZion faces forward (not silhouette from behind), illuminated, detailed, smiling, with Maguen David on chest or as giant golden background
+  3. Celebrating people surround SuperZion: soldiers, civilians, children, dogs, cats, holding Israel flags, hugging, jumping, clapping
+  4. Visual animations active: gold/blue/white confetti falling, fireworks exploding and fading, sunrise with sun slowly rising, moving clouds
+  5. Most emotional music in the game plays -- epic with memorable melody
+**Plans**: TBD
 
-### Phase 29: Intro Text Visual Backgrounds
-**Goal**: Add abstract visual backgrounds to intro text pages
-**Requirements**: INTR-01, INTR-02, INTR-03
-**Success Criteria**:
-  1. Flames/ruins imagery during "Babylon. Rome." text
-  2. Light point appears at "came back"
-  3. Light grows at "still here"
+Plans:
+- [ ] 37-01: TBD
 
-### Phase 30: Full Game Verification
-**Goal**: Playthrough all 10 items end-to-end, fix anything broken
-**Success Criteria**:
-  1. All 31 requirements verified working
-  2. No regressions in existing gameplay
-  3. Zero silence from intro to credits
+### Phase 38: Final Verification
+**Goal**: Every change from phases 31-37 verified working in a full playthrough
+**Depends on**: Phase 37
+**Requirements**: VRFY-01
+**Success Criteria** (what must be TRUE):
+  1. Full game playthrough from intro to victory completes without crashes or broken transitions
+  2. All 9 areas (intro, 6 levels, cinematic, victory) work correctly with their new implementations
+  3. Any issues found during verification are fixed before milestone ships
+**Plans**: TBD
+
+Plans:
+- [ ] 38-01: TBD
 
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
@@ -140,13 +188,12 @@ See `.planning/milestones/` for archived phase details.
 | 5-8. Polish Pass | v1.1 | 7/7 | Complete | 2026-03-19 |
 | 9-14. Sprite & Polish v2 | v1.2 | 6/6 | Complete | 2026-03-19 |
 | 15-20. Narrative & Audio | v1.3 | 6/6 | Complete | 2026-03-19 |
-| 21. Sprite & Visual Quick Fixes | v1.4 | 0/1 | Not started | - |
-| 22. Intro Melody System | v1.4 | 0/1 | Not started | - |
-| 23. Level 3 Missile Rebalance | v1.4 | 0/1 | Not started | - |
-| 24. Level 4 Drone City Intro | v1.4 | 0/1 | Not started | - |
-| 25. Level 4 Boss Rework + Dodge | v1.4 | 0/1 | Not started | - |
-| 26. Flight Route Animations | v1.4 | 0/1 | Not started | - |
-| 27. Victory Scene Enhancement | v1.4 | 0/1 | Not started | - |
-| 28. Title Screen Overhaul | v1.4 | 0/1 | Not started | - |
-| 29. Intro Text Visual Backgrounds | v1.4 | 0/1 | Not started | - |
-| 30. Full Game Verification | v1.4 | 0/1 | Not started | - |
+| 21-30. Final Polish | v1.4 | 10/10 | Complete | 2026-03-19 |
+| 31. Intro Audio Fix | v1.5 | 0/TBD | Not started | - |
+| 32. Level 1 Platformer Redesign | v1.5 | 0/TBD | Not started | - |
+| 33. Level 2 Rename + Level 3 Physics | v1.5 | 0/TBD | Not started | - |
+| 34. Level 4 Complete Redesign | v1.5 | 0/TBD | Not started | - |
+| 35. Level 5 B-2 + Explosion | v1.5 | 0/TBD | Not started | - |
+| 36. Supreme Turban Cinematic | v1.5 | 0/TBD | Not started | - |
+| 37. Victory Scene Redesign | v1.5 | 0/TBD | Not started | - |
+| 38. Final Verification | v1.5 | 0/TBD | Not started | - |

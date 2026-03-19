@@ -1,7 +1,7 @@
 # Requirements: SuperZion
 
 **Defined:** 2026-03-19
-**Core Value:** Every visible element must look intentional and polished — no placeholder cubes, no missing audio, no broken levels.
+**Core Value:** Every visible element must look intentional and polished -- no placeholder cubes, no missing audio, no broken levels.
 
 ## v1.5 Requirements
 
@@ -15,11 +15,11 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Level 1 Redesign
 
-- [ ] **LVL1-01**: Phase 1 platformer — SuperZion runs across Tehran rooftops at night (side-scrolling, Super Mario style)
+- [ ] **LVL1-01**: Phase 1 platformer -- SuperZion runs across Tehran rooftops at night (side-scrolling, Super Mario style)
 - [ ] **LVL1-02**: Tehran night skyline background with Azadi Tower, Milad Tower, Alborz mountains, moon, stars (detailed)
 - [ ] **LVL1-03**: Platforms are Iranian building rooftops, balconies, cornices, mosque domes
 - [ ] **LVL1-04**: Obstacles: rotating security cameras with vision cones, patrolling guards on rooftops, searchlights, electric wire
-- [ ] **LVL1-05**: Guards walk ON the floor — feet touch ground, never float (verify with console.log)
+- [ ] **LVL1-05**: Guards walk ON the floor -- feet touch ground, never float (verify with console.log)
 - [ ] **LVL1-06**: End of platformer phase: reach target building, enter through window, visual transition to top-down
 - [ ] **LVL1-07**: Phase 2 Bomberman gameplay preserved intact from current implementation
 - [ ] **LVL1-08**: Key is visible, pickable, and functional in Bomberman phase (fix if bugged)
@@ -31,42 +31,42 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Level 3 Physics
 
-- [ ] **LVL3-01**: Constant gravity — plane always falls if no input
-- [ ] **LVL3-02**: Up arrow = thrust — plane rises while held
+- [ ] **LVL3-01**: Constant gravity -- plane always falls if no input
+- [ ] **LVL3-02**: Up arrow = thrust -- plane rises while held
 - [ ] **LVL3-03**: Left/right arrows = plane tilt/inclination
 - [ ] **LVL3-04**: Crash (explosion) on high vertical speed landing on carrier
 - [ ] **LVL3-05**: Crash (explosion) on water contact
 - [ ] **LVL3-06**: Crash (explosion) on insufficient takeoff thrust (falls into water)
-- [ ] **LVL3-07**: Landing requires precision — slow descent, aligned, controlled speed
+- [ ] **LVL3-07**: Landing requires precision -- slow descent, aligned, controlled speed
 - [ ] **LVL3-08**: Plane feels like it has weight and momentum (not a floating cursor)
 
 ### Level 4 Redesign
 
 - [ ] **LVL4-01**: Daytime setting (not night) for entire level
-- [ ] **LVL4-02**: Phase 1 — drone flies RIGHT through ruined city (horizontal scroll, not downward)
+- [ ] **LVL4-02**: Phase 1 -- drone flies RIGHT through ruined city (horizontal scroll, not downward)
 - [ ] **LVL4-03**: Detailed ruins: destroyed buildings, missing walls, collapsed roofs, rubble, craters, hanging cables, exposed furniture, destroyed cars, dust
 - [ ] **LVL4-04**: Target building identified by subtle glow or marker
 - [ ] **LVL4-05**: Enemy drones patrol and shoot on detection
 - [ ] **LVL4-06**: Enter target building through open window to trigger Phase 2
 - [ ] **LVL4-07**: Phase 2 boss fight in destroyed building interior with daytime light through holes in walls/ceiling
 - [ ] **LVL4-08**: Detailed room: broken lamps, cracked mirrors, overturned tables, broken chairs, rubble, cables, dust in air
-- [ ] **LVL4-09**: Individual armchair (mono-sillón, NOT sofa), larger than before
+- [ ] **LVL4-09**: Individual armchair (mono-sillon, NOT sofa), larger than before
 - [ ] **LVL4-10**: The Warden hides behind armchair, peeks to throw objects, hides again
 - [ ] **LVL4-11**: SHIFT dodge/dash works in boss fight
 
 ### Level 5 Redesign
 
-- [ ] **LVL5-01**: B-2 redesigned as flying wing — boomerang/bat shape, wide and flat (NOT triangle with line)
+- [ ] **LVL5-01**: B-2 redesigned as flying wing -- boomerang/bat shape, wide and flat (NOT triangle with line)
 - [ ] **LVL5-02**: B-2 dark gray with panel lines, moonlight highlights on upper edges, subtle outline
 - [ ] **LVL5-03**: Mountain clearly looks like a mountain (texture, vegetation, rock detail)
-- [ ] **LVL5-04**: Spectacular explosion: white flash → fireball → mountain cracks → fire columns through cracks → partial collapse → mushroom cloud → falling debris → secondary fires
+- [ ] **LVL5-04**: Spectacular explosion: white flash, fireball, mountain cracks, fire columns through cracks, partial collapse, mushroom cloud, falling debris, secondary fires
 - [ ] **LVL5-05**: Strong prolonged screen shake during mountain explosion
 
 ### Supreme Turban Cinematic
 
-- [ ] **CINE-01**: Dark dramatic music — slow grave drums, ominous brass, minor key, sense of final danger
+- [ ] **CINE-01**: Dark dramatic music -- slow grave drums, ominous brass, minor key, sense of final danger
 - [ ] **CINE-02**: Background: fire, smoke, army silhouettes, missile trucks, soldiers loading weapons, stacked armaments (detailed war scene)
-- [ ] **CINE-03**: Supreme Turban more imposing — larger, more detailed, brighter red eyes, crescent moon staff glowing
+- [ ] **CINE-03**: Supreme Turban more imposing -- larger, more detailed, brighter red eyes, crescent moon staff glowing
 
 ### Victory Scene
 
@@ -100,13 +100,65 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated during roadmap creation) | | |
+| INTRO-01 | Phase 31 | Pending |
+| INTRO-02 | Phase 31 | Pending |
+| INTRO-03 | Phase 31 | Pending |
+| LVL1-01 | Phase 32 | Pending |
+| LVL1-02 | Phase 32 | Pending |
+| LVL1-03 | Phase 32 | Pending |
+| LVL1-04 | Phase 32 | Pending |
+| LVL1-05 | Phase 32 | Pending |
+| LVL1-06 | Phase 32 | Pending |
+| LVL1-07 | Phase 32 | Pending |
+| LVL1-08 | Phase 32 | Pending |
+| LVL1-09 | Phase 32 | Pending |
+| LVL2-01 | Phase 33 | Pending |
+| LVL3-01 | Phase 33 | Pending |
+| LVL3-02 | Phase 33 | Pending |
+| LVL3-03 | Phase 33 | Pending |
+| LVL3-04 | Phase 33 | Pending |
+| LVL3-05 | Phase 33 | Pending |
+| LVL3-06 | Phase 33 | Pending |
+| LVL3-07 | Phase 33 | Pending |
+| LVL3-08 | Phase 33 | Pending |
+| LVL4-01 | Phase 34 | Pending |
+| LVL4-02 | Phase 34 | Pending |
+| LVL4-03 | Phase 34 | Pending |
+| LVL4-04 | Phase 34 | Pending |
+| LVL4-05 | Phase 34 | Pending |
+| LVL4-06 | Phase 34 | Pending |
+| LVL4-07 | Phase 34 | Pending |
+| LVL4-08 | Phase 34 | Pending |
+| LVL4-09 | Phase 34 | Pending |
+| LVL4-10 | Phase 34 | Pending |
+| LVL4-11 | Phase 34 | Pending |
+| LVL5-01 | Phase 35 | Pending |
+| LVL5-02 | Phase 35 | Pending |
+| LVL5-03 | Phase 35 | Pending |
+| LVL5-04 | Phase 35 | Pending |
+| LVL5-05 | Phase 35 | Pending |
+| CINE-01 | Phase 36 | Pending |
+| CINE-02 | Phase 36 | Pending |
+| CINE-03 | Phase 36 | Pending |
+| VICT-01 | Phase 37 | Pending |
+| VICT-02 | Phase 37 | Pending |
+| VICT-03 | Phase 37 | Pending |
+| VICT-04 | Phase 37 | Pending |
+| VICT-05 | Phase 37 | Pending |
+| VICT-06 | Phase 37 | Pending |
+| VICT-07 | Phase 37 | Pending |
+| VICT-08 | Phase 37 | Pending |
+| VICT-09 | Phase 37 | Pending |
+| VICT-10 | Phase 37 | Pending |
+| VICT-11 | Phase 37 | Pending |
+| VICT-12 | Phase 37 | Pending |
+| VRFY-01 | Phase 38 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 53 total
-- Mapped to phases: 0
-- Unmapped: 53 ⚠️
+- Mapped to phases: 53
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after initial definition*
+*Last updated: 2026-03-19 after roadmap creation*
