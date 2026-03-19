@@ -1,20 +1,30 @@
 // ═══════════════════════════════════════════════════════════════
-// IntroMusic — PSYTRANCE action intro music system (145 BPM)
-// Web Audio API procedural music for the game's cinematic intro
-// Three acts: AXIS OF EVIL -> ISRAEL RESPONDS -> SUPERZION
-// Duration: 25 seconds total
+// IntroMusic — MELODIC CINEMATIC SCORE for game intro
+// Web Audio API procedural music — real hummable melody
+// Four acts: LAMENT → THREAT → RISING → CLIMAX
+// Duration: 30+ seconds, plays continuously until menu transition
 // ═══════════════════════════════════════════════════════════════
 
 import MusicManager from './MusicManager.js';
 
-// Note frequencies (Hz)
+// Note frequencies (Hz) — full chromatic set for melodic composition
 const N = {
-  A1: 55.00, D2: 73.42, E2: 82.41, F2: 87.31, G2: 98.00,
-  A2: 110.00, B2: 123.47, C3: 130.81, D3: 146.83, E3: 164.81,
-  F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94, C4: 261.63,
-  D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00,
-  B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46,
-  G5: 783.99, A5: 880.00, C6: 1046.50, D6: 1174.66,
+  // Octave 2
+  A2: 110.00, Bb2: 116.54, B2: 123.47,
+  // Octave 3
+  C3: 130.81, D3: 146.83, Eb3: 155.56, E3: 164.81,
+  F3: 174.61, Fs3: 185.00, G3: 196.00, Ab3: 207.65,
+  A3: 220.00, Bb3: 233.08, B3: 246.94,
+  // Octave 4
+  C4: 261.63, Cs4: 277.18, D4: 293.66, Eb4: 311.13,
+  E4: 329.63, F4: 349.23, Fs4: 369.99, G4: 392.00,
+  Ab4: 415.30, A4: 440.00, Bb4: 466.16, B4: 493.88,
+  // Octave 5
+  C5: 523.25, Cs5: 554.37, D5: 587.33, Eb5: 622.25,
+  E5: 659.25, F5: 698.46, Fs5: 739.99, G5: 783.99,
+  Ab5: 830.61, A5: 880.00, Bb5: 932.33, B5: 987.77,
+  // Octave 6
+  C6: 1046.50, D6: 1174.66, E6: 1318.51, Fs6: 1479.98,
 };
 
 export default class IntroMusic {
@@ -26,7 +36,8 @@ export default class IntroMusic {
   }
 
   /**
-   * Start the psytrance intro music. Schedules all three acts ahead of time.
+   * Start the melodic cinematic intro music.
+   * Schedules all four acts ahead of time using Web Audio API timing.
    */
   start() {
     if (this._started) return;
@@ -44,7 +55,6 @@ export default class IntroMusic {
     }
 
     // Cancel any pending fade-out curves from previous music stop()
-    // This fixes the race condition where menu music stop(0.3) leaves musicGain at 0
     if (mm.musicGain) {
       mm.musicGain.gain.cancelScheduledValues(this._ctx.currentTime);
       mm.musicGain.gain.setValueAtTime(0.5, this._ctx.currentTime);
@@ -52,23 +62,26 @@ export default class IntroMusic {
 
     // Create a dedicated gain node for all intro music
     this._gainNode = this._ctx.createGain();
-    this._gainNode.gain.value = 0.38;
+    this._gainNode.gain.value = 0.42;
     this._gainNode.connect(mm.musicGain);
 
-    const t0 = this._ctx.currentTime + 0.02;
+    const t0 = this._ctx.currentTime + 0.05;
 
-    // ═══ ACT 1: "THE AXIS OF EVIL" (0s-8s) ═══
-    this._scheduleAct1(t0);
+    // ═══ ACT 1: LAMENT (0s-8s) — Slow, emotional, A minor ═══
+    this._scheduleAct1_Lament(t0);
 
-    // ═══ ACT 2: "ISRAEL RESPONDS" (8s-16s) ═══
-    this._scheduleAct2(t0 + 8);
+    // ═══ ACT 2: THREAT (8s-16s) — Darkens, military, D minor ═══
+    this._scheduleAct2_Threat(t0 + 8);
 
-    // ═══ ACT 3: "SUPERZION" (16s-25s) ═══
-    this._scheduleAct3(t0 + 16);
+    // ═══ ACT 3: RISING (16s-24s) — Major key, heroic ascent ═══
+    this._scheduleAct3_Rising(t0 + 16);
+
+    // ═══ ACT 4: CLIMAX (24s-32s) — Epic drop, full power ═══
+    this._scheduleAct4_Climax(t0 + 24);
   }
 
   /**
-   * Stop all intro music immediately — silence everything.
+   * Stop all intro music immediately.
    */
   stop() {
     for (const node of this._nodes) {
@@ -84,7 +97,7 @@ export default class IntroMusic {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // PRIVATE: Node tracking
+  // PRIVATE: Node tracking & output
   // ═══════════════════════════════════════════════════════════════
 
   _track(...nodes) {
@@ -96,162 +109,63 @@ export default class IntroMusic {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // PRIVATE: Synth primitives
+  // SYNTH INSTRUMENTS
   // ═══════════════════════════════════════════════════════════════
 
-  _createNoiseBuffer(duration) {
-    const len = Math.floor(this._ctx.sampleRate * duration);
-    const buf = this._ctx.createBuffer(1, len, this._ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-    return buf;
-  }
-
   /**
-   * Psytrance kick — hard 145BPM kick with punch.
-   * Sine sweep 150Hz->40Hz with distortion-like click.
+   * Piano — triangle wave with percussive envelope (fast attack, medium decay).
+   * Sounds like a soft, contemplative piano note.
    */
-  _psyKick(t, volume = 0.45) {
+  _piano(t, freq, duration, volume = 0.12) {
     const ctx = this._ctx;
-
-    // Click transient
-    const click = ctx.createOscillator();
-    const clickGain = ctx.createGain();
-    click.type = 'sine';
-    click.frequency.setValueAtTime(1200, t);
-    click.frequency.exponentialRampToValueAtTime(200, t + 0.01);
-    clickGain.gain.setValueAtTime(volume * 0.6, t);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
-    click.connect(clickGain);
-    clickGain.connect(this._out());
-    click.start(t);
-    click.stop(t + 0.02);
-
-    // Body
     const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(150, t);
-    osc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
-    osc.frequency.exponentialRampToValueAtTime(30, t + 0.2);
-    gain.gain.setValueAtTime(volume, t);
-    gain.gain.setValueAtTime(volume * 0.8, t + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    osc.connect(gain);
-    gain.connect(this._out());
-    osc.start(t);
-    osc.stop(t + 0.3);
-
-    this._track(click, clickGain, osc, gain);
-  }
-
-  /**
-   * Hi-hat — ultra-short noise for 16th note patterns.
-   */
-  _hihat(t, volume = 0.06, open = false) {
-    const ctx = this._ctx;
-    const dur = open ? 0.12 : 0.035;
-    const buf = this._createNoiseBuffer(dur + 0.02);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = open ? 7000 : 9000;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(volume, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(hp);
-    hp.connect(gain);
-    gain.connect(this._out());
-    src.start(t);
-    src.stop(t + dur + 0.02);
-    this._track(src, hp, gain);
-  }
-
-  /**
-   * Acid bassline — resonant sawtooth with filter envelope.
-   * Classic 303-style acid squelch.
-   */
-  _acidBass(t, freq, duration, accent = false, volume = 0.18) {
-    const ctx = this._ctx;
-    const vol = accent ? volume * 1.4 : volume;
-
-    // Sawtooth oscillator
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(freq, t);
-
-    // Square sub layer for thickness
-    const sub = ctx.createOscillator();
-    sub.type = 'square';
-    sub.frequency.setValueAtTime(freq * 0.5, t);
-    const subGain = ctx.createGain();
-    subGain.gain.value = 0.3;
-    sub.connect(subGain);
-
-    // Resonant lowpass filter — the acid squelch
     const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    const cutoffPeak = accent ? freq * 12 : freq * 8;
-    const cutoffEnd = freq * 1.2;
-    filter.frequency.setValueAtTime(cutoffPeak, t);
-    filter.frequency.exponentialRampToValueAtTime(cutoffEnd, t + duration * 0.6);
-    filter.Q.value = accent ? 18 : 12; // High resonance for acid character
 
-    // Amp envelope
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(vol, t);
-    gain.gain.setValueAtTime(vol * 0.7, t + duration * 0.3);
+    // Main tone: triangle for soft piano-like timbre
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+
+    // Harmonic overtone for brightness
+    osc2.type = 'sine';
+    osc2.frequency.value = freq * 2;
+    const osc2Gain = ctx.createGain();
+    osc2Gain.gain.value = volume * 0.15;
+
+    // Lowpass to soften
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(freq * 6, t);
+    filter.frequency.exponentialRampToValueAtTime(freq * 2, t + duration * 0.5);
+
+    // Percussive piano envelope: fast attack, decay to sustain, release
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(volume, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(volume * 0.4, t + 0.12);
+    gain.gain.exponentialRampToValueAtTime(volume * 0.15, t + duration * 0.6);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
 
     osc.connect(filter);
-    subGain.connect(filter);
+    osc2.connect(osc2Gain);
+    osc2Gain.connect(filter);
     filter.connect(gain);
     gain.connect(this._out());
 
     osc.start(t);
     osc.stop(t + duration + 0.05);
-    sub.start(t);
-    sub.stop(t + duration + 0.05);
-    this._track(osc, sub, subGain, filter, gain);
+    osc2.start(t);
+    osc2.stop(t + duration + 0.05);
+
+    this._track(osc, osc2, osc2Gain, filter, gain);
   }
 
   /**
-   * Filter sweep — rising or falling resonant sweep for tension.
+   * Strings — multiple detuned sawtooth waves through lowpass filter.
+   * Slow attack/release for lush sustained chords.
    */
-  _filterSweep(t, duration, startFreq, endFreq, volume = 0.08) {
+  _strings(t, freq, duration, volume = 0.06) {
     const ctx = this._ctx;
-    const buf = this._createNoiseBuffer(duration + 0.1);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(startFreq, t);
-    bp.frequency.exponentialRampToValueAtTime(endFreq, t + duration);
-    bp.Q.value = 8;
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(volume, t + duration * 0.3);
-    gain.gain.linearRampToValueAtTime(volume * 1.2, t + duration * 0.85);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-
-    src.connect(bp);
-    bp.connect(gain);
-    gain.connect(this._out());
-    src.start(t);
-    src.stop(t + duration + 0.1);
-    this._track(src, bp, gain);
-  }
-
-  /**
-   * Psy lead — detuned supersaw with fast filter modulation.
-   */
-  _psyLead(t, freq, duration, volume = 0.07) {
-    const ctx = this._ctx;
-    const detunes = [0, 7, -7, 14, -14, 20, -20];
-
+    const detunes = [0, 4, -4, 8, -8, 12, -12];
     const mixer = ctx.createGain();
     mixer.gain.value = 1;
 
@@ -261,454 +175,648 @@ export default class IntroMusic {
       osc.frequency.value = freq;
       osc.detune.value = det;
       const voiceGain = ctx.createGain();
-      voiceGain.gain.value = volume / detunes.length;
+      voiceGain.gain.value = 1.0 / detunes.length;
       osc.connect(voiceGain);
       voiceGain.connect(mixer);
       osc.start(t);
-      osc.stop(t + duration + 0.05);
+      osc.stop(t + duration + 0.2);
       this._track(osc, voiceGain);
     }
 
-    // Fast tremolo LFO for psy character
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = 'square';
-    lfo.frequency.value = 8; // fast gate
-    lfoGain.gain.value = 0.3;
-    lfo.connect(lfoGain);
-    lfoGain.connect(mixer.gain);
-
-    // Filter
+    // Lowpass filter for warmth
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(freq * 6, t);
-    filter.frequency.exponentialRampToValueAtTime(freq * 1.5, t + duration * 0.7);
-    filter.Q.value = 5;
+    filter.frequency.value = Math.min(freq * 3, 4000);
+    filter.Q.value = 0.7;
 
-    // Envelope
+    // Slow attack/release envelope
     const env = ctx.createGain();
     env.gain.setValueAtTime(0.001, t);
-    env.gain.linearRampToValueAtTime(1, t + 0.01);
-    env.gain.setValueAtTime(0.9, t + duration * 0.5);
+    env.gain.linearRampToValueAtTime(volume, t + Math.min(duration * 0.25, 1.0));
+    env.gain.setValueAtTime(volume, t + duration * 0.7);
+    env.gain.linearRampToValueAtTime(0.001, t + duration);
+
+    mixer.connect(filter);
+    filter.connect(env);
+    env.connect(this._out());
+
+    this._track(mixer, filter, env);
+  }
+
+  /**
+   * Strings chord — play a full chord with the strings synth.
+   */
+  _stringsChord(t, freqs, duration, volume = 0.06) {
+    for (const freq of freqs) {
+      this._strings(t, freq, duration, volume / freqs.length);
+    }
+  }
+
+  /**
+   * Brass — square + sawtooth mix, bandpass filtered.
+   * For ominous low brass or heroic fanfares.
+   */
+  _brass(t, freq, duration, volume = 0.10) {
+    const ctx = this._ctx;
+
+    // Square wave body
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'square';
+    osc1.frequency.value = freq;
+
+    // Sawtooth for edge
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sawtooth';
+    osc2.frequency.value = freq;
+    const osc2Gain = ctx.createGain();
+    osc2Gain.gain.value = 0.6;
+    osc2.connect(osc2Gain);
+
+    // Bandpass for brass timbre
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(freq * 4, t);
+    filter.frequency.exponentialRampToValueAtTime(freq * 2, t + duration * 0.6);
+    filter.Q.value = 1.5;
+
+    // Brass envelope: moderate attack, sustain, release
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.001, t);
+    env.gain.linearRampToValueAtTime(volume, t + 0.06);
+    env.gain.setValueAtTime(volume * 0.85, t + duration * 0.5);
+    env.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+    osc1.connect(filter);
+    osc2Gain.connect(filter);
+    filter.connect(env);
+    env.connect(this._out());
+
+    osc1.start(t);
+    osc1.stop(t + duration + 0.05);
+    osc2.start(t);
+    osc2.stop(t + duration + 0.05);
+
+    this._track(osc1, osc2, osc2Gain, filter, env);
+  }
+
+  /**
+   * Timpani — low sine wave with pitch drop envelope.
+   */
+  _timpani(t, volume = 0.20) {
+    const ctx = this._ctx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(120, t);
+    osc.frequency.exponentialRampToValueAtTime(55, t + 0.15);
+    osc.frequency.exponentialRampToValueAtTime(40, t + 0.5);
+
+    gain.gain.setValueAtTime(volume, t);
+    gain.gain.exponentialRampToValueAtTime(volume * 0.3, t + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+
+    osc.connect(gain);
+    gain.connect(this._out());
+    osc.start(t);
+    osc.stop(t + 0.7);
+
+    this._track(osc, gain);
+  }
+
+  /**
+   * Military snare drum — noise burst through bandpass.
+   */
+  _snare(t, volume = 0.08) {
+    const ctx = this._ctx;
+    const bufLen = Math.floor(ctx.sampleRate * 0.15);
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 3000;
+    bp.Q.value = 1.0;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(volume, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+    // Body tone
+    const body = ctx.createOscillator();
+    body.type = 'triangle';
+    body.frequency.value = 180;
+    const bodyGain = ctx.createGain();
+    bodyGain.gain.setValueAtTime(volume * 0.5, t);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+    src.connect(bp);
+    bp.connect(gain);
+    gain.connect(this._out());
+    body.connect(bodyGain);
+    bodyGain.connect(this._out());
+
+    src.start(t);
+    src.stop(t + 0.15);
+    body.start(t);
+    body.stop(t + 0.1);
+
+    this._track(src, bp, gain, body, bodyGain);
+  }
+
+  /**
+   * Bass drum — sine sweep for deep impact.
+   */
+  _bassDrum(t, volume = 0.30) {
+    const ctx = this._ctx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(100, t);
+    osc.frequency.exponentialRampToValueAtTime(30, t + 0.15);
+
+    gain.gain.setValueAtTime(volume, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+    // Click transient
+    const click = ctx.createOscillator();
+    const clickGain = ctx.createGain();
+    click.type = 'sine';
+    click.frequency.setValueAtTime(800, t);
+    click.frequency.exponentialRampToValueAtTime(100, t + 0.01);
+    clickGain.gain.setValueAtTime(volume * 0.4, t);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
+
+    osc.connect(gain);
+    gain.connect(this._out());
+    click.connect(clickGain);
+    clickGain.connect(this._out());
+
+    osc.start(t);
+    osc.stop(t + 0.35);
+    click.start(t);
+    click.stop(t + 0.02);
+
+    this._track(osc, gain, click, clickGain);
+  }
+
+  /**
+   * Crash cymbal — noise through highpass.
+   */
+  _crash(t, volume = 0.15) {
+    const ctx = this._ctx;
+    const bufLen = Math.floor(ctx.sampleRate * 1.8);
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 5000;
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 7000;
+    bp.Q.value = 0.4;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(volume, t);
+    gain.gain.exponentialRampToValueAtTime(volume * 0.5, t + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+
+    src.connect(hp);
+    hp.connect(bp);
+    bp.connect(gain);
+    gain.connect(this._out());
+    src.start(t);
+    src.stop(t + 1.8);
+
+    this._track(src, hp, bp, gain);
+  }
+
+  /**
+   * Sub bass — deep sine wave for foundation.
+   */
+  _subBass(t, freq, duration, volume = 0.10) {
+    const ctx = this._ctx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(volume, t + 0.1);
+    gain.gain.setValueAtTime(volume, t + duration * 0.8);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+    osc.connect(gain);
+    gain.connect(this._out());
+    osc.start(t);
+    osc.stop(t + duration + 0.05);
+
+    this._track(osc, gain);
+  }
+
+  /**
+   * Echo delay effect — creates a simple echo by scheduling repeated notes.
+   * Plays the piano note with decaying repeats.
+   */
+  _pianoWithEcho(t, freq, duration, volume = 0.12, echoes = 2, echoDelay = 0.3) {
+    this._piano(t, freq, duration, volume);
+    for (let i = 1; i <= echoes; i++) {
+      const echoVol = volume * Math.pow(0.35, i);
+      if (echoVol > 0.005) {
+        this._piano(t + echoDelay * i, freq, duration * 0.7, echoVol);
+      }
+    }
+  }
+
+  /**
+   * Horn fanfare — brighter brass for heroic moments.
+   * Uses sawtooth with more harmonics.
+   */
+  _horn(t, freq, duration, volume = 0.08) {
+    const ctx = this._ctx;
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = freq;
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'square';
+    osc2.frequency.value = freq;
+    osc2.detune.value = 5;
+
+    const mixer = ctx.createGain();
+    mixer.gain.value = 1;
+
+    const g1 = ctx.createGain();
+    g1.gain.value = 0.6;
+    const g2 = ctx.createGain();
+    g2.gain.value = 0.4;
+
+    osc1.connect(g1);
+    g1.connect(mixer);
+    osc2.connect(g2);
+    g2.connect(mixer);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(freq * 5, t);
+    filter.frequency.exponentialRampToValueAtTime(freq * 2.5, t + duration * 0.5);
+    filter.Q.value = 1.0;
+
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.001, t);
+    env.gain.linearRampToValueAtTime(volume, t + 0.04);
+    env.gain.setValueAtTime(volume * 0.9, t + duration * 0.6);
     env.gain.exponentialRampToValueAtTime(0.001, t + duration);
 
     mixer.connect(filter);
     filter.connect(env);
     env.connect(this._out());
 
-    lfo.start(t);
-    lfo.stop(t + duration + 0.05);
-    this._track(mixer, lfo, lfoGain, filter, env);
+    osc1.start(t);
+    osc1.stop(t + duration + 0.05);
+    osc2.start(t);
+    osc2.stop(t + duration + 0.05);
+
+    this._track(osc1, osc2, g1, g2, mixer, filter, env);
   }
 
   /**
-   * Dark pad — ominous detuned pad for atmosphere.
+   * Tremolo strings — strings with volume tremolo for climactic moments.
    */
-  _darkPad(t, freqs, duration, volume = 0.04) {
+  _tremoloStrings(t, freq, duration, volume = 0.06) {
     const ctx = this._ctx;
     const detunes = [0, 5, -5, 10, -10];
+    const mixer = ctx.createGain();
+    mixer.gain.value = 1;
 
-    for (const freq of freqs) {
-      for (const det of detunes) {
-        const osc = ctx.createOscillator();
-        const filter = ctx.createBiquadFilter();
-        const gain = ctx.createGain();
-
-        osc.type = 'sawtooth';
-        osc.frequency.value = freq;
-        osc.detune.value = det;
-
-        filter.type = 'lowpass';
-        filter.frequency.value = freq * 2;
-
-        const voiceVol = volume / (freqs.length * detunes.length);
-        gain.gain.setValueAtTime(0.001, t);
-        gain.gain.linearRampToValueAtTime(voiceVol, t + duration * 0.2);
-        gain.gain.setValueAtTime(voiceVol, t + duration * 0.7);
-        gain.gain.linearRampToValueAtTime(0.001, t + duration);
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this._out());
-        osc.start(t);
-        osc.stop(t + duration + 0.1);
-        this._track(osc, filter, gain);
-      }
+    for (const det of detunes) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      osc.detune.value = det;
+      const vg = ctx.createGain();
+      vg.gain.value = 1.0 / detunes.length;
+      osc.connect(vg);
+      vg.connect(mixer);
+      osc.start(t);
+      osc.stop(t + duration + 0.2);
+      this._track(osc, vg);
     }
-  }
 
-  /**
-   * Impact boom — massive low-end hit synchronized with visuals.
-   */
-  _impactBoom(t) {
-    const ctx = this._ctx;
-
-    // Primary sub boom
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(50, t);
-    osc.frequency.exponentialRampToValueAtTime(15, t + 0.6);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.6, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
-    osc.connect(gain);
-    gain.connect(this._out());
-    osc.start(t);
-    osc.stop(t + 0.7);
-
-    // Punch layer
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(80, t);
-    osc2.frequency.exponentialRampToValueAtTime(25, t + 0.3);
-    const gain2 = ctx.createGain();
-    gain2.gain.setValueAtTime(0.4, t);
-    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    osc2.connect(gain2);
-    gain2.connect(this._out());
-    osc2.start(t);
-    osc2.stop(t + 0.4);
-
-    // Noise burst
-    const buf = this._createNoiseBuffer(0.3);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(800, t);
-    lp.frequency.exponentialRampToValueAtTime(60, t + 0.25);
-    const nGain = ctx.createGain();
-    nGain.gain.setValueAtTime(0.2, t);
-    nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    src.connect(lp);
-    lp.connect(nGain);
-    nGain.connect(this._out());
-    src.start(t);
-    src.stop(t + 0.35);
-
-    this._track(osc, gain, osc2, gain2, src, lp, nGain);
-  }
-
-  /**
-   * Crash cymbal — noise burst for transitions.
-   */
-  _crash(t, volume = 0.2) {
-    const ctx = this._ctx;
-    const buf = this._createNoiseBuffer(1.5);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = 4000;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 6000;
-    bp.Q.value = 0.5;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(volume, t);
-    gain.gain.setValueAtTime(volume * 0.7, t + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
-    src.connect(hp);
-    hp.connect(bp);
-    bp.connect(gain);
-    gain.connect(this._out());
-    src.start(t);
-    src.stop(t + 1.5);
-    this._track(src, hp, bp, gain);
-  }
-
-  /**
-   * Reverse crash — builds up to a hit point.
-   */
-  _reverseCrash(t, duration, volume = 0.15) {
-    const ctx = this._ctx;
-    const buf = this._createNoiseBuffer(duration + 0.1);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.setValueAtTime(12000, t);
-    hp.frequency.exponentialRampToValueAtTime(3000, t + duration);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.001, t);
-    gain.gain.exponentialRampToValueAtTime(volume, t + duration * 0.95);
-    gain.gain.setValueAtTime(0.001, t + duration);
-    src.connect(hp);
-    hp.connect(gain);
-    gain.connect(this._out());
-    src.start(t);
-    src.stop(t + duration + 0.1);
-    this._track(src, hp, gain);
-  }
-
-  /**
-   * Acid squelch FX — short resonant filter zap.
-   */
-  _acidSquelch(t, freq = 300, volume = 0.1) {
-    const ctx = this._ctx;
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
+    // Lowpass
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(freq * 20, t);
-    filter.frequency.exponentialRampToValueAtTime(freq, t + 0.15);
-    filter.Q.value = 22;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(volume, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(this._out());
-    osc.start(t);
-    osc.stop(t + 0.25);
-    this._track(osc, filter, gain);
+    filter.frequency.value = Math.min(freq * 3.5, 5000);
+
+    // Tremolo LFO
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 6;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.3;
+    lfo.connect(lfoGain);
+
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.001, t);
+    env.gain.linearRampToValueAtTime(volume, t + 0.3);
+    env.gain.setValueAtTime(volume, t + duration * 0.7);
+    env.gain.linearRampToValueAtTime(0.001, t + duration);
+
+    lfoGain.connect(env.gain);
+
+    mixer.connect(filter);
+    filter.connect(env);
+    env.connect(this._out());
+
+    lfo.start(t);
+    lfo.stop(t + duration + 0.2);
+
+    this._track(mixer, filter, lfo, lfoGain, env);
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ACT 1: "THE AXIS OF EVIL" — Dark psytrance, 145 BPM
-  // 0s to 8s — enemies with action, missiles, explosions
+  // ACT 1: LAMENT — "For 3,000 years..."
+  // Slow, emotional, A minor. Synthesized piano with reverb-like echoes.
+  // Tempo: ~70 BPM. Key: Am → Dm → Em → Am
   // ═══════════════════════════════════════════════════════════════
 
-  _scheduleAct1(t0) {
-    const bpm = 145;
-    const beat = 60 / bpm; // ~0.4138s
-    const sixteenth = beat / 4;
-    const duration = 8.0;
-    const totalBeats = Math.floor(duration / beat); // ~19 beats
+  _scheduleAct1_Lament(t0) {
+    const bpm = 70;
+    const beat = 60 / bpm; // ~0.857s
+    const half = beat * 2;
+    const whole = beat * 4;
 
-    // ─── Psytrance kick on every beat ───
-    for (let i = 0; i < totalBeats; i++) {
-      const t = t0 + i * beat;
-      if (t < t0 + duration) {
-        this._psyKick(t, 0.4);
-      }
-    }
+    // ─── MAIN MELODY: Piano in A minor ───
+    // A haunting, singable melody: the lament of 3000 years
+    // Phrase 1 (bars 1-2): A3 → C4 → E4 → D4 → C4 → A3
+    this._pianoWithEcho(t0,              N.A3,  beat * 1.5, 0.14, 2, 0.4);
+    this._pianoWithEcho(t0 + beat * 1.5, N.C4,  beat,       0.12, 2, 0.4);
+    this._pianoWithEcho(t0 + beat * 2.5, N.E4,  beat * 1.5, 0.14, 2, 0.4);
+    this._pianoWithEcho(t0 + beat * 4,   N.D4,  beat,       0.11, 2, 0.4);
+    this._pianoWithEcho(t0 + beat * 5,   N.C4,  beat,       0.10, 1, 0.4);
+    this._pianoWithEcho(t0 + beat * 6,   N.A3,  beat * 1.5, 0.12, 2, 0.5);
 
-    // ─── Hi-hat on every 16th note ───
-    const totalSixteenths = Math.floor(duration / sixteenth);
-    for (let i = 0; i < totalSixteenths; i++) {
-      const t = t0 + i * sixteenth;
-      if (t < t0 + duration) {
-        // Open hat on offbeats (every other 8th)
-        const isOffbeat = (i % 4 === 2);
-        this._hihat(t, isOffbeat ? 0.05 : 0.035, isOffbeat);
-      }
-    }
+    // ─── Strings chord: Am (A3, C4, E4) — very soft, slow swell ───
+    this._stringsChord(t0 + 0.2, [N.A3, N.C4, N.E4], 7.5, 0.10);
 
-    // ─── Acid bassline: dark minor key, relentless 16th note pattern ───
-    // A minor phrygian pattern for evil feel
-    const bassPattern = [N.A2, N.A2, N.E2, N.A2, N.F2, N.A2, N.E2, N.D2];
-    const noteLen = beat * 0.8;
-    for (let i = 0; i < totalBeats; i++) {
-      const t = t0 + i * beat;
-      if (t < t0 + duration) {
-        const note = bassPattern[i % bassPattern.length];
-        const accent = (i % 4 === 0);
-        this._acidBass(t, note, noteLen, accent, 0.14);
-      }
-    }
+    // ─── Sub bass: A2 drone ───
+    this._subBass(t0, N.A2, 4, 0.06);
+    this._subBass(t0 + 4 * beat, N.A2, 4, 0.06);
 
-    // ─── Dark atmospheric pad ───
-    this._darkPad(t0, [N.A3, N.C4, N.E4], duration, 0.2);
+    // ─── Second piano phrase (answer): Dm coloring ───
+    // Phrase 2 (bars 3-4 overlap): D4 → F4 → E4 → D4 → C4 → B3 → A3
+    const p2Start = t0 + beat * 4.5;  // slightly overlapping
+    // This phrase weaves through Dm territory before resolving back
+    // We skip the first two notes of phrase 2 since phrase 1 is still ringing
+    // and start the answering phrase from bar 3
+    // Actually, let's do a clear second phrase starting around 4s
+    const m2 = t0 + 3.5; // about 4 beats in at 70bpm
+    this._piano(m2,              N.E4,  beat * 0.8, 0.09);
+    this._piano(m2 + beat * 1,   N.F4,  beat * 1.2, 0.10);
+    this._piano(m2 + beat * 2.2, N.E4,  beat * 0.8, 0.09);
+    this._piano(m2 + beat * 3,   N.D4,  beat * 1.0, 0.10);
+    this._piano(m2 + beat * 4,   N.C4,  beat * 0.6, 0.08);
+    this._piano(m2 + beat * 4.6, N.B3,  beat * 0.6, 0.07);
+    this._piano(m2 + beat * 5.2, N.A3,  beat * 1.5, 0.11);
 
-    // ─── Filter sweep building tension (last 3s of act) ───
-    this._filterSweep(t0 + 5, 3, 200, 8000, 0.07);
-
-    // ─── Impact booms synced with visual boss appearances ───
-    // Boss 1 (FoamBeard) at 1.2s, Boss 2 (TurboTurban) at 2.8s,
-    // Boss 3 (Warden) at 4.4s, Boss 4 (SupremeTurban) at 6.0s
-    this._impactBoom(t0 + 1.2);
-    this._impactBoom(t0 + 2.8);
-    this._impactBoom(t0 + 4.4);
-    this._impactBoom(t0 + 6.0);
-
-    // ─── Acid squelches synchronized with boss hits ───
-    this._acidSquelch(t0 + 1.2, 200, 0.08);
-    this._acidSquelch(t0 + 2.8, 250, 0.08);
-    this._acidSquelch(t0 + 4.4, 180, 0.08);
-    this._acidSquelch(t0 + 6.0, 300, 0.09);
-
-    // ─── Reverse crash leading into Act 2 ───
-    this._reverseCrash(t0 + 6.5, 1.5, 0.12);
+    // ─── Strings shift: Dm chord in second half ───
+    this._stringsChord(t0 + 4, [N.D3, N.F3, N.A3], 3.8, 0.07);
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ACT 2: "ISRAEL RESPONDS" — Heroic psytrance, full power
-  // 8s to 16s — jets, explosions, iron dome
+  // ACT 2: THREAT — Enemies appear, boss silhouettes
+  // Darkens. Military drums, low brass. Threatening. Dm/Gm.
+  // Tempo: ~80 BPM
   // ═══════════════════════════════════════════════════════════════
 
-  _scheduleAct2(t0) {
-    const bpm = 145;
-    const beat = 60 / bpm;
-    const sixteenth = beat / 4;
-    const duration = 8.0;
-    const totalBeats = Math.floor(duration / beat);
+  _scheduleAct2_Threat(t0) {
+    const bpm = 80;
+    const beat = 60 / bpm; // 0.75s
+    const bar = beat * 4;  // 3s per bar
 
-    // ─── Crash at transition ───
-    this._crash(t0, 0.25);
-    this._impactBoom(t0);
-
-    // ─── Psytrance kick — every beat, louder ───
-    for (let i = 0; i < totalBeats; i++) {
-      const t = t0 + i * beat;
-      if (t < t0 + duration) {
-        this._psyKick(t, 0.48);
-      }
+    // ─── MILITARY SNARE PATTERN ───
+    // March-like: snare on beats 2 and 4, with occasional 16th note fills
+    for (let b = 0; b < 2; b++) {
+      const barStart = t0 + b * bar;
+      this._snare(barStart + beat,     0.07);
+      this._snare(barStart + beat * 3, 0.07);
+    }
+    // Second half: snare gets busier (tension building)
+    for (let b = 2; b < 3; b++) {
+      const barStart = t0 + b * bar;
+      this._snare(barStart + beat * 0.5, 0.05);
+      this._snare(barStart + beat,       0.08);
+      this._snare(barStart + beat * 2,   0.05);
+      this._snare(barStart + beat * 3,   0.08);
     }
 
-    // ─── Hi-hat on every 16th ───
-    const totalSixteenths = Math.floor(duration / sixteenth);
-    for (let i = 0; i < totalSixteenths; i++) {
-      const t = t0 + i * sixteenth;
-      if (t < t0 + duration) {
-        const isOffbeat = (i % 4 === 2);
-        this._hihat(t, isOffbeat ? 0.06 : 0.04, isOffbeat);
-      }
+    // ─── TIMPANI on downbeats ───
+    this._timpani(t0,           0.18);
+    this._timpani(t0 + bar,     0.20);
+    this._timpani(t0 + bar * 2, 0.22);
+
+    // ─── LOW BRASS: Ominous descending melody ───
+    // D4 → C4 → Bb3 → A3 → G3 — darkness descending
+    this._brass(t0,              N.D4,  beat * 1.8, 0.09);
+    this._brass(t0 + beat * 2,   N.C4,  beat * 1.8, 0.09);
+    this._brass(t0 + beat * 4,   N.Bb3, beat * 1.8, 0.10);
+    this._brass(t0 + beat * 6,   N.A3,  beat * 1.8, 0.10);
+    this._brass(t0 + beat * 8,   N.G3,  beat * 2.5, 0.11);
+
+    // ─── DARK STRINGS: Dm → Gm ───
+    this._stringsChord(t0, [N.D3, N.F3, N.A3], 4, 0.09);
+    this._stringsChord(t0 + 4, [N.G3, N.Bb3, N.D4], 3.8, 0.10);
+
+    // ─── Sub bass: D2 → G2 (ominous low foundation) ───
+    this._subBass(t0, N.D3 * 0.5, 4, 0.08);
+    this._subBass(t0 + 4, N.G3 * 0.5, 3.8, 0.09);
+
+    // ─── Piano: sparse, dark accents ───
+    // Punctuating hits that sound like distant thunder
+    this._piano(t0 + beat * 1, N.D3, beat * 2, 0.07);
+    this._piano(t0 + beat * 5, N.F3, beat * 2, 0.07);
+    this._piano(t0 + beat * 9, N.G3, beat * 2, 0.08);
+
+    // ─── Bass drum: slow military march feel ───
+    this._bassDrum(t0,           0.15);
+    this._bassDrum(t0 + bar,     0.17);
+    this._bassDrum(t0 + bar * 2, 0.19);
+
+    // ─── Tension riser: last 2 seconds ───
+    // Snare roll building into Act 3
+    const rollStart = t0 + 6;
+    const rollNotes = 12;
+    for (let i = 0; i < rollNotes; i++) {
+      const rollT = rollStart + i * (2.0 / rollNotes);
+      this._snare(rollT, 0.04 + i * 0.005);
     }
-
-    // ─── Acid bassline: brighter, more aggressive, major feel ───
-    // C major / uplifting pattern
-    const bassPattern = [N.C3, N.C3, N.G2, N.C3, N.E2, N.G2, N.C3, N.G2];
-    const noteLen = beat * 0.75;
-    for (let i = 0; i < totalBeats; i++) {
-      const t = t0 + i * beat;
-      if (t < t0 + duration) {
-        const note = bassPattern[i % bassPattern.length];
-        const accent = (i % 2 === 0);
-        this._acidBass(t, note, noteLen, accent, 0.16);
-      }
-    }
-
-    // ─── Psy lead melody — heroic ascending runs ───
-    // First run at start
-    const melodyRun1 = [N.C5, N.E5, N.G5, N.C6];
-    for (let i = 0; i < melodyRun1.length; i++) {
-      this._psyLead(t0 + 0.5 + i * beat * 0.6, melodyRun1[i], beat * 0.5, 0.06);
-    }
-    // Second run at midpoint
-    const melodyRun2 = [N.D5, N.G5, N.A5, N.D6];
-    for (let i = 0; i < melodyRun2.length; i++) {
-      this._psyLead(t0 + 4.0 + i * beat * 0.6, melodyRun2[i], beat * 0.5, 0.06);
-    }
-
-    // ─── Bright pad: C major ───
-    this._darkPad(t0, [N.C4, N.E4, N.G4], duration, 0.25);
-
-    // ─── Filter sweeps for jet/missile energy ───
-    this._filterSweep(t0, 4, 300, 10000, 0.06);
-    this._filterSweep(t0 + 4, 4, 500, 12000, 0.07);
-
-    // ─── Impact booms at key action moments ───
-    // Jet fire at 1s, bomb drop at 3s, Iron Dome at 5s, tank fire at 7s
-    this._impactBoom(t0 + 1.0);
-    this._impactBoom(t0 + 3.0);
-    this._impactBoom(t0 + 5.0);
-    this._impactBoom(t0 + 7.0);
-
-    // ─── Acid squelches on explosions ───
-    this._acidSquelch(t0 + 1.0, 400, 0.07);
-    this._acidSquelch(t0 + 3.0, 350, 0.07);
-    this._acidSquelch(t0 + 5.0, 500, 0.08);
-
-    // ─── Reverse crash leading into Act 3 ───
-    this._reverseCrash(t0 + 6.5, 1.5, 0.15);
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ACT 3: "SUPERZION" — Epic climax psytrance
-  // 16s to 25s — hero moment, title drop, massive impact
+  // ACT 3: RISING — Israel flag, arsenal, "We're still here"
+  // Transition to MAJOR KEY. Tempo rises. Melody ASCENDS. Heroic.
+  // Key: C major → G major. Tempo: ~100 BPM
   // ═══════════════════════════════════════════════════════════════
 
-  _scheduleAct3(t0) {
-    const bpm = 145;
-    const beat = 60 / bpm;
-    const sixteenth = beat / 4;
-    const duration = 9.0;
-    const totalBeats = Math.floor(duration / beat);
+  _scheduleAct3_Rising(t0) {
+    const bpm = 100;
+    const beat = 60 / bpm; // 0.6s
+    const bar = beat * 4;  // 2.4s
 
-    // ─── Crash + boom at entry ───
-    this._crash(t0, 0.3);
-    this._impactBoom(t0);
+    // ─── ASCENDING HORN MELODY — heroic fanfare ───
+    // C4 → E4 → G4 → A4 → G4 → E4 then ASCENDING to C5
+    // This is the turning point — from darkness to hope
+    this._horn(t0,              N.C4,  beat * 1.2, 0.08);
+    this._horn(t0 + beat * 1.5, N.E4,  beat * 1.0, 0.09);
+    this._horn(t0 + beat * 2.5, N.G4,  beat * 1.5, 0.10);
+    this._horn(t0 + beat * 4,   N.A4,  beat * 1.5, 0.11);
+    this._horn(t0 + beat * 5.5, N.G4,  beat * 1.0, 0.09);
+    this._horn(t0 + beat * 6.5, N.E4,  beat * 1.0, 0.08);
 
-    // ─── Psytrance kick — full power, every beat ───
-    for (let i = 0; i < totalBeats; i++) {
-      const t = t0 + i * beat;
-      if (t < t0 + duration) {
-        this._psyKick(t, 0.5);
-      }
+    // Second phrase: ascending higher — hope building
+    const p2 = t0 + beat * 8;
+    this._horn(p2,              N.C4,  beat * 1.0, 0.09);
+    this._horn(p2 + beat * 1,   N.E4,  beat * 0.8, 0.10);
+    this._horn(p2 + beat * 2,   N.G4,  beat * 0.8, 0.10);
+    this._horn(p2 + beat * 3,   N.C5,  beat * 2.0, 0.12);  // reaching up!
+
+    // ─── STRINGS SWELL: C major → G major ───
+    this._stringsChord(t0, [N.C4, N.E4, N.G4], 4, 0.12);
+    this._stringsChord(t0 + 4, [N.G3, N.B3, N.D4], 3.5, 0.13);
+
+    // ─── DRIVING RHYTHM: snare gives way to energetic pattern ───
+    for (let i = 0; i < 12; i++) {
+      this._bassDrum(t0 + i * beat, 0.12 + i * 0.005);
     }
 
-    // ─── Hi-hats — 16th notes, brighter ───
-    const totalSixteenths = Math.floor(duration / sixteenth);
-    for (let i = 0; i < totalSixteenths; i++) {
-      const t = t0 + i * sixteenth;
-      if (t < t0 + duration) {
-        const isOffbeat = (i % 4 === 2);
-        this._hihat(t, isOffbeat ? 0.065 : 0.045, isOffbeat);
-      }
+    // Snare on 2 and 4 (driving feel)
+    for (let b = 0; b < 3; b++) {
+      const barStart = t0 + b * bar;
+      this._snare(barStart + beat,     0.06);
+      this._snare(barStart + beat * 3, 0.06);
     }
 
-    // ─── Acid bassline: D minor, aggressive psy pattern ───
-    const bassPattern = [N.D2, N.D2, N.A1, N.D2, N.F2, N.D2, N.A1, N.D2];
-    const noteLen = beat * 0.7;
-    for (let i = 0; i < totalBeats; i++) {
-      const t = t0 + i * beat;
-      if (t < t0 + duration) {
-        const note = bassPattern[i % bassPattern.length];
-        const accent = (i % 2 === 0);
-        this._acidBass(t, note, noteLen, accent, 0.18);
-      }
+    // ─── Sub bass: C → G ───
+    this._subBass(t0, N.C3 * 0.5, 4, 0.08);
+    this._subBass(t0 + 4, N.G3 * 0.5, 3.5, 0.09);
+
+    // ─── Piano arpeggiation: adding sparkle ───
+    // Quick ascending arpeggios between horn phrases
+    const arpNotes = [N.C5, N.E5, N.G5, N.C6];
+    for (let i = 0; i < arpNotes.length; i++) {
+      this._piano(t0 + beat * 3.5 + i * 0.15, arpNotes[i], 0.5, 0.06);
+    }
+    const arpNotes2 = [N.G4, N.B4, N.D5, N.G5];
+    for (let i = 0; i < arpNotes2.length; i++) {
+      this._piano(t0 + beat * 7.5 + i * 0.15, arpNotes2[i], 0.5, 0.07);
     }
 
-    // ─── Psy lead: heroic D minor melody ───
-    // Walking-in melody (first 4s)
-    const walkMelody = [N.D5, N.F5, N.A5, N.D6, N.A5, N.F5];
-    for (let i = 0; i < walkMelody.length; i++) {
-      this._psyLead(t0 + 0.5 + i * beat * 0.9, walkMelody[i], beat * 0.7, 0.07);
+    // ─── Build to climax: last 2 seconds ───
+    // Ascending scale run on piano
+    const runNotes = [N.C5, N.D5, N.E5, N.F5, N.G5, N.A5, N.B5, N.C6];
+    const runStart = t0 + 6;
+    for (let i = 0; i < runNotes.length; i++) {
+      this._piano(runStart + i * 0.2, runNotes[i], 0.4, 0.06 + i * 0.006);
     }
 
-    // ─── Epic pad: D minor ───
-    this._darkPad(t0, [N.D3, N.F3, N.A3], 5, 0.3);
-    // Shift to D major for heroic resolution
-    const Fsharp3 = 185.0;
-    this._darkPad(t0 + 5, [N.D3, Fsharp3, N.A3], 4, 0.35);
+    // Reverse cymbal feel: snare crescendo
+    for (let i = 0; i < 8; i++) {
+      this._snare(t0 + 6.5 + i * 0.18, 0.03 + i * 0.008);
+    }
+  }
 
-    // ─── MASSIVE IMPACT at ~5s — "SUPERZION" title reveal ───
-    const titleTime = t0 + 5.0;
-    this._impactBoom(titleTime);
-    this._impactBoom(titleTime + 0.05); // double hit for massive effect
-    this._crash(titleTime, 0.35);
+  // ═══════════════════════════════════════════════════════════════
+  // ACT 4: CLIMAX — SuperZion reveal, title card
+  // EPIC DROP. All instruments at full power. D major.
+  // Tempo: ~110 BPM
+  // ═══════════════════════════════════════════════════════════════
 
-    // ─── Acid squelch barrage at title ───
-    this._acidSquelch(titleTime, 300, 0.12);
-    this._acidSquelch(titleTime + 0.1, 450, 0.1);
-    this._acidSquelch(titleTime + 0.2, 200, 0.08);
+  _scheduleAct4_Climax(t0) {
+    const bpm = 110;
+    const beat = 60 / bpm; // ~0.545s
+    const bar = beat * 4;
 
-    // ─── Filter sweep from title to end ───
-    this._filterSweep(t0 + 5, 4, 400, 14000, 0.08);
+    // ═══ THE DROP: Everything hits at once ═══
+    this._crash(t0, 0.18);
+    this._bassDrum(t0, 0.35);
+    this._timpani(t0, 0.25);
 
-    // ─── Post-title heroic lead ───
-    const heroMelody = [N.D6, N.A5, N.D6, N.F5, N.A5, N.D6];
-    for (let i = 0; i < heroMelody.length; i++) {
-      const noteTime = titleTime + 0.5 + i * beat * 0.7;
-      if (noteTime < t0 + duration - 0.5) {
-        this._psyLead(noteTime, heroMelody[i], beat * 0.6, 0.065 + i * 0.003);
-      }
+    // ─── TRIUMPHANT MELODY: D major fanfare ───
+    // D5 → F#5 → A5 → D6 (the hero theme, ascending to the peak)
+    this._horn(t0 + 0.05,        N.D5,  beat * 1.2, 0.13);
+    this._horn(t0 + beat * 1.5,  N.Fs5, beat * 1.0, 0.14);
+    this._horn(t0 + beat * 2.5,  N.A5,  beat * 1.5, 0.15);
+    this._horn(t0 + beat * 4,    N.D6,  beat * 2.5, 0.16);  // peak note, held long
+
+    // Piano doubles the melody for power
+    this._piano(t0 + 0.05,       N.D5,  beat * 1.0, 0.10);
+    this._piano(t0 + beat * 1.5, N.Fs5, beat * 0.8, 0.11);
+    this._piano(t0 + beat * 2.5, N.A5,  beat * 1.2, 0.12);
+    this._piano(t0 + beat * 4,   N.D6,  beat * 2.0, 0.13);
+
+    // ─── MASSIVE STRINGS: D major chord, full orchestra feel ───
+    this._stringsChord(t0, [N.D4, N.Fs4, N.A4], 4, 0.16);
+    this._stringsChord(t0, [N.D5, N.Fs5, N.A5], 4, 0.10);  // upper octave doubling
+    // Second chord: A major (dominant) then back to D
+    this._stringsChord(t0 + 4, [N.D4, N.Fs4, N.A4], 3.5, 0.18);
+    this._stringsChord(t0 + 4, [N.D5, N.Fs5, N.A5], 3.5, 0.12);
+
+    // ─── TREMOLO STRINGS for sustained intensity ───
+    this._tremoloStrings(t0 + 0.5, N.D4, 7, 0.07);
+    this._tremoloStrings(t0 + 0.5, N.A4, 7, 0.05);
+
+    // ─── DRIVING RHYTHM: Full power drums ───
+    for (let i = 0; i < 14; i++) {
+      this._bassDrum(t0 + i * beat, 0.20 + (i < 4 ? 0.08 : 0));
+    }
+    // Snare on 2 and 4
+    for (let b = 0; b < 3; b++) {
+      const barStart = t0 + b * bar;
+      this._snare(barStart + beat,     0.09);
+      this._snare(barStart + beat * 3, 0.09);
     }
 
-    // ─── Build intensity: double-time kicks in last 2s ───
-    const buildStart = t0 + duration - 2.0;
-    const eighthNote = beat / 2;
-    for (let i = 0; i < 10; i++) {
-      const bt = buildStart + i * eighthNote;
-      if (bt < t0 + duration) {
-        this._psyKick(bt, 0.35 + i * 0.015);
-      }
+    // ─── Timpani hits on downbeats ───
+    this._timpani(t0 + bar, 0.20);
+    this._timpani(t0 + bar * 2, 0.18);
+
+    // ─── Sub bass: D2 pedal, full power ───
+    this._subBass(t0, N.D3 * 0.5, 4, 0.12);
+    this._subBass(t0 + 4, N.D3 * 0.5, 3.5, 0.12);
+
+    // ─── Second melodic phrase: victory confirmation ───
+    // After the peak D6, melody descends heroically then ends on sustained D5
+    const m2 = t0 + beat * 6.5;
+    this._horn(m2,              N.A5,  beat * 1.0, 0.12);
+    this._horn(m2 + beat * 1,   N.Fs5, beat * 1.0, 0.11);
+    this._horn(m2 + beat * 2,   N.A5,  beat * 1.0, 0.12);
+    this._horn(m2 + beat * 3,   N.D5,  beat * 3.0, 0.13); // sustained resolution
+
+    // ─── Crash at second phrase ───
+    this._crash(t0 + 4, 0.12);
+
+    // ─── Piano flourish at the very end: ascending arpeggio ───
+    const flourish = [N.D5, N.Fs5, N.A5, N.D6, N.Fs6];
+    const flStart = t0 + 5.5;
+    for (let i = 0; i < flourish.length; i++) {
+      this._piano(flStart + i * 0.12, flourish[i], 0.8, 0.07 + i * 0.008);
     }
 
-    // ─── Final crash at end ───
-    this._crash(t0 + duration - 0.2, 0.25);
+    // ─── Final sustain: everything rings out ───
+    // Let the D major chord ring with tremolo from the strings already scheduled
   }
 }
 
