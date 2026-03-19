@@ -71,10 +71,10 @@ See `.planning/milestones/` for archived phase details.
   1. Intro scene plays the same music as MenuScene (current intro music is deleted)
   2. Title screen Maguen David appearance has no loud/jarring sounds
   3. Music plays continuously from first frame of intro through to menu scene without gaps or restarts
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 31-01: TBD
+- [ ] 31-01-PLAN.md -- Replace intro music with menu music, silence title explosions, seamless transition
 
 ### Phase 32: Level 1 Platformer Redesign
 **Goal**: Level 1 becomes a two-phase experience -- platformer across Tehran rooftops at night, then Bomberman indoors
@@ -189,7 +189,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 9-14. Sprite & Polish v2 | v1.2 | 6/6 | Complete | 2026-03-19 |
 | 15-20. Narrative & Audio | v1.3 | 6/6 | Complete | 2026-03-19 |
 | 21-30. Final Polish | v1.4 | 10/10 | Complete | 2026-03-19 |
-| 31. Intro Audio Fix | v1.5 | 0/TBD | Not started | - |
+| 31. Intro Audio Fix | v1.5 | 0/1 | Planning | - |
 | 32. Level 1 Platformer Redesign | v1.5 | 0/TBD | Not started | - |
 | 33. Level 2 Rename + Level 3 Physics | v1.5 | 0/TBD | Not started | - |
 | 34. Level 4 Complete Redesign | v1.5 | 0/TBD | Not started | - |
