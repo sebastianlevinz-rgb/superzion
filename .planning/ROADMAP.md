@@ -106,12 +106,11 @@ Plans:
   2. Final intro screen displays a giant golden semi-transparent Maguen David behind SuperZion with "SUPERZION" in wide thick arcade-style font and a larger subtitle below
   3. Psytrance music at 145+ BPM plays from the first frame of the intro, and visual events (missile launches, explosions, jet flybys, gunfire) are accompanied by synchronized SFX
   4. Camera shakes visibly on every explosion during the intro sequence
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
-- [ ] 07-03: TBD
+- [ ] 07-01-PLAN.md — Restore waving flags in Act 1 and restyle Act 3 title with Maguen David + arcade font (INTRO-01, INTRO-02)
+- [ ] 07-02-PLAN.md — Wire distinct SFX to visual events and add camera shake to all explosions (INTRO-03, INTRO-04)
 
 ### Phase 8: End-Screen Standardization
 **Goal**: Every level ends with a clear, consistent navigation screen so players always know how to retry, continue, or skip
@@ -141,5 +140,5 @@ Phases execute in numeric order: 5 → 6 → 7 → 8
 | 4. Cinematics and Animation | v1.0 | 0/TBD | Deferred | - |
 | 5. Standalone Fixes | v1.1 | 2/2 | Complete | 2026-03-19 |
 | 6. Visual Identity | v1.1 | 0/2 | Not started | - |
-| 7. Intro Overhaul | v1.1 | 0/3 | Not started | - |
+| 7. Intro Overhaul | v1.1 | 0/2 | Not started | - |
 | 8. End-Screen Standardization | v1.1 | 0/1 | Not started | - |
