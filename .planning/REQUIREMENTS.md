@@ -1,7 +1,7 @@
 # Requirements: SuperZion
 
 **Defined:** 2026-03-19
-**Core Value:** Every visible element must look intentional and polished — no placeholder cubes, no missing audio, no broken levels.
+**Core Value:** Every visible element must look intentional and polished -- no placeholder cubes, no missing audio, no broken levels.
 
 ## v1.2 Requirements
 
@@ -9,10 +9,10 @@ Requirements for Sprite & Polish v2. Each maps to roadmap phases.
 
 ### Drawing Technique
 
-- [ ] **DRAW-01**: Player sprite drawn with organic shapes (arc, bezierCurveTo, quadraticCurveTo, ellipse) — no fillRect for body parts
+- [ ] **DRAW-01**: Player sprite drawn with organic shapes (arc, bezierCurveTo, quadraticCurveTo, ellipse) -- no fillRect for body parts
 - [ ] **DRAW-02**: Head is an oval, torso is a curved trapezoid, limbs have rounded joints
-- [ ] **DRAW-03**: Beard is a gradient on jawline using arc() and semi-transparent colors — no zigzag lines
-- [ ] **DRAW-04**: Eyes are small ovals with pupils — no square dots
+- [ ] **DRAW-03**: Beard is a gradient on jawline using arc() and semi-transparent colors -- no zigzag lines
+- [ ] **DRAW-04**: Eyes are small ovals with pupils -- no square dots
 - [ ] **DRAW-05**: All guard sprites use organic shapes (oval heads, shaped bodies, rounded limbs)
 - [ ] **DRAW-06**: All boss sprites in cinematic/parade use organic shapes
 - [ ] **DRAW-07**: Level 1 Bomberman top-down sprite uses organic shapes consistent with main game style
@@ -28,7 +28,7 @@ Requirements for Sprite & Polish v2. Each maps to roadmap phases.
 
 ### Intro
 
-- [ ] **INTR-01**: Axis of Evil section shows fictional terrorist org logos (skull, red fist, etc.) — no real country flags
+- [ ] **INTR-01**: Axis of Evil section shows fictional terrorist org logos (skull, red fist, etc.) -- no real country flags
 - [ ] **INTR-02**: Israel flag appears only in Israel/arsenal section, never in Axis of Evil
 - [ ] **INTR-03**: Psytrance 145+ BPM plays from frame 1 of intro cinematic via Web Audio API
 - [ ] **INTR-04**: Explosions and effects synchronized with the beat
@@ -64,30 +64,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DRAW-01 | — | Pending |
-| DRAW-02 | — | Pending |
-| DRAW-03 | — | Pending |
-| DRAW-04 | — | Pending |
-| DRAW-05 | — | Pending |
-| DRAW-06 | — | Pending |
-| DRAW-07 | — | Pending |
-| DRAW-08 | — | Pending |
-| STAR-01 | — | Pending |
-| HAT-01 | — | Pending |
-| INTR-01 | — | Pending |
-| INTR-02 | — | Pending |
-| INTR-03 | — | Pending |
-| INTR-04 | — | Pending |
-| LOGO-01 | — | Pending |
-| LOGO-02 | — | Pending |
-| LOGO-03 | — | Pending |
-| LOGO-04 | — | Pending |
+| DRAW-01 | Phase 9 | Pending |
+| DRAW-02 | Phase 9 | Pending |
+| DRAW-03 | Phase 9 | Pending |
+| DRAW-04 | Phase 9 | Pending |
+| DRAW-05 | Phase 10 | Pending |
+| DRAW-06 | Phase 10 | Pending |
+| DRAW-07 | Phase 10 | Pending |
+| DRAW-08 | Phase 10 | Pending |
+| STAR-01 | Phase 11 | Pending |
+| HAT-01 | Phase 11 | Pending |
+| INTR-01 | Phase 12 | Pending |
+| INTR-02 | Phase 12 | Pending |
+| INTR-03 | Phase 13 | Pending |
+| INTR-04 | Phase 13 | Pending |
+| LOGO-01 | Phase 14 | Pending |
+| LOGO-02 | Phase 14 | Pending |
+| LOGO-03 | Phase 14 | Pending |
+| LOGO-04 | Phase 14 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after initial definition*
+*Last updated: 2026-03-19 after roadmap creation*
