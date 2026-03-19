@@ -441,7 +441,32 @@ export default class GameIntroScene extends BaseCinematicScene {
       starGfx.setAlpha(0);
       this.tweens.add({ targets: starGfx, alpha: 1, duration: 600 });
 
-      // "SUPERZION" title — wide thick arcade-style font, slams in with impact
+      // "SUPERZION" title — thick bold with outline, drop shadow, golden glow
+      // Drop shadow (offset, dark)
+      const titleShadow = this.add.text(W / 2 + 4, H / 2 - 36, 'S U P E R Z I O N', {
+        fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+        fontSize: '72px', color: '#000000',
+      }).setOrigin(0.5).setDepth(49).setAlpha(0).setScale(3);
+      this.actObjects.push(titleShadow);
+      // Black outline layers (3px)
+      const outlineOffsets = [[-3,0],[3,0],[0,-3],[0,3],[-3,-3],[3,-3],[-3,3],[3,3]];
+      const outlineTexts = [];
+      for (const [dx, dy] of outlineOffsets) {
+        const ol = this.add.text(W / 2 + dx, H / 2 - 40 + dy, 'S U P E R Z I O N', {
+          fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+          fontSize: '72px', color: '#000000',
+        }).setOrigin(0.5).setDepth(49).setAlpha(0).setScale(3);
+        this.actObjects.push(ol);
+        outlineTexts.push(ol);
+      }
+      // Golden glow bloom (behind main text)
+      const titleGlow = this.add.text(W / 2, H / 2 - 40, 'S U P E R Z I O N', {
+        fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+        fontSize: '72px', color: '#FFD700',
+        shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 80, fill: true },
+      }).setOrigin(0.5).setDepth(48).setAlpha(0).setScale(3);
+      this.actObjects.push(titleGlow);
+      // Main gold title
       const title = this.add.text(W / 2, H / 2 - 40, 'S U P E R Z I O N', {
         fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
         fontSize: '72px', color: '#FFD700',
@@ -449,19 +474,25 @@ export default class GameIntroScene extends BaseCinematicScene {
       }).setOrigin(0.5).setDepth(50).setAlpha(0).setScale(3);
       this.actObjects.push(title);
 
-      // Impact zoom: large -> normal
-      this.tweens.add({
-        targets: title,
-        alpha: 1, scaleX: 1, scaleY: 1,
-        duration: 300,
-        ease: 'Back.easeOut',
-      });
-      // Subtle breathing pulse
-      this.tweens.add({
-        targets: title, scaleX: 1.04, scaleY: 1.04,
-        duration: 600, yoyo: true, repeat: -1,
-        ease: 'Sine.easeInOut', delay: 400,
-      });
+      // Impact zoom: large -> normal (all layers simultaneously)
+      const allTitleParts = [title, titleShadow, titleGlow, ...outlineTexts];
+      for (const part of allTitleParts) {
+        this.tweens.add({
+          targets: part,
+          alpha: part === titleGlow ? 0.4 : part === titleShadow ? 0.5 : 1,
+          scaleX: 1, scaleY: 1,
+          duration: 300,
+          ease: 'Back.easeOut',
+        });
+      }
+      // Subtle breathing pulse on all parts
+      for (const part of allTitleParts) {
+        this.tweens.add({
+          targets: part, scaleX: 1.04, scaleY: 1.04,
+          duration: 600, yoyo: true, repeat: -1,
+          ease: 'Sine.easeInOut', delay: 400,
+        });
+      }
     });
 
     // ── At 6.5s: Subtitle ──

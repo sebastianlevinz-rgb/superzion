@@ -11,7 +11,7 @@ import DifficultyManager from '../systems/DifficultyManager.js';
 
 const LEVELS = [
   { label: 'LEVEL 1: OPERATION TEHRAN', scene: 'IntroCinematicScene' },
-  { label: 'LEVEL 2: OPERATION SIGNAL STORM', scene: 'BeirutIntroCinematicScene' },
+  { label: 'LEVEL 2: OPERATION PORT SWAP', scene: 'BeirutIntroCinematicScene' },
   { label: 'LEVEL 3: OPERATION DEEP STRIKE', scene: 'DeepStrikeIntroCinematicScene' },
   { label: 'LEVEL 4: OPERATION UNDERGROUND', scene: 'UndergroundIntroCinematicScene' },
   { label: 'LEVEL 5: OPERATION MOUNTAIN BREAKER', scene: 'MountainBreakerIntroCinematicScene' },
@@ -55,12 +55,32 @@ export default class MenuScene extends Phaser.Scene {
     const overlay = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.2);
     overlay.setDepth(-4);
 
-    // Title
-    const title = this.add.text(480, 100, 'SUPERZION', {
-      fontFamily: 'monospace', fontSize: '56px', color: '#FFD700',
-      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 20, fill: true },
+    // Title — thick, bold, with outline, drop shadow, and golden glow
+    // Drop shadow layer (offset, dark)
+    const titleShadow = this.add.text(480 + 3, 100 + 3, 'S U P E R Z I O N', {
+      fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+      fontSize: '56px', color: '#000000',
+    }).setOrigin(0.5).setDepth(9).setAlpha(0.5);
+    // Black outline layer (slightly offset in all directions)
+    for (const [dx, dy] of [[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,-2],[-2,2],[2,2]]) {
+      this.add.text(480 + dx, 100 + dy, 'S U P E R Z I O N', {
+        fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+        fontSize: '56px', color: '#000000',
+      }).setOrigin(0.5).setDepth(9);
+    }
+    // Main gold title
+    const title = this.add.text(480, 100, 'S U P E R Z I O N', {
+      fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+      fontSize: '56px', color: '#FFD700',
+      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 30, fill: true },
     });
     title.setOrigin(0.5); title.setDepth(10);
+    // Golden glow bloom layer (larger, blurred)
+    const titleGlow = this.add.text(480, 100, 'S U P E R Z I O N', {
+      fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+      fontSize: '56px', color: '#FFD700',
+      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 60, fill: true },
+    }).setOrigin(0.5).setDepth(8).setAlpha(0.4);
 
     // Line
     this.add.rectangle(480, 145, 280, 2, 0x00e5ff, 0.6).setDepth(10);
