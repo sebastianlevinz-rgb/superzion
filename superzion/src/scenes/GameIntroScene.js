@@ -7,7 +7,6 @@ import Phaser from 'phaser';
 import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
-import IntroMusic from '../systems/IntroMusic.js';
 import { generateAllParadeTextures } from '../utils/ParadeTextures.js';
 
 export default class GameIntroScene extends BaseCinematicScene {
@@ -17,16 +16,8 @@ export default class GameIntroScene extends BaseCinematicScene {
     this._initCinematic();
     generateAllParadeTextures(this);
 
-    // Start psytrance intro music (25s of intense psytrance)
-    this._introMusic = new IntroMusic();
-    this._introMusic.start();
-
-    // Fallback: after intro music ends (25s), play cinematic music so there's never silence
-    this.time.delayedCall(25000, () => {
-      if (!this.skipped) {
-        MusicManager.get().playCinematicMusic(1);
-      }
-    });
+    // Start menu music (Am trance) from first frame — plays continuously into MenuScene
+    MusicManager.get().playMenuMusic();
 
     // ── Define narrative pages ──
     this._initPages([
@@ -930,7 +921,6 @@ export default class GameIntroScene extends BaseCinematicScene {
     this.tweens.add({ targets: flash, alpha: 0, duration: 600 });
 
     this.cameras.main.shake(500, 0.03);
-    SoundManager.get().playExplosion();
 
     // Giant golden Maguen David
     const starGfx = this.add.graphics().setDepth(19);
@@ -1006,7 +996,6 @@ export default class GameIntroScene extends BaseCinematicScene {
     this.time.delayedCall(1000, () => {
       if (this.skipped) return;
       this.cameras.main.shake(200, 0.015);
-      SoundManager.get().playExplosion();
     });
 
     // Make this page ready immediately (no typewriter text to wait for)
@@ -1109,8 +1098,7 @@ export default class GameIntroScene extends BaseCinematicScene {
   _endCinematic() {
     if (this.skipped) return;
     this.skipped = true;
-    if (this._introMusic) this._introMusic.stop();
-    MusicManager.get().stop(0.3);
+    // Do NOT stop music — menu music continues seamlessly into MenuScene
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(350, () => this.scene.start('MenuScene'));
   }
