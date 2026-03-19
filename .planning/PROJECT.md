@@ -38,7 +38,14 @@ Every visible element must look intentional and polished — no placeholder cube
 
 ### Active
 
-(None — define next milestone requirements with `/gsd:new-milestone`)
+- [ ] Player sprite uses organic shapes (arc, bezier, ellipse) — no more fillRect cubes
+- [ ] All human sprites (guards, bosses, workers) use organic drawing technique
+- [ ] Star of David positioned on chest across all sprites
+- [ ] Axis of Evil section shows fictional org logos, not real country flags
+- [ ] Psytrance 145+ BPM plays from intro frame 1 with beat-synced effects
+- [ ] SuperZion logo: thicker, 3px outline, drop shadow, golden glow — same in menu and intro
+- [ ] Level 2 hard hat: larger, rounder, with visor and highlights
+- [ ] Level 1 Bomberman sprite redesigned with organic forms
 
 ### Out of Scope
 
@@ -79,4 +86,17 @@ Every visible element must look intentional and polished — no placeholder cube
 | Camera shake inside _spawnExplosion() | Single insertion point covers all callers automatically | ✓ Good — DRY pattern |
 
 ---
-*Last updated: 2026-03-19 after v1.1 Polish Pass milestone complete*
+## Current Milestone: v1.2 Sprite & Polish v2
+
+**Goal:** Replace all fillRect-based cube sprites with organic shapes using arc/bezier/ellipse, fix intro issues (flags, music), and enhance logo.
+
+**Target features:**
+- Organic drawing technique for all human sprites
+- Star of David chest repositioning
+- Fictional org logos replacing country flags in Axis of Evil
+- Psytrance intro music from frame 1
+- Enhanced SuperZion logo with glow/shadow
+- Level 2 hard hat and Level 1 bomberman sprite improvements
+
+---
+*Last updated: 2026-03-19 after v1.2 Sprite & Polish v2 milestone started*
