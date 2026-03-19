@@ -22,7 +22,7 @@ const H = 540;
 const GROUND_Y = 420;     // horizon / ground line
 const DECK_Y = 395;       // carrier deck surface Y
 const GRAVITY = 480;      // bomb gravity px/s²
-const JET_SPEED = 220;    // base horizontal speed px/s
+const JET_SPEED = 440;    // base horizontal speed px/s (doubled for phase-23)
 const BOMB_TOTAL = 8;
 const BUNKER_LAYERS = 5;
 const BUNKER_X = 480;     // bunker center X in bombing phase
@@ -39,9 +39,9 @@ const RETURN_SEA_DIST = 2000;
 const RETURN_CARRIER_DIST = 3100;
 
 // SAM tracking constants
-const SAM_TURN_RATE = 1.8;     // radians/sec — wide turning radius
+const SAM_TURN_RATE = 0.8;     // radians/sec — wider arcs (phase-23 rebalance)
 const SAM_LIFETIME = 4.0;      // seconds before self-destruct
-const SAM_SPEED = 260;         // px/s base speed
+const SAM_SPEED = 182;         // px/s base speed (30% slower, phase-23)
 const CHAFF_TOTAL = 5;
 const FLAK_INTERVAL = 1.8;    // seconds between flak bursts
 
@@ -350,11 +350,11 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   _updateTakeoff(dt) {
-    // Accelerate with RIGHT
+    // Accelerate with RIGHT (scaled for doubled plane speed)
     if (this.keys.right.isDown) {
-      this.jetVX = Math.min(300, this.jetVX + 180 * dt);
+      this.jetVX = Math.min(500, this.jetVX + 320 * dt);
     } else {
-      this.jetVX = Math.max(0, this.jetVX - 60 * dt); // friction
+      this.jetVX = Math.max(0, this.jetVX - 100 * dt); // friction
     }
 
     this.jetX += this.jetVX * dt;
@@ -471,15 +471,15 @@ export default class BomberScene extends Phaser.Scene {
     this.phaseTimer += dt;
 
     // Horizontal speed: RIGHT accelerates, LEFT brakes (no reverse)
-    const accel = 500; // very responsive
+    const accel = 900; // very responsive (scaled for doubled JET_SPEED)
     if (this.keys.right.isDown) {
-      this.jetVX = Math.min(500, this.jetVX + accel * dt);
+      this.jetVX = Math.min(900, this.jetVX + accel * dt);
     } else if (this.keys.left.isDown) {
-      this.jetVX = Math.max(80, this.jetVX - accel * dt);
+      this.jetVX = Math.max(160, this.jetVX - accel * dt);
     } else {
       // Drift back to base speed
       const diff = JET_SPEED - this.jetVX;
-      this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 200 * dt);
+      this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 400 * dt);
     }
 
     // Gravity always pulls down
@@ -584,32 +584,32 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   _spawnMissile(x, y, _vy) {
-    // Show warning indicator 1 second before launch
+    // 1.5s flashing red arrow warning before launch (phase-23)
     const warn = this.add.text(x, H - 20, '\u25B2', {
       fontFamily: 'monospace', fontSize: '16px', color: '#ff3333',
     }).setOrigin(0.5).setDepth(20);
     this.tweens.add({
-      targets: warn, alpha: 0.2, duration: 150, yoyo: true, repeat: 3,
-      onComplete: () => {
-        warn.destroy();
-        // Now spawn the actual tracking SAM
-        if (this.missiles.length >= 3) return; // max 3 on screen
-        const m = this.add.circle(x, y, 3, 0xff3333).setDepth(8);
-        const glow = this.add.circle(x, y, 5, 0xff0000, 0.3).setDepth(7);
-        const spdMult = this.dm.missileSpeedMult();
-        const speed = SAM_SPEED * spdMult;
-        // Initial angle: toward jet
-        const dx = this.jetX - x;
-        const dy = this.jetY - y;
-        const angle = Math.atan2(dy, dx);
-        this.missiles.push({
-          sprite: m, glow, x, y,
-          angle,
-          speed,
-          life: SAM_LIFETIME,
-          trail: [], // smoke trail positions
-        });
-      },
+      targets: warn, alpha: 0.2, duration: 150, yoyo: true, repeat: 9,
+    });
+    // Spawn the actual missile after 1.5s delay
+    this.time.delayedCall(1500, () => {
+      warn.destroy();
+      if (this.missiles.length >= 2) return; // max 2 on screen (phase-23)
+      const m = this.add.circle(x, y, 3, 0xff3333).setDepth(8);
+      const glow = this.add.circle(x, y, 5, 0xff0000, 0.3).setDepth(7);
+      const spdMult = this.dm.missileSpeedMult();
+      const speed = SAM_SPEED * spdMult;
+      // Initial angle: toward jet
+      const dx = this.jetX - x;
+      const dy = this.jetY - y;
+      const angle = Math.atan2(dy, dx);
+      this.missiles.push({
+        sprite: m, glow, x, y,
+        angle,
+        speed,
+        life: SAM_LIFETIME,
+        trail: [], // smoke trail positions
+      });
     });
   }
 
@@ -932,14 +932,14 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   _fireBossMissile(angleOffset) {
-    if (this.missiles.length >= 5) return; // allow more missiles with boss
+    if (this.missiles.length >= 4) return; // allow more missiles with boss (phase-23: reduced from 5)
     const bx = BUNKER_X;
     const by = BUNKER_TOP_Y + 20;
     const dx = this.jetX - bx;
     const dy = this.jetY - by;
     const angle = Math.atan2(dy, dx) + angleOffset;
     const spdMult = this.dm.missileSpeedMult();
-    const speed = (SAM_SPEED + 40) * spdMult; // boss missiles are faster
+    const speed = (SAM_SPEED + 28) * spdMult; // boss missiles slightly faster (phase-23: proportional)
 
     // Visual: bigger, redder missile
     const m = this.add.circle(bx, by, 5, 0xff2222).setDepth(8);
@@ -1087,8 +1087,8 @@ export default class BomberScene extends Phaser.Scene {
   _updateBombing(dt) {
     this.phaseTimer += dt;
 
-    // Full 4-way player control — agile and fast
-    const moveSpeed = 300;
+    // Full 4-way player control — agile and fast (doubled plane speed)
+    const moveSpeed = 550;
     const prevJetX = this.jetX;
     if (this.keys.right.isDown) {
       this.jetX += moveSpeed * dt;
@@ -1257,7 +1257,7 @@ export default class BomberScene extends Phaser.Scene {
     for (const t of this.turretSprites) {
       t.fireTimer -= dt;
       if (t.fireTimer <= 0) {
-        if (this.missiles.length >= 3) continue; // cap at 3 missiles on screen
+        if (this.missiles.length >= 2) continue; // cap at 2 missiles on screen (phase-23)
         t.fireTimer = (1.5 + Math.random() * 1.5) * this.dm.spawnRateMult();
         // Fire tracking missile toward jet
         const dx = this.jetX - t.x;
@@ -1265,7 +1265,7 @@ export default class BomberScene extends Phaser.Scene {
         const angle = Math.atan2(dy, dx);
         const m = this.add.circle(t.x, t.y, 3, 0xff4444).setDepth(8);
         const glow = this.add.circle(t.x, t.y, 5, 0xff0000, 0.3).setDepth(7);
-        const tSpd = 200 * this.dm.missileSpeedMult();
+        const tSpd = 140 * this.dm.missileSpeedMult(); // 30% slower (phase-23)
         this.missiles.push({
           sprite: m, glow, x: t.x, y: t.y,
           angle,
@@ -1474,17 +1474,17 @@ export default class BomberScene extends Phaser.Scene {
     this.phaseTimer += dt;
 
     // Horizontal speed: LEFT accelerates return, RIGHT slows it
-    const accel = 500;
+    const accel = 900; // scaled for doubled JET_SPEED
     if (this.keys.left.isDown) {
-      this.jetVX = Math.max(-500, this.jetVX - accel * dt);
+      this.jetVX = Math.max(-900, this.jetVX - accel * dt);
       this.facingRight = false;
     } else if (this.keys.right.isDown) {
-      this.jetVX = Math.min(-80, this.jetVX + accel * dt);
+      this.jetVX = Math.min(-160, this.jetVX + accel * dt);
       this.facingRight = true;
     } else {
       // Drift to base return speed
       const diff = -JET_SPEED - this.jetVX;
-      this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 200 * dt);
+      this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 400 * dt);
       this.facingRight = false;
     }
 
