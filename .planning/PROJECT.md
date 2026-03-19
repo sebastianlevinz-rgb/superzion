@@ -38,14 +38,18 @@ Every visible element must look intentional and polished — no placeholder cube
 
 ### Active
 
-- [ ] Player sprite uses organic shapes (arc, bezier, ellipse) — no more fillRect cubes
-- [ ] All human sprites (guards, bosses, workers) use organic drawing technique
-- [ ] Star of David positioned on chest across all sprites
-- [ ] Axis of Evil section shows fictional org logos, not real country flags
-- [ ] Psytrance 145+ BPM plays from intro frame 1 with beat-synced effects
-- [ ] SuperZion logo: thicker, 3px outline, drop shadow, golden glow — same in menu and intro
-- [ ] Level 2 hard hat: larger, rounder, with visor and highlights
-- [ ] Level 1 Bomberman sprite redesigned with organic forms
+- [ ] All cinematics use page-by-page SPACE/ENTER text advancement with blinking "► SPACE" indicator
+- [ ] ESC skips entire cinematic in all scenes
+- [ ] GameIntroScene rewritten with complete new narrative (3000 years history → hero reveal)
+- [ ] All 6 level intro cinematics rewritten with new narrative script
+- [ ] 5 transition cinematics between levels with new narrative
+- [ ] New VictoryFinalScene with epic ending narrative and "Am Yisrael Chai"
+- [ ] Tagline changed to "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST." everywhere
+- [ ] All cinematics have mood-appropriate background music
+- [ ] All visual events synchronized with audio (explosions, impacts, boss appearances)
+- [ ] All 6 levels verified to have background music and complete SFX
+- [ ] M key mute/unmute works globally in all scenes
+- [ ] Zero silence anywhere in the game from intro to credits
 
 ### Out of Scope
 
@@ -60,6 +64,7 @@ Every visible element must look intentional and polished — no placeholder cube
 ## Context
 
 - Shipped v1.1 Polish Pass: 4 phases, 7 plans, 10 requirements fulfilled
+- Shipped v1.2 Sprite & Polish v2: 6 phases, 6 plans, 18 requirements fulfilled
 - Codebase 100% procedural: no external assets, everything runtime-generated via canvas API and Web Audio API
 - `SpriteGenerator` produces canonical Mossad agent design; `CinematicTextures` and `ParadeTextures` aligned to match
 - `EndScreen.js` is the shared end-of-level module with `destroy()` cleanup — all 7 scenes use it
@@ -86,17 +91,19 @@ Every visible element must look intentional and polished — no placeholder cube
 | Camera shake inside _spawnExplosion() | Single insertion point covers all callers automatically | ✓ Good — DRY pattern |
 
 ---
-## Current Milestone: v1.2 Sprite & Polish v2
+## Current Milestone: v1.3 Narrative & Audio
 
-**Goal:** Replace all fillRect-based cube sprites with organic shapes using arc/bezier/ellipse, fix intro issues (flags, music), and enhance logo.
+**Goal:** Replace all cinematic text with a complete narrative script using page-by-page SPACE/ENTER advancement, and perform a full audio audit to guarantee zero silence anywhere in the game.
 
 **Target features:**
-- Organic drawing technique for all human sprites
-- Star of David chest repositioning
-- Fictional org logos replacing country flags in Axis of Evil
-- Psytrance intro music from frame 1
-- Enhanced SuperZion logo with glow/shadow
-- Level 2 hard hat and Level 1 bomberman sprite improvements
+- Complete narrative script across intro, all 6 level cinematics, transitions, and victory
+- Page-by-page text advancement (SPACE/ENTER), blinking "► SPACE" indicator, ESC skip
+- New tagline: "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST."
+- New VictoryFinalScene with epic ending narrative
+- Mood-appropriate music in all cinematics (dark→heroic→epic)
+- Typewriter click SFX, impact booms, synchronized visual/audio effects
+- Full level audio verification — no silence anywhere
+- Global M key mute/unmute in all scenes
 
 ---
-*Last updated: 2026-03-19 after v1.2 Sprite & Polish v2 milestone started*
+*Last updated: 2026-03-19 after v1.3 Narrative & Audio milestone started*

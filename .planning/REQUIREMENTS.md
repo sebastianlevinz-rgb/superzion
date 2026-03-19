@@ -3,92 +3,87 @@
 **Defined:** 2026-03-19
 **Core Value:** Every visible element must look intentional and polished -- no placeholder cubes, no missing audio, no broken levels.
 
-## v1.2 Requirements
+## v1.3 Requirements
 
-Requirements for Sprite & Polish v2. Each maps to roadmap phases.
+Requirements for Narrative & Audio milestone. Each maps to roadmap phases.
 
-### Drawing Technique
+### Cinematic Text Engine
 
-- [x] **DRAW-01**: Player sprite drawn with organic shapes (arc, bezierCurveTo, quadraticCurveTo, ellipse) -- no fillRect for body parts
-- [x] **DRAW-02**: Head is an oval, torso is a curved trapezoid, limbs have rounded joints
-- [x] **DRAW-03**: Beard is a gradient on jawline using arc() and semi-transparent colors -- no zigzag lines
-- [x] **DRAW-04**: Eyes are small ovals with pupils -- no square dots
-- [x] **DRAW-05**: All guard sprites use organic shapes (oval heads, shaped bodies, rounded limbs)
-- [x] **DRAW-06**: All boss sprites in cinematic/parade use organic shapes
-- [x] **DRAW-07**: Level 1 Bomberman top-down sprite uses organic shapes consistent with main game style
-- [x] **DRAW-08**: All worker/NPC sprites across all scenes use organic drawing technique
+- [ ] **TEXT-01**: All cinematics use page-by-page text advancement — player presses SPACE or ENTER to advance, never auto-advances
+- [ ] **TEXT-02**: Blinking "► SPACE" indicator always visible at bottom during text pages
+- [ ] **TEXT-03**: ESC key skips entire cinematic in all scenes
 
-### Star of David
+### Narrative - Intro
 
-- [x] **STAR-01**: Star of David positioned on chest (center of vest, above stomach) in all player sprites across all scenes
+- [ ] **NARR-01**: GameIntroScene completely rewritten with new narrative script (3000 years history → enemies → Israel responds → SuperZion reveal)
+- [ ] **NARR-02**: Each text line appears with typewriter effect, advances only on SPACE/ENTER
 
-### Hard Hat
+### Narrative - Level Cinematics
 
-- [x] **HAT-01**: Level 2 hard hat is larger, rounder (arc-based), with visible front visor and reflective highlights
+- [ ] **NARR-03**: All 6 level intro cinematics rewritten with new narrative script
+- [ ] **NARR-04**: 5 transition cinematics between levels with new narrative (post-level → next level setup)
 
-### Intro
+### Narrative - Victory & Tagline
 
-- [x] **INTR-01**: Axis of Evil section shows fictional terrorist org logos (skull, red fist, etc.) -- no real country flags
-- [x] **INTR-02**: Israel flag appears only in Israel/arsenal section, never in Axis of Evil
-- [x] **INTR-03**: Psytrance 145+ BPM plays from frame 1 of intro cinematic via Web Audio API
-- [x] **INTR-04**: Explosions and effects synchronized with the beat
+- [ ] **NARR-05**: New VictoryFinalScene with complete victory narrative ending in "Am Yisrael Chai"
+- [ ] **NARR-06**: Tagline changed from "ONE SOLDIER. SIX MISSIONS. ZERO MERCY." to "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST." everywhere
 
-### Logo
+### Audio - Cinematics
 
-- [x] **LOGO-01**: SuperZion letters are thicker with 3px black outline/stroke
-- [x] **LOGO-02**: Drop shadow effect on logo text
-- [x] **LOGO-03**: Golden glow/bloom effect on logo
-- [x] **LOGO-04**: Same logo rendering used in both MenuScene and IntroCinematicScene
+- [ ] **AUD-01**: Intro has psytrance 145+ BPM from frame 1 with mood transitions (dark → heroic → epic climax)
+- [ ] **AUD-02**: All cinematics (intro, level intros, transitions, victory) have mood-appropriate background music
+- [ ] **AUD-03**: Typewriter text produces click sound per letter in all cinematics
+- [ ] **AUD-04**: Boss appearances, explosions, and visual impacts have synchronized sound effects
+
+### Audio - Global
+
+- [ ] **AUD-05**: All 6 gameplay levels verified to have background music playing
+- [ ] **AUD-06**: All player and enemy actions have corresponding sound effects
+- [ ] **AUD-07**: Victory sequence has epic music with climax at "Am Yisrael Chai" moment
+- [ ] **AUD-08**: M key mute/unmute works globally in every scene (menu, cinematics, gameplay, victory)
+- [ ] **AUD-09**: Zero silence anywhere in the game from intro through credits
 
 ## Future Requirements
 
-Deferred to future release. Tracked but not in current roadmap.
-
-### Audio
-
-- **AUD-01**: Per-level unique trance themes
-- **AUD-02**: Between-level animated cinematics with audio
+None — all audio/narrative scope captured in this milestone.
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
 | External audio files (mp3/ogg) | Everything stays procedural via Web Audio API |
-| Save/load system | Not core to visual polish milestone |
-| Accessibility features | Separate milestone |
-| CinematicDirector/TextureRegistry infrastructure | Over-engineering for current needs |
+| Voice acting / text-to-speech | Not feasible with procedural approach |
+| Subtitle language options | Single language (English) |
+| Save/load system | Not relevant to narrative/audio milestone |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DRAW-01 | Phase 9 | Complete |
-| DRAW-02 | Phase 9 | Complete |
-| DRAW-03 | Phase 9 | Complete |
-| DRAW-04 | Phase 9 | Complete |
-| DRAW-05 | Phase 10 | Complete |
-| DRAW-06 | Phase 10 | Complete |
-| DRAW-07 | Phase 10 | Complete |
-| DRAW-08 | Phase 10 | Complete |
-| STAR-01 | Phase 11 | Complete |
-| HAT-01 | Phase 11 | Complete |
-| INTR-01 | Phase 12 | Complete |
-| INTR-02 | Phase 12 | Complete |
-| INTR-03 | Phase 13 | Complete |
-| INTR-04 | Phase 13 | Complete |
-| LOGO-01 | Phase 14 | Complete |
-| LOGO-02 | Phase 14 | Complete |
-| LOGO-03 | Phase 14 | Complete |
-| LOGO-04 | Phase 14 | Complete |
+| TEXT-01 | Phase 15 | Pending |
+| TEXT-02 | Phase 15 | Pending |
+| TEXT-03 | Phase 15 | Pending |
+| NARR-01 | Phase 16 | Pending |
+| NARR-02 | Phase 16 | Pending |
+| NARR-03 | Phase 17 | Pending |
+| NARR-04 | Phase 17 | Pending |
+| NARR-05 | Phase 18 | Pending |
+| NARR-06 | Phase 18 | Pending |
+| AUD-01 | Phase 19 | Pending |
+| AUD-02 | Phase 19 | Pending |
+| AUD-03 | Phase 19 | Pending |
+| AUD-04 | Phase 19 | Pending |
+| AUD-05 | Phase 20 | Pending |
+| AUD-06 | Phase 20 | Pending |
+| AUD-07 | Phase 20 | Pending |
+| AUD-08 | Phase 20 | Pending |
+| AUD-09 | Phase 20 | Pending |
 
 **Coverage:**
-- v1.2 requirements: 18 total
+- v1.3 requirements: 18 total
 - Mapped to phases: 18
 - Unmapped: 0 ✓
-- Completed: 18 ✓
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after all phases completed*
+*Last updated: 2026-03-19 after initial definition*
