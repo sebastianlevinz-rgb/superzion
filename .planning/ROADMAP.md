@@ -77,12 +77,11 @@ Plans:
   1. Player can navigate Level 2 container corridors from start to bomb-plant target and back to exit without getting stuck on any wall or obstacle
   2. The F-15 jet in Level 3 cinematic displays swept-back wings angled toward the tail (not forward-pointing)
   3. Controls overlay text in all 6 levels renders as large bright yellow text on a semi-transparent black background, readable against every level's background
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
-- [ ] 05-03: TBD
+- [ ] 05-01-PLAN.md — Fix Level 2 container passability (GAME-01)
+- [ ] 05-02-PLAN.md — Fix F-15 wing direction and controls overlay styling (GAME-02, UX-02)
 
 ### Phase 6: Visual Identity
 **Goal**: The player character looks like a Mossad agent (not placeholder cubes) everywhere, and boss parade sprites display as real characters
@@ -140,7 +139,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8
 | 2. Level Audio | v1.0 | 0/TBD | Deferred | - |
 | 3. Cinematic Infrastructure | v1.0 | 0/TBD | Deferred | - |
 | 4. Cinematics and Animation | v1.0 | 0/TBD | Deferred | - |
-| 5. Standalone Fixes | v1.1 | 0/3 | Not started | - |
+| 5. Standalone Fixes | v1.1 | 0/2 | Not started | - |
 | 6. Visual Identity | v1.1 | 0/2 | Not started | - |
 | 7. Intro Overhaul | v1.1 | 0/3 | Not started | - |
 | 8. End-Screen Standardization | v1.1 | 0/1 | Not started | - |
