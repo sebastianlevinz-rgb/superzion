@@ -1,455 +1,640 @@
-// ═══════════════════════════════════════════════════════════════
-// GameScene — Side-scroller: parallax, platforms, obstacles
-// ═══════════════════════════════════════════════════════════════
+// ===================================================================
+// GameScene — Bomberman-style Level 1: Operation Tehran
+// Top-down grid, bombs, guards, 3 zones, plant & escape
+// ===================================================================
 
 import Phaser from 'phaser';
-import { createSkyGradient, createSun, createMountainLayer, createCloudLayer, createSkylineLayer, createFacadeLayer } from '../utils/BackgroundGenerator.js';
-import { createGroundTopTile, createGroundFillTile, createPlatformTile, createPlatformLeftTile, createPlatformRightTile } from '../utils/TileGenerator.js';
-import { generateSpriteSheet, createAnimations } from '../utils/SpriteGenerator.js';
-import { createTargetBuildingTextures, createTargetMarkerTexture, createExplosiveTexture, createRuinsTexture } from '../utils/BuildingGenerator.js';
-import { createExplosionTextures } from '../utils/ExplosionGenerator.js';
-import { createCatTexture, createPlantTexture, createSamovarTexture, createFlagTexture } from '../utils/DecorationGenerator.js';
-import { generateGuardSprites } from '../utils/EnemySpriteGenerator.js';
-import { createObstacleTextures } from '../utils/ObstacleGenerator.js';
-import { FlashlightGuard, SecurityCamera, SecurityLaser } from '../entities/Obstacle.js';
-import { TILE, LEVEL_WIDTH, LEVEL_HEIGHT, GROUND_Y, BUILDING_CENTER_TILE, PLATFORM_DEFS, DECORATION_DEFS, OBSTACLE_DEFS } from '../data/LevelConfig.js';
-import Player from '../entities/Player.js';
-import HUD from '../ui/HUD.js';
-import EndgameManager from '../systems/EndgameManager.js';
+import { generateBombermanTextures } from '../utils/BombermanTextures.js';
+import {
+  TILE, COLS, ROWS, HUD_H, GRID_X, GRID_Y,
+  T_EMPTY, T_WALL, T_BREAK, T_DOOR, T_GDOOR, T_OBJ,
+  SPAWN, OBJ, gx, gy, toCol, toRow,
+  GUARD_DEFS, generateMap,
+} from '../data/LevelConfig.js';
+import BombermanPlayer from '../entities/Player.js';
+import Bomb from '../entities/Bomb.js';
+import BombermanGuard from '../entities/Guard.js';
+import BombermanHUD from '../ui/HUD.js';
+import BombermanEndgame from '../systems/EndgameManager.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
-
-const WORLD_W = LEVEL_WIDTH * TILE;
-const WORLD_H = LEVEL_HEIGHT * TILE;
+import { showDefeatScreen } from '../ui/EndScreen.js';
+import { showControlsOverlay } from '../ui/ControlsOverlay.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
 
   create() {
+    // Top-down: no gravity
+    this.physics.world.gravity.y = 0;
     this.cameras.main.setBackgroundColor('#87CEEB');
     MusicManager.get().playLevel1Music();
+
     this.gameOver = false;
     this.isPaused = false;
     this.pauseObjects = [];
     this.skipPromptActive = false;
     this.skipPromptObjects = [];
-    this.stats = { timesDetected: 0, startTime: 0 };
+    this.stats = { startTime: 0, guardsKilled: 0, powerupsCollected: 0 };
 
-    // 1. Generate all textures
-    this._generateTextures();
+    // 1. Textures
+    generateBombermanTextures(this);
 
-    // 2. Create parallax background
-    this._createBackground();
+    // 2. Generate map
+    const { map, powerups } = generateMap();
+    this.map = map;
+    this.powerupMap = powerups;
 
-    // 3. Build level (ground + platforms)
-    this._buildLevel();
+    // 3. Background (sky visible outside grid)
+    this._drawBackground();
 
-    // 4. Place decorations
-    this._placeDecorations();
+    // 4. Build grid (visuals + physics)
+    this.wallGroup = this.physics.add.staticGroup();
+    this.breakGroup = this.physics.add.staticGroup();
+    this.goldDoorSprite = null;
+    this._buildGrid();
 
-    // Set world bounds BEFORE creating player (so collideWorldBounds works correctly)
-    this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
+    // 5. Exit marker at spawn
+    this.add.image(gx(SPAWN.col), gy(SPAWN.row), 'bm_exit').setDepth(1).setAlpha(0.5);
 
-    // 5. Create player — spawn above ground, gravity will pull down
-    const spawnX = 3 * TILE;
-    const spawnY = GROUND_Y * TILE - 80;
-    this.player = new Player(this, spawnX, spawnY, this.frameData);
+    // 6. Player
+    this.player = new BombermanPlayer(this);
+    this.physics.add.collider(this.player.sprite, this.wallGroup);
+    this.physics.add.collider(this.player.sprite, this.breakGroup);
 
-    // Collisions: player vs ground and platforms
-    this.physics.add.collider(this.player.sprite, this.groundGroup);
-    this.physics.add.collider(this.player.sprite, this.platformGroup);
+    // 7. Guards
+    this.guards = GUARD_DEFS.map(def => new BombermanGuard(this, def, this.map));
+    for (const g of this.guards) {
+      this.physics.add.collider(g.sprite, this.wallGroup);
+      this.physics.add.collider(g.sprite, this.breakGroup);
+    }
 
-    // 6. Spawn obstacles
-    this._spawnObstacles();
+    // 7.5. Boss: Foam Beard
+    this._createBoss();
 
-    // 7. HUD
-    this.hud = new HUD(this, this.player);
+    // 8. Bombs & explosions
+    this.bombs = [];
+    this.explosionTiles = []; // { sprite, col, row, timer }
 
-    // 8. Endgame manager
-    this.endgameManager = new EndgameManager(this, this.player);
+    // 9. Powerup sprites on map
+    this.powerupSprites = [];
 
-    // 9. Setup detection
-    this._setupDetection();
+    // 10. HUD
+    this.hud = new BombermanHUD(this, this.player);
 
-    // 10. Camera
-    this._setupCamera();
+    // 11. Endgame
+    this.endgame = new BombermanEndgame(this, this.player);
 
-    // 11. Controls hint
-    this._showControlsHint();
-
-    // Fade in
-    this.cameras.main.fadeIn(500, 0, 0, 0);
-
-    // Keys
+    // 12. Input keys
+    this.escKey = this.input.keyboard.addKey('ESC');
+    this.skipKey = this.input.keyboard.addKey('P');
     this.restartKey = this.input.keyboard.addKey('R');
     this.enterKey = this.input.keyboard.addKey('ENTER');
-    this.escKey = this.input.keyboard.addKey('ESC');
     this.muteKey = this.input.keyboard.addKey('M');
     this.quitKey = this.input.keyboard.addKey('Q');
-    this.skipKey = this.input.keyboard.addKey('P');
     this.yKey = this.input.keyboard.addKey('Y');
     this.nKey = this.input.keyboard.addKey('N');
 
-    // Debug skip keys (disabled in production)
-    // this.skipToTargetKey = this.input.keyboard.addKey('L');
-    // this.skipToExplosionKey = this.input.keyboard.addKey('K');
+    // 13. Controls overlay
+    showControlsOverlay(this, 'ARROWS/WASD: Move | SPACE: Bomb | E: Plant | ESC: Pause');
+
+    // Fade in
+    this.cameras.main.fadeIn(500, 0, 0, 0);
   }
 
-  // ── Texture generation ──────────────────────────────────────
-  _generateTextures() {
-    if (!this.textures.exists('sky_gradient')) {
-      createSkyGradient(this);
-      createSun(this);
-      createMountainLayer(this);
-      createCloudLayer(this);
-      createSkylineLayer(this);
-      createFacadeLayer(this);
-    }
-
-    if (!this.textures.exists('ground_top')) {
-      createGroundTopTile(this);
-      createGroundFillTile(this);
-      createPlatformTile(this);
-      createPlatformLeftTile(this);
-      createPlatformRightTile(this);
-    }
-
-    if (!this.textures.exists('superzion')) {
-      this.frameData = generateSpriteSheet(this);
-      createAnimations(this, this.frameData);
-    } else {
-      // Reconstruct frameData from existing texture
-      const names = ['idle_0','idle_1','run_0','run_1','run_2','run_3','run_4','run_5',
-                     'jump_0','jump_1','fall_0','shoot_0','shoot_1'];
-      this.frameData = {};
-      names.forEach((n, i) => { this.frameData[n] = i + 1; });
-    }
-
-    if (!this.textures.exists('target_bldg_floor_0')) {
-      createTargetBuildingTextures(this);
-      createTargetMarkerTexture(this);
-      createExplosiveTexture(this);
-      createRuinsTexture(this);
-    }
-
-    if (!this.textures.exists('fireball')) {
-      createExplosionTextures(this);
-    }
-
-    if (!this.textures.exists('deco_cat')) {
-      createCatTexture(this);
-      createPlantTexture(this);
-      createSamovarTexture(this);
-      createFlagTexture(this);
-    }
-
-    if (!this.textures.exists('guard_walk_0')) {
-      generateGuardSprites(this);
-    }
-
-    if (!this.textures.exists('searchlight_base')) {
-      createObstacleTextures(this);
-    }
+  // ── Background ──────────────────────────────────────────────────
+  _drawBackground() {
+    const bg = this.add.graphics();
+    bg.setDepth(-10);
+    bg.fillStyle(0x87CEEB, 1);
+    bg.fillRect(0, 0, 960, 540);
+    bg.fillStyle(0x6B8E6B, 1);
+    bg.fillTriangle(0, HUD_H, 80, HUD_H - 20, 160, HUD_H);
+    bg.fillTriangle(120, HUD_H, 220, HUD_H - 30, 320, HUD_H);
+    bg.fillTriangle(640, HUD_H, 760, HUD_H - 25, 880, HUD_H);
+    bg.fillTriangle(800, HUD_H, 900, HUD_H - 20, 960, HUD_H);
+    bg.fillStyle(0xffffff, 0.6);
+    bg.fillTriangle(170, HUD_H - 10, 220, HUD_H - 30, 270, HUD_H - 10);
+    bg.fillTriangle(720, HUD_H - 8, 760, HUD_H - 25, 800, HUD_H - 8);
   }
 
-  // ── Parallax background ────────────────────────────────────
-  _createBackground() {
-    this.bgSky = this.add.image(480, 270, 'sky_gradient').setScrollFactor(0).setDepth(-20);
-    this.bgSun = this.add.image(760, 80, 'sun').setScrollFactor(0.02).setDepth(-19);
+  // ── Build grid ──────────────────────────────────────────────────
+  _buildGrid() {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const x = gx(c), y = gy(r);
+        const tile = this.map[r][c];
 
-    this.bgMountains = this.add.tileSprite(480, 270, 960, 540, 'mountains').setScrollFactor(0).setDepth(-18);
-    this.bgClouds = this.add.tileSprite(480, 270, 960, 540, 'clouds').setScrollFactor(0).setDepth(-17);
-    this.bgSkyline = this.add.tileSprite(480, 270, 960, 540, 'skyline').setScrollFactor(0).setDepth(-16);
-    this.bgFacades = this.add.tileSprite(480, 270, 960, 540, 'facades').setScrollFactor(0).setDepth(-15);
-  }
+        this.add.image(x, y, 'bm_floor').setDepth(0);
 
-  // ── Ground + platforms ─────────────────────────────────────
-  _buildLevel() {
-    this.groundGroup = this.physics.add.staticGroup();
-    this.platformGroup = this.physics.add.staticGroup();
-
-    // Ground — full level width, 1 tile thick surface + fill below
-    for (let tx = 0; tx < LEVEL_WIDTH; tx++) {
-      const gx = tx * TILE + TILE / 2;
-      const gy = GROUND_Y * TILE + TILE / 2;
-
-      const top = this.groundGroup.create(gx, gy, 'ground_top');
-      top.setDepth(1);
-      top.refreshBody();
-
-      // Fill tile below ground
-      const fill = this.add.image(gx, gy + TILE, 'ground_fill');
-      fill.setDepth(0);
-    }
-
-    // Platforms
-    for (const pdef of PLATFORM_DEFS) {
-      for (let i = 0; i < pdef.w; i++) {
-        const px = (pdef.x + i) * TILE + TILE / 2;
-        const py = pdef.y * TILE + TILE / 2;
-
-        let texKey = 'platform';
-        if (i === 0) texKey = 'platform_left';
-        else if (i === pdef.w - 1) texKey = 'platform_right';
-
-        const plat = this.platformGroup.create(px, py, texKey);
-        plat.setDepth(1);
-        plat.refreshBody();
-      }
-    }
-  }
-
-  // ── Decorations (Enhancement 2: aligned to ground) ─────────
-  _placeDecorations() {
-    const groundSurface = GROUND_Y * TILE;
-
-    for (const ddef of DECORATION_DEFS) {
-      const texKey = `deco_${ddef.type}`;
-      if (!this.textures.exists(texKey)) continue;
-
-      const dx = ddef.x * TILE + TILE / 2;
-      // Place at ground surface, aligned by bottom
-      const tex = this.textures.get(texKey);
-      const frame = tex.get(0);
-      const dy = groundSurface - frame.height / 2;
-
-      const deco = this.add.image(dx, dy, texKey);
-      deco.setDepth(2);
-    }
-  }
-
-  // ── Spawn obstacles ────────────────────────────────────────
-  _spawnObstacles() {
-    this.obstacles = [];
-    this.laserObstacles = [];
-
-    for (const def of OBSTACLE_DEFS) {
-      if (def.type === 'flashlight_guard') {
-        const guard = new FlashlightGuard(this, def.x, {
-          patrolMin: def.patrolMin,
-          patrolMax: def.patrolMax,
-          speed: def.speed,
-        });
-        // Guard collides with ground
-        this.physics.add.collider(guard.sprite, this.groundGroup);
-        this.obstacles.push(guard);
-
-      } else if (def.type === 'security_camera') {
-        const cam = new SecurityCamera(this, def.x * TILE, def.y * TILE, {
-          sweepAngleMin: def.sweepMin,
-          sweepAngleMax: def.sweepMax,
-          sweepSpeed: def.sweepSpeed,
-          coneLength: def.coneLength,
-        });
-        this.obstacles.push(cam);
-
-      } else if (def.type === 'security_laser') {
-        const laser = new SecurityLaser(
-          this,
-          def.x * TILE, def.y1 * TILE,
-          def.x * TILE, def.y2 * TILE,
-          {
-            onDuration: def.onDuration,
-            offDuration: def.offDuration,
-            phaseOffset: def.phase || 0,
-          }
-        );
-        this.obstacles.push(laser);
-        this.laserObstacles.push(laser);
-      }
-    }
-  }
-
-  // ── Detection setup ────────────────────────────────────────
-  _setupDetection() {
-    // Laser physics overlap
-    for (const laser of this.laserObstacles) {
-      this.physics.add.overlap(this.player.sprite, laser.detectionZone, () => {
-        if (laser.isOn && !laser.deactivated) {
-          this._onDetection(laser);
+        if (tile === T_WALL) {
+          const w = this.wallGroup.create(x, y, 'bm_wall');
+          w.setDepth(2); w.refreshBody();
+        } else if (tile === T_BREAK) {
+          const b = this.breakGroup.create(x, y, 'bm_breakable');
+          b.setDepth(2); b.refreshBody();
+          b.setData('col', c); b.setData('row', r);
+        } else if (tile === T_DOOR) {
+          const d = this.breakGroup.create(x, y, 'bm_door');
+          d.setDepth(2); d.refreshBody();
+          d.setData('col', c); d.setData('row', r);
+          d.setData('isDoor', true);
+        } else if (tile === T_GDOOR) {
+          const g = this.wallGroup.create(x, y, 'bm_gold_door');
+          g.setDepth(2); g.refreshBody();
+          this.goldDoorSprite = g;
+          this.goldDoorCol = c;
+          this.goldDoorRow = r;
+        } else if (tile === T_OBJ) {
+          const obj = this.add.image(x, y, 'bm_objective').setDepth(2);
+          this.tweens.add({
+            targets: obj, alpha: 0.6, duration: 800, yoyo: true, repeat: -1,
+          });
         }
-      });
+      }
+    }
+
+    // Scatter decorations on empty floor tiles (visual only)
+    const decoKeys = ['bm_deco_crate', 'bm_deco_sandbag', 'bm_deco_flag'];
+    let decoCount = 0;
+    for (let r = 1; r < ROWS - 1; r++) {
+      for (let c = 1; c < COLS - 1; c++) {
+        if (this.map[r][c] !== T_EMPTY) continue;
+        if (c === SPAWN.col && r === SPAWN.row) continue;
+        if (Math.random() < 0.03 && decoCount < 12) {
+          const dk = decoKeys[Math.floor(Math.random() * decoKeys.length)];
+          this.add.image(gx(c), gy(r), dk).setDepth(1).setAlpha(0.5).setScale(0.7);
+          decoCount++;
+        }
+      }
     }
   }
 
-  // ── Camera setup ───────────────────────────────────────────
-  _setupCamera() {
-    // World bounds already set before player creation
-    this.cameras.main.startFollow(this.player.sprite, true, 0.08, 0.08);
-    this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
+  // (Controls overlay is now handled by showControlsOverlay in create())
+
+  // ── Boss: Foam Beard ──────────────────────────────────────────
+  _createBoss() {
+    const bossCol = 22, bossRow = 7;
+    // Clear any breakable walls around boss
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const r = bossRow + dr, c = bossCol + dc;
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS && this.map[r][c] === T_BREAK) {
+          this.map[r][c] = T_EMPTY;
+          // Remove physics body
+          const bodies = this.breakGroup.getChildren();
+          for (const body of bodies) {
+            if (body.getData('col') === c && body.getData('row') === r) {
+              body.destroy(); break;
+            }
+          }
+        }
+      }
+    }
+
+    const bx = gx(bossCol), by = gy(bossRow);
+    const sprite = this.add.image(bx, by - 100, 'bm_boss1_normal').setDepth(8);
+    sprite.setDisplaySize(96, 96);
+
+    this.boss = {
+      sprite, col: bossCol, row: bossRow,
+      hp: 3, maxHp: 3, alive: true, entered: false,
+    };
+
+    // Dramatic entrance: fall from above with bounce
+    this.tweens.add({
+      targets: sprite, y: by, duration: 1200, ease: 'Bounce.easeOut',
+      onComplete: () => {
+        this.boss.entered = true;
+        this.cameras.main.shake(200, 0.02);
+        // Title text
+        const title = this.add.text(bx, by - 60, 'BOSS: FOAM BEARD', {
+          fontFamily: 'monospace', fontSize: '12px', color: '#FFD700',
+          shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 8, fill: true },
+        }).setOrigin(0.5).setDepth(50).setAlpha(0);
+        this.tweens.add({ targets: title, alpha: 1, duration: 500 });
+        this.tweens.add({
+          targets: title, alpha: 0, y: by - 80, duration: 2000, delay: 1500,
+          onComplete: () => title.destroy(),
+        });
+      },
+    });
+
+    // Boss HP bar (fixed to camera)
+    this.bossHpBg = this.add.rectangle(480, 48, 160, 12, 0x222222, 0.9)
+      .setScrollFactor(0).setDepth(100);
+    this.bossHpFill = this.add.rectangle(480, 48, 156, 8, 0xff2222)
+      .setScrollFactor(0).setDepth(101);
+    this.bossHpLabel = this.add.text(480, 36, 'FOAM BEARD', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#FFD700',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
   }
 
-  // ── Controls hint ──────────────────────────────────────────
-  _showControlsHint() {
-    const cam = this.cameras.main;
-    const hint = this.add.text(cam.width / 2, cam.height - 30,
-      'WASD/Arrows: Move  |  UP: Jump  |  SPACE: Plant', {
-      fontFamily: 'monospace', fontSize: '11px', color: '#888888',
-    });
-    hint.setOrigin(0.5);
-    hint.setScrollFactor(0);
-    hint.setDepth(50);
-    hint.setAlpha(0.8);
-
-    // Fade out after 5 seconds
-    this.time.delayedCall(5000, () => {
-      this.tweens.add({
-        targets: hint, alpha: 0, duration: 1000,
-        onComplete: () => hint.destroy(),
-      });
-    });
+  _updateBossHpBar() {
+    if (!this.boss || !this.boss.alive) {
+      if (this.bossHpBg) this.bossHpBg.setAlpha(0);
+      if (this.bossHpFill) this.bossHpFill.setAlpha(0);
+      if (this.bossHpLabel) this.bossHpLabel.setAlpha(0);
+      return;
+    }
+    const ratio = this.boss.hp / this.boss.maxHp;
+    this.bossHpFill.setDisplaySize(156 * ratio, 8);
+    this.bossHpFill.setX(480 - (156 * (1 - ratio)) / 2);
+    const color = ratio > 0.66 ? 0xff2222 : ratio > 0.33 ? 0xff8800 : 0xff0000;
+    this.bossHpFill.setFillStyle(color);
   }
 
-  // ── Detection callback ─────────────────────────────────────
-  _onDetection(obstacle) {
-    if (this.player.invulnerable || this.player.hp <= 0 || this.gameOver) return;
+  _damageBoss() {
+    if (!this.boss || !this.boss.alive) return;
+    this.boss.hp--;
+    this.cameras.main.shake(150, 0.015);
+    SoundManager.get().playDroneHit();
 
-    this.stats.timesDetected++;
-    this.hud.detectionCount = this.stats.timesDetected;
-    this.player.takeDamage(1, obstacle.x);
+    // Flash red
+    this.boss.sprite.setTint(0xff0000);
+    this.time.delayedCall(200, () => {
+      if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.clearTint();
+    });
+
+    // Change expression
+    if (this.boss.hp <= 1 && this.boss.hp > 0) {
+      this.boss.sprite.setTexture('bm_boss1_angry');
+    }
+
+    if (this.boss.hp <= 0) {
+      this._killBoss();
+    }
+  }
+
+  _killBoss() {
+    this.boss.alive = false;
+    const sp = this.boss.sprite;
+    const bx = sp.x, by = sp.y;
+
+    // Dead expression
+    sp.setTexture('bm_boss1_dead');
+
+    // Shake left/right
+    this.tweens.add({
+      targets: sp, x: bx - 5, duration: 50, yoyo: true, repeat: 8,
+      onComplete: () => {
+        // Fall backward with rotation
+        this.tweens.add({
+          targets: sp, angle: -90, y: by + 200, alpha: 0,
+          duration: 800, ease: 'Power2',
+          onComplete: () => sp.destroy(),
+        });
+      },
+    });
 
     // Camera shake
-    this.cameras.main.shake(100, 0.005);
+    this.cameras.main.shake(500, 0.025);
 
-    // Sound based on obstacle type
-    if (obstacle.type === 'laser') {
-      SoundManager.get().playLaserZap();
-    } else {
-      SoundManager.get().playCameraAlarm();
+    // Particles
+    for (let i = 0; i < 20; i++) {
+      const size = 2 + Math.random() * 4;
+      const color = [0xff6600, 0xffaa00, 0xff2200, 0xffdd00][Math.floor(Math.random() * 4)];
+      const p = this.add.rectangle(bx, by, size, size, color).setDepth(15);
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 30 + Math.random() * 60;
+      this.tweens.add({
+        targets: p,
+        x: bx + Math.cos(angle) * dist, y: by + Math.sin(angle) * dist,
+        alpha: 0, duration: 500 + Math.random() * 300,
+        onComplete: () => p.destroy(),
+      });
     }
 
-    // Red screen flash
-    const cam = this.cameras.main;
-    const flash = this.add.rectangle(cam.width / 2, cam.height / 2, cam.width, cam.height, 0xff0000, 0.2);
-    flash.setScrollFactor(0); flash.setDepth(150);
+    // Gold text
+    const txt = this.add.text(bx, by - 40, 'BOSS ELIMINATED!', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#FFD700',
+      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 12, fill: true },
+    }).setOrigin(0.5).setDepth(50).setScale(0);
     this.tweens.add({
-      targets: flash, alpha: 0, duration: 400,
-      onComplete: () => flash.destroy(),
+      targets: txt, scaleX: 1, scaleY: 1, duration: 500, ease: 'Back.easeOut',
+    });
+    this.tweens.add({
+      targets: txt, alpha: 0, y: by - 70, duration: 1500, delay: 2000,
+      onComplete: () => txt.destroy(),
     });
   }
 
-  // ── Deactivate all obstacles (called by EndgameManager) ────
-  deactivateAllObstacles() {
-    for (const obs of this.obstacles) {
-      obs.deactivate();
+  // ── Place bomb ──────────────────────────────────────────────────
+  _placeBomb(col, row) {
+    if (this.bombs.some(b => b.isAlive() && b.col === col && b.row === row)) return;
+
+    this.player.activeBombs++;
+    SoundManager.get().playBombDrop();
+
+    const bomb = new Bomb(this, col, row, this.player.bombRange, (bc, br, range) => {
+      this._handleExplosion(bc, br, range);
+      this.player.activeBombs = Math.max(0, this.player.activeBombs - 1);
+    });
+    this.bombs.push(bomb);
+  }
+
+  // ── Handle explosion ────────────────────────────────────────────
+  _handleExplosion(col, row, range) {
+    SoundManager.get().playExplosion();
+    this.cameras.main.shake(150, 0.012);
+
+    this._spawnExplosionParticles(gx(col), gy(row));
+
+    this._createExplosionAt(col, row);
+
+    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+    for (const [dc, dr] of dirs) {
+      for (let i = 1; i <= range; i++) {
+        const ec = col + dc * i;
+        const er = row + dr * i;
+        if (er < 0 || er >= ROWS || ec < 0 || ec >= COLS) break;
+
+        const tile = this.map[er][ec];
+        if (tile === T_WALL || tile === T_GDOOR) break;
+
+        if (tile === T_BREAK || tile === T_DOOR) {
+          this._destroyWall(ec, er);
+          this._createExplosionAt(ec, er);
+          break;
+        }
+
+        this._createExplosionAt(ec, er);
+
+        for (const b of this.bombs) {
+          if (b.isAlive() && b.col === ec && b.row === er) {
+            b.forceExplode();
+          }
+        }
+      }
+    }
+
+    this.bombs = this.bombs.filter(b => b.isAlive());
+  }
+
+  _createExplosionAt(col, row) {
+    const x = gx(col), y = gy(row);
+    const sp = this.add.image(x, y, 'bm_explode_center').setDepth(12);
+    this.explosionTiles.push({ sprite: sp, col, row, timer: 500 });
+
+    this._checkExplosionDamage(col, row);
+  }
+
+  _checkExplosionDamage(col, row) {
+    // Player
+    if (this.player.col === col && this.player.row === row) {
+      this.player.takeDamage();
+    }
+    // Guards
+    for (const g of this.guards) {
+      if (!g.alive) continue;
+      if (toCol(g.sprite.x) === col && toRow(g.sprite.y) === row) {
+        g.kill();
+        SoundManager.get().playDroneHit();
+        this.hud.guardsKilled++;
+        this.stats.guardsKilled++;
+      }
+    }
+    // Boss: check 3x3 area around boss
+    if (this.boss && this.boss.alive && this.boss.entered) {
+      const bc = this.boss.col, br = this.boss.row;
+      if (col >= bc - 1 && col <= bc + 1 && row >= br - 1 && row <= br + 1) {
+        this._damageBoss();
+      }
     }
   }
 
-  // ── Game over screen ───────────────────────────────────────
-  _gameOverScreen() {
+  _spawnExplosionParticles(x, y) {
+    for (let i = 0; i < 12; i++) {
+      const size = 2 + Math.random() * 3;
+      const color = [0xff6600, 0xff8800, 0xffaa00, 0xff4400][Math.floor(Math.random() * 4)];
+      const p = this.add.rectangle(x, y, size, size, color).setDepth(13);
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 30 + Math.random() * 50;
+      this.tweens.add({
+        targets: p,
+        x: x + Math.cos(angle) * dist,
+        y: y + Math.sin(angle) * dist,
+        alpha: 0, duration: 300 + Math.random() * 200,
+        onComplete: () => p.destroy(),
+      });
+    }
+  }
+
+  // ── Destroy wall ────────────────────────────────────────────────
+  _destroyWall(col, row) {
+    const wasDoor = this.map[row][col] === T_DOOR;
+    this.map[row][col] = T_EMPTY;
+
+    const x = gx(col), y = gy(row);
+    const bodies = this.breakGroup.getChildren();
+    for (const body of bodies) {
+      if (body.getData('col') === col && body.getData('row') === row) {
+        for (let i = 0; i < 6; i++) {
+          const s = 2 + Math.random() * 3;
+          const d = this.add.rectangle(x, y, s, s, 0x8B7355).setDepth(11);
+          const ang = Math.random() * Math.PI * 2;
+          this.tweens.add({
+            targets: d,
+            x: x + Math.cos(ang) * 30, y: y + Math.sin(ang) * 30,
+            alpha: 0, duration: 400,
+            onComplete: () => d.destroy(),
+          });
+        }
+        body.destroy();
+        break;
+      }
+    }
+
+    const pup = this.powerupMap[row][col];
+    if (pup) {
+      this.powerupMap[row][col] = null;
+      this._spawnPowerup(col, row, pup);
+    }
+
+    if (wasDoor) SoundManager.get().playDoorOpen();
+  }
+
+  // ── Spawn powerup ──────────────────────────────────────────────
+  _spawnPowerup(col, row, type) {
+    const x = gx(col), y = gy(row);
+    const sp = this.add.image(x, y, `bm_pu_${type}`).setDepth(5);
+    sp.setScale(0);
+    this.tweens.add({ targets: sp, scaleX: 1, scaleY: 1, duration: 200, ease: 'Bounce.easeOut' });
+    this.powerupSprites.push({ sprite: sp, col, row, type });
+  }
+
+  // ── Check golden door ──────────────────────────────────────────
+  _checkGoldenDoor() {
+    if (!this.goldDoorSprite || !this.goldDoorSprite.active) return;
+    if (!this.player.hasKey) return;
+
+    const dist = Math.abs(this.player.sprite.x - this.goldDoorSprite.x) +
+                 Math.abs(this.player.sprite.y - this.goldDoorSprite.y);
+    if (dist < TILE * 1.5) {
+      this.map[this.goldDoorRow][this.goldDoorCol] = T_EMPTY;
+      SoundManager.get().playDoorOpen();
+
+      const x = this.goldDoorSprite.x, y = this.goldDoorSprite.y;
+      for (let i = 0; i < 8; i++) {
+        const s = 2 + Math.random() * 3;
+        const p = this.add.rectangle(x, y, s, s, 0xDAA520).setDepth(11);
+        const ang = Math.random() * Math.PI * 2;
+        this.tweens.add({
+          targets: p,
+          x: x + Math.cos(ang) * 25, y: y + Math.sin(ang) * 25,
+          alpha: 0, duration: 400, onComplete: () => p.destroy(),
+        });
+      }
+
+      this.goldDoorSprite.destroy();
+      this.goldDoorSprite = null;
+
+      const txt = this.add.text(x, y - 20, 'DOOR OPENED!', {
+        fontFamily: 'monospace', fontSize: '10px', color: '#FFD700',
+      });
+      txt.setOrigin(0.5).setDepth(50);
+      this.tweens.add({ targets: txt, y: y - 40, alpha: 0, duration: 1000, onComplete: () => txt.destroy() });
+    }
+  }
+
+  // ── Check powerup pickup ────────────────────────────────────────
+  _checkPowerups() {
+    const pc = this.player.col;
+    const pr = this.player.row;
+    for (let i = this.powerupSprites.length - 1; i >= 0; i--) {
+      const pu = this.powerupSprites[i];
+      if (pu.col === pc && pu.row === pr) {
+        this.player.applyPowerup(pu.type);
+        this.hud.powerupsCollected++;
+        this.stats.powerupsCollected++;
+
+        const sp = pu.sprite;
+        this.tweens.add({
+          targets: sp, y: sp.y - 20, alpha: 0, scaleX: 1.5, scaleY: 1.5,
+          duration: 300, onComplete: () => sp.destroy(),
+        });
+
+        const names = { bomb: '+BOMB', range: '+RANGE', speed: '+SPEED', key: 'KEY!' };
+        const colors = { bomb: '#ffffff', range: '#ff8800', speed: '#00ff00', key: '#FFD700' };
+        const txt = this.add.text(sp.x, sp.y - 10, names[pu.type] || '+', {
+          fontFamily: 'monospace', fontSize: '11px', color: colors[pu.type] || '#fff',
+          shadow: { offsetX: 0, offsetY: 0, color: colors[pu.type] || '#fff', blur: 4, fill: true },
+        });
+        txt.setOrigin(0.5).setDepth(50);
+        this.tweens.add({ targets: txt, y: txt.y - 25, alpha: 0, duration: 800, onComplete: () => txt.destroy() });
+
+        SoundManager.get().playMenuSelect();
+        this.powerupSprites.splice(i, 1);
+      }
+    }
+  }
+
+  // ── Guard-player collision ──────────────────────────────────────
+  _checkGuardCollision() {
+    if (this.player.invulnerable || this.player.hp <= 0 || this.player.frozen) return;
+    for (const g of this.guards) {
+      if (!g.alive) continue;
+      const dx = Math.abs(g.sprite.x - this.player.sprite.x);
+      const dy = Math.abs(g.sprite.y - this.player.sprite.y);
+      if (dx < 18 && dy < 18) {
+        this.player.takeDamage();
+        this.cameras.main.shake(100, 0.008);
+        break;
+      }
+    }
+  }
+
+  // ── Game over screen ────────────────────────────────────────────
+  _gameOverScreen(msg) {
     this.gameOver = true;
     this.cameras.main.flash(300, 255, 0, 0);
+    SoundManager.get().playGameOver();
 
-    this.time.delayedCall(300, () => {
-      const cam = this.cameras.main;
-      const overlay = this.add.rectangle(cam.width / 2, cam.height / 2, cam.width, cam.height, 0x000000, 0);
-      overlay.setScrollFactor(0); overlay.setDepth(200);
-      this.tweens.add({ targets: overlay, alpha: 0.8, duration: 800 });
-
-      this.time.delayedCall(800, () => {
-        const goText = this.add.text(cam.width / 2, cam.height / 2 - 20, 'MISSION FAILED', {
-          fontFamily: 'monospace', fontSize: '36px', color: '#ff3333',
-          shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 12, fill: true },
-        });
-        goText.setOrigin(0.5); goText.setScrollFactor(0); goText.setDepth(201);
-
-        const sub = this.add.text(cam.width / 2, cam.height / 2 + 20, 'PRESS R TO RETRY  |  ENTER FOR MENU', {
-          fontFamily: 'monospace', fontSize: '14px', color: '#ffffff',
-        });
-        sub.setOrigin(0.5); sub.setScrollFactor(0); sub.setDepth(201);
-        this.tweens.add({ targets: sub, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
+    this.time.delayedCall(500, () => {
+      this._endScreen = showDefeatScreen(this, {
+        title: msg || 'MISSION FAILED',
+        currentScene: 'GameScene',
+        skipScene: 'ExplosionCinematicScene',
       });
     });
   }
 
-  // ── Game loop ──────────────────────────────────────────────
-  // ── Skip level prompt ──────────────────────────────────────
+  // ── Skip prompt ─────────────────────────────────────────────────
   _showSkipPrompt() {
     this.skipPromptActive = true;
     this.physics.world.pause();
     this.tweens.pauseAll();
-
     const cam = this.cameras.main;
-    const overlay = this.add.rectangle(cam.width / 2, cam.height / 2, cam.width, cam.height, 0x000000, 0.5);
-    overlay.setScrollFactor(0); overlay.setDepth(250);
-    this.skipPromptObjects.push(overlay);
-
-    const text = this.add.text(cam.width / 2, cam.height / 2 - 10, 'SKIP LEVEL?', {
+    const o = this.add.rectangle(cam.width / 2, cam.height / 2, cam.width, cam.height, 0x000000, 0.5);
+    o.setScrollFactor(0).setDepth(250);
+    this.skipPromptObjects.push(o);
+    const t = this.add.text(cam.width / 2, cam.height / 2 - 10, 'SKIP LEVEL?', {
       fontFamily: 'monospace', fontSize: '32px', color: '#FFD700',
     });
-    text.setOrigin(0.5); text.setScrollFactor(0); text.setDepth(251);
-    this.skipPromptObjects.push(text);
-
-    const hint = this.add.text(cam.width / 2, cam.height / 2 + 30, 'Y — Yes   /   N — No', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#aaaaaa',
+    t.setOrigin(0.5).setScrollFactor(0).setDepth(251);
+    this.skipPromptObjects.push(t);
+    const h = this.add.text(cam.width / 2, cam.height / 2 + 30, 'Y \u2014 Yes  /  N \u2014 No', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#aaa',
     });
-    hint.setOrigin(0.5); hint.setScrollFactor(0); hint.setDepth(251);
-    this.skipPromptObjects.push(hint);
+    h.setOrigin(0.5).setScrollFactor(0).setDepth(251);
+    this.skipPromptObjects.push(h);
   }
 
   _clearSkipPrompt() {
     this.skipPromptActive = false;
     this.physics.world.resume();
     this.tweens.resumeAll();
-    for (const obj of this.skipPromptObjects) obj.destroy();
+    for (const o of this.skipPromptObjects) o.destroy();
     this.skipPromptObjects = [];
   }
 
-  // ── Pause menu ──────────────────────────────────────────────
+  // ── Pause menu ──────────────────────────────────────────────────
   _togglePause() {
     this.isPaused = !this.isPaused;
     if (this.isPaused) {
       this.physics.world.pause();
       this.tweens.pauseAll();
-
       const cam = this.cameras.main;
-      const overlay = this.add.rectangle(cam.width / 2, cam.height / 2, cam.width, cam.height, 0x000000, 0.6);
-      overlay.setScrollFactor(0); overlay.setDepth(250);
-      this.pauseObjects.push(overlay);
-
-      const title = this.add.text(cam.width / 2, cam.height / 2 - 40, 'PAUSED', {
-        fontFamily: 'monospace', fontSize: '36px', color: '#ffffff',
+      const o = this.add.rectangle(cam.width / 2, cam.height / 2, cam.width, cam.height, 0x000000, 0.6);
+      o.setScrollFactor(0).setDepth(250);
+      this.pauseObjects.push(o);
+      const t = this.add.text(cam.width / 2, cam.height / 2 - 40, 'PAUSED', {
+        fontFamily: 'monospace', fontSize: '36px', color: '#fff',
       });
-      title.setOrigin(0.5); title.setScrollFactor(0); title.setDepth(251);
-      this.pauseObjects.push(title);
-
+      t.setOrigin(0.5).setScrollFactor(0).setDepth(251);
+      this.pauseObjects.push(t);
       const opts = this.add.text(cam.width / 2, cam.height / 2 + 20,
-        'ENTER — Resume\nR — Restart\nQ — Quit to Menu\nM — Toggle Mute', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa',
-        align: 'center', lineSpacing: 6,
+        'ENTER \u2014 Resume\nR \u2014 Restart\nQ \u2014 Quit to Menu\nM \u2014 Toggle Mute', {
+        fontFamily: 'monospace', fontSize: '13px', color: '#aaa', align: 'center', lineSpacing: 6,
       });
-      opts.setOrigin(0.5); opts.setScrollFactor(0); opts.setDepth(251);
+      opts.setOrigin(0.5).setScrollFactor(0).setDepth(251);
       this.pauseObjects.push(opts);
     } else {
       this.physics.world.resume();
       this.tweens.resumeAll();
-      for (const obj of this.pauseObjects) obj.destroy();
+      for (const o of this.pauseObjects) o.destroy();
       this.pauseObjects = [];
     }
   }
 
+  // ── Main update loop ────────────────────────────────────────────
   update(time, delta) {
     if (this.stats.startTime === 0) this.stats.startTime = this.time.now;
 
-    // M key — toggle mute (works always)
+    // Mute toggle (always works)
     if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
 
-    // Skip level prompt (Y/N)
+    // Skip prompt
     if (this.skipPromptActive) {
       if (Phaser.Input.Keyboard.JustDown(this.yKey)) {
         this._clearSkipPrompt();
-        MusicManager.get().stop(0.3)
+        MusicManager.get().stop(0.3);
         const elapsed = this.time.now - this.stats.startTime;
         this.scene.start('ExplosionCinematicScene', {
-          stats: {
-            timesDetected: this.stats.timesDetected,
-            elapsed: elapsed,
-            hp: this.player.hp,
-            maxHp: this.player.maxHp,
-          },
+          stats: { timesDetected: 0, elapsed, hp: this.player.hp, maxHp: this.player.maxHp },
         });
       } else if (Phaser.Input.Keyboard.JustDown(this.nKey) || Phaser.Input.Keyboard.JustDown(this.escKey)) {
         this._clearSkipPrompt();
@@ -457,94 +642,85 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    // P — skip level prompt
+    // P = skip prompt
     if (Phaser.Input.Keyboard.JustDown(this.skipKey) && !this.gameOver && !this.isPaused) {
-      this._showSkipPrompt();
-      return;
+      this._showSkipPrompt(); return;
     }
 
-    // ESC — toggle pause
+    // ESC = pause
     if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
-      this._togglePause();
-      return;
+      this._togglePause(); return;
     }
 
-    // While paused, handle resume/restart/quit
+    // Paused
     if (this.isPaused) {
-      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-        this._togglePause();
-      } else if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
-        this.isPaused = false;
-        this.physics.world.resume();
-        this.tweens.resumeAll();
-        MusicManager.get().stop(0)
-        this.scene.restart();
+      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) this._togglePause();
+      else if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
+        this.isPaused = false; this.physics.world.resume(); this.tweens.resumeAll();
+        MusicManager.get().stop(0); this.scene.restart();
       } else if (Phaser.Input.Keyboard.JustDown(this.quitKey)) {
-        this.isPaused = false;
-        this.physics.world.resume();
-        this.tweens.resumeAll();
-        MusicManager.get().stop(0.5)
-        this.scene.start('MenuScene');
+        this.isPaused = false; this.physics.world.resume(); this.tweens.resumeAll();
+        MusicManager.get().stop(0.5); this.scene.start('MenuScene');
       }
       return;
     }
 
+    // Game over — EndScreen handles R/S key bindings
     if (this.gameOver) {
-      if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
-        MusicManager.get().stop(0)
-        this.scene.restart()
-      }
-      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-        MusicManager.get().stop(0.5)
-        this.scene.start('MenuScene')
-      }
       return;
     }
 
+    // Death check
     if (this.player.hp <= 0) { this._gameOverScreen(); return; }
 
     // Player
     this.player.update(delta);
 
-    // Obstacles — update + cone detection (with camera culling)
-    const camLeft = this.cameras.main.scrollX - 200;
-    const camRight = this.cameras.main.scrollX + this.cameras.main.width + 200;
-    const px = this.player.sprite.x;
-    const py = this.player.sprite.y;
+    // Bomb placement
+    if (this.player.wantsBomb() && this.player.canPlaceBomb() && !this.player.frozen) {
+      this._placeBomb(this.player.col, this.player.row);
+    }
 
-    for (const obs of this.obstacles) {
-      // Camera culling for performance
-      const obsX = obs.x || (obs.sprite ? obs.sprite.x : 0);
-      if (obsX < camLeft || obsX > camRight) continue;
-
-      if (obs.type === 'laser') {
-        obs.update(delta);
-        // Laser detection handled by physics overlap
+    // Explosion tile cleanup
+    for (let i = this.explosionTiles.length - 1; i >= 0; i--) {
+      const et = this.explosionTiles[i];
+      et.timer -= delta;
+      if (et.timer <= 0) {
+        et.sprite.destroy();
+        this.explosionTiles.splice(i, 1);
       } else {
-        const detected = obs.update(delta, px, py);
-        if (detected && !this.player.invulnerable) {
-          this._onDetection(obs);
-        }
+        et.sprite.setAlpha(et.timer / 500);
+        this._checkExplosionDamage(et.col, et.row);
       }
     }
 
-    // Parallax scroll
-    const scrollX = this.cameras.main.scrollX;
-    this.bgMountains.tilePositionX = scrollX * 0.05;
-    this.bgClouds.tilePositionX = scrollX * 0.1;
-    this.bgSkyline.tilePositionX = scrollX * 0.2;
-    this.bgFacades.tilePositionX = scrollX * 0.35;
+    // Guards
+    for (const g of this.guards) {
+      if (g.alive) g.update(delta, this.player.sprite);
+    }
 
-    // Endgame manager
-    this.endgameManager.update(delta);
+    // Guard collision
+    this._checkGuardCollision();
+
+    // Golden door
+    this._checkGoldenDoor();
+
+    // Powerup pickup
+    this._checkPowerups();
+
+    // Endgame
+    this.endgame.update(delta);
 
     // HUD
     this.hud.update();
 
-    // Fall respawn
-    if (this.player.sprite.y > GROUND_Y * TILE + 100) {
-      this.player.sprite.setPosition(3 * TILE, GROUND_Y * TILE - 64);
-      this.player.sprite.body.setVelocity(0, 0);
-    }
+    // Boss HP bar
+    this._updateBossHpBar();
+  }
+
+  shutdown() {
+    if (this._endScreen) this._endScreen.destroy();
+    this.tweens.killAll();
+    this.time.removeAllEvents();
   }
 }

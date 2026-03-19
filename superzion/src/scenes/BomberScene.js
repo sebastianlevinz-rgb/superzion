@@ -8,10 +8,13 @@ import Phaser from 'phaser';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import DifficultyManager from '../systems/DifficultyManager.js';
+import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
+import { showControlsOverlay } from '../ui/ControlsOverlay.js';
 import {
   createF15SideSprite, createCarrierSide, createSunsetSky,
   createCloudLayer, createSeaSurface, createFarMountains,
   createCoastGround, createMountainGround, createValleyGround,
+  createTurboTurbanSprite, createTurboTurbanYelling, createMiniSoldier,
 } from '../utils/BomberTextures.js';
 
 const W = 960;
@@ -27,13 +30,29 @@ const BUNKER_W = 200;     // bunker width
 const BUNKER_TOP_Y = 340; // top of bunker
 const LAYER_H = 20;       // each layer height
 
-// Distance thresholds (scroll pixels)
-const FLIGHT_COAST_DIST = 3000;
-const FLIGHT_MTN_DIST = 4800;
-const FLIGHT_TARGET_DIST = 7000;
-const RETURN_COAST_DIST = 2200;
-const RETURN_SEA_DIST = 4000;
-const RETURN_CARRIER_DIST = 6200;
+// Distance thresholds (scroll pixels) — shortened for intensity
+const FLIGHT_COAST_DIST = 1500;
+const FLIGHT_MTN_DIST = 2400;
+const FLIGHT_TARGET_DIST = 3500;
+const RETURN_COAST_DIST = 1100;
+const RETURN_SEA_DIST = 2000;
+const RETURN_CARRIER_DIST = 3100;
+
+// SAM tracking constants
+const SAM_TURN_RATE = 1.8;     // radians/sec — wide turning radius
+const SAM_LIFETIME = 4.0;      // seconds before self-destruct
+const SAM_SPEED = 260;         // px/s base speed
+const CHAFF_TOTAL = 5;
+const FLAK_INTERVAL = 1.8;    // seconds between flak bursts
+
+// Jet physics constants
+const JET_GRAVITY = 180;        // gravity on jet px/s²
+const STALL_SPEED = 100;        // below this horizontal speed, jet stalls
+const STALL_GRAVITY = 350;      // extra gravity when stalling
+const CLIMB_ACCEL = 400;        // upward accel when pressing UP
+const DIVE_ACCEL = 250;         // downward accel when pressing DOWN
+const MAX_CLIMB_VY = -300;      // max upward speed (negative = up)
+const MAX_FALL_VY = 400;        // max downward speed
 
 export default class BomberScene extends Phaser.Scene {
   constructor() { super('BomberScene'); }
@@ -41,6 +60,9 @@ export default class BomberScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor('#000000');
     MusicManager.get().playLevel3Music('takeoff');
+
+    // Controls overlay
+    showControlsOverlay(this, 'ARROWS: Fly | SPACE: Drop Bomb | C: Chaff | M: Mute');
 
     // Generate textures
     createF15SideSprite(this);
@@ -52,6 +74,9 @@ export default class BomberScene extends Phaser.Scene {
     createCoastGround(this);
     createMountainGround(this);
     createValleyGround(this);
+    createTurboTurbanSprite(this);
+    createTurboTurbanYelling(this);
+    createMiniSoldier(this);
 
     // ── Game state ──
     const dm = DifficultyManager.get();
@@ -66,6 +91,8 @@ export default class BomberScene extends Phaser.Scene {
     this.jetY = DECK_Y;
     this.jetVX = 0;
     this.jetVY = 0;
+    this.crashed = false;
+    this.takeoffAirborne = false;
     this.facingRight = true;
     this.scrollX = 0;
     this.phaseTimer = 0;
@@ -87,6 +114,18 @@ export default class BomberScene extends Phaser.Scene {
     this.camoGfx = null;
     this.flightDistance = 0;
     this.returnDistance = 0;
+
+    // Chaff state
+    this.chaff = CHAFF_TOTAL;
+    this.chaffCooldown = 0;
+    this.chaffParticles = [];
+
+    // Flak state
+    this.flakTimer = 0;
+    this.flakBursts = [];
+
+    // SAM warning indicators
+    this.samWarnings = [];
 
     // Landing state
     this.landingRetries = 0;
@@ -136,6 +175,7 @@ export default class BomberScene extends Phaser.Scene {
     this.hudTitle = this.add.text(15, 12, 'OPERATION DEEP STRIKE', titleStyle).setDepth(30);
     this.hudArmor = this.add.text(15, 30, 'ARMOR: 3/3', hudStyle).setDepth(30);
     this.hudBombs = this.add.text(15, 46, 'BOMBS: 8', hudStyle).setDepth(30);
+    this.hudChaff = this.add.text(150, 46, `CHAFF: ${CHAFF_TOTAL} [C]`, { ...hudStyle, color: '#88ccff' }).setDepth(30);
 
     this.hudAlt = this.add.text(W - 15, 12, 'ALT: 0m', { ...hudStyle, color: '#aaaaaa' })
       .setOrigin(1, 0).setDepth(30);
@@ -146,9 +186,11 @@ export default class BomberScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '11px', color: '#00e5ff',
     }).setOrigin(0.5).setDepth(30);
 
-    // Phase instruction text (center)
+    // Phase instruction text (center) with background
+    this.instrBg = this.add.rectangle(W / 2, H - 35, 960, 28, 0x000000, 0.7)
+      .setDepth(29);
     this.instrText = this.add.text(W / 2, H - 35, '', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#888888',
+      fontFamily: 'monospace', fontSize: '14px', color: '#ffffff', fontStyle: 'bold',
       shadow: { offsetX: 0, offsetY: 0, color: '#000000', blur: 4, fill: true },
     }).setOrigin(0.5).setDepth(30);
   }
@@ -162,6 +204,7 @@ export default class BomberScene extends Phaser.Scene {
       space: this.input.keyboard.addKey('SPACE'),
       enter: this.input.keyboard.addKey('ENTER'),
       s: this.input.keyboard.addKey('S'),
+      c: this.input.keyboard.addKey('C'),
       m: this.input.keyboard.addKey('M'),
       p: this.input.keyboard.addKey('P'),
       esc: this.input.keyboard.addKey('ESC'),
@@ -208,6 +251,8 @@ export default class BomberScene extends Phaser.Scene {
     this.hudArmor.setText(`ARMOR: ${Math.max(0, this.armor)}/3`);
     this.hudArmor.setColor(this.armor <= 1 ? '#ff4444' : '#ffffff');
     this.hudBombs.setText(`BOMBS: ${this.bombs}`);
+    this.hudChaff.setText(`CHAFF: ${this.chaff} [C]`);
+    this.hudChaff.setColor(this.chaff <= 1 ? '#ff8844' : '#88ccff');
   }
 
   _stopAmbient() {
@@ -224,6 +269,7 @@ export default class BomberScene extends Phaser.Scene {
     for (const m of this.missiles) {
       m.sprite.destroy();
       m.glow.destroy();
+      if (m.trail) for (const t of m.trail) t.destroy();
     }
     this.missiles = [];
   }
@@ -312,37 +358,68 @@ export default class BomberScene extends Phaser.Scene {
     }
 
     this.jetX += this.jetVX * dt;
-    this.jetSprite.setPosition(this.jetX, this.jetY);
-    this.jetSprite.setFlipX(false);
 
-    // Ramp zone: carrier ramp at x ≈ 430
     const rampX = 430;
-    if (this.jetX >= rampX && Phaser.Input.Keyboard.JustDown(this.keys.up)) {
-      if (this.jetVX >= 180) {
-        // Successful launch!
+    const edgeX = 480;
+
+    if (!this.takeoffAirborne) {
+      // On the deck
+      this.jetY = DECK_Y;
+      this.jetSprite.setFlipX(false);
+
+      // At ramp, UP to launch
+      if (this.jetX >= rampX && this.keys.up.isDown) {
+        if (this.jetVX >= 180) {
+          this._stopAmbient();
+          SoundManager.get().playAfterburner();
+          this.instrText.setText('');
+          this.phase = 'launching';
+          this.jetVY = -200;
+          return;
+        } else {
+          this.instrText.setText('TOO SLOW \u2014 Accelerate more!');
+          this.instrText.setColor('#ff4444');
+        }
+      }
+
+      // Fell off the carrier edge!
+      if (this.jetX > edgeX) {
+        this.takeoffAirborne = true;
+        this.jetVY = 0;
+        if (this.jetVX >= 180 && this.keys.up.isDown) {
+          this._stopAmbient();
+          SoundManager.get().playAfterburner();
+          this.phase = 'launching';
+          this.jetVY = -200;
+          return;
+        }
+      }
+    } else {
+      // Fell off carrier — gravity takes over
+      this.jetVY += JET_GRAVITY * 1.5 * dt;
+      if (this.keys.up.isDown && this.jetVX >= 150) {
+        this.jetVY -= CLIMB_ACCEL * 0.5 * dt;
+      }
+      this.jetY += this.jetVY * dt;
+
+      if (this.jetVX >= 180 && this.jetVY < 0) {
         this._stopAmbient();
         SoundManager.get().playAfterburner();
-        this.instrText.setText('');
         this.phase = 'launching';
-        this.jetVY = -200;
-      } else {
-        // Too slow
-        this.instrText.setText('TOO SLOW \u2014 Accelerate more!');
-        this.instrText.setColor('#ff4444');
-        this.time.delayedCall(1500, () => {
-          if (this.phase === 'takeoff') {
-            this.instrText.setText('HOLD RIGHT to accelerate \u2014 UP at ramp to launch');
-            this.instrText.setColor('#888888');
-          }
-        });
+        return;
+      }
+
+      // Crashed into water
+      if (this.jetY >= GROUND_Y + 20) {
+        this._crashJet('water');
+        return;
       }
     }
 
-    // Prevent going off screen during takeoff
-    if (this.jetX > 500 && this.jetVX < 180) {
-      this.jetX = 500;
-      this.jetVX *= 0.5;
-    }
+    // Visual tilt
+    const tilt = this.takeoffAirborne ? Phaser.Math.Clamp(this.jetVY / 300, -0.3, 0.5) : 0;
+    this.jetSprite.setRotation(tilt);
+    this.jetSprite.setPosition(this.jetX, this.jetY);
   }
 
   _updateLaunching(dt) {
@@ -373,16 +450,18 @@ export default class BomberScene extends Phaser.Scene {
     MusicManager.get().playLevel3Music('flight');
     this.phaseTimer = 0;
     this.missileSpawnTimer = 0;
+    this.flakTimer = 0;
     this.missiles = [];
     this.facingRight = true;
     this.jetVX = JET_SPEED;
+    this.jetVY = 0;
     this.flightDistance = 0;
     this.flightTerrainStage = 0;
 
     this.farTerrain.setVisible(false);
     this.groundTile.setTexture('sea_surface');
 
-    this.instrText.setText('ARROWS to fly \u2014 Approaching target...');
+    this.instrText.setText('ARROWS to fly \u2014 C for chaff \u2014 Approaching target...');
     this.instrText.setColor('#888888');
 
     this.ambientRef = SoundManager.get().playJetEngine();
@@ -391,22 +470,49 @@ export default class BomberScene extends Phaser.Scene {
   _updateFlight(dt) {
     this.phaseTimer += dt;
 
-    // Horizontal speed: RIGHT accelerates, LEFT decelerates
-    const accel = 300;
+    // Horizontal speed: RIGHT accelerates, LEFT brakes (no reverse)
+    const accel = 500; // very responsive
     if (this.keys.right.isDown) {
-      this.jetVX = Math.min(400, this.jetVX + accel * dt);
+      this.jetVX = Math.min(500, this.jetVX + accel * dt);
     } else if (this.keys.left.isDown) {
-      this.jetVX = Math.max(60, this.jetVX - accel * dt);
+      this.jetVX = Math.max(80, this.jetVX - accel * dt);
     } else {
       // Drift back to base speed
       const diff = JET_SPEED - this.jetVX;
-      this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 150 * dt);
+      this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 200 * dt);
     }
 
-    // Vertical movement
-    const vSpeed = 200;
-    if (this.keys.up.isDown) this.jetY = Math.max(60, this.jetY - vSpeed * dt);
-    if (this.keys.down.isDown) this.jetY = Math.min(GROUND_Y - 40, this.jetY + vSpeed * dt);
+    // Gravity always pulls down
+    this.jetVY += JET_GRAVITY * dt;
+    if (this.keys.up.isDown) this.jetVY -= CLIMB_ACCEL * dt;
+    if (this.keys.down.isDown) this.jetVY += DIVE_ACCEL * dt;
+
+    // Stall check
+    if (this.jetVX < STALL_SPEED) {
+      this.jetVY += STALL_GRAVITY * dt;
+      if (!this._stallWarning) {
+        this._stallWarning = true;
+        this.instrText.setText('STALL WARNING \u2014 ACCELERATE!');
+        this.instrText.setColor('#ff0000');
+      }
+    } else {
+      if (this._stallWarning) {
+        this._stallWarning = false;
+        this.instrText.setText('ARROWS to fly \u2014 C for chaff');
+        this.instrText.setColor('#888888');
+      }
+    }
+
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, MAX_CLIMB_VY, MAX_FALL_VY);
+    this.jetY += this.jetVY * dt;
+
+    if (this.jetY < 40) { this.jetY = 40; this.jetVY = Math.max(0, this.jetVY); }
+    if (this.jetY >= GROUND_Y - 10) { this._crashJet('ground'); return; }
+
+    // Tilt based on vertical velocity
+    const targetAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    const currentAngle = this.jetSprite.rotation || 0;
+    this.jetSprite.setRotation(currentAngle + (targetAngle - currentAngle) * 6 * dt);
 
     // Jet screen X drifts with speed difference
     const targetX = 280 + (this.jetVX - JET_SPEED) * 0.6;
@@ -432,18 +538,32 @@ export default class BomberScene extends Phaser.Scene {
       this.instrText.setText('Over the mountains...');
     }
 
-    // Distance HUD
-    const distKm = Math.max(0, Math.round(180 * (1 - this.flightDistance / FLIGHT_TARGET_DIST)));
+    // Distance HUD (scaled to shorter distance)
+    const distKm = Math.max(0, Math.round(90 * (1 - this.flightDistance / FLIGHT_TARGET_DIST)));
     this.hudDist.setText(`TARGET: ${distKm} km`);
 
-    // Spawn missiles from below
+    // SAM missiles from below — defenses from the FIRST MOMENT
     this.missileSpawnTimer += dt;
-    const spawnInterval = Math.max(1, 2.8 - this.phaseTimer * 0.04) * this.dm.spawnRateMult();
+    const spawnInterval = Math.max(0.8, 2.0 - this.phaseTimer * 0.06) * this.dm.spawnRateMult();
     if (this.missileSpawnTimer >= spawnInterval) {
       this.missileSpawnTimer = 0;
-      this._spawnMissile(100 + Math.random() * (W - 200), GROUND_Y + 20, -180 - Math.random() * 80);
+      this._spawnMissile(100 + Math.random() * (W - 200), GROUND_Y + 20, 0);
     }
+
+    // Flak bursts — area denial from the start
+    this.flakTimer += dt;
+    if (this.flakTimer >= FLAK_INTERVAL) {
+      this.flakTimer = 0;
+      this._spawnFlak();
+    }
+
     this._updateMissiles(dt);
+    this._updateChaff(dt);
+
+    // Chaff deployment
+    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) {
+      this._deployChaff();
+    }
 
     // Seagulls (decorative over sea)
     if (this.flightDistance < FLIGHT_COAST_DIST && Math.random() < 0.005) {
@@ -463,41 +583,175 @@ export default class BomberScene extends Phaser.Scene {
     }
   }
 
-  _spawnMissile(x, y, vy) {
-    const m = this.add.circle(x, y, 3, 0xff3333).setDepth(8);
-    // Trail glow
-    const glow = this.add.circle(x, y, 5, 0xff0000, 0.3).setDepth(7);
-    const spdMult = this.dm.missileSpeedMult();
-    this.missiles.push({
-      sprite: m, glow, x, y,
-      vx: (Math.random() - 0.5) * 40 * spdMult,
-      vy: vy * spdMult,
+  _spawnMissile(x, y, _vy) {
+    // Show warning indicator 1 second before launch
+    const warn = this.add.text(x, H - 20, '\u25B2', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#ff3333',
+    }).setOrigin(0.5).setDepth(20);
+    this.tweens.add({
+      targets: warn, alpha: 0.2, duration: 150, yoyo: true, repeat: 3,
+      onComplete: () => {
+        warn.destroy();
+        // Now spawn the actual tracking SAM
+        if (this.missiles.length >= 3) return; // max 3 on screen
+        const m = this.add.circle(x, y, 3, 0xff3333).setDepth(8);
+        const glow = this.add.circle(x, y, 5, 0xff0000, 0.3).setDepth(7);
+        const spdMult = this.dm.missileSpeedMult();
+        const speed = SAM_SPEED * spdMult;
+        // Initial angle: toward jet
+        const dx = this.jetX - x;
+        const dy = this.jetY - y;
+        const angle = Math.atan2(dy, dx);
+        this.missiles.push({
+          sprite: m, glow, x, y,
+          angle,
+          speed,
+          life: SAM_LIFETIME,
+          trail: [], // smoke trail positions
+        });
+      },
     });
+  }
+
+  _spawnFlak() {
+    // Random position flak burst — doesn't track, just area denial
+    const fx = 100 + Math.random() * (W - 200);
+    const fy = 80 + Math.random() * 250;
+    const burst = this.add.circle(fx, fy, 8, 0xff8800, 0.7).setDepth(6);
+    this.tweens.add({
+      targets: burst, scaleX: 4, scaleY: 4, alpha: 0,
+      duration: 800, ease: 'Quad.easeOut',
+      onComplete: () => burst.destroy(),
+    });
+    // Damage check — if jet is close when flak detonates
+    const dx = fx - this.jetX;
+    const dy = fy - this.jetY;
+    if (Math.sqrt(dx * dx + dy * dy) < 40) {
+      this._takeDamage();
+    }
+    this.flakBursts.push({ x: fx, y: fy });
   }
 
   _updateMissiles(dt) {
     for (let i = this.missiles.length - 1; i >= 0; i--) {
       const m = this.missiles[i];
+      m.life -= dt;
+
+      // Self-destruct after lifetime
+      if (m.life <= 0) {
+        this._addExplosion(m.x, m.y, 15);
+        m.sprite.destroy(); m.glow.destroy();
+        // Clean up trail
+        for (const t of m.trail) t.destroy();
+        this.missiles.splice(i, 1);
+        continue;
+      }
+
+      // Tracking: turn toward jet (limited turn rate = wide radius)
+      if (m.angle !== undefined) {
+        const dx = this.jetX - m.x;
+        const dy = this.jetY - m.y;
+        const targetAngle = Math.atan2(dy, dx);
+        let angleDiff = targetAngle - m.angle;
+        // Normalize to [-PI, PI]
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        const maxTurn = SAM_TURN_RATE * dt;
+        m.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurn);
+        m.vx = Math.cos(m.angle) * m.speed;
+        m.vy = Math.sin(m.angle) * m.speed;
+      }
+
       m.x += m.vx * dt;
       m.y += m.vy * dt;
       m.sprite.setPosition(m.x, m.y);
       m.glow.setPosition(m.x, m.y);
 
+      // Smoke trail
+      if (Math.random() < 0.6) {
+        const tp = this.add.circle(m.x, m.y, 1.5, 0xcc4444, 0.4).setDepth(5);
+        m.trail.push(tp);
+        this.tweens.add({
+          targets: tp, alpha: 0, scaleX: 2, scaleY: 2, duration: 500,
+          onComplete: () => { tp.destroy(); const idx = m.trail.indexOf(tp); if (idx >= 0) m.trail.splice(idx, 1); },
+        });
+      }
+
       // Hit detection
-      const dx = m.x - this.jetX;
-      const dy = m.y - this.jetY;
-      if (Math.sqrt(dx * dx + dy * dy) < 18) {
+      const hdx = m.x - this.jetX;
+      const hdy = m.y - this.jetY;
+      if (Math.sqrt(hdx * hdx + hdy * hdy) < 18) {
         this._takeDamage();
+        this._addExplosion(m.x, m.y, 18);
         m.sprite.destroy(); m.glow.destroy();
+        for (const t of m.trail) t.destroy();
         this.missiles.splice(i, 1);
         continue;
       }
 
-      // Off screen
-      if (m.y < -30 || m.y > H + 30 || m.x < -30 || m.x > W + 30) {
+      // Off screen (generous bounds for tracking missiles)
+      if (m.y < -60 || m.y > H + 60 || m.x < -60 || m.x > W + 60) {
         m.sprite.destroy(); m.glow.destroy();
+        for (const t of m.trail) t.destroy();
         this.missiles.splice(i, 1);
       }
+    }
+  }
+
+  // ── CHAFF SYSTEM ──
+  _deployChaff() {
+    if (this.chaff <= 0 || this.chaffCooldown > 0) return;
+    this.chaff--;
+    this.chaffCooldown = 1.0; // 1 second cooldown
+
+    SoundManager.get().playAfterburner(); // reuse afterburner sound for chaff
+
+    // Spawn chaff particles
+    for (let i = 0; i < 12; i++) {
+      const px = this.jetX + (Math.random() - 0.5) * 20;
+      const py = this.jetY + (Math.random() - 0.5) * 20;
+      const p = this.add.circle(px, py, 2, 0xffffff, 0.9).setDepth(12);
+      const vx = (Math.random() - 0.5) * 200;
+      const vy = (Math.random() - 0.5) * 200;
+      this.chaffParticles.push({ sprite: p, x: px, y: py, vx, vy, life: 1.2 });
+    }
+
+    // Divert nearest tracking missile toward chaff cloud
+    let nearest = null;
+    let nearDist = Infinity;
+    const chaffX = this.jetX;
+    const chaffY = this.jetY;
+    for (const m of this.missiles) {
+      const dx = m.x - chaffX;
+      const dy = m.y - chaffY;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < nearDist) { nearDist = d; nearest = m; }
+    }
+    if (nearest && nearDist < 300) {
+      // Force missile to target chaff position — it will fly past and explode
+      nearest.life = Math.min(nearest.life, 0.6); // explode soon
+      const dx = chaffX - nearest.x;
+      const dy = chaffY - nearest.y;
+      nearest.angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.5;
+      // Visual feedback — missile glow turns white briefly
+      nearest.glow.setFillStyle(0xffffff, 0.6);
+      this.time.delayedCall(300, () => {
+        if (nearest.glow && nearest.glow.scene) nearest.glow.setFillStyle(0xff0000, 0.3);
+      });
+    }
+  }
+
+  _updateChaff(dt) {
+    if (this.chaffCooldown > 0) this.chaffCooldown -= dt;
+    for (let i = this.chaffParticles.length - 1; i >= 0; i--) {
+      const p = this.chaffParticles[i];
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.95; p.vy *= 0.95;
+      p.sprite.setPosition(p.x, p.y);
+      p.sprite.setAlpha(Math.max(0, p.life * 0.8));
+      if (p.life <= 0) { p.sprite.destroy(); this.chaffParticles.splice(i, 1); }
     }
   }
 
@@ -515,6 +769,7 @@ export default class BomberScene extends Phaser.Scene {
     this.bombingEnded = false;
     this.facingRight = true;
     this.jetX = 80;
+    this.jetVY = 0;
     this.jetY = 150;
     this.jetVX = JET_SPEED;
 
@@ -522,24 +777,94 @@ export default class BomberScene extends Phaser.Scene {
     this.groundTile.setTexture('valley_ground');
     this.farTerrain.setVisible(true);
 
-    // Draw bunker layers as game objects
+    // ── BUNKER with visible interior (cross-section / diorama) ──
+    const bunkW = BUNKER_W + 40; // wider bunker for interior
+    const bunkH = BUNKER_LAYERS * LAYER_H + 10;
+    const bunkLeft = BUNKER_X - bunkW / 2;
+    const bunkTop = BUNKER_TOP_Y - 5;
+
+    // Interior background (dark room visible through "cut" wall)
+    this.bunkerInteriorGfx = this.add.graphics().setDepth(2);
+    this._drawBunkerInterior(bunkLeft, bunkTop, bunkW, bunkH);
+
+    // Draw bunker layers as game objects (outer shell)
     this.bunkerLayerSprites = [];
     const colors = [0x8a8a92, 0x7a7a82, 0x6a6a72, 0x5a5a62, 0x4a4a52];
     for (let i = 0; i < BUNKER_LAYERS; i++) {
       const ly = BUNKER_TOP_Y + i * LAYER_H;
-      const layer = this.add.rectangle(BUNKER_X, ly + LAYER_H / 2, BUNKER_W, LAYER_H - 2, colors[i]).setDepth(3);
+      // Left wall piece (leaves center exposed)
+      const leftW = 30;
+      const layer = this.add.rectangle(bunkLeft + leftW / 2, ly + LAYER_H / 2, leftW, LAYER_H - 2, colors[i]).setDepth(4);
+      // Right wall piece
+      const rightW = 30;
+      const rLayer = this.add.rectangle(bunkLeft + bunkW - rightW / 2, ly + LAYER_H / 2, rightW, LAYER_H - 2, colors[i]).setDepth(4);
+      // Top/bottom structural bars
+      const topBar = this.add.rectangle(BUNKER_X, ly + 1, bunkW - 60, 3, colors[i]).setDepth(4).setAlpha(0.6);
       // Edge stroke
-      const edge = this.add.rectangle(BUNKER_X, ly + LAYER_H / 2, BUNKER_W, LAYER_H - 2).setDepth(3);
+      const edge = this.add.rectangle(BUNKER_X, ly + LAYER_H / 2, bunkW, LAYER_H - 2).setDepth(4);
       edge.setStrokeStyle(1, 0x999999, 0.3);
       edge.setFillStyle();
-      this.bunkerLayerSprites.push({ rect: layer, edge, alive: true });
+      this.bunkerLayerSprites.push({ rect: layer, rLayer, topBar, edge, alive: true });
     }
+
+    // ── BOSS — Turbo Turban sitting at console inside bunker ──
+    this.bossSprite = this.add.image(BUNKER_X, BUNKER_TOP_Y + 36, 'turbo_turban').setDepth(3);
+    this.bossSprite.setScale(0.55);
+    this.bossYellSprite = this.add.image(BUNKER_X, BUNKER_TOP_Y + 36, 'turbo_turban_yell').setDepth(3);
+    this.bossYellSprite.setScale(0.55);
+    this.bossYellSprite.setVisible(false);
+    this.bossIsYelling = false;
+    this.bossYellTimer = 0;
+
+    // Boss missile state
+    this.bossMissileTimer = 0;
+    this.bossBurstTimer = 0;
+    this.bossBurstCooldown = 10; // every 10s
+    this.bossFireRate = 3.5; // single missile every 3.5s
+    this.bossDamageStage = 0; // 0-4 progressive damage
+
+    // ── Console in front of boss ──
+    this.consoleSprite = this.add.rectangle(BUNKER_X, BUNKER_TOP_Y + 65, 50, 12, 0x2a2a3a).setDepth(3);
+    this.add.rectangle(BUNKER_X, BUNKER_TOP_Y + 62, 44, 6, 0x1144aa, 0.5).setDepth(3).setName('boss_console_screen');
+
+    // ── Interior screens (glowing monitors) ──
+    this.interiorScreens = [];
+    const screenPositions = [
+      { x: bunkLeft + 40, y: bunkTop + 15 },
+      { x: bunkLeft + 55, y: bunkTop + 15 },
+      { x: bunkLeft + bunkW - 40, y: bunkTop + 15 },
+      { x: bunkLeft + bunkW - 55, y: bunkTop + 15 },
+      { x: bunkLeft + 40, y: bunkTop + 55 },
+      { x: bunkLeft + bunkW - 40, y: bunkTop + 55 },
+    ];
+    for (const sp of screenPositions) {
+      const scr = this.add.rectangle(sp.x, sp.y, 10, 8, 0x114488, 0.6).setDepth(3);
+      const glow = this.add.rectangle(sp.x, sp.y, 12, 10, 0x2266aa, 0.15).setDepth(3);
+      this.interiorScreens.push({ rect: scr, glow, alive: true });
+    }
+
+    // ── Mini soldiers (decorative) ──
+    this.miniSoldiers = [];
+    const soldierPos = [
+      { x: bunkLeft + 44, y: BUNKER_TOP_Y + 54 },
+      { x: bunkLeft + 58, y: BUNKER_TOP_Y + 56 },
+      { x: bunkLeft + bunkW - 44, y: BUNKER_TOP_Y + 54 },
+      { x: bunkLeft + bunkW - 56, y: BUNKER_TOP_Y + 58 },
+    ];
+    for (const sp of soldierPos) {
+      const s = this.add.image(sp.x, sp.y, 'mini_soldier').setDepth(3).setScale(0.8);
+      this.miniSoldiers.push({ sprite: s, origX: sp.x, origY: sp.y, fleeing: false });
+    }
+
+    // ── Damage effects container ──
+    this.bunkerDamageGfx = this.add.graphics().setDepth(3.5);
+    this.bunkerSmokeParticles = [];
 
     // Turrets near bunker
     this.turretSprites = [];
     const turretPos = [
-      { x: BUNKER_X - 140, y: GROUND_Y - 10 },
-      { x: BUNKER_X + 140, y: GROUND_Y - 10 },
+      { x: BUNKER_X - 150, y: GROUND_Y - 10 },
+      { x: BUNKER_X + 150, y: GROUND_Y - 10 },
     ];
     for (const tp of turretPos) {
       const ts = this.add.rectangle(tp.x, tp.y, 12, 10, 0xaa2020).setDepth(3);
@@ -549,7 +874,7 @@ export default class BomberScene extends Phaser.Scene {
     // Camouflage netting (decorative)
     this.camoGfx = this.add.graphics().setDepth(2);
     this.camoGfx.fillStyle(0x3a5530, 0.3);
-    this.camoGfx.fillRect(BUNKER_X - 120, BUNKER_TOP_Y - 10, 240, 15);
+    this.camoGfx.fillRect(BUNKER_X - 130, BUNKER_TOP_Y - 12, 260, 15);
 
     this.instrText.setText('ARROWS to move \u2014 SPACE to drop bomb');
     this.instrText.setColor('#ff8800');
@@ -557,11 +882,213 @@ export default class BomberScene extends Phaser.Scene {
     this.ambientRef = SoundManager.get().playJetEngine();
   }
 
+  _drawBunkerInterior(x, y, w, h) {
+    const g = this.bunkerInteriorGfx;
+    // Dark room interior
+    g.fillStyle(0x0a0a14, 0.9);
+    g.fillRect(x + 5, y + 2, w - 10, h - 4);
+    // Floor
+    g.fillStyle(0x1a1a24, 1);
+    g.fillRect(x + 5, y + h - 10, w - 10, 8);
+    // Grid lines on floor
+    g.lineStyle(0.5, 0x222233, 0.3);
+    for (let lx = x + 15; lx < x + w - 10; lx += 12) {
+      g.lineBetween(lx, y + h - 10, lx, y + h - 2);
+    }
+  }
+
+  _updateBossAttacks(dt) {
+    if (!this.bossSprite || !this.bossSprite.active) return;
+
+    this.bossMissileTimer += dt;
+    this.bossBurstTimer += dt;
+
+    // Boss yelling animation
+    if (this.bossIsYelling) {
+      this.bossYellTimer -= dt;
+      if (this.bossYellTimer <= 0) {
+        this.bossIsYelling = false;
+        this.bossSprite.setVisible(true);
+        this.bossYellSprite.setVisible(false);
+      }
+    }
+
+    // Single heavy missile
+    if (this.bossMissileTimer >= this.bossFireRate) {
+      this.bossMissileTimer = 0;
+      this._fireBossMissile(0);
+      this._setBossYelling(1.0);
+    }
+
+    // Burst of 3 in a fan every 10s
+    if (this.bossBurstTimer >= this.bossBurstCooldown) {
+      this.bossBurstTimer = 0;
+      this._fireBossMissile(-0.3);
+      this._fireBossMissile(0);
+      this._fireBossMissile(0.3);
+      this._setBossYelling(1.5);
+      SoundManager.get().playMissileWarning();
+    }
+  }
+
+  _fireBossMissile(angleOffset) {
+    if (this.missiles.length >= 5) return; // allow more missiles with boss
+    const bx = BUNKER_X;
+    const by = BUNKER_TOP_Y + 20;
+    const dx = this.jetX - bx;
+    const dy = this.jetY - by;
+    const angle = Math.atan2(dy, dx) + angleOffset;
+    const spdMult = this.dm.missileSpeedMult();
+    const speed = (SAM_SPEED + 40) * spdMult; // boss missiles are faster
+
+    // Visual: bigger, redder missile
+    const m = this.add.circle(bx, by, 5, 0xff2222).setDepth(8);
+    const glow = this.add.circle(bx, by, 8, 0xff0000, 0.4).setDepth(7);
+
+    this.missiles.push({
+      sprite: m, glow, x: bx, y: by,
+      angle,
+      speed,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: SAM_LIFETIME + 1, // longer life
+      trail: [],
+      isBossMissile: true,
+    });
+    SoundManager.get().playMissilePass();
+  }
+
+  _setBossYelling(duration) {
+    this.bossIsYelling = true;
+    this.bossYellTimer = duration;
+    if (this.bossSprite && this.bossSprite.active) {
+      this.bossSprite.setVisible(false);
+      this.bossYellSprite.setVisible(true);
+    }
+  }
+
+  _updateBunkerDamage(layerIdx) {
+    this.bossDamageStage = layerIdx;
+    const bunkW = BUNKER_W + 40;
+    const bunkLeft = BUNKER_X - bunkW / 2;
+    const bunkTop = BUNKER_TOP_Y - 5;
+
+    const g = this.bunkerDamageGfx;
+    g.clear();
+
+    // Progressive damage effects
+    if (layerIdx >= 1) {
+      // Smoke enters interior, one screen breaks
+      g.fillStyle(0x333333, 0.2);
+      g.fillCircle(BUNKER_X - 30, BUNKER_TOP_Y + 20, 15);
+      if (this.interiorScreens[0] && this.interiorScreens[0].alive) {
+        this.interiorScreens[0].alive = false;
+        this.interiorScreens[0].rect.setFillStyle(0x110808, 1);
+        this.interiorScreens[0].glow.setAlpha(0);
+      }
+    }
+    if (layerIdx >= 2) {
+      // More screens broken, ceiling debris
+      g.fillStyle(0x555544, 0.3);
+      g.fillRect(BUNKER_X - 20, bunkTop + 8, 8, 4);
+      g.fillRect(BUNKER_X + 10, bunkTop + 10, 6, 5);
+      for (let i = 1; i < 3; i++) {
+        if (this.interiorScreens[i] && this.interiorScreens[i].alive) {
+          this.interiorScreens[i].alive = false;
+          this.interiorScreens[i].rect.setFillStyle(0x110808, 1);
+          this.interiorScreens[i].glow.setAlpha(0);
+        }
+      }
+    }
+    if (layerIdx >= 3) {
+      // Fire inside, soldiers flee, boss stands and fires faster
+      g.fillStyle(0xff4400, 0.15);
+      g.fillCircle(bunkLeft + 50, BUNKER_TOP_Y + 40, 12);
+      g.fillCircle(bunkLeft + bunkW - 50, BUNKER_TOP_Y + 45, 10);
+      g.fillStyle(0xff2200, 0.1);
+      g.fillCircle(BUNKER_X, BUNKER_TOP_Y + 50, 15);
+
+      // Soldiers flee
+      for (const s of this.miniSoldiers) {
+        if (!s.fleeing) {
+          s.fleeing = true;
+          const dir = s.origX < BUNKER_X ? -1 : 1;
+          this.tweens.add({
+            targets: s.sprite,
+            x: s.origX + dir * 80,
+            y: s.origY + 20,
+            alpha: 0,
+            duration: 800,
+            onComplete: () => s.sprite.destroy(),
+          });
+        }
+      }
+
+      // Break remaining screens
+      for (const scr of this.interiorScreens) {
+        if (scr.alive) {
+          scr.alive = false;
+          scr.rect.setFillStyle(0x110808, 1);
+          scr.glow.setAlpha(0);
+        }
+      }
+
+      // Boss fires faster
+      this.bossFireRate = 2;
+      this.bossBurstCooldown = 7;
+    }
+    if (layerIdx >= 4) {
+      // Everything destroyed, boss standing among rubble still firing
+      g.fillStyle(0x333322, 0.4);
+      for (let i = 0; i < 8; i++) {
+        g.fillRect(
+          bunkLeft + 20 + Math.random() * (bunkW - 40),
+          bunkTop + 10 + Math.random() * 60,
+          4 + Math.random() * 8, 3 + Math.random() * 5
+        );
+      }
+      g.fillStyle(0xff3300, 0.2);
+      g.fillCircle(BUNKER_X - 25, BUNKER_TOP_Y + 30, 18);
+      g.fillCircle(BUNKER_X + 20, BUNKER_TOP_Y + 35, 14);
+
+      // Destroy console
+      const cs = this.children.getByName('boss_console_screen');
+      if (cs) cs.destroy();
+      if (this.consoleSprite) { this.consoleSprite.destroy(); this.consoleSprite = null; }
+
+      // Boss enraged — fires even faster
+      this.bossFireRate = 1.5;
+      this.bossBurstCooldown = 5;
+    }
+  }
+
+  _updateBunkerSmoke(dt) {
+    // Spawn smoke above damaged bunker
+    if (this.bossDamageStage >= 1 && Math.random() < 0.1 * this.bossDamageStage) {
+      const px = BUNKER_X + (Math.random() - 0.5) * 80;
+      const py = BUNKER_TOP_Y - 5;
+      const p = this.add.circle(px, py, 2 + Math.random() * 3, 0x333333, 0.3).setDepth(5);
+      this.bunkerSmokeParticles.push({ sprite: p, life: 1.5 });
+      this.tweens.add({
+        targets: p, y: py - 30 - Math.random() * 20, alpha: 0, scaleX: 2, scaleY: 2,
+        duration: 1500,
+        onComplete: () => p.destroy(),
+      });
+    }
+    // Cleanup expired particles
+    for (let i = this.bunkerSmokeParticles.length - 1; i >= 0; i--) {
+      this.bunkerSmokeParticles[i].life -= dt;
+      if (this.bunkerSmokeParticles[i].life <= 0) {
+        this.bunkerSmokeParticles.splice(i, 1);
+      }
+    }
+  }
+
   _updateBombing(dt) {
     this.phaseTimer += dt;
 
-    // Full 4-way player control
-    const moveSpeed = 220;
+    // Full 4-way player control — agile and fast
+    const moveSpeed = 300;
     const prevJetX = this.jetX;
     if (this.keys.right.isDown) {
       this.jetX += moveSpeed * dt;
@@ -571,10 +1098,23 @@ export default class BomberScene extends Phaser.Scene {
       this.jetX -= moveSpeed * dt;
       this.facingRight = false;
     }
-    if (this.keys.up.isDown) this.jetY = Math.max(60, this.jetY - moveSpeed * dt);
-    if (this.keys.down.isDown) this.jetY = Math.min(280, this.jetY + moveSpeed * dt);
+    // Gravity physics
+    this.jetVY += JET_GRAVITY * dt;
+    if (this.keys.up.isDown) this.jetVY -= CLIMB_ACCEL * dt;
+    if (this.keys.down.isDown) this.jetVY += DIVE_ACCEL * dt;
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, MAX_CLIMB_VY, MAX_FALL_VY);
+    this.jetY += this.jetVY * dt;
+    if (this.jetY < 60) { this.jetY = 60; this.jetVY = Math.max(0, this.jetVY); }
+    if (this.jetY >= GROUND_Y - 10) { this._crashJet('ground'); return; }
+
     this.jetX = Phaser.Math.Clamp(this.jetX, 60, W - 60);
     this.jetSprite.setFlipX(!this.facingRight);
+
+    // Tilt based on vertical velocity
+    const targetAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    const currentAngle = this.jetSprite.rotation || 0;
+    this.jetSprite.setRotation(currentAngle + (targetAngle - currentAngle) * 6 * dt);
+
     this.jetSprite.setPosition(this.jetX, this.jetY);
     this.jetVX = (this.jetX - prevJetX) / (dt || 0.016);
 
@@ -587,13 +1127,21 @@ export default class BomberScene extends Phaser.Scene {
       this.bombCooldown = 0.35;
     }
 
+    // Chaff deployment
+    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) {
+      this._deployChaff();
+    }
+
     // Update bombs
     this._updateBombs(dt);
 
-    // Turret firing
+    // Turret firing + boss attacks
     this._updateTurrets(dt);
+    this._updateBossAttacks(dt);
     this._updateMissiles(dt);
+    this._updateChaff(dt);
     this._updateExplosions(dt);
+    this._updateBunkerSmoke(dt);
 
     // Check end conditions
     if (this.bunkerHP <= 0) {
@@ -649,13 +1197,29 @@ export default class BomberScene extends Phaser.Scene {
           const layerIdx = BUNKER_LAYERS - this.bunkerHP;
           if (layerIdx < BUNKER_LAYERS && this.bunkerLayerSprites[layerIdx].alive) {
             this.bunkerLayerSprites[layerIdx].alive = false;
+            const layerParts = this.bunkerLayerSprites[layerIdx];
             this.tweens.add({
-              targets: [this.bunkerLayerSprites[layerIdx].rect, this.bunkerLayerSprites[layerIdx].edge],
+              targets: [layerParts.rect, layerParts.rLayer, layerParts.topBar, layerParts.edge].filter(Boolean),
               alpha: 0.1, duration: 300,
             });
             this.bunkerHP--;
             SoundManager.get().playBombImpact();
             this._addExplosion(b.x, BUNKER_TOP_Y + layerIdx * LAYER_H + 10, 35);
+
+            // Interior shakes on impact
+            if (this.bossSprite && this.bossSprite.active) {
+              this.tweens.add({
+                targets: [this.bossSprite, this.bossYellSprite],
+                x: BUNKER_X + 4, duration: 50, yoyo: true, repeat: 3,
+                onComplete: () => {
+                  if (this.bossSprite && this.bossSprite.active) this.bossSprite.setX(BUNKER_X);
+                  if (this.bossYellSprite && this.bossYellSprite.active) this.bossYellSprite.setX(BUNKER_X);
+                },
+              });
+            }
+
+            // Progressive damage
+            this._updateBunkerDamage(layerIdx + 1);
 
             // Score text
             const pts = this.add.text(b.x, BUNKER_TOP_Y - 20, `LAYER ${layerIdx + 1} PENETRATED`, {
@@ -693,18 +1257,23 @@ export default class BomberScene extends Phaser.Scene {
     for (const t of this.turretSprites) {
       t.fireTimer -= dt;
       if (t.fireTimer <= 0) {
+        if (this.missiles.length >= 3) continue; // cap at 3 missiles on screen
         t.fireTimer = (1.5 + Math.random() * 1.5) * this.dm.spawnRateMult();
-        // Fire toward jet
+        // Fire tracking missile toward jet
         const dx = this.jetX - t.x;
         const dy = this.jetY - t.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const angle = Math.atan2(dy, dx);
         const m = this.add.circle(t.x, t.y, 3, 0xff4444).setDepth(8);
         const glow = this.add.circle(t.x, t.y, 5, 0xff0000, 0.3).setDepth(7);
-        const tSpd = 160 * this.dm.missileSpeedMult();
+        const tSpd = 200 * this.dm.missileSpeedMult();
         this.missiles.push({
           sprite: m, glow, x: t.x, y: t.y,
-          vx: (dx / dist) * tSpd,
-          vy: (dy / dist) * tSpd,
+          angle,
+          speed: tSpd,
+          vx: Math.cos(angle) * tSpd,
+          vy: Math.sin(angle) * tSpd,
+          life: SAM_LIFETIME,
+          trail: [],
         });
         SoundManager.get().playMissilePass();
       }
@@ -718,60 +1287,159 @@ export default class BomberScene extends Phaser.Scene {
     this.phase = 'explosion';
     this.instrText.setText('');
 
-    // Massive explosion
-    for (let i = 0; i < 10; i++) {
-      this.time.delayedCall(i * 80, () => {
-        const ex = BUNKER_X + (Math.random() - 0.5) * 150;
-        const ey = BUNKER_TOP_Y + Math.random() * 80;
-        this._addExplosion(ex, ey, 25 + Math.random() * 30);
-      });
+    // ── BOSS DEATH CINEMATIC ──
+
+    // Step 1: Boss looks up in terror (close-up effect via zoom)
+    if (this.bossSprite && this.bossSprite.active) {
+      // Switch to yelling/terror
+      this.bossSprite.setVisible(false);
+      this.bossYellSprite.setVisible(true);
+
+      // Zoom camera toward bunker briefly
+      this.cameras.main.zoomTo(1.5, 400, 'Power2');
+      this.cameras.main.pan(BUNKER_X, BUNKER_TOP_Y + 30, 400, 'Power2');
     }
 
-    this.cameras.main.shake(1000, 0.04);
-    SoundManager.get().playExplosion();
+    // Step 2: Flash + massive explosion from interior (after zoom)
+    this.time.delayedCall(500, () => {
+      // White flash
+      this.cameras.main.flash(400, 255, 255, 255);
+      this.cameras.main.zoomTo(1, 800, 'Power2');
+      this.cameras.main.pan(W / 2, H / 2, 800);
 
-    // Big fireball
-    const fireball = this.add.circle(BUNKER_X, BUNKER_TOP_Y + 40, 25, 0xff4400, 0.9).setDepth(16);
-    this.tweens.add({
-      targets: fireball, scaleX: 6, scaleY: 6, alpha: 0,
-      duration: 1500, ease: 'Quad.easeOut',
-      onComplete: () => fireball.destroy(),
+      SoundManager.get().playExplosion();
+
+      // Kill boss
+      if (this.bossYellSprite) { this.bossYellSprite.destroy(); this.bossYellSprite = null; }
+      if (this.bossSprite) { this.bossSprite.destroy(); this.bossSprite = null; }
+
+      // Interior explosion first (starts from inside)
+      for (let i = 0; i < 6; i++) {
+        this.time.delayedCall(i * 60, () => {
+          const ex = BUNKER_X + (Math.random() - 0.5) * 80;
+          const ey = BUNKER_TOP_Y + 10 + Math.random() * 60;
+          this._addExplosion(ex, ey, 20 + Math.random() * 20);
+        });
+      }
     });
 
-    // Smoke column
-    this.smokeSprite = this.add.ellipse(BUNKER_X, BUNKER_TOP_Y - 30, 40, 100, 0x333333, 0.5).setDepth(14);
-    this.tweens.add({
-      targets: this.smokeSprite, scaleX: 2.5, scaleY: 3, y: BUNKER_TOP_Y - 100, alpha: 0.3,
-      duration: 2000,
-    });
+    // Step 3: Building collapses outward (after interior explosion)
+    this.time.delayedCall(900, () => {
+      // Outer shell explosions
+      for (let i = 0; i < 12; i++) {
+        this.time.delayedCall(i * 70, () => {
+          const ex = BUNKER_X + (Math.random() - 0.5) * 200;
+          const ey = BUNKER_TOP_Y + Math.random() * 100;
+          this._addExplosion(ex, ey, 25 + Math.random() * 35);
+        });
+      }
 
-    // Crater
-    const crater = this.add.ellipse(BUNKER_X, BUNKER_TOP_Y + 50, 180, 30, 0x1a1a10, 0.7).setDepth(3);
+      this.cameras.main.shake(1500, 0.05);
 
-    // "BUNKER DESTROYED — RTB" text
-    this.time.delayedCall(800, () => {
-      const rtbText = this.add.text(W / 2, 80, 'BUNKER DESTROYED \u2014 RTB', {
-        fontFamily: 'monospace', fontSize: '24px', color: '#00ff00',
-        shadow: { offsetX: 0, offsetY: 0, color: '#00ff00', blur: 12, fill: true },
-      }).setOrigin(0.5).setDepth(25);
+      // MEGA fireball (bigger than before)
+      const fireball = this.add.circle(BUNKER_X, BUNKER_TOP_Y + 30, 30, 0xff4400, 0.95).setDepth(16);
       this.tweens.add({
-        targets: rtbText, alpha: 0.4, duration: 500, yoyo: true, repeat: 3,
-        onComplete: () => {
+        targets: fireball, scaleX: 8, scaleY: 8, alpha: 0,
+        duration: 2000, ease: 'Quad.easeOut',
+        onComplete: () => fireball.destroy(),
+      });
+
+      // Secondary fireball (orange/white core)
+      const core = this.add.circle(BUNKER_X, BUNKER_TOP_Y + 30, 15, 0xffdd44, 0.9).setDepth(17);
+      this.tweens.add({
+        targets: core, scaleX: 5, scaleY: 5, alpha: 0,
+        duration: 1200, ease: 'Quad.easeOut',
+        onComplete: () => core.destroy(),
+      });
+
+      // Debris flying outward
+      for (let i = 0; i < 20; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 80 + Math.random() * 150;
+        const dx = BUNKER_X + (Math.random() - 0.5) * 40;
+        const dy = BUNKER_TOP_Y + 20 + (Math.random() - 0.5) * 30;
+        const size = 2 + Math.random() * 4;
+        const color = [0x8a8a92, 0x5a5a62, 0xff4400, 0xffcc00][Math.floor(Math.random() * 4)];
+        const debris = this.add.circle(dx, dy, size, color, 0.9).setDepth(18);
+        this.tweens.add({
+          targets: debris,
+          x: dx + Math.cos(angle) * speed,
+          y: dy + Math.sin(angle) * speed - 40,
+          alpha: 0, scaleX: 0.3, scaleY: 0.3,
+          duration: 800 + Math.random() * 600,
+          onComplete: () => debris.destroy(),
+        });
+      }
+    });
+
+    // Step 4: "TARGET ELIMINATED" text + cleanup
+    this.time.delayedCall(1800, () => {
+      // Smoke column (bigger)
+      this.smokeSprite = this.add.ellipse(BUNKER_X, BUNKER_TOP_Y - 30, 60, 120, 0x333333, 0.5).setDepth(14);
+      this.tweens.add({
+        targets: this.smokeSprite, scaleX: 3, scaleY: 3.5, y: BUNKER_TOP_Y - 120, alpha: 0.2,
+        duration: 3000,
+      });
+
+      // Crater
+      const crater = this.add.ellipse(BUNKER_X, BUNKER_TOP_Y + 50, 220, 35, 0x1a1a10, 0.7).setDepth(3);
+
+      // TARGET ELIMINATED text (not just "BUNKER DESTROYED")
+      const elimText = this.add.text(W / 2, 60, 'TARGET ELIMINATED', {
+        fontFamily: 'monospace', fontSize: '28px', color: '#ff4400',
+        fontStyle: 'bold',
+        shadow: { offsetX: 0, offsetY: 0, color: '#ff4400', blur: 16, fill: true },
+      }).setOrigin(0.5).setDepth(25).setAlpha(0);
+      this.tweens.add({ targets: elimText, alpha: 1, duration: 400 });
+
+      this.time.delayedCall(1200, () => {
+        const rtbText = this.add.text(W / 2, 95, 'RTB \u2014 RETURN TO BASE', {
+          fontFamily: 'monospace', fontSize: '16px', color: '#00ff00',
+          shadow: { offsetX: 0, offsetY: 0, color: '#00ff00', blur: 8, fill: true },
+        }).setOrigin(0.5).setDepth(25);
+
+        this.time.delayedCall(2000, () => {
+          elimText.destroy();
           rtbText.destroy();
           if (this.smokeSprite) this.smokeSprite.destroy();
           crater.destroy();
-          // Clean up bunker layer sprites
-          for (const l of this.bunkerLayerSprites) {
-            if (l.rect) l.rect.destroy();
-            if (l.edge) l.edge.destroy();
-          }
-          for (const t of this.turretSprites) { if (t.sprite) t.sprite.destroy(); }
-          if (this.camoGfx) { this.camoGfx.destroy(); this.camoGfx = null; }
+          this._cleanupBunkerSprites();
           this._cleanupMissiles();
           this._startReturn();
-        },
+        });
       });
     });
+  }
+
+  _cleanupBunkerSprites() {
+    for (const l of this.bunkerLayerSprites) {
+      if (l.rect) l.rect.destroy();
+      if (l.rLayer) l.rLayer.destroy();
+      if (l.topBar) l.topBar.destroy();
+      if (l.edge) l.edge.destroy();
+    }
+    for (const t of this.turretSprites) { if (t.sprite) t.sprite.destroy(); }
+    if (this.camoGfx) { this.camoGfx.destroy(); this.camoGfx = null; }
+    if (this.bunkerInteriorGfx) { this.bunkerInteriorGfx.destroy(); this.bunkerInteriorGfx = null; }
+    if (this.bunkerDamageGfx) { this.bunkerDamageGfx.destroy(); this.bunkerDamageGfx = null; }
+    if (this.bossSprite) { this.bossSprite.destroy(); this.bossSprite = null; }
+    if (this.bossYellSprite) { this.bossYellSprite.destroy(); this.bossYellSprite = null; }
+    if (this.consoleSprite) { this.consoleSprite.destroy(); this.consoleSprite = null; }
+    const cs = this.children.getByName('boss_console_screen');
+    if (cs) cs.destroy();
+    for (const scr of (this.interiorScreens || [])) {
+      if (scr.rect) scr.rect.destroy();
+      if (scr.glow) scr.glow.destroy();
+    }
+    this.interiorScreens = [];
+    for (const s of (this.miniSoldiers || [])) {
+      if (s.sprite && s.sprite.active) s.sprite.destroy();
+    }
+    this.miniSoldiers = [];
+    for (const p of (this.bunkerSmokeParticles || [])) {
+      if (p.sprite && p.sprite.active) p.sprite.destroy();
+    }
+    this.bunkerSmokeParticles = [];
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -786,12 +1454,15 @@ export default class BomberScene extends Phaser.Scene {
     this.jetX = W - 280;
     this.jetY = 180;
     this.jetVX = -JET_SPEED;
+    this.jetVY = 0;
     this._cleanupMissiles();
     this.returnTerrainStage = 0;
     this.returnDistance = 0;
 
     this.groundTile.setTexture('mountain_ground');
     this.farTerrain.setVisible(true);
+
+    this.jetSprite.setRotation(0); // level out
 
     this.instrText.setText('LEFT to return \u2014 ARROWS to move');
     this.instrText.setColor('#888888');
@@ -803,24 +1474,33 @@ export default class BomberScene extends Phaser.Scene {
     this.phaseTimer += dt;
 
     // Horizontal speed: LEFT accelerates return, RIGHT slows it
-    const accel = 300;
+    const accel = 500;
     if (this.keys.left.isDown) {
-      this.jetVX = Math.max(-400, this.jetVX - accel * dt);
+      this.jetVX = Math.max(-500, this.jetVX - accel * dt);
       this.facingRight = false;
     } else if (this.keys.right.isDown) {
-      this.jetVX = Math.min(-60, this.jetVX + accel * dt);
+      this.jetVX = Math.min(-80, this.jetVX + accel * dt);
       this.facingRight = true;
     } else {
       // Drift to base return speed
       const diff = -JET_SPEED - this.jetVX;
-      this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 150 * dt);
+      this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 200 * dt);
       this.facingRight = false;
     }
 
-    // Vertical movement
-    const vSpeed = 150;
-    if (this.keys.up.isDown) this.jetY = Math.max(60, this.jetY - vSpeed * dt);
-    if (this.keys.down.isDown) this.jetY = Math.min(GROUND_Y - 40, this.jetY + vSpeed * dt);
+    // Gravity physics
+    this.jetVY += JET_GRAVITY * dt;
+    if (this.keys.up.isDown) this.jetVY -= CLIMB_ACCEL * dt;
+    if (this.keys.down.isDown) this.jetVY += DIVE_ACCEL * dt;
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, MAX_CLIMB_VY, MAX_FALL_VY);
+    this.jetY += this.jetVY * dt;
+    if (this.jetY < 60) { this.jetY = 60; this.jetVY = Math.max(0, this.jetVY); }
+    if (this.jetY >= GROUND_Y - 10) { this._crashJet('ground'); return; }
+
+    // Tilt based on vertical velocity
+    const targetAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    const currentAngle = this.jetSprite.rotation || 0;
+    this.jetSprite.setRotation(currentAngle + (targetAngle - currentAngle) * 6 * dt);
 
     // Jet screen X drifts with speed difference
     const targetX = (W - 280) + (this.jetVX + JET_SPEED) * 0.6;
@@ -847,8 +1527,8 @@ export default class BomberScene extends Phaser.Scene {
       this.instrText.setText('Over the sea... carrier ahead');
     }
 
-    // Distance HUD
-    const distKm = Math.max(0, Math.round(160 * (1 - this.returnDistance / RETURN_CARRIER_DIST)));
+    // Distance HUD (scaled to shorter distance)
+    const distKm = Math.max(0, Math.round(80 * (1 - this.returnDistance / RETURN_CARRIER_DIST)));
     this.hudDist.setText(`CARRIER: ${distKm} km`);
 
     // Transition to landing when back at carrier
@@ -867,8 +1547,10 @@ export default class BomberScene extends Phaser.Scene {
     this.landingRetries = 0;
     this.facingRight = false;
     this.jetSprite.setFlipX(true);
+    this.jetSprite.setRotation(0);
     this.jetX = W - 150;
     this.jetY = 180;
+    this.jetVY = 0;
 
     // Carrier appears from left
     this.carrierSprite.setVisible(true);
@@ -879,47 +1561,53 @@ export default class BomberScene extends Phaser.Scene {
 
     this.groundTile.setTexture('sea_surface');
 
-    this.instrText.setText('LEFT/RIGHT to align \u2014 DOWN to descend');
+    this.instrText.setText('LEFT/RIGHT to align \u2014 UP to slow descent \u2014 Land gently!');
     this.instrText.setColor('#ffaa00');
 
     SoundManager.get().playLandingGear();
   }
 
   _updateLanding(dt) {
-    // Player controls
+    // Horizontal controls
     const hSpeed = 120;
     if (this.keys.left.isDown) this.jetX = Math.max(48, this.jetX - hSpeed * dt);
     if (this.keys.right.isDown) this.jetX = Math.min(W - 48, this.jetX + hSpeed * dt);
 
-    // Descend with DOWN or S
-    if (this.keys.down.isDown || this.keys.s.isDown) {
-      this.landingDescending = true;
-    }
+    // Gravity always pulls down
+    this.jetVY += JET_GRAVITY * 0.6 * dt;
 
-    if (this.landingDescending) {
-      this.jetY += 80 * dt; // descent rate
-      this.jetX -= 40 * dt; // approach from right, moving left
-    }
+    // UP reduces descent, DOWN increases it
+    if (this.keys.up.isDown) this.jetVY -= CLIMB_ACCEL * 0.5 * dt;
+    if (this.keys.down.isDown) this.jetVY += DIVE_ACCEL * 0.5 * dt;
 
-    // Altitude control (UP to pull up)
-    if (this.keys.up.isDown && this.landingDescending) {
-      this.jetY -= 30 * dt; // slow climb if pulling up
-    }
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, -150, 250);
+    this.jetY += this.jetVY * dt;
 
+    // Approach drift
+    this.jetX -= 30 * dt;
+
+    // Visual tilt
+    const tilt = Phaser.Math.Clamp(this.jetVY / 300, -0.2, 0.3);
+    this.jetSprite.setRotation(tilt);
     this.jetSprite.setPosition(this.jetX, this.jetY);
 
-    // Check landing
+    // Check landing on carrier deck
     if (this.jetY >= DECK_Y) {
-      // On the deck — check if over carrier (carrier deck x: ~40 to ~460 relative to carrier at x=240)
       const carrierLeft = this.carrierSprite.x - 200;
       const carrierRight = this.carrierSprite.x + 200;
 
       if (this.jetX >= carrierLeft && this.jetX <= carrierRight) {
-        // Successful landing
+        // Check descent rate — too fast = crash on deck
+        if (this.jetVY > 200) {
+          this._crashJet('ground');
+          return;
+        }
+
         this.jetY = DECK_Y;
+        this.jetVY = 0;
+        this.jetSprite.setRotation(0);
         this.jetSprite.setPosition(this.jetX, this.jetY);
 
-        // Landing quality based on alignment with carrier center
         const carrierCenterX = this.carrierSprite.x;
         const offset = Math.abs(this.jetX - carrierCenterX);
         if (offset < 50) {
@@ -939,18 +1627,18 @@ export default class BomberScene extends Phaser.Scene {
         this.phase = 'landed';
         this.time.delayedCall(2000, () => this._showVictory());
       } else {
-        // Missed the carrier — wave off
+        // Missed the carrier
         if (this.landingRetries < 1) {
           this.landingRetries++;
           this.instrText.setText('WAVE OFF \u2014 Go around!');
           this.instrText.setColor('#ff4444');
           SoundManager.get().playMissileWarning();
-          this.landingDescending = false;
           this.jetY = 180;
           this.jetX = W - 150;
+          this.jetVY = 0;
           this.time.delayedCall(1500, () => {
             if (this.phase === 'landing') {
-              this.instrText.setText('LEFT/RIGHT to align \u2014 DOWN to descend');
+              this.instrText.setText('LEFT/RIGHT to align \u2014 DOWN to descend gently');
               this.instrText.setColor('#ffaa00');
             }
           });
@@ -960,20 +1648,78 @@ export default class BomberScene extends Phaser.Scene {
           this.instrText.setColor('#ff8800');
           SoundManager.get().playLandingGear();
           this.jetY = DECK_Y;
+          this.jetVY = 0;
           this.phase = 'landed';
           this.time.delayedCall(2000, () => this._showVictory());
         }
       }
     }
 
-    // Prevent going too low (into sea)
+    // Crashed into water
     if (this.jetY > GROUND_Y + 20 && this.phase === 'landing') {
-      this.jetY = 180;
-      this.jetX = W - 150;
-      this.landingDescending = false;
-      this.instrText.setText('TOO LOW \u2014 Try again');
-      this.instrText.setColor('#ff4444');
+      this._crashJet('water');
     }
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // CRASH
+  // ═════════════════════════════════════════════════════════════
+  _crashJet(reason) {
+    if (this.crashed) return;
+    this.crashed = true;
+    this.phase = 'dead';
+    this._stopAmbient();
+
+    SoundManager.get().playExplosion();
+    this.cameras.main.shake(600, 0.05);
+
+    const crashX = this.jetX;
+    const crashY = this.jetY;
+
+    if (this.jetSprite) this.jetSprite.setVisible(false);
+
+    // Explosion
+    for (let i = 0; i < 15; i++) {
+      const ex = crashX + (Math.random() - 0.5) * 60;
+      const ey = crashY + (Math.random() - 0.5) * 40;
+      const r = 5 + Math.random() * 15;
+      const color = [0xff4400, 0xff8800, 0xffcc00][Math.floor(Math.random() * 3)];
+      const fireball = this.add.circle(ex, ey, r, color, 0.9).setDepth(25);
+      this.tweens.add({
+        targets: fireball,
+        scaleX: 2 + Math.random(), scaleY: 2 + Math.random(),
+        alpha: 0, duration: 600 + Math.random() * 400, delay: i * 50,
+        onComplete: () => fireball.destroy(),
+      });
+    }
+
+    // Water splash
+    if (reason === 'water') {
+      for (let i = 0; i < 10; i++) {
+        const sx = crashX + (Math.random() - 0.5) * 80;
+        const sy = crashY + Math.random() * 20;
+        const splash = this.add.circle(sx, sy, 3, 0x4488cc, 0.7).setDepth(24);
+        this.tweens.add({
+          targets: splash,
+          y: sy - 30 - Math.random() * 40,
+          x: sx + (Math.random() - 0.5) * 30,
+          alpha: 0, duration: 500 + Math.random() * 300,
+          onComplete: () => splash.destroy(),
+        });
+      }
+    }
+
+    // CRASHED text
+    const crashText = this.add.text(W / 2, H / 2, 'CRASHED', {
+      fontFamily: 'monospace', fontSize: '48px', color: '#ff4444',
+      shadow: { offsetX: 0, offsetY: 0, color: '#ff4444', blur: 20, fill: true },
+    }).setOrigin(0.5).setDepth(55).setAlpha(0);
+    this.tweens.add({ targets: crashText, alpha: 1, duration: 500 });
+
+    this.time.delayedCall(3000, () => {
+      crashText.destroy();
+      this._showVictory();
+    });
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -982,73 +1728,46 @@ export default class BomberScene extends Phaser.Scene {
   _showVictory() {
     this.phase = 'victory';
     this.instrText.setVisible(false);
+    if (this.instrBg) this.instrBg.setVisible(false);
     MusicManager.get().stop(1);
 
     const layersDestroyed = BUNKER_LAYERS - Math.max(0, this.bunkerHP);
-    const missionSuccess = layersDestroyed >= BUNKER_LAYERS;
+    this.missionSuccess = layersDestroyed >= BUNKER_LAYERS;
 
-    if (missionSuccess) SoundManager.get().playVictory();
-
-    // Black overlay
-    this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.85).setDepth(40);
-
-    // Title
-    const titleText = missionSuccess ? 'MISSION COMPLETE' : 'MISSION FAILED';
-    const titleColor = missionSuccess ? '#FFD700' : '#ff4444';
-    const title = this.add.text(W / 2, 55, titleText, {
-      fontFamily: 'monospace', fontSize: '30px', color: titleColor,
-      shadow: { offsetX: 0, offsetY: 0, color: titleColor, blur: 16, fill: true },
-    }).setOrigin(0.5).setDepth(41).setAlpha(0);
-    this.tweens.add({ targets: title, alpha: 1, duration: 500 });
-
-    // Subtitle
-    const sub = this.add.text(W / 2, 90, 'OPERATION DEEP STRIKE', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#ffffff',
-    }).setOrigin(0.5).setDepth(41).setAlpha(0);
-    this.tweens.add({ targets: sub, alpha: 1, duration: 500, delay: 200 });
-
-    // Separator
-    const sep = this.add.rectangle(W / 2, 112, 300, 2, 0x00e5ff, 0.5).setDepth(41).setAlpha(0);
-    this.tweens.add({ targets: sep, alpha: 1, duration: 300, delay: 400 });
+    if (this.missionSuccess) SoundManager.get().playVictory();
 
     // Star rating
-    let stars;
-    if (layersDestroyed >= 5 && this.landingQuality === 'perfect') stars = '\u2605\u2605\u2605';
-    else if (layersDestroyed >= 5 && this.landingQuality === 'good') stars = '\u2605\u2605\u2606';
-    else if (layersDestroyed >= 3) stars = '\u2605\u2605\u2606';
-    else stars = '\u2605\u2606\u2606';
+    let starCount;
+    if (!this.missionSuccess) starCount = 0;
+    else if (layersDestroyed >= 5 && this.landingQuality === 'perfect') starCount = 3;
+    else if ((layersDestroyed >= 5 && this.landingQuality === 'good') || layersDestroyed >= 3) starCount = 2;
+    else starCount = 1;
 
-    try { const sc = layersDestroyed >= 5 && this.landingQuality === 'perfect' ? 3 : (layersDestroyed >= 5 && this.landingQuality === 'good') || layersDestroyed >= 3 ? 2 : 1; localStorage.setItem('superzion_stars_3', String(sc)); } catch(e) {}
+    try { localStorage.setItem('superzion_stars_3', String(Math.max(starCount, parseInt(localStorage.getItem('superzion_stars_3') || '0')))); } catch(e) {}
 
-    const lines = [
-      `BUNKER LAYERS PENETRATED: ${layersDestroyed}/${BUNKER_LAYERS}`,
-      `BOMBS USED: ${this.bombsUsed}/${BOMB_TOTAL}`,
-      `ARMOR REMAINING: ${Math.max(0, this.armor)}/3`,
-      `LANDING: ${(this.landingQuality || 'N/A').toUpperCase()}`,
-      `RATING: ${stars}`,
+    const statsData = [
+      { label: 'BUNKER LAYERS PENETRATED', value: `${layersDestroyed}/${BUNKER_LAYERS}` },
+      { label: 'BOMBS USED', value: `${this.bombsUsed}/${BOMB_TOTAL}` },
+      { label: 'ARMOR REMAINING', value: `${Math.max(0, this.armor)}/3` },
+      { label: 'LANDING', value: (this.landingQuality || 'N/A').toUpperCase() },
     ];
 
-    let yPos = 140;
-    lines.forEach((line, i) => {
-      const t = this.add.text(W / 2, yPos, line, {
-        fontFamily: 'monospace', fontSize: '14px', color: '#00e5ff',
-      }).setOrigin(0.5).setDepth(41).setAlpha(0);
-      this.tweens.add({ targets: t, alpha: 1, duration: 300, delay: 600 + i * 250 });
-      yPos += 28;
-    });
-
-    // Separator 2
-    this.time.delayedCall(2200, () => {
-      this.add.rectangle(W / 2, yPos + 5, 280, 2, 0x00e5ff, 0.5).setDepth(41);
-    });
-
-    // Continue prompt
-    this.time.delayedCall(2500, () => {
-      const cont = this.add.text(W / 2, yPos + 30, 'PRESS ENTER TO CONTINUE', {
-        fontFamily: 'monospace', fontSize: '18px', color: '#ffffff',
-      }).setOrigin(0.5).setDepth(41);
-      this.tweens.add({ targets: cont, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
-    });
+    if (this.missionSuccess) {
+      this._endScreen = showVictoryScreen(this, {
+        title: 'MISSION COMPLETE',
+        stats: statsData,
+        stars: starCount,
+        currentScene: 'BomberScene',
+        nextScene: 'UndergroundIntroCinematicScene',
+      });
+    } else {
+      this._endScreen = showDefeatScreen(this, {
+        title: 'MISSION FAILED',
+        stats: statsData,
+        currentScene: 'BomberScene',
+        skipScene: 'UndergroundIntroCinematicScene',
+      });
+    }
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -1073,6 +1792,8 @@ export default class BomberScene extends Phaser.Scene {
     // P key — debug skip to victory
     if (Phaser.Input.Keyboard.JustDown(this.keys.p) && this.phase !== 'victory') {
       this._stopAmbient();
+      this._cleanupBunkerSprites();
+      this._cleanupMissiles();
       this.bunkerHP = 0;
       this.bombsUsed = 5;
       this.landingQuality = 'good';
@@ -1101,15 +1822,12 @@ export default class BomberScene extends Phaser.Scene {
         this._updateLanding(dt);
         break;
       case 'victory':
-        if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
-          this._stopAmbient();
-          this.scene.start('UndergroundIntroCinematicScene');
-        }
+        // EndScreen buttons handle R/S/ENTER key bindings
         break;
     }
 
     // Update shared systems
-    if (this.phase !== 'victory') {
+    if (this.phase !== 'victory' && this.phase !== 'dead') {
       this._updateExplosions(dt);
       this._updateHUD();
     }
@@ -1125,12 +1843,16 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   shutdown() {
+    if (this._endScreen) this._endScreen.destroy();
     this._stopAmbient();
     this.tweens.killAll();
     this.time.removeAllEvents();
-    for (const m of this.missiles) { m.sprite.destroy(); m.glow.destroy(); }
+    for (const m of this.missiles) { m.sprite.destroy(); m.glow.destroy(); if (m.trail) for (const t of m.trail) t.destroy(); }
     this.missiles = [];
     for (const b of this.bombObjects) { b.sprite.destroy(); b.outline.destroy(); }
     this.bombObjects = [];
+    for (const p of this.chaffParticles) p.sprite.destroy();
+    this.chaffParticles = [];
+    if (this._cleanupBunkerSprites) this._cleanupBunkerSprites();
   }
 }

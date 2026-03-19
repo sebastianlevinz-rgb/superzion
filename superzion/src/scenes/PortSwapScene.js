@@ -1520,7 +1520,7 @@ export default class PortSwapScene extends Phaser.Scene {
 
     // Overlay with defeat buttons
     this.time.delayedCall(800, () => {
-      showDefeatScreen(this, {
+      this._endScreen = showDefeatScreen(this, {
         title: 'MISSION FAILED',
         stats: [{ label: 'REASON', value: reason }],
         currentScene: 'BeirutRadarScene',
@@ -1553,7 +1553,7 @@ export default class PortSwapScene extends Phaser.Scene {
     try { localStorage.setItem('superzion_stars_2', String(Math.max(stars, parseInt(localStorage.getItem('superzion_stars_2') || '0')))); } catch(e) {}
 
     this.time.delayedCall(600, () => {
-      showVictoryScreen(this, {
+      this._endScreen = showVictoryScreen(this, {
         title: 'MISSION COMPLETE',
         stats: [
           { label: 'OPERATION', value: 'PORT SWAP' },
@@ -1637,6 +1637,7 @@ export default class PortSwapScene extends Phaser.Scene {
   // ════════════════════════════════════════════════════════════
 
   shutdown() {
+    if (this._endScreen) this._endScreen.destroy();
     MusicManager.get().stop(0.2);
   }
 }
