@@ -81,6 +81,7 @@ export default class BaseCinematicScene extends Phaser.Scene {
     }
     if (this._twTimer) { this._twTimer.remove(); this._twTimer = null; }
     if (this._currentPageText) { this._currentPageText.destroy(); this._currentPageText = null; }
+    this._clearPageVisuals();
 
     this.currentPage++;
 
