@@ -3775,6 +3775,11 @@ export default class DroneScene extends Phaser.Scene {
     // Phase 3 weapon
     if (this.bossWeaponSprite) { this.bossWeaponSprite.destroy(); this.bossWeaponSprite = null; }
 
+    // Dodge HUD
+    if (this.dodgeHudLabel) { this.dodgeHudLabel.destroy(); this.dodgeHudLabel = null; }
+    if (this.dodgeHudBg) { this.dodgeHudBg.destroy(); this.dodgeHudBg = null; }
+    if (this.dodgeHudFill) { this.dodgeHudFill.destroy(); this.dodgeHudFill = null; }
+
     // Drone bullets
     for (const b of this.droneBullets) { if (b.sprite) b.sprite.destroy(); }
     this.droneBullets = [];

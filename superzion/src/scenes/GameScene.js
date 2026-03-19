@@ -96,7 +96,7 @@ export default class GameScene extends Phaser.Scene {
     this.nKey = this.input.keyboard.addKey('N');
 
     // 13. Controls overlay
-    showControlsOverlay(this, 'ARROWS/WASD: Move | SPACE: Bomb | E: Plant | ESC: Pause');
+    showControlsOverlay(this, 'ARROWS/WASD: Move | SPACE: Bomb | E: Plant | SHIFT: Dodge | ESC: Pause');
 
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
