@@ -9,9 +9,9 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Intro Audio
 
-- [ ] **INTRO-01**: Intro uses menu music instead of current intro music (delete current intro music entirely)
-- [ ] **INTRO-02**: No loud/unpleasant sounds during title screen Maguen David appearance (smooth transition)
-- [ ] **INTRO-03**: Music plays continuously from first frame of intro through to menu scene
+- [x] **INTRO-01**: Intro uses menu music instead of current intro music (delete current intro music entirely)
+- [x] **INTRO-02**: No loud/unpleasant sounds during title screen Maguen David appearance (smooth transition)
+- [x] **INTRO-03**: Music plays continuously from first frame of intro through to menu scene
 
 ### Level 1 Redesign
 
@@ -100,9 +100,9 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INTRO-01 | Phase 31 | Pending |
-| INTRO-02 | Phase 31 | Pending |
-| INTRO-03 | Phase 31 | Pending |
+| INTRO-01 | Phase 31 | Complete |
+| INTRO-02 | Phase 31 | Complete |
+| INTRO-03 | Phase 31 | Complete |
 | LVL1-01 | Phase 32 | Pending |
 | LVL1-02 | Phase 32 | Pending |
 | LVL1-03 | Phase 32 | Pending |
