@@ -66,6 +66,21 @@ export default class GameIntroScene extends BaseCinematicScene {
       fireGlow.fillCircle(fx, fy, 35 + Math.random() * 20);
     }
 
+    // ── Waving flag sprites behind boss positions ──
+    const flagData = [
+      { key: 'flag_iran', x: 150 },
+      { key: 'flag_lebanon', x: W / 2 - 100 },
+      { key: 'flag_palestine', x: W / 2 + 100 },
+      { key: 'flag_israel', x: W - 150 },
+    ];
+    flagData.forEach((fd, i) => {
+      const flag = this.add.sprite(fd.x, H / 2 - 10, fd.key)
+        .setDepth(4).setScale(0.6).setAlpha(0);
+      flag.play(fd.key + '_wave');
+      this.actObjects.push(flag);
+      this.tweens.add({ targets: flag, alpha: 1, duration: 500, delay: i * 200 });
+    });
+
     // ── "THE AXIS OF EVIL" title with red glow ──
     const titleText = this.add.text(W / 2, H / 2 - 60, 'THE AXIS OF EVIL', {
       fontFamily: 'monospace', fontSize: '42px', color: '#ff1111',
