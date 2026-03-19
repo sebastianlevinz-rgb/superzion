@@ -62,22 +62,22 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIS-01 | — | Pending |
-| VIS-02 | — | Pending |
-| INTRO-01 | — | Pending |
-| INTRO-02 | — | Pending |
-| INTRO-03 | — | Pending |
-| INTRO-04 | — | Pending |
-| GAME-01 | — | Pending |
-| GAME-02 | — | Pending |
-| UX-01 | — | Pending |
-| UX-02 | — | Pending |
+| VIS-01 | Phase 6 | Pending |
+| VIS-02 | Phase 6 | Pending |
+| INTRO-01 | Phase 7 | Pending |
+| INTRO-02 | Phase 7 | Pending |
+| INTRO-03 | Phase 7 | Pending |
+| INTRO-04 | Phase 7 | Pending |
+| GAME-01 | Phase 5 | Pending |
+| GAME-02 | Phase 5 | Pending |
+| UX-01 | Phase 8 | Pending |
+| UX-02 | Phase 5 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 10 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 10
+- Mapped to phases: 10
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after initial definition*
+*Last updated: 2026-03-19 — traceability updated with phase mappings*

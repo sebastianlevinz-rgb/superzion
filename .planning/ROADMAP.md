@@ -1,8 +1,9 @@
-# Roadmap: SuperZion — Cinematic & Audio Polish
+# Roadmap: SuperZion
 
-## Overview
+## Milestones
 
-This milestone transforms SuperZion from a functional stealth game into a cinematic experience. Four phases deliver in strict infrastructure-before-content order: audio management is repaired first (it is a hard dependency for everything), per-level trance themes and ambient layers are authored second, cinematic scene infrastructure is built third, and all visible cinematic content plus animation is delivered last. Each phase is independently verifiable; later phases cannot start until earlier ones are stable.
+- **v1.0 Cinematic & Audio** - Phases 1-4 (deferred after Phase 1 shipped)
+- **v1.1 Polish Pass** - Phases 5-8 (in progress)
 
 ## Phases
 
@@ -12,12 +13,27 @@ This milestone transforms SuperZion from a functional stealth game into a cinema
 
 Decimal phases appear between their surrounding integers in numeric order.
 
+<details>
+<summary>v1.0 Cinematic & Audio (Phases 1-4) - DEFERRED after Phase 1</summary>
+
 - [x] **Phase 1: Audio Foundation** - Repair MusicManager with fade/crossfade and fix AudioBufferSourceNode leaks
-- [ ] **Phase 2: Level Audio** - Author 6 distinct trance themes and per-level ambient layers
-- [ ] **Phase 3: Cinematic Infrastructure** - Build CinematicDirector, TextureRegistry, and BaseCinematicScene refactor
-- [ ] **Phase 4: Cinematics and Animation** - Deliver animated intro showcase, between-level sequences, and motion smear
+- [ ] **Phase 2: Level Audio** - Author 6 distinct trance themes and per-level ambient layers (DEFERRED)
+- [ ] **Phase 3: Cinematic Infrastructure** - Build CinematicDirector, TextureRegistry, and BaseCinematicScene refactor (DEFERRED)
+- [ ] **Phase 4: Cinematics and Animation** - Deliver animated intro showcase, between-level sequences, and motion smear (DEFERRED)
+
+</details>
+
+### v1.1 Polish Pass
+
+- [ ] **Phase 5: Standalone Fixes** - Fix Level 2 passability, F-15 wings, and controls overlay readability
+- [ ] **Phase 6: Visual Identity** - Audit and align player sprite across all three texture systems; restore real boss parade sprites
+- [ ] **Phase 7: Intro Overhaul** - Restore flags, build final title screen, wire psytrance SFX, and add camera shake to intro
+- [ ] **Phase 8: End-Screen Standardization** - Migrate all 6 levels to shared EndScreen.js with consistent win/lose navigation
 
 ## Phase Details
+
+<details>
+<summary>v1.0 Phase Details (Phases 1-4)</summary>
 
 ### Phase 1: Audio Foundation
 **Goal**: Audio transitions cleanly between all scenes without abrupt cuts or memory leaks
@@ -31,46 +47,100 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 1 plan
 
 Plans:
-- [x] 01-01-PLAN.md — Fix MusicManager fade/crossfade and audit all scene transition callsites
+- [x] 01-01: Fix MusicManager fade/crossfade and audit all scene transition callsites
 
-### Phase 2: Level Audio
-**Goal**: Each level has a distinct audio identity — unique trance music and an environmental atmosphere layer
+### Phase 2: Level Audio (DEFERRED)
+**Goal**: Each level has a distinct audio identity
 **Depends on**: Phase 1
 **Requirements**: AUDIO-02, AUDIO-03
-**Success Criteria** (what must be TRUE):
-  1. Each of the 6 levels plays a trance theme with a perceptibly different BPM, melodic character, and atmosphere from all other levels
-  2. Each level has an ambient environmental audio layer (wind, city hum, aircraft, etc.) audible during gameplay beneath the music
-  3. The ambient layer and trance theme play simultaneously as independent audio channels without interfering with each other
-**Plans**: TBD
+**Plans**: Deferred to future milestone
 
-### Phase 3: Cinematic Infrastructure
-**Goal**: A reusable cinematic system exists that any scene can consume to sequence sprites, text, and music without inline boilerplate
+### Phase 3: Cinematic Infrastructure (DEFERRED)
+**Goal**: Reusable cinematic system for sequencing sprites, text, and music
 **Depends on**: Phase 2
-**Requirements**: (none — infrastructure phase enabling Phase 4)
-**Success Criteria** (what must be TRUE):
-  1. All procedural sprite sheets needed for cinematics are generated once at boot and available by string key — no per-scene regeneration jank
-  2. A CinematicDirector class exists and can sequence sprite entrances, exits, movement, and text events via a declarative timeline
-  3. BaseCinematicScene provides letterbox bars and scene lifecycle hooks that all cinematic scenes inherit without duplicating code
-**Plans**: TBD
+**Requirements**: (infrastructure)
+**Plans**: Deferred to future milestone
 
-### Phase 4: Cinematics and Animation
-**Goal**: The game opens with a choreographed intro showcase and transitions between levels with animated story sequences; fast movements have visible motion weight
+### Phase 4: Cinematics and Animation (DEFERRED)
+**Goal**: Choreographed intro showcase, between-level sequences, motion smear
 **Depends on**: Phase 3
 **Requirements**: CINE-01, CINE-02, ANIM-01
+**Plans**: Deferred to future milestone
+
+</details>
+
+### Phase 5: Standalone Fixes
+**Goal**: Three isolated shipping blockers are resolved without touching shared systems
+**Depends on**: Phase 1 (v1.0 audio foundation)
+**Requirements**: GAME-01, GAME-02, UX-02
 **Success Criteria** (what must be TRUE):
-  1. Before the main menu, an animated intro showcase plays with boss, plane, and character reveals choreographed to trance music beats
-  2. Between levels, story sequences show animated sprites that enter, move, gesture, and exit — not typewriter text alone
-  3. Fast character entrances and movements display a one-frame motion smear (horizontal blur/stretch) that gives them visual weight
+  1. Player can navigate Level 2 container corridors from start to bomb-plant target and back to exit without getting stuck on any wall or obstacle
+  2. The F-15 jet in Level 3 cinematic displays swept-back wings angled toward the tail (not forward-pointing)
+  3. Controls overlay text in all 6 levels renders as large bright yellow text on a semi-transparent black background, readable against every level's background
 **Plans**: TBD
+
+Plans:
+- [ ] 05-01: TBD
+- [ ] 05-02: TBD
+- [ ] 05-03: TBD
+
+### Phase 6: Visual Identity
+**Goal**: The player character looks like a Mossad agent (not placeholder cubes) everywhere, and boss parade sprites display as real characters
+**Depends on**: Phase 5
+**Requirements**: VIS-01, VIS-02
+**Success Criteria** (what must be TRUE):
+  1. Player sprite in gameplay (SpriteGenerator), cinematics (CinematicTextures), and intro parade (ParadeTextures) all display a human figure with tactical black suit, slicked-back hair, beard shadow, and chest emblem — visually consistent across all three contexts
+  2. The intro boss parade shows four distinct boss characters (Foam Beard, Turbo Turban, The Warden, Supreme Turban) as real sprites with animated super attacks, not colored rectangles
+  3. Player sprite reads clearly at game-scale rendered sizes (32-48px height) with recognizable silhouette and details
+**Plans**: TBD
+
+Plans:
+- [ ] 06-01: TBD
+- [ ] 06-02: TBD
+
+### Phase 7: Intro Overhaul
+**Goal**: The intro sequence is a polished cinematic showcase with real sprites, waving flags, synchronized audio, screen shake, and a dramatic title reveal
+**Depends on**: Phase 6
+**Requirements**: INTRO-01, INTRO-02, INTRO-03, INTRO-04
+**Success Criteria** (what must be TRUE):
+  1. Four waving flag animations (Iran, Lebanon, Palestine, Israel) appear in the intro parade sequence using generated flag spritesheets
+  2. Final intro screen displays a giant golden semi-transparent Maguen David behind SuperZion with "SUPERZION" in wide thick arcade-style font and a larger subtitle below
+  3. Psytrance music at 145+ BPM plays from the first frame of the intro, and visual events (missile launches, explosions, jet flybys, gunfire) are accompanied by synchronized SFX
+  4. Camera shakes visibly on every explosion during the intro sequence
+**Plans**: TBD
+
+Plans:
+- [ ] 07-01: TBD
+- [ ] 07-02: TBD
+- [ ] 07-03: TBD
+
+### Phase 8: End-Screen Standardization
+**Goal**: Every level ends with a clear, consistent navigation screen so players always know how to retry, continue, or skip
+**Depends on**: Phase 5 (independent of Phases 6-7)
+**Requirements**: UX-01
+**Success Criteria** (what must be TRUE):
+  1. Winning any of the 6 levels shows "PLAY AGAIN (R)" and "NEXT LEVEL (ENTER)" options that work correctly when pressed
+  2. Losing any of the 6 levels shows "RETRY (R)" and "SKIP LEVEL (S)" options that work correctly when pressed
+  3. End screens appear after any scene-specific victory/defeat animations complete (no overlay clipping boss disintegration, no stats skipped)
+  4. No keyboard listener leaks accumulate across retries — scene shutdown cleans up all EndScreen key bindings
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 5 → 6 → 7 → 8
+(Phase 8 depends only on Phase 5 and can parallel Phases 6-7 if needed)
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Audio Foundation | 1/1 | Complete | 2026-03-05 |
-| 2. Level Audio | 0/TBD | Not started | - |
-| 3. Cinematic Infrastructure | 0/TBD | Not started | - |
-| 4. Cinematics and Animation | 0/TBD | Not started | - |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Audio Foundation | v1.0 | 1/1 | Complete | 2026-03-05 |
+| 2. Level Audio | v1.0 | 0/TBD | Deferred | - |
+| 3. Cinematic Infrastructure | v1.0 | 0/TBD | Deferred | - |
+| 4. Cinematics and Animation | v1.0 | 0/TBD | Deferred | - |
+| 5. Standalone Fixes | v1.1 | 0/3 | Not started | - |
+| 6. Visual Identity | v1.1 | 0/2 | Not started | - |
+| 7. Intro Overhaul | v1.1 | 0/3 | Not started | - |
+| 8. End-Screen Standardization | v1.1 | 0/1 | Not started | - |
