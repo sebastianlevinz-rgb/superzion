@@ -25,7 +25,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### v1.1 Polish Pass
 
-- [ ] **Phase 5: Standalone Fixes** - Fix Level 2 passability, F-15 wings, and controls overlay readability
+- [x] **Phase 5: Standalone Fixes** - Fix Level 2 passability, F-15 wings, and controls overlay readability
 - [ ] **Phase 6: Visual Identity** - Audit and align player sprite across all three texture systems; restore real boss parade sprites
 - [ ] **Phase 7: Intro Overhaul** - Restore flags, build final title screen, wire psytrance SFX, and add camera shake to intro
 - [ ] **Phase 8: End-Screen Standardization** - Migrate all 6 levels to shared EndScreen.js with consistent win/lose navigation
@@ -80,8 +80,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Fix Level 2 container passability (GAME-01)
-- [ ] 05-02-PLAN.md — Fix F-15 wing direction and controls overlay styling (GAME-02, UX-02)
+- [x] 05-01-PLAN.md — Fix Level 2 container passability (GAME-01)
+- [x] 05-02-PLAN.md — Fix F-15 wing direction and controls overlay styling (GAME-02, UX-02)
 
 ### Phase 6: Visual Identity
 **Goal**: The player character looks like a Mossad agent (not placeholder cubes) everywhere, and boss parade sprites display as real characters
@@ -139,7 +139,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8
 | 2. Level Audio | v1.0 | 0/TBD | Deferred | - |
 | 3. Cinematic Infrastructure | v1.0 | 0/TBD | Deferred | - |
 | 4. Cinematics and Animation | v1.0 | 0/TBD | Deferred | - |
-| 5. Standalone Fixes | v1.1 | 0/2 | Not started | - |
+| 5. Standalone Fixes | v1.1 | 2/2 | Complete | 2026-03-19 |
 | 6. Visual Identity | v1.1 | 0/2 | Not started | - |
 | 7. Intro Overhaul | v1.1 | 0/3 | Not started | - |
 | 8. End-Screen Standardization | v1.1 | 0/1 | Not started | - |

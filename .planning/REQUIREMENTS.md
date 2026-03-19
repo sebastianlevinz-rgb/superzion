@@ -19,7 +19,7 @@
 
 ### Gameplay Fixes
 
-- [ ] **GAME-01**: Level 2 container paths are wide enough for the player to reach the target — level is verified completable
+- [x] **GAME-01**: Level 2 container paths are wide enough for the player to reach the target — level is verified completable
 - [ ] **GAME-02**: Level 3 cinematic F-15 has correct swept-back wings pointing backward (not forward)
 
 ### UX Polish
@@ -68,7 +68,7 @@
 | INTRO-02 | Phase 7 | Pending |
 | INTRO-03 | Phase 7 | Pending |
 | INTRO-04 | Phase 7 | Pending |
-| GAME-01 | Phase 5 | Pending |
+| GAME-01 | Phase 5 | Complete |
 | GAME-02 | Phase 5 | Pending |
 | UX-01 | Phase 8 | Pending |
 | UX-02 | Phase 5 | Pending |
@@ -80,4 +80,4 @@
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 — traceability updated with phase mappings*
+*Last updated: 2026-03-19 — GAME-01 marked complete (Plan 05-01)*
