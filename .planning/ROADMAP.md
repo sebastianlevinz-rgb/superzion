@@ -91,11 +91,11 @@ Plans:
   1. Player sprite in gameplay (SpriteGenerator), cinematics (CinematicTextures), and intro parade (ParadeTextures) all display a human figure with tactical black suit, slicked-back hair, beard shadow, and chest emblem — visually consistent across all three contexts
   2. The intro boss parade shows four distinct boss characters (Foam Beard, Turbo Turban, The Warden, Supreme Turban) as real sprites with animated super attacks, not colored rectangles
   3. Player sprite reads clearly at game-scale rendered sizes (32-48px height) with recognizable silhouette and details
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md — Align player sprite palette across CinematicTextures and ParadeTextures (VIS-01)
+- [ ] 06-02-PLAN.md — Replace boss rectangles with real parade sprites and attack animations (VIS-02)
 
 ### Phase 7: Intro Overhaul
 **Goal**: The intro sequence is a polished cinematic showcase with real sprites, waving flags, synchronized audio, screen shake, and a dramatic title reveal
