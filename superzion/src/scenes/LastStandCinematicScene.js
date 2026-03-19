@@ -92,7 +92,7 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
           }).setOrigin(0.5).setDepth(20));
         },
       },
-    ], 'BossScene');
+    ], 'FlightRouteScene', { level: 6, nextScene: 'BossScene' });
   }
 
   update() { this._handlePageInput(); }

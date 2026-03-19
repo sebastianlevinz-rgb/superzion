@@ -45,10 +45,12 @@ export default class BaseCinematicScene extends Phaser.Scene {
    *   setup() is called when the page starts (for visual changes)
    *   cleanup() is called when leaving the page
    * @param {string} targetScene - Scene to transition to after last page
+   * @param {object} [targetSceneData] - Optional data to pass to target scene
    */
-  _initPages(pages, targetScene) {
+  _initPages(pages, targetScene, targetSceneData) {
     this.pages = pages;
     this.targetScene = targetScene;
+    this.targetSceneData = targetSceneData || null;
 
     // Blinking "► SPACE" indicator — always visible
     this._spaceHint = this.add.text(W / 2, H - 28, '\u25ba SPACE', {
@@ -172,7 +174,13 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this.skipped = true;
     MusicManager.get().stop(0.3);
     this.cameras.main.fadeOut(300, 0, 0, 0);
-    this.time.delayedCall(350, () => this.scene.start(this.targetScene));
+    this.time.delayedCall(350, () => {
+      if (this.targetSceneData) {
+        this.scene.start(this.targetScene, this.targetSceneData);
+      } else {
+        this.scene.start(this.targetScene);
+      }
+    });
   }
 
   // ── Legacy methods (kept for non-page cinematics like GameIntroScene) ──

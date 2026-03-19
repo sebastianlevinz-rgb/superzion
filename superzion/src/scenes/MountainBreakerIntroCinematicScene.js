@@ -112,7 +112,7 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
           }).setOrigin(0.5).setDepth(20));
         },
       },
-    ], 'B2BomberScene');
+    ], 'FlightRouteScene', { level: 5, nextScene: 'B2BomberScene' });
   }
 
   update() { this._handlePageInput(); }

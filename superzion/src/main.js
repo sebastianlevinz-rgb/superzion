@@ -6,7 +6,7 @@ import IntroCinematicScene from './scenes/IntroCinematicScene.js';
 import GameScene from './scenes/GameScene.js';
 import ExplosionCinematicScene from './scenes/ExplosionCinematicScene.js';
 import BeirutIntroCinematicScene from './scenes/BeirutIntroCinematicScene.js';
-import BeirutRadarScene from './scenes/BeirutRadarScene.js';
+import BeirutRadarScene from './scenes/PortSwapScene.js';
 import DeepStrikeIntroCinematicScene from './scenes/DeepStrikeIntroCinematicScene.js';
 import BomberScene from './scenes/BomberScene.js';
 import UndergroundIntroCinematicScene from './scenes/UndergroundIntroCinematicScene.js';
@@ -15,6 +15,8 @@ import MountainBreakerIntroCinematicScene from './scenes/MountainBreakerIntroCin
 import B2BomberScene from './scenes/B2BomberScene.js';
 import LastStandCinematicScene from './scenes/LastStandCinematicScene.js';
 import BossScene from './scenes/BossScene.js';
+import FlightRouteScene from './scenes/FlightRouteScene.js';
+import VictoryScene from './scenes/VictoryScene.js';
 import CreditsScene from './scenes/CreditsScene.js';
 
 const config = {
@@ -34,9 +36,9 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, GameIntroScene, MenuScene, IntroCinematicScene, GameScene, ExplosionCinematicScene, BeirutIntroCinematicScene, BeirutRadarScene, DeepStrikeIntroCinematicScene, BomberScene, UndergroundIntroCinematicScene, DroneScene, MountainBreakerIntroCinematicScene, B2BomberScene, LastStandCinematicScene, BossScene, CreditsScene],
+  scene: [BootScene, GameIntroScene, MenuScene, IntroCinematicScene, FlightRouteScene, GameScene, ExplosionCinematicScene, BeirutIntroCinematicScene, BeirutRadarScene, DeepStrikeIntroCinematicScene, BomberScene, UndergroundIntroCinematicScene, DroneScene, MountainBreakerIntroCinematicScene, B2BomberScene, LastStandCinematicScene, BossScene, VictoryScene, CreditsScene],
   pixelArt: false,
   antialias: true,
 };
 
-new Phaser.Game(config);
+window.__GAME = new Phaser.Game(config);

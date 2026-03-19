@@ -108,7 +108,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
           }).setOrigin(0.5).setDepth(20));
         },
       },
-    ], 'DroneScene');
+    ], 'FlightRouteScene', { level: 4, nextScene: 'DroneScene' });
   }
 
   update() { this._handlePageInput(); }

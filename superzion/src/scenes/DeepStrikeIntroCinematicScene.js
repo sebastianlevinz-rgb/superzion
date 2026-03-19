@@ -92,7 +92,7 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
           }).setOrigin(0.5).setDepth(20));
         },
       },
-    ], 'BomberScene');
+    ], 'FlightRouteScene', { level: 3, nextScene: 'BomberScene' });
   }
 
   update() { this._handlePageInput(); }

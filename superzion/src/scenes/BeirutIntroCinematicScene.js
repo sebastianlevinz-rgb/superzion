@@ -72,7 +72,7 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
           this._addPageVisual(opName);
         },
       },
-    ], 'BeirutRadarScene');
+    ], 'FlightRouteScene', { level: 2, nextScene: 'BeirutRadarScene' });
   }
 
   _darkBg() {
