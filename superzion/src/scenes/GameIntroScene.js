@@ -417,9 +417,23 @@ export default class GameIntroScene extends BaseCinematicScene {
       this.cameras.main.shake(500, 0.03);
       SoundManager.get().playExplosion();
 
-      // "SUPERZION" title — slams in with impact
-      const title = this.add.text(W / 2, H / 2 - 40, 'SUPERZION', {
-        fontFamily: 'monospace', fontSize: '64px', color: '#FFD700',
+      // Giant golden semi-transparent Maguen David (Star of David)
+      const starGfx = this.add.graphics().setDepth(19);
+      this.actObjects.push(starGfx);
+      const cx = W / 2, cy = H / 2 - 20;
+      const r = 110;
+      starGfx.fillStyle(0xFFD700, 0.25);
+      // Upward triangle
+      starGfx.fillTriangle(cx, cy - r, cx - r * 0.866, cy + r * 0.5, cx + r * 0.866, cy + r * 0.5);
+      // Downward triangle
+      starGfx.fillTriangle(cx, cy + r, cx - r * 0.866, cy - r * 0.5, cx + r * 0.866, cy - r * 0.5);
+      starGfx.setAlpha(0);
+      this.tweens.add({ targets: starGfx, alpha: 1, duration: 600 });
+
+      // "SUPERZION" title — wide thick arcade-style font, slams in with impact
+      const title = this.add.text(W / 2, H / 2 - 40, 'S U P E R Z I O N', {
+        fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+        fontSize: '72px', color: '#FFD700',
         shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 40, fill: true },
       }).setOrigin(0.5).setDepth(50).setAlpha(0).setScale(3);
       this.actObjects.push(title);
@@ -437,18 +451,14 @@ export default class GameIntroScene extends BaseCinematicScene {
         duration: 600, yoyo: true, repeat: -1,
         ease: 'Sine.easeInOut', delay: 400,
       });
-
-      // Red underline bar
-      const bar = this.add.rectangle(W / 2, H / 2 - 5, 0, 4, 0xff2200).setDepth(49);
-      this.actObjects.push(bar);
-      this.tweens.add({ targets: bar, width: 350, duration: 400, ease: 'Cubic.easeOut' });
     });
 
     // ── At 6.5s: Subtitle ──
     this.time.delayedCall(6500, () => {
       if (this.skipped) return;
       const sub = this.add.text(W / 2, H / 2 + 30, 'ONE SOLDIER. SIX MISSIONS. ZERO MERCY.', {
-        fontFamily: 'monospace', fontSize: '16px', color: '#ffffff',
+        fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+        fontSize: '24px', color: '#ffffff',
         shadow: { offsetX: 0, offsetY: 0, color: '#ffffff', blur: 10, fill: true },
       }).setOrigin(0.5).setDepth(50).setAlpha(0);
       this.actObjects.push(sub);
