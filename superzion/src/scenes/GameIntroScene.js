@@ -10,6 +10,7 @@ import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import IntroMusic from '../systems/IntroMusic.js';
+import { playMissileWhoosh, playJetFlyby, playTankRumble } from '../systems/IntroMusic.js';
 import { generateAllParadeTextures } from '../utils/ParadeTextures.js';
 
 export default class GameIntroScene extends BaseCinematicScene {
@@ -129,6 +130,7 @@ export default class GameIntroScene extends BaseCinematicScene {
     });
 
     // ── Missiles flying across screen continuously ──
+    this._missileCount = 0;
     this._missileTimer = this.time.addEvent({
       delay: 400, repeat: 18,
       callback: () => {
@@ -213,7 +215,7 @@ export default class GameIntroScene extends BaseCinematicScene {
     this.time.delayedCall(800, () => {
       if (this.skipped) return;
       this._spawnJetStrike(100, 120, true);
-      SoundManager.get().playExplosion();
+      this._playIntroSFX(playJetFlyby);
       this.cameras.main.shake(200, 0.01);
     });
     this.time.delayedCall(1500, () => {
@@ -225,7 +227,7 @@ export default class GameIntroScene extends BaseCinematicScene {
     this.time.delayedCall(2800, () => {
       if (this.skipped) return;
       this._spawnBomber(W / 2, 100);
-      SoundManager.get().playExplosion();
+      SoundManager.get().playBombDrop();
       this.cameras.main.shake(300, 0.018);
     });
 
@@ -241,13 +243,13 @@ export default class GameIntroScene extends BaseCinematicScene {
     this.time.delayedCall(5500, () => {
       if (this.skipped) return;
       this._spawnTankFiring(200, H - 90);
-      SoundManager.get().playExplosion();
+      SoundManager.get().playBombImpact();
       this.cameras.main.shake(300, 0.02);
     });
     this.time.delayedCall(6200, () => {
       if (this.skipped) return;
       this._spawnTankFiring(550, H - 85);
-      SoundManager.get().playExplosion();
+      SoundManager.get().playBombImpact();
     });
 
     // ── Continuous explosions ──
@@ -400,7 +402,7 @@ export default class GameIntroScene extends BaseCinematicScene {
       shotLine.lineBetween(hero.x - 40, heroY - 10, W / 2 - 100, H / 2);
       this.tweens.add({ targets: shotLine, alpha: 0, duration: 200 });
 
-      SoundManager.get().playExplosion();
+      SoundManager.get().playGunfire(1);
       this.cameras.main.shake(150, 0.01);
     });
 
@@ -500,6 +502,14 @@ export default class GameIntroScene extends BaseCinematicScene {
   // ═════════════════════════════════════════════════════════════
   // VISUAL EFFECT HELPERS
   // ═════════════════════════════════════════════════════════════
+
+  /** Helper to call IntroMusic SFX functions with MusicManager audio context */
+  _playIntroSFX(fn, ...args) {
+    const mm = MusicManager.get();
+    if (mm.ctx && mm.musicGain) {
+      fn(mm.ctx, mm.musicGain, mm.ctx.currentTime, ...args);
+    }
+  }
 
   /** Boss appears with a flash, real parade sprite, and per-boss attack animation */
   _bossFlashEntry(x, y, spriteKey, label, attackFn) {
@@ -707,6 +717,9 @@ export default class GameIntroScene extends BaseCinematicScene {
 
   /** Spawn a missile flying across the screen */
   _spawnMissile() {
+    this._missileCount = (this._missileCount || 0) + 1;
+    if (this._missileCount % 3 === 1) this._playIntroSFX(playMissileWhoosh);
+
     const fromLeft = Math.random() > 0.5;
     const startX = fromLeft ? -20 : W + 20;
     const endX = fromLeft ? W + 20 : -20;

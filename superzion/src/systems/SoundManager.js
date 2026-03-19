@@ -435,6 +435,29 @@ export default class SoundManager {
     osc.stop(t + 0.3);
   }
 
+  // Gunfire: short burst of highpass noise pops
+  playGunfire(burstCount = 3) {
+    this._init();
+    if (!this.ctx || !this.masterGain) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < burstCount; i++) {
+      const buf = this._createNoiseBuffer(0.05);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      const hp = this.ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 2000;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.15, t + i * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.04);
+      src.connect(hp);
+      hp.connect(gain);
+      gain.connect(this.masterGain);
+      src.start(t + i * 0.08);
+      src.stop(t + i * 0.08 + 0.05);
+    }
+  }
+
   // Carrier ambient: lowpass noise + deep sine 40Hz, 0.03 vol, 60s. Returns ref
   playCarrierAmbient() {
     this._init();
