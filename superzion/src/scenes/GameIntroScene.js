@@ -67,14 +67,15 @@ export default class GameIntroScene extends BaseCinematicScene {
       fireGlow.fillCircle(fx, fy, 35 + Math.random() * 20);
     }
 
-    // ── Waving flag sprites behind boss positions ──
-    const flagData = [
-      { key: 'flag_iran', x: 150 },
-      { key: 'flag_lebanon', x: W / 2 - 100 },
-      { key: 'flag_palestine', x: W / 2 + 100 },
-      { key: 'flag_israel', x: W - 150 },
+    // ── Waving fictional org logos behind boss positions ──
+    // NO real country flags — only fictional terrorist org emblems
+    const orgData = [
+      { key: 'org_skull', x: 150 },
+      { key: 'org_fist', x: W / 2 - 100 },
+      { key: 'org_swords', x: W / 2 + 100 },
+      { key: 'org_serpent', x: W - 150 },
     ];
-    flagData.forEach((fd, i) => {
+    orgData.forEach((fd, i) => {
       const flag = this.add.sprite(fd.x, H / 2 - 10, fd.key)
         .setDepth(4).setScale(0.6).setAlpha(0);
       flag.play(fd.key + '_wave');
@@ -201,6 +202,14 @@ export default class GameIntroScene extends BaseCinematicScene {
     bg.fillRect(0, H - 70, W, 70);
     bg.fillStyle(0xaa9a70, 1);
     bg.fillRect(0, H - 70, W, 3);
+
+    // ── Israel flag — appears HERE, not in Axis of Evil ──
+    const israelFlag = this.add.sprite(W / 2, H / 2 - 20, 'flag_israel')
+      .setDepth(4).setScale(0.7).setAlpha(0);
+    israelFlag.play('flag_israel_wave');
+    this.actObjects.push(israelFlag);
+    this.tweens.add({ targets: israelFlag, alpha: 1, duration: 600 });
+    this.tweens.add({ targets: israelFlag, alpha: 0, duration: 400, delay: 3000 });
 
     // ── "ISRAEL DEFENSE FORCES" title ──
     const idfText = this.add.text(W / 2, H / 2 - 80, 'ISRAEL DEFENSE FORCES', {

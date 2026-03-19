@@ -1454,6 +1454,172 @@ export function createSuperZionParade(scene) {
 // MASTER GENERATOR
 // ═════════════════════════════════════════════════════════════
 
+// ═════════════════════════════════════════════════════════════
+// FICTIONAL ORG LOGOS (replace country flags in Axis of Evil)
+// ═════════════════════════════════════════════════════════════
+
+/** Org 1: Skull & Crossbones on black — generic terror org */
+export function createOrgSkull(scene) {
+  wavingSheet(scene, 'org_skull', (ctx, w, h) => {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2 - 4;
+    // Skull
+    ctx.fillStyle = '#cccccc';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 2, 16, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Jaw
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 12, 12, 8, 0, 0, Math.PI);
+    ctx.fill();
+    // Eye sockets
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath(); ctx.ellipse(cx - 7, cy - 4, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 7, cy - 4, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+    // Nose hole
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 4);
+    ctx.lineTo(cx - 3, cy + 8);
+    ctx.lineTo(cx + 3, cy + 8);
+    ctx.closePath();
+    ctx.fill();
+    // Teeth
+    ctx.fillStyle = '#cccccc';
+    for (let i = -3; i <= 3; i++) {
+      ctx.fillRect(cx + i * 3 - 1, cy + 14, 2, 4);
+    }
+    // Crossbones
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - 24, cy + 26); ctx.lineTo(cx + 24, cy + 42);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 24, cy + 26); ctx.lineTo(cx - 24, cy + 42);
+    ctx.stroke();
+    // Red splash
+    ctx.fillStyle = 'rgba(200,0,0,0.3)';
+    ctx.beginPath(); ctx.arc(cx, cy + 10, 24, 0, Math.PI * 2); ctx.fill();
+  }, 140, 90);
+}
+
+/** Org 2: Red Fist on dark green — militant faction */
+export function createOrgFist(scene) {
+  wavingSheet(scene, 'org_fist', (ctx, w, h) => {
+    ctx.fillStyle = '#0a1a0a';
+    ctx.fillRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2;
+    // Raised fist
+    ctx.fillStyle = '#cc2222';
+    // Wrist
+    ctx.fillRect(cx - 6, cy + 12, 12, 18);
+    // Fist body
+    ctx.beginPath();
+    ctx.moveTo(cx - 12, cy + 12);
+    ctx.quadraticCurveTo(cx - 14, cy - 6, cx - 10, cy - 14);
+    ctx.lineTo(cx + 10, cy - 14);
+    ctx.quadraticCurveTo(cx + 14, cy - 6, cx + 12, cy + 12);
+    ctx.closePath();
+    ctx.fill();
+    // Finger lines
+    ctx.strokeStyle = '#991111';
+    ctx.lineWidth = 1;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + i * 6, cy - 14);
+      ctx.lineTo(cx + i * 5, cy + 4);
+      ctx.stroke();
+    }
+    // Thumb
+    ctx.fillStyle = '#bb2222';
+    ctx.beginPath();
+    ctx.ellipse(cx - 13, cy, 4, 8, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Red glow
+    ctx.fillStyle = 'rgba(200,0,0,0.15)';
+    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI * 2); ctx.fill();
+  }, 140, 90);
+}
+
+/** Org 3: Crossed swords on black — militant banner */
+export function createOrgSwords(scene) {
+  wavingSheet(scene, 'org_swords', (ctx, w, h) => {
+    ctx.fillStyle = '#0a0808';
+    ctx.fillRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2;
+    // Sword 1 (left-to-right diagonal)
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, cy + 30); ctx.lineTo(cx + 30, cy - 30);
+    ctx.stroke();
+    // Sword 2 (right-to-left diagonal)
+    ctx.beginPath();
+    ctx.moveTo(cx + 30, cy + 30); ctx.lineTo(cx - 30, cy - 30);
+    ctx.stroke();
+    // Crossguards
+    ctx.strokeStyle = '#cc8800';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy - 8); ctx.lineTo(cx + 2, cy - 18);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 8, cy - 8); ctx.lineTo(cx - 2, cy - 18);
+    ctx.stroke();
+    // Handles
+    ctx.fillStyle = '#8a4400';
+    ctx.beginPath(); ctx.ellipse(cx - 28, cy + 28, 4, 6, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 28, cy + 28, 4, 6, -0.8, 0, Math.PI * 2); ctx.fill();
+    // Central emblem (crescent)
+    ctx.fillStyle = '#cc0000';
+    ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0a0808';
+    ctx.beginPath(); ctx.arc(cx + 4, cy - 2, 8, 0, Math.PI * 2); ctx.fill();
+  }, 140, 90);
+}
+
+/** Org 4: Serpent coil on blood red — supreme evil org */
+export function createOrgSerpent(scene) {
+  wavingSheet(scene, 'org_serpent', (ctx, w, h) => {
+    ctx.fillStyle = '#1a0505';
+    ctx.fillRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2;
+    // Coiled serpent body
+    ctx.strokeStyle = '#228822';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy + 25);
+    ctx.bezierCurveTo(cx - 35, cy, cx + 35, cy - 10, cx + 10, cy - 25);
+    ctx.bezierCurveTo(cx - 10, cy - 35, cx - 30, cy - 10, cx, cy);
+    ctx.bezierCurveTo(cx + 20, cy + 5, cx + 25, cy + 20, cx + 15, cy + 30);
+    ctx.stroke();
+    // Snake head
+    ctx.fillStyle = '#33aa33';
+    ctx.beginPath();
+    ctx.ellipse(cx - 20, cy + 25, 7, 5, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath(); ctx.arc(cx - 22, cy + 23, 2, 0, Math.PI * 2); ctx.fill();
+    // Tongue
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 27, cy + 25);
+    ctx.lineTo(cx - 33, cy + 22);
+    ctx.moveTo(cx - 27, cy + 25);
+    ctx.lineTo(cx - 33, cy + 28);
+    ctx.stroke();
+    // Dark glow
+    ctx.fillStyle = 'rgba(0,100,0,0.12)';
+    ctx.beginPath(); ctx.arc(cx, cy, 35, 0, Math.PI * 2); ctx.fill();
+  }, 140, 90);
+}
+
 export function generateAllParadeTextures(scene) {
   // Flags
   createIranFlag(scene);
@@ -1461,6 +1627,11 @@ export function generateAllParadeTextures(scene) {
   createPalestineFlag(scene);
   createIsraelFlag(scene);
   createEnemyFlag(scene);
+  // Fictional org logos (for Axis of Evil section)
+  createOrgSkull(scene);
+  createOrgFist(scene);
+  createOrgSwords(scene);
+  createOrgSerpent(scene);
   // Boss parade sprites
   createFoamBeardParade(scene);
   createTurboTurbanParade(scene);
