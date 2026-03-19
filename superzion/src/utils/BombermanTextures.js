@@ -674,12 +674,12 @@ function drawCharacter(dir, frame, opts = {}) {
 
   // ── Star of David ──
   if (starOD) {
-    // Brighter gold on chest area (cy + 1 to cy + 2)
-    starOfDavid(ctx, cx, cy + 2, 4, '#FFD700');
+    // Brighter gold on chest center (lowered to center of chest area)
+    starOfDavid(ctx, cx, cy + 5, 4, '#FFD700');
     // Fill inner area with semi-transparent gold
     ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
     ctx.beginPath();
-    ctx.arc(cx, cy + 2, 2, 0, Math.PI * 2);
+    ctx.arc(cx, cy + 5, 2, 0, Math.PI * 2);
     ctx.fill();
   }
 

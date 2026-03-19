@@ -282,26 +282,26 @@ function drawHead(ctx, hx, hy) {
   ctx.stroke();
 
   // --- Beard/stubble: gradient arc on jawline (NOT zigzag lines) ---
-  // Semi-transparent overlay following the jaw curve
-  const beardGrad = ctx.createRadialGradient(hx, hy + 8, 1, hx, hy + 8, 10);
+  // Semi-transparent overlay following the jaw curve (CONCAVE — hugs jawline downward)
+  const beardGrad = ctx.createRadialGradient(hx, hy + 10, 1, hx, hy + 10, 10);
   beardGrad.addColorStop(0, 'rgba(30, 22, 16, 0.30)');
   beardGrad.addColorStop(0.6, 'rgba(30, 22, 16, 0.20)');
   beardGrad.addColorStop(1, 'rgba(30, 22, 16, 0)');
   ctx.fillStyle = beardGrad;
   ctx.beginPath();
-  ctx.moveTo(hx - 8, hy + 3);
-  ctx.quadraticCurveTo(hx - 6, hy + 12, hx, hy + 13);
-  ctx.quadraticCurveTo(hx + 6, hy + 12, hx + 8, hy + 3);
+  ctx.moveTo(hx - 8, hy + 5);
+  ctx.quadraticCurveTo(hx - 5, hy + 13, hx, hy + 14);
+  ctx.quadraticCurveTo(hx + 5, hy + 13, hx + 8, hy + 5);
   ctx.closePath();
   ctx.fill();
 
-  // Second subtle layer for density variation
-  const beardGrad2 = ctx.createRadialGradient(hx, hy + 6, 0, hx, hy + 6, 8);
+  // Second subtle layer for density variation (lower half only — concave arc)
+  const beardGrad2 = ctx.createRadialGradient(hx, hy + 10, 0, hx, hy + 10, 8);
   beardGrad2.addColorStop(0, 'rgba(20, 14, 10, 0.15)');
   beardGrad2.addColorStop(1, 'rgba(20, 14, 10, 0)');
   ctx.fillStyle = beardGrad2;
   ctx.beginPath();
-  ctx.ellipse(hx, hy + 7, 7, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(hx, hy + 9, 7, 4, 0, 0, Math.PI);
   ctx.fill();
 
   // Ears — small ellipses
