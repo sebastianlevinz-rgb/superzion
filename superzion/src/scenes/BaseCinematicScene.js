@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 // BaseCinematicScene — Shared base class for all cinematic scenes
-// Provides: _clearAct(), _typewriter(), skip/mute setup, act system
+// Provides: page-by-page text system, typewriter, skip/mute, ESC
 // ═══════════════════════════════════════════════════════════════
 
 import Phaser from 'phaser';
@@ -22,13 +22,159 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this.currentAct = 0;
     this.skipped = false;
 
-    this.skipHint = this.add.text(W - 16, H - 14, 'ENTER TO SKIP', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#444444',
-    }).setOrigin(1, 1).setDepth(100);
-
     this.enterKey = this.input.keyboard.addKey('ENTER');
+    this.spaceKey = this.input.keyboard.addKey('SPACE');
+    this.escKey = this.input.keyboard.addKey('ESC');
     this.mKey = this.input.keyboard.addKey('M');
+
+    // Page system state
+    this.pages = null;
+    this.targetScene = null;
+    this.currentPage = -1;
+    this.pageReady = false;
+    this.typewriterComplete = false;
+    this._twTimer = null;
+    this._currentPageText = null;
+    this._pageVisuals = [];
   }
+
+  /**
+   * Initialize page-based cinematic.
+   * @param {Array} pages - Array of page objects:
+   *   { text, color?, size?, y?, charDelay?, setup?, cleanup? }
+   *   setup() is called when the page starts (for visual changes)
+   *   cleanup() is called when leaving the page
+   * @param {string} targetScene - Scene to transition to after last page
+   */
+  _initPages(pages, targetScene) {
+    this.pages = pages;
+    this.targetScene = targetScene;
+
+    // Blinking "► SPACE" indicator — always visible
+    this._spaceHint = this.add.text(W / 2, H - 28, '\u25ba SPACE', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ffcc00',
+      shadow: { offsetX: 0, offsetY: 0, color: '#ffcc00', blur: 4, fill: true },
+    }).setOrigin(0.5).setDepth(200).setAlpha(0);
+
+    this.tweens.add({
+      targets: this._spaceHint,
+      alpha: { from: 1, to: 0.3 },
+      duration: 500, yoyo: true, repeat: -1,
+    });
+
+    // ESC hint
+    this._escHint = this.add.text(W - 16, H - 14, 'ESC TO SKIP', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#444444',
+    }).setOrigin(1, 1).setDepth(200);
+
+    // Start first page
+    this._advancePage();
+  }
+
+  /** Advance to next page or end cinematic */
+  _advancePage() {
+    if (this.skipped) return;
+
+    // Cleanup current page
+    if (this.currentPage >= 0 && this.pages[this.currentPage] && this.pages[this.currentPage].cleanup) {
+      this.pages[this.currentPage].cleanup();
+    }
+    if (this._twTimer) { this._twTimer.remove(); this._twTimer = null; }
+    if (this._currentPageText) { this._currentPageText.destroy(); this._currentPageText = null; }
+
+    this.currentPage++;
+
+    if (this.currentPage >= this.pages.length) {
+      // End of cinematic
+      this._endCinematic();
+      return;
+    }
+
+    const page = this.pages[this.currentPage];
+    this.pageReady = false;
+    this.typewriterComplete = false;
+
+    // Run visual setup for this page
+    if (page.setup) page.setup();
+
+    // Display text with typewriter effect
+    const charDelay = page.charDelay || 25;
+    const textY = page.y || (H * 0.45);
+    const textSize = page.size || 20;
+    const textColor = page.color || '#ffffff';
+
+    this._currentPageText = this.add.text(W / 2, textY, '', {
+      fontFamily: 'monospace', fontSize: `${textSize}px`, color: textColor,
+      shadow: { offsetX: 0, offsetY: 0, color: textColor, blur: 6, fill: true },
+      wordWrap: { width: W - 100 },
+      align: 'center',
+      ...(page.style || {}),
+    });
+    this._currentPageText.setOrigin(0.5).setDepth(20);
+
+    let idx = 0;
+    this._twTimer = this.time.addEvent({
+      delay: charDelay, repeat: page.text.length - 1,
+      callback: () => {
+        if (this.skipped) return;
+        idx++;
+        this._currentPageText.setText(page.text.substring(0, idx));
+        SoundManager.get().playTypewriterClick();
+        if (idx >= page.text.length) {
+          this.typewriterComplete = true;
+          this.pageReady = true;
+          this._spaceHint.setAlpha(1);
+        }
+      },
+    });
+
+    // Show space hint immediately (always visible)
+    this._spaceHint.setAlpha(1);
+  }
+
+  /** Complete typewriter instantly (when pressing SPACE during typing) */
+  _completeTypewriter() {
+    if (!this._currentPageText || !this.pages[this.currentPage]) return;
+    const page = this.pages[this.currentPage];
+    if (this._twTimer) { this._twTimer.remove(); this._twTimer = null; }
+    this._currentPageText.setText(page.text);
+    this.typewriterComplete = true;
+    this.pageReady = true;
+  }
+
+  /** Handle SPACE/ENTER/ESC input in page mode — call in update() */
+  _handlePageInput() {
+    this._handleMuteToggle();
+    if (this.skipped) return;
+
+    // ESC → skip entire cinematic
+    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this._endCinematic();
+      return;
+    }
+
+    // SPACE or ENTER
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) || Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+      if (!this.typewriterComplete) {
+        // First press during typewriter → complete text instantly
+        this._completeTypewriter();
+      } else if (this.pageReady) {
+        // Text already complete → advance to next page
+        this._advancePage();
+      }
+    }
+  }
+
+  /** End cinematic and transition to target scene */
+  _endCinematic() {
+    if (this.skipped) return;
+    this.skipped = true;
+    MusicManager.get().stop(0.3);
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.time.delayedCall(350, () => this.scene.start(this.targetScene));
+  }
+
+  // ── Legacy methods (kept for non-page cinematics like GameIntroScene) ──
 
   _clearAct() {
     for (const obj of this.actObjects) {
@@ -62,7 +208,6 @@ export default class BaseCinematicScene extends Phaser.Scene {
     return t;
   }
 
-  /** Standard mute toggle + skip handling for 2-act cinematics */
   _handleMuteToggle() {
     if (Phaser.Input.Keyboard.JustDown(this.mKey)) {
       const muted = SoundManager.get().toggleMute();
@@ -70,23 +215,24 @@ export default class BaseCinematicScene extends Phaser.Scene {
     }
   }
 
-  /** Skip Act 1 → Act 2, or skip Act 2 → target scene */
   _handleSkip(targetScene) {
     this._handleMuteToggle();
-    if (!this.skipped && this.currentAct === 2 && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-      this.skipped = true;
-      MusicManager.get().stop(0.3)
-      this.cameras.main.fadeOut(300, 0, 0, 0);
-      this.time.delayedCall(350, () => this.scene.start(targetScene));
-    }
-    if (!this.skipped && this.currentAct === 1 && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-      this._clearAct();
-      this.cameras.main.resetFX();
-      this._startAct2();
+    if (!this.skipped && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+      const nextAct = this.currentAct + 1;
+      const nextMethod = `_startAct${nextAct}`;
+      if (typeof this[nextMethod] === 'function') {
+        this._clearAct();
+        this.cameras.main.resetFX();
+        this[nextMethod]();
+      } else {
+        this.skipped = true;
+        MusicManager.get().stop(0.3);
+        this.cameras.main.fadeOut(300, 0, 0, 0);
+        this.time.delayedCall(350, () => this.scene.start(targetScene));
+      }
     }
   }
 
-  /** Blinking "PRESS ENTER TO BEGIN" prompt */
   _showBeginPrompt(delay = 5000) {
     this.time.delayedCall(delay, () => {
       if (this.skipped) return;
@@ -98,18 +244,16 @@ export default class BaseCinematicScene extends Phaser.Scene {
     });
   }
 
-  /** Auto-advance to target scene after delay */
   _autoAdvance(delay, targetScene) {
     this.time.delayedCall(delay, () => {
       if (this.skipped) return;
       this.skipped = true;
-      MusicManager.get().stop(0.3)
+      MusicManager.get().stop(0.3);
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.time.delayedCall(350, () => this.scene.start(targetScene));
     });
   }
 
-  /** Standard Act 1 → Act 2 fade transition */
   _transitionToAct2(fadeStart = 4500, act2Start = 5000) {
     this.time.delayedCall(fadeStart, () => {
       if (this.skipped) return;
@@ -121,5 +265,32 @@ export default class BaseCinematicScene extends Phaser.Scene {
       this.cameras.main.fadeIn(400, 0, 0, 0);
       this._startAct2();
     });
+  }
+
+  _transitionToAct3(fadeStart = 3500, act3Start = 4000) {
+    this.time.delayedCall(fadeStart, () => {
+      if (this.skipped) return;
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+    });
+    this.time.delayedCall(act3Start, () => {
+      if (this.skipped) return;
+      this._clearAct();
+      this.cameras.main.fadeIn(400, 0, 0, 0);
+      this._startAct3();
+    });
+  }
+
+  /** Helper: clear page visuals (objects pushed to _pageVisuals) */
+  _clearPageVisuals() {
+    for (const obj of this._pageVisuals) {
+      if (obj && obj.destroy) obj.destroy();
+    }
+    this._pageVisuals = [];
+  }
+
+  /** Helper: add a visual object to current page tracking */
+  _addPageVisual(obj) {
+    this._pageVisuals.push(obj);
+    return obj;
   }
 }
