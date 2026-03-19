@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.4 Final Polish (Shipped: 2026-03-19)
+
+**Phases completed:** 10 phases (21-30), 10 plans
+
+**Key accomplishments:**
+- Real melodic intro music (4-act piano/strings/brass/drums composition)
+- Beard geometry fix + Star of David repositioned on chest
+- B-2 visual contrast enhancement (moonlight highlights, engine glow)
+- Level 3 missile rebalance (doubled plane speed, slower missiles, max 2)
+- Level 4 playable drone city intro + Warden boss rework + SHIFT dodge/dash
+- Flight route animations (Israel → destination) before each level
+- Spectacular victory scene (sunset, crowd, confetti, fireworks)
+- Title screen with destroyed city, glowing Maguen David, 3D text
+- Intro text pages with abstract visual backgrounds
+
+**Last phase:** 30 (Verification)
+
+---
+
 ## v1.3 Narrative & Audio (Shipped: 2026-03-19)
 
 **Phases completed:** 6 phases (15-20), 6 plans
