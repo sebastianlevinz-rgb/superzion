@@ -1328,8 +1328,8 @@ export function createSuperZionParade(scene) {
     ctx.fillRect(cx - 12, by - 68, 7, 1);
     ctx.fillRect(cx + 5, by - 68, 7, 1);
 
-    // ★ STAR OF DAVID — GOLD, prominent ★
-    starOfDavid(ctx, cx, by - 62, 7, '#FFD700', true);
+    // ★ STAR OF DAVID — GOLD, prominent, on CHEST ★
+    starOfDavid(ctx, cx, by - 70, 7, '#FFD700', true);
 
     // Utility belt
     ctx.fillStyle = '#2a2a2a';
