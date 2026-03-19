@@ -121,10 +121,10 @@ Plans:
   2. Losing any of the 6 levels shows "RETRY (R)" and "SKIP LEVEL (S)" options that work correctly when pressed
   3. End screens appear after any scene-specific victory/defeat animations complete (no overlay clipping boss disintegration, no stats skipped)
   4. No keyboard listener leaks accumulate across retries — scene shutdown cleans up all EndScreen key bindings
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md — Enhance EndScreen.js with cleanup + migrate all 6 levels to shared module (UX-01)
 
 ## Progress
 
