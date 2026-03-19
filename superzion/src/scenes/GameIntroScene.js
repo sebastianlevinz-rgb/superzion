@@ -17,9 +17,16 @@ export default class GameIntroScene extends BaseCinematicScene {
     this._initCinematic();
     generateAllParadeTextures(this);
 
-    // Start psytrance intro music
+    // Start psytrance intro music (25s of intense psytrance)
     this._introMusic = new IntroMusic();
     this._introMusic.start();
+
+    // Fallback: after intro music ends (25s), play cinematic music so there's never silence
+    this.time.delayedCall(25000, () => {
+      if (!this.skipped) {
+        MusicManager.get().playCinematicMusic(1);
+      }
+    });
 
     // ── Define narrative pages ──
     this._initPages([
