@@ -778,6 +778,9 @@ export default class GameIntroScene extends BaseCinematicScene {
     expGfx.fillStyle(0xffffff, 0.5);
     expGfx.fillCircle(x, y, 3);
 
+    // Camera shake on every explosion (120ms, subtle randomized intensity)
+    this.cameras.main.shake(120, 0.005 + Math.random() * 0.005);
+
     this.tweens.add({
       targets: expGfx,
       alpha: 0, scale: 1.8,
@@ -880,7 +883,6 @@ export default class GameIntroScene extends BaseCinematicScene {
       onComplete: () => {
         if (bomb && bomb.destroy) bomb.destroy();
         this._spawnExplosion(x, H - 85);
-        this.cameras.main.shake(100, 0.008);
       },
     });
   }
