@@ -512,6 +512,174 @@ export default class GameIntroScene extends BaseCinematicScene {
     this.tweens.add({ targets: txt, alpha: 0, duration: 300, delay: 1200 });
   }
 
+  /** Foam Beard attack — suitcase bomb thrown forward with explosion */
+  _attackFoamBeard(boss, x, y) {
+    // Suitcase projectile
+    const suitcase = this.add.graphics().setDepth(16);
+    this.actObjects.push(suitcase);
+    suitcase.fillStyle(0x664422, 1);
+    suitcase.fillRect(-6, -4, 12, 8);
+    suitcase.fillStyle(0x885533, 1);
+    suitcase.fillRect(-4, -5, 8, 1); // handle
+    suitcase.setPosition(x, y - 20);
+
+    // Boss scale pulse during throw
+    this.tweens.add({
+      targets: boss, scaleX: 0.8, scaleY: 0.8,
+      duration: 200, yoyo: true,
+    });
+
+    // Throw arc: forward and upward, then down
+    this.tweens.add({
+      targets: suitcase,
+      x: x + 120,
+      duration: 800,
+      ease: 'Linear',
+    });
+    this.tweens.add({
+      targets: suitcase,
+      y: { value: y - 60, duration: 400, ease: 'Sine.easeOut', yoyo: true },
+      duration: 800,
+      onComplete: () => {
+        if (suitcase && suitcase.destroy) suitcase.destroy();
+        // Explosion at landing point
+        const boom = this.add.circle(x + 120, y + 20, 8, 0xff6600, 0.8).setDepth(17);
+        this.actObjects.push(boom);
+        this.tweens.add({
+          targets: boom, alpha: 0, scale: 4,
+          duration: 400, ease: 'Cubic.easeOut',
+        });
+      },
+    });
+  }
+
+  /** Turbo Turban attack — pointing finger energy beam */
+  _attackTurboTurban(boss, x, y) {
+    // Boss leans forward
+    this.tweens.add({
+      targets: boss, x: x + 5,
+      duration: 300,
+    });
+
+    // Energy beam fires after lean
+    this.time.delayedCall(300, () => {
+      if (this.skipped) return;
+
+      const beam = this.add.graphics().setDepth(17);
+      this.actObjects.push(beam);
+      beam.fillStyle(0x22ff44, 0.8);
+      beam.fillRect(x + 30, y - 22, 170, 2);
+      beam.fillStyle(0x44ff66, 0.4);
+      beam.fillRect(x + 30, y - 24, 170, 6);
+
+      this.tweens.add({
+        targets: beam, alpha: 0, scaleY: 3,
+        duration: 600, ease: 'Cubic.easeOut',
+      });
+
+      // Beam particles
+      for (let i = 0; i < 4; i++) {
+        const particle = this.add.circle(
+          x + 50 + i * 40, y - 21,
+          3, 0x22ff44, 0.7
+        ).setDepth(18);
+        this.actObjects.push(particle);
+        this.tweens.add({
+          targets: particle,
+          alpha: 0, scale: 2,
+          y: y - 21 + (Math.random() - 0.5) * 20,
+          duration: 400 + i * 100,
+          ease: 'Cubic.easeOut',
+        });
+      }
+    });
+  }
+
+  /** The Warden attack — raised fist slam with shockwave */
+  _attackWarden(boss, x, y) {
+    // Boss rises up
+    this.tweens.add({
+      targets: boss, y: y - 35,
+      duration: 400, ease: 'Quad.easeOut',
+      onComplete: () => {
+        // Slam down
+        this.tweens.add({
+          targets: boss, y: y - 15,
+          duration: 200, ease: 'Bounce.easeOut',
+          onComplete: () => {
+            // Shockwave ring at slam point
+            const shockwave = this.add.circle(x, y + 30, 15, 0xcccccc, 0.6).setDepth(17);
+            this.actObjects.push(shockwave);
+            this.tweens.add({
+              targets: shockwave,
+              alpha: 0, scale: 4,
+              duration: 500, ease: 'Cubic.easeOut',
+            });
+
+            // Second smaller ring
+            const ring2 = this.add.circle(x, y + 30, 10, 0xffffff, 0.4).setDepth(17);
+            this.actObjects.push(ring2);
+            this.tweens.add({
+              targets: ring2,
+              alpha: 0, scale: 3,
+              duration: 400, delay: 100, ease: 'Cubic.easeOut',
+            });
+
+            // Small camera shake at slam
+            this.cameras.main.shake(100, 0.008);
+          },
+        });
+      },
+    });
+  }
+
+  /** Supreme Turban attack — staff crescent glow + dark energy rings */
+  _attackSupremeTurban(boss, x, y) {
+    // Boss powers up with scale pulse
+    this.tweens.add({
+      targets: boss,
+      scaleX: 0.85, scaleY: 0.85,
+      duration: 500, yoyo: true,
+      ease: 'Sine.easeInOut',
+    });
+
+    // First dark energy ring after power-up
+    this.time.delayedCall(400, () => {
+      if (this.skipped) return;
+
+      const ring1 = this.add.circle(x, y - 40, 15, 0x6600aa, 0).setDepth(17);
+      this.actObjects.push(ring1);
+      this.tweens.add({
+        targets: ring1,
+        alpha: 0.5, scale: 3,
+        duration: 800, ease: 'Cubic.easeOut',
+      });
+      this.tweens.add({
+        targets: ring1,
+        alpha: 0,
+        duration: 400, delay: 800,
+      });
+    });
+
+    // Second layered ring, slightly delayed
+    this.time.delayedCall(600, () => {
+      if (this.skipped) return;
+
+      const ring2 = this.add.circle(x, y - 40, 20, 0x220044, 0).setDepth(16);
+      this.actObjects.push(ring2);
+      this.tweens.add({
+        targets: ring2,
+        alpha: 0.4, scale: 3.5,
+        duration: 900, ease: 'Cubic.easeOut',
+      });
+      this.tweens.add({
+        targets: ring2,
+        alpha: 0,
+        duration: 400, delay: 900,
+      });
+    });
+  }
+
   /** Spawn a missile flying across the screen */
   _spawnMissile() {
     const fromLeft = Math.random() > 0.5;
