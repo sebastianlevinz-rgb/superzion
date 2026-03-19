@@ -4,7 +4,7 @@
 
 import Phaser from 'phaser';
 import { createSkyGradient, createSun, createMountainLayer, createCloudLayer, createSkylineLayer, createFacadeLayer } from '../utils/BackgroundGenerator.js';
-import { createCliffBackground, createSuperZionOnCliff } from '../utils/CinematicTextures.js';
+import { createCliffBackground, createSuperZionOnCliff, createDestroyedCityBg } from '../utils/CinematicTextures.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import DifficultyManager from '../systems/DifficultyManager.js';
@@ -34,40 +34,123 @@ export default class MenuScene extends Phaser.Scene {
       createFacadeLayer(this);
     }
 
-    // Generate cliff scene textures
+    // Generate textures (cliff textures still used by cinematics, destroyed city for title)
     createCliffBackground(this);
     createSuperZionOnCliff(this);
+    createDestroyedCityBg(this);
 
-    // Cliff background
-    this.add.image(480, 270, 'cin_cliff_bg').setDepth(-10);
+    // ── Destroyed city background (TITL-01) ──
+    this.add.image(480, 270, 'cin_destroyed_city').setDepth(-10);
 
-    // SuperZion on cliff with idle bob
+    // SuperZion silhouette on rubble with idle bob
     this.cliffHero = this.add.image(720, 340, 'cin_superzion_cliff').setDepth(-6).setScale(1.5);
     this.tweens.add({
       targets: this.cliffHero, y: 343, duration: 1500,
       yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
-    // Slow-moving cloud layer
-    this.cloudsBg = this.add.tileSprite(480, 120, 960, 200, 'clouds').setDepth(-7).setAlpha(0.3);
+    // Slow-moving cloud/smoke layer
+    this.cloudsBg = this.add.tileSprite(480, 120, 960, 200, 'clouds').setDepth(-7).setAlpha(0.25);
 
     // Light overlay for text readability
-    const overlay = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.2);
+    const overlay = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.15);
     overlay.setDepth(-4);
 
-    // Title — thick, bold, with outline, drop shadow, and golden glow
-    // Drop shadow layer (offset, dark)
-    const titleShadow = this.add.text(480 + 3, 100 + 3, 'S U P E R Z I O N', {
+    // ── Glowing Maguen David with light rays (TITL-02) ──
+    const starGfx = this.add.graphics().setDepth(7);
+    const starCx = 480, starCy = 100;
+    const starSize = 38;
+
+    // Draw the two overlapping triangles (Star of David)
+    starGfx.lineStyle(2, 0xFFD700, 0.3);
+    // Triangle pointing up
+    starGfx.beginPath();
+    starGfx.moveTo(starCx, starCy - starSize);
+    starGfx.lineTo(starCx + starSize * 0.866, starCy + starSize * 0.5);
+    starGfx.lineTo(starCx - starSize * 0.866, starCy + starSize * 0.5);
+    starGfx.closePath();
+    starGfx.strokePath();
+    // Triangle pointing down
+    starGfx.beginPath();
+    starGfx.moveTo(starCx, starCy + starSize);
+    starGfx.lineTo(starCx + starSize * 0.866, starCy - starSize * 0.5);
+    starGfx.lineTo(starCx - starSize * 0.866, starCy - starSize * 0.5);
+    starGfx.closePath();
+    starGfx.strokePath();
+
+    // Fill with semi-transparent gold
+    starGfx.fillStyle(0xFFD700, 0.08);
+    starGfx.beginPath();
+    starGfx.moveTo(starCx, starCy - starSize);
+    starGfx.lineTo(starCx + starSize * 0.866, starCy + starSize * 0.5);
+    starGfx.lineTo(starCx - starSize * 0.866, starCy + starSize * 0.5);
+    starGfx.closePath();
+    starGfx.fillPath();
+    starGfx.beginPath();
+    starGfx.moveTo(starCx, starCy + starSize);
+    starGfx.lineTo(starCx + starSize * 0.866, starCy - starSize * 0.5);
+    starGfx.lineTo(starCx - starSize * 0.866, starCy - starSize * 0.5);
+    starGfx.closePath();
+    starGfx.fillPath();
+
+    // Light rays from 6 points of the star
+    const rayGfx = this.add.graphics().setDepth(6);
+    const rayPoints = [
+      { x: starCx, y: starCy - starSize },                           // top
+      { x: starCx + starSize * 0.866, y: starCy + starSize * 0.5 },  // bottom-right
+      { x: starCx - starSize * 0.866, y: starCy + starSize * 0.5 },  // bottom-left
+      { x: starCx, y: starCy + starSize },                            // bottom
+      { x: starCx + starSize * 0.866, y: starCy - starSize * 0.5 },  // top-right
+      { x: starCx - starSize * 0.866, y: starCy - starSize * 0.5 },  // top-left
+    ];
+    for (const pt of rayPoints) {
+      const dx = pt.x - starCx;
+      const dy = pt.y - starCy;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const nx = dx / len;
+      const ny = dy / len;
+      const rayLen = 80 + Math.random() * 40;
+      // Perpendicular for width
+      const px = -ny * 3;
+      const py = nx * 3;
+      rayGfx.fillStyle(0xFFD700, 0.12);
+      rayGfx.beginPath();
+      rayGfx.moveTo(pt.x + px, pt.y + py);
+      rayGfx.lineTo(pt.x - px, pt.y - py);
+      rayGfx.lineTo(pt.x + nx * rayLen, pt.y + ny * rayLen);
+      rayGfx.closePath();
+      rayGfx.fillPath();
+    }
+    // Pulsing animation on star and rays
+    this.tweens.add({
+      targets: [starGfx, rayGfx], alpha: { from: 1, to: 0.5 },
+      duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // ── Enhanced SUPERZION title with 3D metallic effect (TITL-03) ──
+    // Heavy drop shadow (5px down for 3D depth)
+    this.add.text(480 + 4, 100 + 5, 'S U P E R Z I O N', {
       fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
       fontSize: '56px', color: '#000000',
+    }).setOrigin(0.5).setDepth(9).setAlpha(0.6);
+    // Additional shadow for depth (2px down)
+    this.add.text(480 + 2, 100 + 3, 'S U P E R Z I O N', {
+      fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+      fontSize: '56px', color: '#1a1000',
     }).setOrigin(0.5).setDepth(9).setAlpha(0.5);
-    // Black outline layer (slightly offset in all directions)
-    for (const [dx, dy] of [[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,-2],[-2,2],[2,2]]) {
+    // Thick black outline layer (3px offsets in all directions)
+    for (const [dx, dy] of [[-3,0],[3,0],[0,-3],[0,3],[-3,-3],[3,-3],[-3,3],[3,3],[-2,0],[2,0],[0,-2],[0,2]]) {
       this.add.text(480 + dx, 100 + dy, 'S U P E R Z I O N', {
         fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
         fontSize: '56px', color: '#000000',
       }).setOrigin(0.5).setDepth(9);
     }
+    // Dark gold base layer (bottom half of text for metallic depth)
+    this.add.text(480, 100, 'S U P E R Z I O N', {
+      fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+      fontSize: '56px', color: '#B8860B',
+      shadow: { offsetX: 0, offsetY: 0, color: '#B8860B', blur: 8, fill: true },
+    }).setOrigin(0.5).setDepth(9.5);
     // Main gold title
     const title = this.add.text(480, 100, 'S U P E R Z I O N', {
       fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
@@ -75,8 +158,19 @@ export default class MenuScene extends Phaser.Scene {
       shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 30, fill: true },
     });
     title.setOrigin(0.5); title.setDepth(10);
+    // Metallic reflection highlight (lighter gold line across middle, pulses)
+    const titleHighlight = this.add.text(480, 98, 'S U P E R Z I O N', {
+      fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
+      fontSize: '56px', color: '#FFE878',
+      shadow: { offsetX: 0, offsetY: 0, color: '#FFEE88', blur: 4, fill: true },
+    }).setOrigin(0.5).setDepth(10.5).setAlpha(0.3);
+    // Subtle metallic reflection pulse
+    this.tweens.add({
+      targets: titleHighlight, alpha: { from: 0.15, to: 0.4 },
+      duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
     // Golden glow bloom layer (larger, blurred)
-    const titleGlow = this.add.text(480, 100, 'S U P E R Z I O N', {
+    this.add.text(480, 100, 'S U P E R Z I O N', {
       fontFamily: '"Impact", "Arial Black", "Trebuchet MS", sans-serif',
       fontSize: '56px', color: '#FFD700',
       shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 60, fill: true },
@@ -84,6 +178,44 @@ export default class MenuScene extends Phaser.Scene {
 
     // Line
     this.add.rectangle(480, 145, 280, 2, 0x00e5ff, 0.6).setDepth(10);
+
+    // ── Ember/spark particles rising from destruction (TITL-04) ──
+    this.embers = [];
+    this._spawnEmber = () => {
+      const ember = this.add.circle(
+        100 + Math.random() * 760,
+        420 + Math.random() * 120,
+        1 + Math.random() * 2,
+        Phaser.Display.Color.GetColor(
+          200 + Math.floor(Math.random() * 55),
+          80 + Math.floor(Math.random() * 120),
+          10 + Math.floor(Math.random() * 30)
+        ),
+        0.7 + Math.random() * 0.3
+      ).setDepth(5);
+      this.tweens.add({
+        targets: ember,
+        y: ember.y - 200 - Math.random() * 200,
+        x: ember.x + (Math.random() - 0.5) * 80,
+        alpha: 0,
+        duration: 3000 + Math.random() * 3000,
+        ease: 'Sine.easeOut',
+        onComplete: () => { ember.destroy(); },
+      });
+    };
+    // Spawn initial batch
+    for (let i = 0; i < 8; i++) this._spawnEmber();
+    // Continuous spawning (~3 per second)
+    this.time.addEvent({
+      delay: 350,
+      callback: this._spawnEmber,
+      loop: true,
+    });
+
+    // ── Screen shake on title appear (TITL-05) ──
+    this.time.delayedCall(200, () => {
+      this.cameras.main.shake(300, 0.008);
+    });
 
     // Completion indicator + hard mode toggle
     const dm = DifficultyManager.get();

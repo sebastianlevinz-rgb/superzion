@@ -415,7 +415,175 @@ export function createDocumentsTable(scene) {
   scene.textures.addCanvas('cin_documents_table', c);
 }
 
-// ── 7. Cliff sunset background (960×540) ───────────────────────
+// ── 7a. Destroyed city background for title screen (960×540) ────
+export function createDestroyedCityBg(scene) {
+  if (scene.textures.exists('cin_destroyed_city')) return;
+  const c = document.createElement('canvas');
+  c.width = 960; c.height = 540;
+  const ctx = c.getContext('2d');
+
+  // Sky gradient: dark top transitioning to golden glow at horizon
+  const sky = ctx.createLinearGradient(0, 0, 0, 400);
+  sky.addColorStop(0, '#0c0808');
+  sky.addColorStop(0.25, '#1a0e08');
+  sky.addColorStop(0.5, '#3a1a08');
+  sky.addColorStop(0.7, '#6a3010');
+  sky.addColorStop(0.85, '#aa6820');
+  sky.addColorStop(1, '#dda030');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 960, 400);
+
+  // Strong golden light source from the right side
+  const goldLight = ctx.createRadialGradient(850, 320, 20, 850, 320, 400);
+  goldLight.addColorStop(0, 'rgba(255,210,80,0.5)');
+  goldLight.addColorStop(0.2, 'rgba(255,180,50,0.3)');
+  goldLight.addColorStop(0.5, 'rgba(200,120,20,0.1)');
+  goldLight.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = goldLight;
+  ctx.fillRect(400, 0, 560, 540);
+
+  // Golden rays cutting through destruction (from right light source)
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  for (let r = 0; r < 8; r++) {
+    const angle = -0.6 + r * 0.18;
+    ctx.save();
+    ctx.translate(850, 320);
+    ctx.rotate(angle);
+    const rayGrad = ctx.createLinearGradient(0, 0, -800, 0);
+    rayGrad.addColorStop(0, 'rgba(255,215,0,1)');
+    rayGrad.addColorStop(0.3, 'rgba(255,180,40,0.5)');
+    rayGrad.addColorStop(1, 'rgba(255,150,30,0)');
+    ctx.fillStyle = rayGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, -4);
+    ctx.lineTo(-800, -25 - r * 6);
+    ctx.lineTo(-800, 25 + r * 6);
+    ctx.lineTo(0, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // Ground: dark rubble base
+  const ground = ctx.createLinearGradient(0, 380, 0, 540);
+  ground.addColorStop(0, '#1a1008');
+  ground.addColorStop(0.5, '#0e0804');
+  ground.addColorStop(1, '#080402');
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 380, 960, 160);
+
+  // Rubble mound silhouette (uneven ground line)
+  ctx.fillStyle = '#0e0804';
+  ctx.beginPath();
+  ctx.moveTo(0, 400);
+  const rubblePoints = [0,395, 40,388, 80,392, 120,385, 160,390, 200,383, 250,387,
+    300,380, 340,386, 380,378, 420,384, 460,376, 500,382, 540,375,
+    580,380, 620,372, 660,378, 700,370, 740,376, 780,368, 820,374,
+    860,366, 900,372, 940,365, 960,370];
+  for (let i = 0; i < rubblePoints.length; i += 2) {
+    ctx.lineTo(rubblePoints[i], rubblePoints[i+1]);
+  }
+  ctx.lineTo(960, 540); ctx.lineTo(0, 540);
+  ctx.closePath(); ctx.fill();
+
+  // Warm highlights on rubble where golden light hits (right side)
+  const rubbleHighlight = ctx.createLinearGradient(960, 0, 400, 0);
+  rubbleHighlight.addColorStop(0, 'rgba(200,140,40,0.15)');
+  rubbleHighlight.addColorStop(0.5, 'rgba(160,100,20,0.06)');
+  rubbleHighlight.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = rubbleHighlight;
+  ctx.fillRect(0, 370, 960, 170);
+
+  // Ruined buildings — dark silhouettes with jagged/crumbling tops
+  const ruins = [
+    { x: 20, w: 60, h: 200, jag: [0,-8,15,-20,30,-5,45,-18,60,-2] },
+    { x: 100, w: 50, h: 240, jag: [0,-5,12,-22,25,-8,38,-25,50,-3] },
+    { x: 170, w: 70, h: 180, jag: [0,-3,18,-15,35,-28,50,-10,70,-6] },
+    { x: 260, w: 55, h: 260, jag: [0,-10,14,-30,28,-12,42,-26,55,-4] },
+    { x: 335, w: 65, h: 210, jag: [0,-6,16,-24,32,-8,48,-20,65,-3] },
+    { x: 420, w: 50, h: 280, jag: [0,-4,13,-18,25,-32,38,-14,50,-6] },
+    { x: 490, w: 60, h: 190, jag: [0,-12,15,-6,30,-22,45,-8,60,-15] },
+    { x: 570, w: 55, h: 230, jag: [0,-8,14,-26,28,-10,42,-22,55,-5] },
+    { x: 645, w: 65, h: 170, jag: [0,-5,16,-18,32,-28,48,-12,65,-3] },
+    { x: 730, w: 50, h: 250, jag: [0,-10,12,-20,25,-6,38,-24,50,-8] },
+    { x: 800, w: 70, h: 200, jag: [0,-6,18,-22,35,-10,52,-28,70,-4] },
+    { x: 890, w: 70, h: 220, jag: [0,-8,18,-16,35,-24,52,-6,70,-12] },
+  ];
+  for (const b of ruins) {
+    const by = 390 - b.h;
+    ctx.fillStyle = '#0a0604';
+    ctx.beginPath();
+    ctx.moveTo(b.x, 390);
+    ctx.lineTo(b.x, by);
+    // Jagged crumbling top
+    for (let j = 0; j < b.jag.length; j += 2) {
+      ctx.lineTo(b.x + b.jag[j], by + b.jag[j+1]);
+    }
+    ctx.lineTo(b.x + b.w, 390);
+    ctx.closePath();
+    ctx.fill();
+
+    // Broken window holes — dark rectangles scattered on buildings
+    for (let wy = by + 20; wy < 380; wy += 18 + Math.floor(Math.random() * 8)) {
+      for (let wx = b.x + 6; wx < b.x + b.w - 8; wx += 12 + Math.floor(Math.random() * 6)) {
+        if (Math.random() > 0.35) {
+          ctx.fillStyle = `rgba(0,0,0,${0.3 + Math.random() * 0.3})`;
+          ctx.fillRect(wx, wy, 5 + Math.floor(Math.random() * 3), 6 + Math.floor(Math.random() * 4));
+        }
+      }
+    }
+  }
+
+  // Fire glow spots scattered among ruins
+  const fires = [
+    { x: 80, y: 365 }, { x: 220, y: 358 }, { x: 370, y: 362 },
+    { x: 510, y: 355 }, { x: 600, y: 368 }, { x: 750, y: 350 },
+    { x: 150, y: 372 }, { x: 450, y: 375 }, { x: 680, y: 360 },
+    { x: 850, y: 358 }, { x: 320, y: 370 }, { x: 560, y: 378 },
+  ];
+  for (const f of fires) {
+    // Outer glow
+    const fg = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, 25);
+    fg.addColorStop(0, 'rgba(255,120,20,0.35)');
+    fg.addColorStop(0.4, 'rgba(255,80,10,0.12)');
+    fg.addColorStop(1, 'rgba(255,40,0,0)');
+    ctx.fillStyle = fg;
+    ctx.fillRect(f.x - 25, f.y - 25, 50, 50);
+    // Bright core
+    ctx.fillStyle = 'rgba(255,200,60,0.5)';
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Smoke columns rising from ruins (semi-transparent gray)
+  const smokes = [120, 290, 460, 620, 780, 900];
+  for (const sx of smokes) {
+    for (let sy = 350; sy > 80; sy -= 15) {
+      const drift = (350 - sy) * 0.08;
+      const size = 12 + (350 - sy) * 0.08;
+      const alpha = 0.04 * (1 - (350 - sy) / 300);
+      ctx.fillStyle = `rgba(80,70,60,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(sx + drift + Math.sin(sy * 0.05) * 8, sy, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Haze at the horizon (warm atmospheric glow)
+  const haze = ctx.createLinearGradient(0, 340, 0, 420);
+  haze.addColorStop(0, 'rgba(180,100,30,0.12)');
+  haze.addColorStop(0.5, 'rgba(140,80,20,0.06)');
+  haze.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, 340, 960, 80);
+
+  scene.textures.addCanvas('cin_destroyed_city', c);
+}
+
+// ── 7b. Cliff sunset background (960×540) ───────────────────────
 export function createCliffBackground(scene) {
   if (scene.textures.exists('cin_cliff_bg')) return;
   const c = document.createElement('canvas');
