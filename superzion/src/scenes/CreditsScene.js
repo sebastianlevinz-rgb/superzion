@@ -28,7 +28,7 @@ export default class CreditsScene extends BaseCinematicScene {
       '',
       'SUPERZION',
       '',
-      '"A game about one soldier\'s impossible mission"',
+      '"THEY FIGHT TO CONQUER. WE FIGHT TO EXIST."',
       '',
       '',
       '— — — — —',
