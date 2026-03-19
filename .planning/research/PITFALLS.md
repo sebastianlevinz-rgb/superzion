@@ -1,153 +1,133 @@
 # Domain Pitfalls
 
-**Domain:** Phaser 3 game polish — procedural audio, cinematics, sprite animation
-**Researched:** 2026-03-05
-**Context:** Subsequent milestone adding cinematic intro, richer audio, and smoother sprites to an existing 6-level Phaser 3 stealth game. Codebase has known structural debt: monolithic scenes (1000-1500+ lines), unbounded audio node creation, no test infrastructure, and procedural texture regeneration on every scene create.
+**Domain:** Procedural game polish pass (sprite redesign, audio synthesis, UX) on existing Phaser 3 codebase
+**Researched:** 2026-03-19
+**Applies to:** SuperZion v1.1 Polish Pass (8 targeted fixes)
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause audio corruption, visual artifacts, or full rewrites.
+Mistakes that cause regressions, broken scenes, or require major rework.
 
 ---
 
-### Pitfall 1: Unbounded AudioBufferSourceNode Accumulation
+### Pitfall 1: Sprite Identity Fragmentation Across Scene-Specific Texture Systems
 
-**What goes wrong:**
-Every looping WebAudio sound in Phaser 3 creates a new `AudioBufferSourceNode` on each loop end rather than reusing one. In Chrome, these nodes are not garbage-collected while the sound is logically "still playing." Over a session with ambient music that loops 50-100 times, the sound graph grows without bound. Memory climbs to several hundred MB and audio glitches begin. On mobile devices, browsers terminate the tab.
+**Affects:** Fix #1 (Player sprite redesign), Fix #3 (Restore bosses/flags), Fix #4 (Final intro screen)
 
-**Why it happens:**
-`AudioBufferSourceNode` is a one-shot object by design in the Web Audio API — it can only be `start()`-ed once. Phaser's WebAudioSound implementation creates a fresh node per loop pass. If the old node is not explicitly `stop()`-ed and `disconnect()`-ed before being dereferenced, the browser's GC cannot collect it (Chrome in particular holds strong references through the audio graph). Phaser issue #3895 documents each loop end creating a new node; issue #2280 confirms massive Chrome memory leaks from simultaneous stop-and-disconnect timing.
+**What goes wrong:** The codebase generates player/character textures independently in at least 5 separate texture files (`BombermanTextures.js`, `PortSwapTextures.js`, `ParadeTextures.js`, `CinematicTextures.js`, `SpriteGenerator.js`), each with its own drawing functions, palettes, and proportions. When redesigning the player sprite to look like a Mossad agent instead of cubes, the natural approach is to update `SpriteGenerator.js` (which already contains a detailed 572-line Mossad agent sprite) and assume it propagates. It does not. Each scene has its own texture generator that independently draws a player character. The agent in `CinematicTextures.js` already has its own palette (`PAL`) that is a subset copy, not a shared reference. `BombermanTextures.js` draws a completely separate `bm_player_${dir}_${frame}` set of directional walk sprites. `PortSwapTextures.js` draws `ps_player_${dir}_${frame}`. `ParadeTextures.js` draws a parade hero. None of these import from `SpriteGenerator.js` -- it is currently orphaned (zero imports across the entire codebase).
+
+**Why it happens:** The game was built organically, level by level. Each level has different view perspectives (top-down, side-scrolling, front-facing) requiring different sprite orientations and scales. There was never a shared sprite system; each scene's texture file is self-contained.
 
 **Consequences:**
-- Rising memory profile throughout a session (visible in Chrome DevTools Memory tab)
-- Audio stutter at ~400+ accumulated nodes on mobile (reported after ~3000 SFX plays)
-- Browser tab crash on mobile before level 6 is reached
-- Adding per-level trance tracks that loop continuously accelerates the leak dramatically
-
-**Warning signs:**
-- Chrome DevTools `Detached AudioBufferSourceNode` count rising in heap snapshots
-- Audio category in `chrome://tracing` shows growing node count
-- `performance.memory.usedJSHeapSize` climbing 1-3 MB per music loop iteration
-- Console: `The AudioContext was not allowed to start` on page revisit (context leaked across page loads in dev)
+- Updating one texture file leaves the player looking different (or still cube-shaped) in other scenes
+- The "Mossad agent" appearance from `SpriteGenerator.js` (128x128, side-view, detailed with 47-color palette) is incompatible with the top-down 32x32 sprites needed by Level 1 (`BombermanTextures`) and Level 2 (`PortSwapTextures`)
+- Proportions that look good at 128px break at 32px (fine details like stubble, Star of David, pocket stitching become noise)
+- The cinematic hero sprite (128x192 in `CinematicTextures.js`) has yet another aspect ratio
 
 **Prevention:**
-1. Call `sound.destroy()` explicitly on every `WebAudioSound` instance when it is no longer needed — do not rely on scene `shutdown` alone, because the SoundManager is global and survives scene transitions.
-2. In `MusicManager`/`SoundManager` wrappers, maintain a hard reference set; drain it on track change: call `stop()` then `destroy()` in sequence with a one-frame gap (a single `setTimeout(0)` or `this.time.delayedCall(0, ...)`) to avoid the Chrome simultaneous-stop-disconnect crash (issue #2280).
-3. Pool ambient SFX: create N instances at scene boot, cycle through them rather than creating new ones per trigger.
-4. Do not use `add.sound()` inside update loops or particle callbacks — this is the most common source of runaway creation.
+1. Audit every texture file that draws a player character BEFORE writing any code. Map: which files, which texture keys, which dimensions, which view angle
+2. Create a shared palette module (extract `PAL` from `SpriteGenerator.js`) that all texture files import, ensuring color consistency even when proportions differ
+3. Accept that the same character at different scales needs different levels of detail: 128px gets stubble and pocket stitching, 32px gets silhouette and color blocks only, 192px cinematic gets the full treatment
+4. Test by playing through every level transition after each sprite change -- the intro, all 6 levels, and the victory scene
 
-**Phase mapping:** Address in the audio architecture phase before adding new trance tracks. Retrofitting after adding more music is far harder.
-
-**Sources:**
-- [Web Audio Sound memory leak — Phaser issue #2280](https://github.com/phaserjs/phaser/issues/2280)
-- [Each loop creates new AudioBufferSourceNode — Phaser issue #3895](https://github.com/photonstorm/phaser/issues/3895)
-- [Memory leak in Phaser.Sound using WebAudio — issue #2066](https://github.com/photonstorm/phaser/issues/2066)
+**Detection (warning signs):**
+- `SpriteGenerator.js` still has zero imports after "completing" the sprite redesign
+- Player looks different between the intro cinematic and Level 1
+- Star of David is invisible or garbled at small sprite sizes
 
 ---
 
-### Pitfall 2: AudioContext Suspended Before Cinematic Intro Plays
+### Pitfall 2: Web Audio Node Accumulation and Clipping in Procedural Music
 
-**What goes wrong:**
-The animated intro and cinematic scenes play audio immediately on scene load. Browsers (Chrome 71+, Safari, all mobile browsers) suspend the `AudioContext` until a user gesture has been received. If the cinematic begins playing music/narration before the user has clicked or tapped, the audio is silently dropped. The tween sequence completes, but the player hears nothing. On some mobile browsers the warning `The AudioContext was not allowed to start` appears in the console and the context enters a permanent `suspended` state for that session.
+**Affects:** Fix #2 (Intro psytrance music + SFX)
+
+**What goes wrong:** `IntroMusic.js` (945 lines) pre-schedules 25 seconds of music across 3 acts using raw Web Audio API oscillators. Each `_psyKick()` creates 4 nodes (2 oscillators + 2 gain nodes). Each `_acidBass()` creates 5 nodes (2 oscillators + subGain + filter + gain). Each `_hihat()` creates 3 nodes. The `_track()` method pushes every created node into a flat `_nodes` array. At 145 BPM over 25 seconds, this generates hundreds of scheduled oscillator/gain/filter nodes. When combined with synchronized SFX (missile whoosh, explosions, doppler), the mix easily exceeds 0dB and clips. The master gain is set to 0.38, but layered psytrance (kick + bass + hi-hat + lead + pad) plus SFX all summing together will exceed headroom.
 
 **Why it happens:**
-The `AudioContext` in Phaser 3 is lazily initialized and resumed on first user interaction. Cinematic scenes that auto-play on game boot (intro logos, story text) execute before any gesture event. The `UNLOCKED` event from `this.sound` fires asynchronously and is not awaited by the scene's tween sequence.
+- Web Audio oscillators cannot be reused after stopping -- each note requires new node creation. This is a fundamental API constraint, not a bug.
+- The `_nodes` array grows unboundedly during the 25-second intro. While `stop()` calls `disconnect()` on all nodes, if stop is never called (e.g., scene skip during garbage collection), nodes persist in memory.
+- No DynamicsCompressorNode exists in the signal chain. The signal path is: individual gains -> `_gainNode` (0.38) -> `musicGain` (0.5) -> `masterGain` (1.0) -> `destination`. Multiple simultaneous voices easily sum above 1.0 before the destination.
+- Chromium has documented GC issues with Web Audio nodes (Chromium bug #576484), where stopped/disconnected nodes may not be collected promptly.
 
 **Consequences:**
-- Intro cinematic plays in complete silence on first load
-- Per-level trance music never starts on mobile
-- Subsequent `sound.play()` calls may also silently fail if the context stays suspended
-
-**Warning signs:**
-- `this.sound.locked === true` when cinematic `create()` runs
-- Console warning: `AudioContext was not allowed to start`
-- Audio works in desktop dev environment but fails on all mobile testing
-- Music appears to play (no errors) but `analyserNode` shows flat signal
+- Audible clipping/distortion during intense sections (Act 1 with explosions + acid bass + kick)
+- On low-end devices, scheduling hundreds of future nodes at scene start may cause a brief stutter or frame drop
+- If the user skips the intro rapidly, the `stop()` method's try/catch loop over hundreds of nodes adds latency to the skip
+- Memory accumulation if the intro is replayed multiple times (return to menu -> play intro again)
 
 **Prevention:**
-1. Gate all cinematic audio on `this.sound.locked`: listen for `Phaser.Sound.Events.UNLOCKED` before calling `music.play()`.
-2. For the intro scene specifically: begin cinematic visuals immediately, but delay audio start with `this.sound.once('unlocked', () => music.play())`. Show a subtle "tap to continue" prompt as a fallback if the gesture hasn't arrived within 2 seconds.
-3. Never auto-resume `AudioContext` with synthetic dispatch of click events — this is blocked by current browser policy and will throw.
-4. Test on a real mobile device early; the desktop DevTools "mobile simulation" does NOT enforce gesture policy reliably.
+1. Insert a `DynamicsCompressorNode` between `_gainNode` and `musicGain` with threshold around -6dB, ratio 4:1. This is the standard Web Audio solution for procedural multi-voice mixing.
+2. Reduce individual voice volumes: kick 0.35 instead of 0.45, acid bass 0.12 instead of 0.18. Let the compressor handle peaks rather than relying on headroom math.
+3. On `stop()`, null out the `_nodes` array after the disconnect loop (currently it does `this._nodes = []` which is correct, but verify no closures retain old references).
+4. Batch-schedule nodes by act rather than all at once. Schedule Act 2 nodes at the 7-second mark, Act 3 at the 15-second mark. This spreads the allocation cost and allows earlier acts' nodes to be GC'd.
+5. Test on Chrome DevTools Web Audio tab -- inspect the audio graph for orphaned nodes after skip.
 
-**Phase mapping:** Must be addressed in the cinematic intro phase. A failing audio intro is the first thing players experience.
-
-**Sources:**
-- [Phaser 3 audio docs — locked property and UNLOCKED event](https://docs.phaser.io/phaser/concepts/audio)
-- [AudioContext was not allowed to start — Phaser forum](https://phaser.discourse.group/t/audiocontext-was-not-allowed-to-start/795)
-- [Warning: AudioContext not allowed — Phaser forum thread](https://phaser.discourse.group/t/warning-the-audiocontext-was-not-allowed-to-start/1334)
+**Detection (warning signs):**
+- Crackling or harsh sound during the intro's loudest moments
+- `_nodes.length` exceeds 300 by the end of the 25-second intro
+- Frame rate dip in the first 500ms of the intro scene
+- Chrome DevTools console warnings about AudioContext or node limits
 
 ---
 
-### Pitfall 3: Procedural Texture Regeneration on Every Scene Create
+### Pitfall 3: Keyboard Input Listener Leaks on Scene Transitions
 
-**What goes wrong:**
-When `Graphics.generateTexture()` is called inside a scene's `create()` method and that scene is restarted or re-entered (e.g., player dies and retries a level), the texture is regenerated from scratch. In the existing codebase this happens for every level scene. The `generateTexture()` call flushes the WebGL pipeline, rasterizes the graphics object off-screen, uploads the bitmap to GPU memory, and discards the previous GPU texture — all in the main thread. On mid-range hardware this adds 100-300ms of jank on scene start. Crucially, the old texture key is overwritten in the TextureManager but the previous GPU allocation may not be freed immediately, causing a spike in VRAM.
+**Affects:** Fix #7 (End-of-level screens), Fix #8 (Controls overlay), all scene transitions
+
+**What goes wrong:** The `EndScreen.js` registers keyboard listeners via `scene.input.keyboard.addKey('R')` and then `.on('down', callback)` inside a `delayedCall`. These listeners bind to the scene's keyboard plugin but are never explicitly removed. Phaser 3 has a documented issue (GitHub issue #3489) where keyboard listeners remain active after scene transitions. When `_transitionTo` starts a new scene, the old scene's keyboard listeners may still fire. The `ControlsOverlay.js` creates Phaser game objects (rectangles, text) and tweens that could persist if the scene transitions before the tween completes or before the `delayedCall` fires.
 
 **Why it happens:**
-Phaser 3's `TextureManager` does not prevent overwriting an existing key — it silently replaces it. Developers who call `generateTexture('my-key', ...)` across scene restarts assume the old texture was freed, but the GPU deallocation is deferred. The underlying `Graphics` object is also expensive to rasterize (each shape is CPU-rendered to a canvas, then uploaded).
+- `addKey()` in a delayed callback: if the scene transitions before the 500ms delay, the callback still fires and adds a key listener to a scene that is shutting down
+- Three scenes (`DroneScene`, `B2BomberScene`, `BossScene`) have their own custom victory/defeat screens rather than using the shared `EndScreen.js`. Converting them to use the shared module requires understanding each scene's custom cleanup logic.
+- The `ControlsOverlay` creates a `delayedCall` for transitioning from big overlay to bar. If the scene ends during those 3 seconds, the callback fires on a destroyed scene.
 
 **Consequences:**
-- Visible frame drop (200-400ms) every time a level loads or restarts
-- VRAM usage climbs across level transitions, especially with level progression
-- Adding cinematics with new procedural graphics compounds the spike
-
-**Warning signs:**
-- Chrome DevTools Performance tab shows a `generateTexture` spike in `create()`
-- GPU memory (in `chrome://gpu-internals`) climbs with each level transition
-- `TextureManager` console warning (in debug builds): texture key already exists
-- Frame times spike to 200ms+ on first frame of each level
+- Pressing 'R' or 'S' after transitioning to a new scene could restart/skip the PREVIOUS scene
+- Console errors from operating on destroyed game objects
+- Ghost key listeners accumulating across scene replays (retry -> retry -> retry)
 
 **Prevention:**
-1. Generate procedural textures exactly once at global boot (in a `Preload` or `Boot` scene), not inside level-specific `create()`.
-2. Check existence before generating: `if (!this.textures.exists('key')) { graphics.generateTexture('key', w, h); }` — this prevents regeneration on scene restart.
-3. For textures that must vary per level, use a naming scheme (`'wall-level-2'`) so old textures persist and are reused without regeneration.
-4. Consider migrating to static PNG assets for backgrounds/tiles that currently use procedural Graphics — the GPU upload cost is the same, but authoring in Texture Packer eliminates runtime CPU cost entirely.
-5. Destroy the `Graphics` object after `generateTexture()` — it is no longer needed and occupies memory: `graphics.destroy()`.
+1. In `EndScreen.js`, store key references and remove them in a cleanup function. Return the cleanup function so scenes can call it in their `shutdown` event.
+2. Guard all `delayedCall` callbacks with `if (this.scene.isActive())` or `if (!this.scene.scene.isActive(this.scene.scene.key))` checks.
+3. For the 3 scenes with custom victory screens, add the shared `EndScreen.js` import but call it from within the existing `_showVictory()` method rather than replacing the entire flow. This preserves scene-specific stats calculation while standardizing the UI.
+4. Verify by rapidly pressing ENTER during end-of-level screens to ensure no double-transitions occur.
 
-**Phase mapping:** Address in a performance/foundation phase before adding cinematic scenes that add even more procedural textures.
-
-**Sources:**
-- [Phaser 3 Graphics docs — generateTexture baking advice](https://docs.phaser.io/phaser/concepts/gameobjects/graphics)
-- [Rendering performance problem — Phaser forum (3ms to 45ms)](https://phaser.discourse.group/t/rendering-performance-problem/11069)
-- [generateTexture always generates same Graphics object — issue #3241](https://github.com/phaserjs/phaser/issues/3241)
+**Detection (warning signs):**
+- Console errors mentioning "Cannot read property of null" or "destroy on destroyed object"
+- Pressing a key in one scene triggers behavior from a different scene
+- Multiple `_transitionTo` calls fire for a single key press
 
 ---
 
-### Pitfall 4: Simultaneous Particle Tweens Causing Frame Budget Collapse
+### Pitfall 4: Restoring Lost Content Without Understanding Why It Was Lost
 
-**What goes wrong:**
-With 100+ simultaneous tweens on particle-related game objects, the `TweenManager.update()` call in each game step becomes the dominant CPU cost. The existing codebase already exhibits stuttering at this threshold. Adding cinematic intro effects (text fade-ins, ambient particles, screen overlays) with separate tweens per object pushes the count to 150-200+, dropping frame time from ~6ms to 20-30ms — below 60fps on most hardware.
+**Affects:** Fix #3 (Restore intro bosses and flags), Fix #4 (Final intro screen)
+
+**What goes wrong:** The PROJECT.md states bosses and flags were "lost in some refactor." The temptation is to re-add boss sprites and flag animations to `GameIntroScene.js` without understanding the refactor that removed them. The `_bossFlashEntry()` method is called in `GameIntroScene.js` at lines 87, 95, etc., but the sprites it references may no longer exist as texture keys. `ParadeTextures.js` still has `createIranFlag`, `wavingSheet`, and boss sprite functions -- the texture generators exist, but the intro scene may have stopped calling `generateAllParadeTextures()` correctly, or the texture keys may have been renamed.
 
 **Why it happens:**
-Phaser's `TweenManager` iterates all active tweens sequentially on every game step. Each tween evaluates its easing function, updates all target properties, and checks completion. There is no batching or instancing. Adding per-particle tweens — which is the naively obvious approach — multiplies the per-step cost linearly.
+- `GameIntroScene.js` imports and calls `generateAllParadeTextures(this)` in `create()`, so the texture generation code IS being called. The loss is more likely in the rendering/display code within the acts, not the texture generation.
+- During the refactor that added `IntroMusic`, the act structure may have been reorganized, and boss sprite display code could have been commented out or replaced with simpler placeholders.
+- Boss sprites might be generated but never used as image sources (the texture exists but no `this.add.image()` or `this.add.sprite()` references it).
 
 **Consequences:**
-- Cinematic intro stutters visibly during particle flourishes
-- Level start transitions feel unpolished despite expensive visual work
-- Stuttering disguises itself as "graphical" but is actually CPU/tween budget exhaustion
-
-**Warning signs:**
-- Chrome DevTools Performance: `TweenManager.update` > 5ms per frame
-- `this.tweens.getTweens().length` in `update()` exceeds 80
-- Frame time stable at 60fps in empty rooms, stutters during particles/cinematics
-- Particle emitter count multiplied by animation states = number of active tweens
+- Re-adding boss sprites without checking if texture keys still match causes "Texture not found" errors
+- Boss sprites from `ParadeTextures.js` were designed for a parade context (walking, side-view); the intro scene might need different poses (attacking, shooting) that do not exist
+- Adding waving flag animations alongside the existing smoke/explosion effects creates z-depth conflicts
+- Restored content breaks the timing of the 25-second intro music, which is synchronized to specific act durations
 
 **Prevention:**
-1. Do not tween individual particles. Tween only the `ParticleEmitter` properties directly (supported in Phaser 3.60+: `particleAlpha`, `particleScaleX`, etc.) — one tween controls all particles in the emitter.
-2. For cinematic text/image sequences, use a single `Timeline` (Phaser 3.60+ `this.add.timeline()`). A Timeline sequences events with one update call, not N separate tweens.
-3. Cap total concurrent tweens: audit with `this.tweens.getTweens().length` during development. Set a budget of 30-40 tweens max for gameplay; 20 for cinematics on top.
-4. Use `ParticleEmitter.setAlpha()` / `setScale()` property curves instead of tweens for particle lifecycle animation — these are evaluated per-particle internally with no TweenManager overhead.
-5. For screen-flash and overlay effects, prefer `this.cameras.main.flash()` and `this.cameras.main.fade()` over tweening a Rectangle alpha — camera effects are a single GPU post-process, not a tween.
+1. Before writing any code, audit `ParadeTextures.js` for all exported texture-generation functions and their output keys. List every key.
+2. In `GameIntroScene.js`, search for references to those keys (e.g., `'parade_boss_'`, `'flag_iran'`). If the keys are generated but never used as sprite sources, the loss is in the display code, not the generation code.
+3. When restoring bosses, match the intro's act timing: Act 1 boss appearances at 1.5s, 3.5s, 5.5s, 7s (these are already timed in the code). Ensure the visual boss display code runs at these exact points.
+4. Test each act in isolation -- skip directly to Act 2 or Act 3 to verify bosses and flags display independently from the full sequence.
 
-**Phase mapping:** Audit and cap in the cinematic intro phase before shipping; re-audit when adding per-level SFX triggers.
-
-**Sources:**
-- [Tweens performance — Phaser forum](https://phaser.discourse.group/t/tweens-performance/10930)
-- [Phaser 3.60 new Timeline class — GitHub discussion](https://github.com/phaserjs/phaser/discussions/6452)
-- [Phaser 3 Tweens concepts](https://docs.phaser.io/phaser/concepts/tweens)
+**Detection (warning signs):**
+- `generateAllParadeTextures()` runs without errors but no boss sprites are visible
+- Console shows "Texture key 'X' not found" warnings
+- Flag animations play but overlap with text or boss sprites due to depth conflicts
 
 ---
 
@@ -155,171 +135,120 @@ Phaser's `TweenManager` iterates all active tweens sequentially on every game st
 
 ---
 
-### Pitfall 5: Scene Transition Flicker and Incomplete Fade-In
+### Pitfall 5: Procedural Sprite Proportions That Look Wrong Despite Being Geometrically Correct
 
-**What goes wrong:**
-Camera `fadeOut()` into a scene transition and `fadeIn()` in the new scene leaves a 1-2 frame flash of the old scene content, or the new scene appears briefly at full brightness before the fade-in begins. Additionally, after `fadeIn()` completes, the camera sometimes remains slightly tinted (not fully transparent), causing the entire scene to look desaturated until `camera.resetFX()` is called.
+**Affects:** Fix #1 (Player sprite redesign), Fix #3 (Boss sprites)
 
-**Why it happens:**
-The fade effect's duration timer starts at the moment the transition is initiated, not when the target scene's `create()` completes. If the target scene has asset loading or expensive `create()` work, the timer has already elapsed before the scene is visually ready, causing either a visible flash or a missed fade. The incomplete transparency bug (issue #3833) is a known Phaser defect in versions prior to approximately 3.55.
+**What goes wrong:** The existing `SpriteGenerator.js` draws a very detailed 128x128 Mossad agent with anatomically-plausible proportions (head at pixel-level detail, torso with V-taper, individual fingers). When this character is scaled down to game-view sizes (32x32 for top-down, ~48px tall for side-scrolling), the proportions that look correct at full size become unrecognizable. A head that is 24px wide at 128px scale becomes 6px at 32px -- too small to show eyes, hair, and stubble. The detailed vest stitching becomes a gray blur.
 
-**Consequences:**
-- Cinematic transitions between intro, menu, and level scenes look amateurish
-- Per-level trance music may start playing during the flash frame before video is ready
-- Players on slow hardware (where create() takes longer) see worse artifacts
-
-**Warning signs:**
-- Brief white or gameplay-colored frame visible during scene change
-- Scene appears slightly gray/desaturated after a fadeIn completes
-- Music starts before the fade-in animation does on slow devices
+**What goes wrong specifically:**
+- Human heads in pixel art should be proportionally LARGER than anatomically correct (roughly 1/4 to 1/3 of total height) for readability at game scale
+- The current SpriteGenerator uses realistic proportions (~1/7 head-to-body ratio based on the code: head at y=30 area, total height ~128px)
+- Fine details (stubble via scattered rgba dots, pocket flaps via 6x5 rectangles) disappear below 64px
+- The Star of David drawn with radius 5 at chest-center becomes 1-2 pixels at game scale
 
 **Prevention:**
-1. Use `scene.transition({ target: 'TargetScene', duration: 500, moveBelow: true, onUpdate: ... })` with the `allowInput: false` flag to prevent accidental input during transition.
-2. In the incoming scene's `init()`, pre-start the fade: `this.cameras.main.setAlpha(0)` then tween alpha to 1 after `create()` completes. This decouples fade from scene system timer.
-3. After any `fadeIn()` call, register `this.cameras.main.once('camerafadeincomplete', () => this.cameras.main.resetFX())` as a safety net.
-4. For cinematic-quality transitions, use a dedicated black `Rectangle` overlay that spans the full canvas and tween its alpha — this is not subject to camera effect bugs.
-5. Check Phaser version: upgrade to 3.70+ where fade-in transparency bug (#3833) is fixed.
+1. Design sprites at GAME scale first (32x32 for top-down, ~48px for side-scroll), not at detail scale. Use the detail version only for cinematics.
+2. For 32px sprites: exaggerate head size (8-10px diameter), reduce body detail to color blocks, make the Star of David a simple 3x3 gold cross-pattern
+3. For each view angle, create a separate drawing function: `drawAgentTopDown(ctx, size)`, `drawAgentSide(ctx, size)`, `drawAgentCinematic(ctx, w, h)` -- each with proportions tuned for that scale
+4. Validate by screenshotting the game at 1:1 pixel ratio and checking readability without zooming
 
-**Phase mapping:** Cinematic intro phase. Validate on slowest target device.
-
-**Sources:**
-- [Scene transition with camera fade issue — Phaser forum](https://phaser.discourse.group/t/scene-transition-with-camera-fade-issue/2950)
-- [Incomplete camera FadeIn effect — issue #3833](https://github.com/phaserjs/phaser/issues/3833)
-- [Camera fading issue — Phaser forum](https://phaser.discourse.group/t/camera-fading-issue/5457)
+**Detection (warning signs):**
+- Player character looks like an indistinct dark blob in gameplay
+- Cannot distinguish the player from guards or other dark-colored entities
+- The Star of David is invisible during normal gameplay
 
 ---
 
-### Pitfall 6: Sound Duplication on Scene Restart
+### Pitfall 6: Aircraft Sprite Orientation Confusion Between Side-View and Cinematic Contexts
 
-**What goes wrong:**
-The global `SoundManager` persists across scene restarts. When `scene.restart()` is called (e.g., player fails a level), any sounds that were added in `create()` via `this.sound.add()` are added again to the same manager, leaving the previous instances still registered. On the third restart, three copies of the ambient loop exist simultaneously. Volume spikes, phasing artifacts appear, and memory usage climbs.
+**Affects:** Fix #6 (F-15 reversed wings)
 
-**Why it happens:**
-Phaser's SoundManager is attached to the game instance, not the scene. `scene.shutdown` does not automatically destroy sounds created within that scene. The `shutdown` event fires, but sound references linger in the global manager unless the developer explicitly calls `sound.destroy()` or `this.sound.removeAll()`.
+**What goes wrong:** The F-15 sprite in `BomberTextures.js` is drawn facing RIGHT (nose at x=61, tail at x=5 on a 64x32 canvas). The wings are drawn with vertices at x=16-36, which places them at the rear-center of the fuselage -- this is geometrically correct for swept-back wings on a rightward-facing side view. The issue described ("wings pointing forward") likely occurs in the cinematic scene where the sprite is used with `setFlipX(true)` or in a different orientation context. The cinematic intro (`DeepStrikeIntroCinematicScene.js`) uses a separate `createF15Hangar()` from `CinematicTextures.js` which may draw the F-15 differently.
 
-**Consequences:**
-- Volume of ambient music doubles/triples on level retry
-- Audio phasing (two copies of same track slightly out of sync)
-- Memory leak proportional to restart count
-
-**Warning signs:**
-- Music sounds louder or "wider" after retrying a level
-- `this.sound.sounds.length` in console grows with each restart
-- SFX triggers produce double-hit sound on first retry
+**Why it matters:** There are at least TWO F-15 sprites: one in `BomberTextures.js` (used in gameplay Level 3) and one in `CinematicTextures.js` (used in the Deep Strike intro cinematic). Fixing the wrong one, or fixing one and not the other, creates inconsistency.
 
 **Prevention:**
-1. In every scene's `shutdown` handler, explicitly stop and destroy all locally created sounds:
-   ```javascript
-   this.events.on('shutdown', () => {
-     this.sound.stopAll();
-     // OR for targeted cleanup:
-     [this.bgMusic, this.ambientSfx].forEach(s => s && s.destroy());
-   });
-   ```
-2. Before `this.sound.add()`, check if the sound already exists: `this.sound.get('key')` returns existing instance — reuse it instead of creating a new one.
-3. Treat the SoundManager as a resource pool: create sounds in a dedicated `AudioManager` singleton that is initialized once and checks before adding.
+1. Identify WHICH F-15 has the wing issue. The issue description says "Level 3 cinematic" -- check `DeepStrikeIntroCinematicScene.js` first, then `BomberScene.js`.
+2. Understand the wing geometry: swept-back means wing leading edge angles FROM the fuselage BACKWARD (trailing edge is further back than leading edge). In a rightward-facing sprite, the wing root (near fuselage) should be at higher X than the wingtip.
+3. Check for `setFlipX()`, `setAngle()`, or `setRotation()` calls that could make correct geometry appear reversed.
+4. After fixing, verify both the cinematic intro AND the gameplay level to ensure both F-15s have correct wing orientation.
 
-**Phase mapping:** Audio architecture phase. Also affects every level scene — write the pattern once in a base class or shared manager.
-
-**Sources:**
-- [Sound duplicates on scene.restart() — Phaser forum](https://phaser.discourse.group/t/sound-duplicates-in-one-scene-when-using-scene-restart/8720)
-- [BaseSoundManager docs](https://docs.phaser.io/api-documentation/class/sound-basesoundmanager)
+**Detection (warning signs):**
+- Wings appear to point toward the nose rather than sweeping backward
+- The F-15 looks like it is flying backward or has forward-swept wings (like an X-29, not an F-15)
+- Fix applied to `BomberTextures.js` but issue was actually in `CinematicTextures.js`
 
 ---
 
-### Pitfall 7: Looping Music Gap (HTML5 Audio Fallback)
+### Pitfall 7: End-of-Level Screen Integration Across 6 Heterogeneous Scene Types
 
-**What goes wrong:**
-On Safari/iOS and in HTML5 Audio fallback mode, looping music has a 100-300ms audible gap at the loop point. This is particularly damaging for trance tracks that depend on a seamless rhythmic loop. The Web Audio path is not affected, but any device that falls back to HTML5 Audio (or any browser that blocks Web Audio initialization, see Pitfall 2) will exhibit the gap.
+**Affects:** Fix #7 (End-of-level screens across all 6 levels)
 
-**Why it happens:**
-The HTML5 `<audio>` element's `loop` attribute is browser-implementation-dependent. When the element reaches the end, the browser must seek back to position 0 and decode the next chunk — this introduces latency. The Web Audio API's `AudioBufferSourceNode.loop` property performs a true sample-accurate loop with no gap, which is why the two paths differ.
+**What goes wrong:** The shared `EndScreen.js` module is currently imported by only 3 of 6 game scenes (`GameScene`, `BomberScene`, `PortSwapScene`). The other 3 scenes (`DroneScene`, `B2BomberScene`, `BossScene`) have their own custom victory/defeat screens with scene-specific logic (custom stats, custom layouts, custom key bindings). Naively replacing the custom screens with the shared module breaks scene-specific behavior. But leaving the custom screens means inconsistent UX (different button labels, different key bindings, different layouts across levels).
 
-**Consequences:**
-- Immersion-breaking click or silence on every bar of trance music on iOS
-- Cannot be fixed by changing audio files — it is a browser mechanism
-
-**Warning signs:**
-- Loop gap appears in Safari desktop but not Chrome
-- `this.sound.soundManager instanceof Phaser.Sound.HTML5AudioSoundManager` evaluates true
-- Gap is consistent at ~200ms regardless of audio file format
+**The specific integration challenge per scene:**
+- `GameScene`: Already uses `showDefeatScreen` but NOT `showVictoryScreen` -- the endgame manager handles victory differently
+- `BomberScene`: Uses both `showVictoryScreen` and `showDefeatScreen` -- the simplest case
+- `PortSwapScene`: Uses both -- also straightforward
+- `DroneScene`: Custom `_showVictory()` method (lines 3171+) with special drone-specific stats, custom key bindings, 3288+ line update loop that checks phase === 'victory'. Has recon/tunnel/boss phase-specific stats.
+- `B2BomberScene`: Custom `_showVictory()` (line 1437+) with stealth/defense/bombing phase stats, mission success/failure bifurcation in a single method
+- `BossScene`: Custom `_showVictory()` (line 2332+) with disintegration animation that must complete before the overlay appears, plus custom pixel-art death sequence
 
 **Prevention:**
-1. Force Web Audio by ensuring the `AudioContext` is unlocked before first play (see Pitfall 2). If Web Audio is available and unlocked, Phaser uses it automatically.
-2. For audio files used in seamless loops, use audio sprites (`audioSprite` with markers) — the HTML5AudioSoundManager has a built-in `loopEndOffset` tweak for gapless looping, but it requires per-browser calibration.
-3. Alternatively, implement dual-buffer looping: pre-schedule the next `AudioBufferSourceNode` to start at the exact sample where the current one ends. This is Phaser's internal Web Audio behavior but must be replicated manually for the HTML5 fallback.
-4. Accept the HTML5 fallback limitation for iOS and use shorter loop points (4-bar instead of 8-bar) to make gaps less perceptible rhythmically.
+1. Do NOT attempt to replace all custom screens at once. Start with the 3 scenes that already use `EndScreen.js` and standardize their options (button labels, keys).
+2. For the 3 custom scenes, wrap the shared `EndScreen.js` call INSIDE the existing `_showVictory()` method. Calculate scene-specific stats first, then pass them as `opts.stats` to the shared module. This preserves the stats logic while standardizing the UI.
+3. Verify that `BossScene`'s disintegration animation completion triggers (the `victory_pending` -> `victory` state transition) still works when the shared overlay is layered on top.
+4. Test each scene's win AND lose paths separately -- some scenes have complex conditions for what counts as victory vs. defeat.
 
-**Phase mapping:** Audio engineering phase when implementing per-level trance tracks.
-
-**Sources:**
-- [Seamless audio loops in Phaser — html5gamedevs forum](https://www.html5gamedevs.com/topic/19711-seamless-audio-loops-in-phaser/)
-- [Can looping be seamless? — Howler.js issue #39](https://github.com/goldfire/howler.js/issues/39)
+**Detection (warning signs):**
+- End screen appears but with wrong stats or missing stats
+- Keys don't work on the end screen because the scene's update loop doesn't pass through to the overlay's key handlers
+- Disintegration animation in BossScene is hidden behind the overlay
+- "NEXT LEVEL" transitions to the wrong scene because `nextScene` is hardcoded incorrectly
 
 ---
 
-### Pitfall 8: Global Animation Key Collisions Across Scenes
+### Pitfall 8: Level 2 Container Path Fix Breaking Existing Guard Patrol Routes
 
-**What goes wrong:**
-Phaser's `AnimationManager` is global (game-level, not scene-level). When two scenes both call `this.anims.create({ key: 'walk', ... })` and one scene is visited after another, the second `create()` call silently overwrites the first animation's frame data. If the two scenes use different spritesheets with the same logical key (e.g., enemy 'walk' animation in level 1 vs level 2 sprites), the wrong frames play in the wrong scene.
+**Affects:** Fix #5 (Level 2 container path blocked)
+
+**What goes wrong:** `PortSwapScene.js` generates container layouts procedurally with `CONT_ROW_SPACING = 48` and `CONT_COL_SPACING = 72` (already widened from original 34 and 60). Guard patrol waypoints (defined in the `GUARD_WAYPOINTS` constant) follow corridors BETWEEN container yards. Worker spawn positions are placed in corridors between yards. If container spacing is increased further to fix blocked paths, the guard patrol routes and camera cone coverage areas may no longer align with the corridors, creating either impossible stealth (guard covers entire corridor) or trivial gameplay (guard patrols through containers, never catching the player).
 
 **Why it happens:**
-Developers treat scene `create()` as an isolated context. The animation manager is shared and does not emit a warning for key overwriting by default (though a console warn exists in debug builds). Monolithic scene files that define all animations locally amplify this — every scene re-declares the same keys.
-
-**Consequences:**
-- Level 2 character plays level 1 animation frames (visual glitch, hard to debug)
-- Adding new animated sprites for cinematic scenes risks stomping gameplay animations
-- Debugging requires a heap snapshot or manual `this.anims.get('key')` inspection
-
-**Warning signs:**
-- Animation plays wrong frames after visiting a certain scene order
-- Console (debug mode): `Animation with key: 'X' already exists`
-- `this.anims.exists('key')` returns true at scene start when no animation should exist yet
+- Container positions, guard routes, camera positions, and worker positions are all hardcoded with absolute pixel coordinates that were tuned together
+- Increasing spacing in one dimension shifts all containers in that yard, but guards and cameras remain at their original positions
+- The current `CONT_ROW_SPACING = 48` comment says "(was 34)" -- this spacing was already increased once, suggesting the problem recurred or was incompletely fixed
 
 **Prevention:**
-1. Prefix all animation keys with a scene or character namespace: `'level1-enemy-walk'`, `'cinematic-intro-logo'`.
-2. Guard every `anims.create()` call: `if (!this.anims.exists(key)) { this.anims.create(...); }`.
-3. For cinematics that reuse character sprites, explicitly define whether they share the global animation or create a local one (`sprite.anims.create()` creates a local animation that does not collide).
-4. Create a centralized `AnimationRegistry` that lists all keys and is called once at boot — this makes collisions detectable at startup rather than at runtime during play.
+1. Before changing spacing, verify exactly WHERE the path is blocked. Run the level and document the specific container pair that blocks passage. The fix might be removing one container rather than increasing all spacing.
+2. If spacing must increase, recalculate guard waypoints that reference corridor positions. Search for hardcoded Y-values near the container Y positions.
+3. Add a simple completability check: trace a path from player spawn to the target container, then to the exit. If any segment is blocked by container physics bodies, the layout is invalid.
+4. After the fix, play through the level at least twice (layouts may have minor randomization) to verify paths remain clear.
 
-**Phase mapping:** Sprite animation enhancement phase; also review when implementing cinematic intro if any game characters appear.
-
-**Sources:**
-- [Phaser 3 Animations concepts — global vs local](https://docs.phaser.io/phaser/concepts/animations)
-- [Troubleshooting Phaser: animation bugs — mindfulchase.com](https://www.mindfulchase.com/explore/troubleshooting-tips/game-development-tools/troubleshooting-phaser-fixing-asset-loading,-scene-transitions,-animation-bugs,-physics-errors,-and-browser-compatibility.html)
+**Detection (warning signs):**
+- Player can reach some containers but gets stuck between two containers with no way out
+- Guards patrol through containers instead of around them (patrol routes not updated)
+- Suspicion rises too fast because guards are now closer to corridors than intended
 
 ---
 
-### Pitfall 9: Old Timeline API vs New Timeline API Confusion (Phaser 3.55 vs 3.60)
+### Pitfall 9: Controls Overlay Depth Conflicts and Readability Regression
 
-**What goes wrong:**
-Phaser 3.55 and earlier had a `TweenManager.timeline()` that was removed in 3.60 due to endemic timing bugs. Phaser 3.60 introduced a new `this.add.timeline()` (a first-class `Timeline` game object). Code examples from tutorials, Stack Overflow answers, and community forum posts dated before 2022 use the old API. Cinematic sequence code written using the old API will silently produce timing bugs or throw runtime errors on Phaser 3.60+.
+**Affects:** Fix #8 (Controls overlay readability)
 
-**Why it happens:**
-Breaking change with the same surface-level concept. `this.tweens.timeline()` (old) vs `this.add.timeline()` (new) look similar but work completely differently. Additionally, the new Timeline's `timeScale` does not propagate to its child tweens — each child tween must have its own `timeScale` set independently.
-
-**Consequences:**
-- Cinematic sequences with multiple staged events drift out of sync
-- Copy-pasted tutorial code throws `this.tweens.timeline is not a function`
-- `timeScale` changes for cinematic slow-motion/fast-forward effects only affect the Timeline, not its tweens — causing desynchronization
-
-**Warning signs:**
-- `TypeError: this.tweens.timeline is not a function` at cinematic scene create
-- Tweens inside a Timeline start at the wrong time relative to other events
-- Slow-motion effect applied to Timeline does not slow down tween animations within it
+**What goes wrong:** `ControlsOverlay.js` uses `depth: 90` for the persistent bar and `depth + 10` (100) for the initial big overlay. The `EndScreen.js` uses `depth: 500-502`. The game's HUD typically uses depth 50-80. If the controls overlay depth is increased for readability (e.g., to ensure it renders above game effects), it could conflict with the end-of-level screen depth or with scene-specific UI elements. Additionally, the bar text currently uses `fontSize: '13px'` and `color: '#ffffff'` -- making it larger or changing the color to yellow (as specified in the requirements) requires testing against every level's visual style, as some levels have bright backgrounds (Level 3 sunset sky, Level 6 morning sky) where yellow text may be hard to read.
 
 **Prevention:**
-1. Use `this.add.timeline([...events])` for all new cinematic sequencing (Phaser 3.60+ API). Never use `this.tweens.timeline()`.
-2. When applying `timeScale` to a Timeline, also apply it to every tween inside: `timeline.getAt(i).timeScale = n`.
-3. For simple tween sequences, prefer `this.tweens.chain([...])` (also 3.60+) over Timeline — it is simpler and timeScale propagation is less surprising.
-4. Lock the Phaser version in `package.json` with an exact version string (not `^3.x`) to prevent accidental upgrades that re-introduce API differences.
+1. Use the big overlay's existing approach: dark semi-transparent background behind the text. The `barBg` already has `0x000000, 0.7` opacity -- this is good.
+2. When changing text to yellow (`#FFD700`), ensure the background contrast ratio is sufficient. Yellow on black at 0.7 opacity is fine; yellow on translucent black over a bright game background may not be.
+3. Keep the overlay depth between HUD (80) and EndScreen (500) -- the current 90 is appropriate.
+4. Test with every level type: top-down levels with dark backgrounds (Levels 1, 2), side-scrolling with sky backgrounds (Levels 3, 5), front-facing (Level 4), and approach-view (Level 6).
 
-**Phase mapping:** Cinematic intro phase — all sequence work should use the 3.60+ API from day one.
-
-**Sources:**
-- [Phaser v3.60 Beta 23 — Timeline and TweenChain changes](https://github.com/phaserjs/phaser/discussions/6452)
-- [Timeline API docs — Phaser 3](https://docs.phaser.io/api-documentation/class/time-timeline)
-- [Chaining multiple tweens — Phaser forum](https://phaser.discourse.group/t/chaining-multiple-tweens/960)
+**Detection (warning signs):**
+- Controls text invisible against bright game backgrounds
+- Controls overlay renders on top of the end-of-level screen
+- Big overlay blocks critical game elements during the first 3 seconds of a level
 
 ---
 
@@ -327,83 +256,81 @@ Breaking change with the same surface-level concept. `this.tweens.timeline()` (o
 
 ---
 
-### Pitfall 10: Monolithic Scene Files Blocking Cinematic Parallelism
+### Pitfall 10: Texture Key Collisions When Scenes Share the Phaser Texture Manager
 
-**What goes wrong:**
-Adding cinematics to 1000-1500 line scene files creates merge conflicts and logic tangles. Cinematic state machines (isPlaying, isPaused, isSkipped) become entangled with gameplay state. Scene `update()` grows a long chain of `if (this.cinematicPhase === 3)` conditions that are impossible to test.
+**Affects:** Fix #1 (Sprite redesign), Fix #3 (Boss restoration)
+
+**What goes wrong:** All Phaser scenes share a single TextureManager. The existing code uses `if (scene.textures.exists('key')) return;` guards in some texture generators (e.g., `BomberTextures.js` line 29) but not all. When two scenes generate textures with the same key but different content (e.g., both generate a `'player'` texture but with different sprites), the second scene silently uses the first scene's texture. Some generators use `scene.textures.remove(key)` before adding (e.g., `ParadeTextures.js` line 9), while others use early-return guards. The inconsistency means that when fixing sprites, a texture updated in one generator might be overridden or ignored depending on scene visit order.
 
 **Prevention:**
-Extract cinematic logic into a `CinematicController` class that the scene instantiates. The controller owns its own tween sequences, event subscriptions, and cleanup. The scene delegates to it with a simple interface: `this.cinematic.play()`, `this.cinematic.skip()`, `this.cinematic.on('complete', ...)`.
+1. Use consistent namespacing for texture keys: `bm_` for bomberman, `ps_` for PortSwap, `cin_` for cinematic, etc. (this already partially exists)
+2. When modifying a texture generator, always check whether it uses `exists() -> return` or `remove() -> add`. Match the existing pattern for that file.
+3. If the same character must appear in multiple scenes with the same appearance, generate the texture ONCE in a shared init function rather than per-scene.
 
-**Phase mapping:** Establish the pattern in the cinematic intro phase before it propagates to level scenes.
+**Detection (warning signs):**
+- Character looks correct in one scene but wrong in another despite both using "the same" texture generation code
+- Console warning "Texture key already in use"
 
 ---
 
-### Pitfall 11: RenderTexture Maximum Dimension Exceeded on Mobile
+### Pitfall 11: SFX Timing Drift from Music Schedule
 
-**What goes wrong:**
-Procedurally generated backgrounds or cinematic overlays rendered to `RenderTexture` objects exceed mobile GPU texture limits (2048px on older devices). The texture renders as black or corrupt on mobile while appearing correct on desktop.
+**Affects:** Fix #2 (Intro music + SFX synchronization)
+
+**What goes wrong:** `IntroMusic.js` schedules all music events relative to `this._ctx.currentTime` at construction time. But SFX like screen shake, missile explosions, and visual flashes are triggered via Phaser's `this.time.delayedCall()` in `GameIntroScene.js`. These two timing systems are independent -- Web Audio uses the audio clock (high precision, not affected by frame rate) while Phaser uses the game loop clock (affected by frame rate drops). On a frame rate dip, the visual SFX drift out of sync with the music.
 
 **Prevention:**
-Cap `RenderTexture` dimensions at 2048x2048 for mobile targets. For full-screen effects on a 1920x1080 canvas, scale the render texture to canvas size only on desktop; use a 1024x1024 version on mobile detected via `this.sys.game.device.os.android` or `ios`. Alternatively, use camera post-processing effects instead of render textures for full-screen overlays.
+1. For tight sync (explosion sound + screen shake), trigger the visual effect from a Web Audio-scheduled callback using `setTimeout` calculated from `(scheduledTime - ctx.currentTime) * 1000`. This is imperfect but closer than Phaser timers.
+2. Alternatively, accept minor drift as tolerable for a procedural intro (most players will not notice 50ms drift between audio and visuals).
+3. Do NOT try to synchronize Phaser's game clock with Web Audio's clock -- they are fundamentally different timing domains.
 
-**Phase mapping:** Cinematic intro phase if any full-screen procedural visuals are planned.
-
-**Sources:** [How I optimized my Phaser 3 action game — 2025, Medium](https://phaser.io/news/2025/03/how-i-optimized-my-phaser-3-action-game-in-2025)
+**Detection (warning signs):**
+- Screen shake happens visibly before or after the explosion sound
+- Drift increases over the 25-second intro (cumulative error)
 
 ---
 
-### Pitfall 12: Shutdown vs Destroy Confusion Leaving Data Manager Stale
+### Pitfall 12: Cinematic Maguen David Golden Overlay Blocking Interaction
 
-**What goes wrong:**
-A scene that is `sleep()`-ed (not `stop()`-ed or `remove()`-ed) retains its Data Manager contents. If a cinematic scene is put to sleep and re-woken with different game state, it reads stale values from its previous run.
+**Affects:** Fix #4 (Final intro screen with giant Maguen David)
+
+**What goes wrong:** The final intro screen requires a giant golden semi-transparent Star of David behind SuperZion with an arcade font title. If the semi-transparent overlay is implemented as a full-screen game object with input interactivity, it may block the skip key or interfere with the scene transition. The `BaseCinematicScene` skip mechanism checks `Phaser.Input.Keyboard.JustDown(this.enterKey)` in the update loop, which is keyboard-based and should not be blocked by game objects -- but if the implementation adds click-to-skip or touch events, those could be intercepted.
 
 **Prevention:**
-Listen for the `shutdown` event and call `this.data.reset()` explicitly. Do not use `sleep()` for scenes that need clean initialization on every activation — use `stop()` / `start()` instead. Reserve `sleep()` only for persistent HUD or overlay scenes that intentionally retain state.
+1. Set `setInteractive(false)` on the Maguen David overlay, or simply do not call `setInteractive()` on it
+2. Ensure the overlay's depth is below the skip hint text (depth 100 in `BaseCinematicScene`)
+3. Use `setScrollFactor(0)` on all overlay elements to prevent camera effects from displacing them
 
-**Phase mapping:** Relevant if cinematic scenes are implemented as persistent overlays that sleep between levels.
-
-**Sources:** [Data Manager docs — Phaser](https://docs.phaser.io/phaser/concepts/data-manager)
+**Detection (warning signs):**
+- ENTER key does not skip the final intro screen
+- The golden overlay appears in front of the "SUPERZION" title text
 
 ---
 
 ## Phase-Specific Warnings
 
 | Phase Topic | Likely Pitfall | Mitigation |
-|---|---|---|
-| Audio architecture refactor | Unbounded AudioBufferSourceNode accumulation (Pitfall 1) | Explicit destroy() in MusicManager; pool ambient SFX |
-| Cinematic intro scene | AudioContext suspended before gesture (Pitfall 2) | Gate all audio on UNLOCKED event; tap-to-continue fallback |
-| Cinematic intro scene | Old vs new Timeline API confusion (Pitfall 9) | Use `this.add.timeline()` exclusively; lock Phaser version |
-| Cinematic intro scene | Scene transition flicker (Pitfall 5) | Manual alpha-tween overlay; call resetFX() after fadeIn |
-| Cinematic intro scene | RenderTexture dimension on mobile (Pitfall 11) | Cap at 2048px; test on real device early |
-| Per-level trance tracks | Looping music gap on iOS/HTML5 fallback (Pitfall 7) | Ensure Web Audio unlock before play; use audio sprites |
-| Per-level SFX additions | Sound duplication on scene restart (Pitfall 6) | Explicit destroy in shutdown handler; check before add |
-| Sprite animation enhancement | Global animation key collision (Pitfall 8) | Prefix all keys; use anims.exists() guard |
-| Polish particles/cinematics | Simultaneous tween budget exhaustion (Pitfall 4) | Tween ParticleEmitter not particles; use Timeline; budget 30 tweens |
-| Level scene refactor | Procedural texture regeneration (Pitfall 3) | Generate once at boot; guard with textures.exists() |
-| Any scene with cinematics | Monolithic scene blocking parallel work (Pitfall 10) | CinematicController class extracted from scene |
+|-------------|---------------|------------|
+| Player sprite redesign (Fix #1) | **Pitfall 1** (fragmentation) + **Pitfall 5** (proportions) -- fixing SpriteGenerator.js without updating BombermanTextures, PortSwapTextures, ParadeTextures, and CinematicTextures leaves player inconsistent across scenes | Audit all 5 texture files first; design at game-scale; extract shared palette |
+| Intro psytrance music (Fix #2) | **Pitfall 2** (node accumulation/clipping) + **Pitfall 11** (SFX timing drift) -- hundreds of Web Audio nodes + no compressor = clipping; Phaser timers vs audio clock = drift | Add DynamicsCompressorNode; reduce individual voice volumes; accept minor visual drift |
+| Restore bosses and flags (Fix #3) | **Pitfall 4** (lost content) + **Pitfall 1** (fragmentation) -- texture generators exist but display code is missing; boss sprites may need new poses for the intro context | Audit ParadeTextures keys vs GameIntroScene display code; check act timing |
+| Final intro screen (Fix #4) | **Pitfall 12** (interaction blocking) + **Pitfall 4** (lost content context) -- overlay must not block skip; must fit within 25s music structure | Set depth below skip hint; coordinate with act timing |
+| Level 2 path blocked (Fix #5) | **Pitfall 8** (guard route misalignment) -- widening paths shifts containers but not guards/cameras | Find specific blocked path; adjust minimally; revalidate guard routes |
+| F-15 wing orientation (Fix #6) | **Pitfall 6** (two F-15 sprites in different files) -- fixing the wrong one or only one of two | Identify which file and which scene has the issue before changing any coordinates |
+| End-of-level screens (Fix #7) | **Pitfall 7** (heterogeneous scenes) + **Pitfall 3** (key listener leaks) -- 3 scenes use shared module, 3 have custom screens; all have potential key listener leaks | Integrate shared module into custom _showVictory() methods; add cleanup on scene shutdown |
+| Controls overlay readability (Fix #8) | **Pitfall 9** (depth/contrast) -- yellow text on bright backgrounds may be unreadable; depth conflicts with EndScreen | Test all 6 levels; keep dark background behind text; maintain depth hierarchy |
 
 ---
 
 ## Sources
 
-- [Phaser issue #2280 — Web Audio Sound memory leak (Chrome)](https://github.com/phaserjs/phaser/issues/2280)
-- [Phaser issue #3895 — Each loop creates new AudioBufferSourceNode](https://github.com/photonstorm/phaser/issues/3895)
-- [Phaser issue #2066 — Memory leak in Phaser.Sound using WebAudio](https://github.com/photonstorm/phaser/issues/2066)
-- [Phaser issue #3833 — Incomplete camera FadeIn effect](https://github.com/phaserjs/phaser/issues/3833)
-- [Phaser issue #6558 — WebAudioSound destroy causes crash](https://github.com/phaserjs/phaser/issues/6558)
-- [Phaser issue #4933 — ScaleManager events not removed after scene.remove()](https://github.com/phaserjs/phaser/issues/4933)
-- [Phaser issue #3241 — generateTexture always generates same Graphics object](https://github.com/phaserjs/phaser/issues/3241)
-- [Phaser v3.60 Beta 23 — Timeline, TweenChain, ParticleEmitter changes](https://github.com/phaserjs/phaser/discussions/6452)
-- [Phaser 3 audio docs — locked property and UNLOCKED event](https://docs.phaser.io/phaser/concepts/audio)
-- [Phaser 3 Graphics docs — generateTexture baking](https://docs.phaser.io/phaser/concepts/gameobjects/graphics)
-- [Phaser 3 Animations docs](https://docs.phaser.io/phaser/concepts/animations)
-- [Timeline API docs](https://docs.phaser.io/api-documentation/class/time-timeline)
-- [Sound duplicates on scene.restart() — Phaser forum](https://phaser.discourse.group/t/sound-duplicates-in-one-scene-when-using-scene-restart/8720)
-- [Scene transition with camera fade — Phaser forum](https://phaser.discourse.group/t/scene-transition-with-camera-fade-issue/2950)
-- [Tweens performance — Phaser forum](https://phaser.discourse.group/t/tweens-performance/10930)
-- [How I optimized my Phaser 3 action game — 2025](https://phaser.io/news/2025/03/how-i-optimized-my-phaser-3-action-game-in-2025)
-- [Seamless audio loops in Phaser — html5gamedevs](https://www.html5gamedevs.com/topic/19711-seamless-audio-loops-in-phaser/)
-- [AudioContext was not allowed to start — Phaser forum](https://phaser.discourse.group/t/audiocontext-was-not-allowed-to-start/795)
-- [Rendering performance problem — Phaser forum](https://phaser.discourse.group/t/rendering-performance-problem/11069)
-- [Data Manager docs — Phaser](https://docs.phaser.io/phaser/concepts/data-manager)
+- [Phaser 3 Keyboard listeners remain active after scene change (Issue #3489)](https://github.com/phaserjs/phaser/issues/3489)
+- [Phaser 3 Textures documentation](https://docs.phaser.io/phaser/concepts/textures)
+- [Phaser 3 dynamic texture memory leak (Issue #6669)](https://github.com/phaserjs/phaser/issues/6669)
+- [Multi scene "Texture key already in use"](https://phaser.discourse.group/t/multi-scene-texture-key-already-in-use/14344)
+- [Web Audio API performance and debugging notes](https://padenot.github.io/web-audio-perf/)
+- [Chromium Web Audio memory leak issues (Bug #576484)](https://bugs.chromium.org/p/chromium/issues/detail?id=576484)
+- [Web Audio API - AudioNode stop/disconnect memory (Issue #904)](https://github.com/WebAudio/web-audio-api/issues/904)
+- [MDN Web Audio API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+- [How I optimized my Phaser 3 action game in 2025](https://franzeus.medium.com/how-i-optimized-my-phaser-3-action-game-in-2025-5a648753f62b)
+- Codebase inspection: `SpriteGenerator.js` (572 lines, 0 imports), `IntroMusic.js` (945 lines), `EndScreen.js`, `ControlsOverlay.js`, `GameIntroScene.js`, `BomberTextures.js`, `ParadeTextures.js`, `CinematicTextures.js`, `PortSwapScene.js`, `DroneScene.js`, `B2BomberScene.js`, `BossScene.js`

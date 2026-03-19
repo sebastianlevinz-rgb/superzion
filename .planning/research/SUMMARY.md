@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** SuperZion — Cinematic & Audio Polish Milestone
-**Domain:** Phaser 3 stealth game — procedural audio, cinematics, sprite animation
-**Researched:** 2026-03-05
+**Project:** SuperZion v1.1 Polish Pass
+**Domain:** Phaser 3 stealth side-scroller — targeted polish of 8 visual, audio, gameplay, and UX issues
+**Researched:** 2026-03-19
 **Confidence:** HIGH
 
 ## Executive Summary
 
-SuperZion is a 6-level stealth game built entirely on procedural generation — no external assets, no audio files, no sprite sheets imported from disk. The cinematic and audio polish milestone adds animated intro/between-level cinematics, per-level trance music themes, richer synthesized SFX, and smoother sprite animations. Critically, all four areas are achievable within the existing Phaser 3.80.1 + Vite 5.4.0 + Web Audio API stack with zero new npm dependencies. The project's procedural-only constraint is a feature, not a limitation — it is the game's technical differentiator and must be preserved throughout this milestone.
+SuperZion v1.1 is a polish pass on an existing 6-level procedurally-generated browser game (Phaser 3.80.1, Web Audio API, Canvas 2D — zero external assets). The task is not building new features; it is finishing 8 discrete, well-scoped issues that leave the game feeling incomplete: placeholder boss art in the intro, an F-15 with inverted wings, levels that end without clear "RETRY / NEXT LEVEL" navigation, controls text that is hard to read, and a Level 2 that may be physically impassable. Research conclusively shows that all required systems already exist in the codebase — `EndScreen.js`, `ControlsOverlay.js`, `IntroMusic.js`, `ParadeTextures.js`, waving flag animations, boss sprite generators, and a detailed Mossad-agent player sprite. The work is wiring and tuning, not building.
 
-The recommended approach follows a strict infrastructure-first sequence: fix foundational audio management issues before adding new audio, generate all textures at boot before new cinematic scenes use them, and establish CinematicDirector as an orchestration abstraction before authoring individual cutscenes. This order is non-negotiable — the codebase has documented structural debt (monolithic 1500-line scene files, no audio node cleanup, per-scene texture regeneration) that will compound catastrophically if cinematic content is added before the infrastructure is repaired. The CONCERNS.md file the feature researcher referenced specifically flags missing music fade-out as an existing known gap; that alone blocks clean scene transitions.
+The most important architectural finding is that the hero character is drawn by three independent texture systems (`SpriteGenerator.js` for gameplay, `CinematicTextures.js` for cinematic intros, `ParadeTextures.js` for the intro showcase) with no shared code or palette. Boss and enemy art has similar fragmentation across scene-specific texture files. This fragmentation is the root cause of the "placeholder rectangles" problem in the GameIntroScene intro: parade textures are generated correctly in `create()` via `generateAllParadeTextures()` but `_bossFlashEntry()` ignores them and draws raw `Graphics` objects instead. The fix is wiring existing texture keys to sprite display calls, not redrawing art. Sprite redesign work (Issue 1) is verification and palette consistency audit, not a rewrite.
 
-The primary risks fall into two buckets: audio memory leaks (unbounded AudioBufferSourceNode accumulation that crashes mobile tabs before level 6) and cinematic API confusion (Phaser's old `tweens.timeline()` was removed in 3.60; tutorials still reference it). Both risks have clear, well-documented mitigations. Test on a real mobile device early — the AudioContext gesture-unlock requirement is silently absent in desktop DevTools mobile simulation and will blindside the cinematic intro if not addressed before integration.
+The critical risks center on three things: (1) audio clipping — `IntroMusic.js` schedules hundreds of Web Audio nodes with no `DynamicsCompressorNode` in the signal chain, so the intro can clip under load; (2) keyboard listener leaks — `EndScreen.js` and `ControlsOverlay.js` register listeners that must be cleaned up on scene shutdown or they accumulate across retries; (3) `GameIntroScene.js` (818 lines) is the convergence point for three separate fixes (boss restoration, final intro screen, SFX sync) and must be edited serially with commits between each. The recommended 4-phase build order — quick standalone wins first, then sprite audit, then serialized intro overhaul, then end-screen migration — prevents conflicts and regressions.
 
 ---
 
@@ -19,159 +19,154 @@ The primary risks fall into two buckets: audio memory leaks (unbounded AudioBuff
 
 ### Recommended Stack
 
-The stack requires no new dependencies. Phaser 3.80.1 already contains the Timeline API (added in 3.60), tween chains, canvas texture management, and sprite animation systems needed for cinematics. Web Audio API covers all synthesis requirements: OscillatorNode for tones, AudioBuffer filled with Math.random() for noise-based SFX, BiquadFilterNode for spectral shaping, GainNode for envelopes and crossfades, WaveShaperNode for distortion, and PeriodicWave for custom timbres. The existing MusicManager and SoundManager singletons are the correct extension points — do not replace them.
+No new dependencies are needed or permitted. The entire polish pass executes within the existing stack.
 
 **Core technologies:**
-- **Phaser 3 Time.Timeline** (`this.add.timeline([])`) — cinematic event orchestration at absolute ms offsets; use this, never the removed `this.tweens.timeline()`
-- **Phaser 3 Canvas Texture** (`textures.createCanvas` + `addSpriteSheet`) — multi-frame procedural sprite sheets; consistent with existing generator pattern
-- **Phaser 3 Tween Chains** (`this.tweens.chain([])`) — sequential property animation for motion paths and squash/stretch
-- **Web Audio BPM Lookahead Scheduler** (`AudioContext.currentTime` + setTimeout lookahead) — drift-free trance sequencing; `setInterval` drifts under load and must not be used
-- **AudioBuffer noise synthesis** (`Math.random()` fill + BiquadFilter + GainNode envelope) — explosions, impacts, footsteps; single oscillators cannot reproduce broadband transients
-- **PeriodicWave / FM synthesis** — custom timbres (metallic hits, alarms) and unique pad sounds per level beyond built-in waveforms
-- **Per-level config objects** (`LEVEL_MUSIC_CONFIG`) — drives BPM, scale, waveform patch, arpeggio pattern, and atmosphere per level without rewriting MusicManager logic
+- **Phaser 3.80.1** — scene lifecycle, camera shake (`shake(duration, intensity, force)`), texture manager (shared across all scenes), input system; all heavily used and well-understood in this codebase
+- **Canvas 2D API** — procedural sprite drawing via `px()`, `pxRect()`, `shadedRect()`, `ellipse()`, `arc()`, `applyOutline()`; all helpers already exist, work is parameter tuning
+- **Web Audio API** — psytrance synthesis via oscillators, biquad filters, gain envelopes, noise buffers; `IntroMusic.js` already implements the full 145 BPM 3-act score; SFX functions exist but are not wired to any scene event
+- **Vite 5.4.0** — build and dev server; no changes needed
 
-**Critical version note:** Phaser 3.60+ required for `this.add.timeline()`, `this.tweens.chain()`, and `ParticleEmitter` tween properties. Current version 3.80.1 satisfies all requirements.
+Key constraint: 100% procedural, zero external asset files, no new npm packages. Every anti-pattern that violates this (Tone.js, image sprites, CSS overlays, WebGL renderer switch) is documented in STACK.md with the correct procedural alternative.
 
----
+See `.planning/research/STACK.md` for detailed technique reference per polish issue.
 
 ### Expected Features
 
-The feature research distinguishes sharply between what makes the game feel finished (table stakes) versus what generates genuine "wow" reactions (differentiators).
+**Must have (table stakes — shipping blockers):**
+- **Issue 5: Level 2 container paths passable** — a level that cannot be completed is not a game; current spacing (30-32px clearance for a 14px player) may already be sufficient but the actual blocker needs identification before assuming spacing changes are needed
+- **Issue 7: End-of-level screens on all 6 levels** — three levels (DroneScene, B2BomberScene, BossScene) have 100-130 lines of inline custom victory/defeat UI; must be migrated to shared `EndScreen.js` with consistent "RETRY (R) / SKIP LEVEL (S)" and "PLAY AGAIN (R) / NEXT LEVEL (ENTER)" buttons
+- **Issue 6: F-15 with swept-back wings** — forward wings on an F-15 read as broken art; at least two F-15 implementations exist (BomberTextures.js and CinematicTextures.js/GameIntroScene.js); must identify the correct file before editing
+- **Issue 8: Controls overlay readable** — gold text on dark semi-transparent background, persistent bar at bottom; currently bar uses 13px white text at 0.7 opacity which is borderline unreadable; fix is 3-4 constants in ControlsOverlay.js
+- **Issue 1: Player sprite with human proportions** — `SpriteGenerator.js` already generates a detailed 128x128 Mossad agent; the question is whether it reads at game-scale display sizes (32-48px rendered height); 6.5-head ratio is confirmed good for action side-scrollers; issue is palette consistency across the three independent sprite systems
 
-**Must have (table stakes):**
-- Animated title sequence — `GameIntroScene` exists but needs Timeline-choreographed sprites + music sync, not just text
-- Scene fade in/out on every transition — hard cuts read as bugs; must be applied consistently to all scene changes
-- Music that changes per level — same loop across 6 levels kills immersion; 6 distinct config objects required
-- Unique per-level BPM — single highest-impact parameter change per level; massive perceptual differentiation for low effort
-- SFX parameter variation on repeat — fixed-frequency SFX every time is an uncanny valley; `Math.random()` spread on pitch/duration per call
-- Cinematic letterbox bars — black bars signal "story happening"; 20 lines of code, high perceptual impact
-- Between-level cinematics with animated sprites — text-only transitions read as placeholder content
-- Clean music transitions at scene boundaries — `MusicManager.fadeOutAndStop()` is currently absent; this is a blocking dependency for everything audio-related
+**Should have (high-impact polish):**
+- **Issue 3: Real boss sprites and waving flags in intro** — `_bossFlashEntry()` draws bosses as colored rectangles with circle heads; `ParadeTextures.js` has full parade boss sprites and 4-frame waving flag spritesheets already generated in `create()`, just not referenced in display code
+- **Issue 4: Final intro screen with giant Magen David** — Act 3 title card needs a large golden semi-transparent Star of David (via existing `starOfDavid()` helper) behind the hero and arcade-weight monospace font for "SUPERZION"
 
-**Should have (differentiators):**
-- Fast trailer-style intro showcase (boss/plane/character reveals synced to music drop) — highest wow factor
-- Per-level trance sub-genre variation (progressive vs. uplifting vs. psytrance) — distinct oscillator patches, filter types, arpeggio patterns per level
-- Synthesized trance pad chords — detuned oscillator pairs + slow LFO on filter cutoff; pads are the emotional backbone of trance
-- Breakdowns and build-ups synced to cinematic moments — `MusicManager` accepting phase commands from scene lifecycle
-- Character entrance animations with motion smear — one extra elongated frame per fast entrance
-- Alert/detection musical sting — diminished chord stab on guard detection; hooks directly into existing `_onDetection()`
-- Idle breathing animation — 2 extra frames per character at 600ms; makes characters feel alive when stationary
-- Boss/level-title reveal card at mission start — full-screen overlay with boss name + sprite, tweened in
+**Nice to have (polish on polish):**
+- **Issue 2: SFX synchronized to beat drops** — intro music already works; this tightens visual events to the 145 BPM beat grid (beat = 0.4138s) and wires the five unused `IntroMusic` SFX exports (`playMissileWhoosh`, `playJetFlyby`, `playTankRumble`, `playMarchSteps`, `playWindAmbient`) to GameIntroScene visual events
 
-**Defer to later pass:**
-- Ambient environmental audio loops — valuable but non-blocking; doesn't affect story clarity
-- Parallax camera pan during dialogue — nice-to-have; camera pan API exists but requires careful integration
-- Explosion impact freeze — risky near existing BossScene disintegration sequence (flagged fragile in CONCERNS.md)
-- Character voice bleeps — charming but requires per-scene dialogue refactoring; defer until cinematic structure settles
+**Defer explicitly (anti-features for this milestone):**
+- Per-level music themes, motion smear animation, CinematicDirector infrastructure, new gameplay mechanics, save/load system, accessibility overhaul, custom web fonts, full boss AI overhaul
 
-**Hard anti-features (never build):**
-- External audio files, pre-recorded music, video cutscenes — violates procedural constraint
-- Tone.js, Howler.js — wraps the Web Audio API already in direct use; adds a dependency for zero gain
-- Spine/skeletal animation — requires `.spine` files; incompatible with procedural canvas sprites
-- Stem-based dynamic music (FMOD/Wwise style) — requires pre-authored multi-track assets
-
----
+See `.planning/research/FEATURES.md` for full feature dependency graph and per-issue complexity assessments.
 
 ### Architecture Approach
 
-The recommended architecture is **pass-through orchestration**: scenes declare *what* to show; CinematicDirector handles *how* to sequence it; MusicManager and SoundManager own all audio nodes; TextureRegistry generates all frames at boot and exposes them by string key. This one-directional dependency structure (Scene → Director → Managers, never reverse) keeps singletons scene-agnostic and prevents the circular dependency and lifecycle coupling bugs that monolithic scene files accumulate.
+The codebase is a scene-per-level architecture with shared singleton services (MusicManager, SoundManager) and reusable utility modules (EndScreen, ControlsOverlay, BaseCinematicScene). Texture generation and texture display are completely decoupled: generators run in each scene's `create()` and register keys with Phaser's global TextureManager; display code in the same or other scenes then references those keys. The gap in the intro is that `generateAllParadeTextures()` runs correctly but the display code in `_bossFlashEntry()` was replaced with raw `Graphics` during a refactor and never restored.
 
 **Major components:**
-1. **TextureRegistry** (new utility) — generates all procedural canvas textures exactly once at BootScene; all other scenes read frames by string key from Phaser's TextureManager
-2. **MusicManager** (extend existing) — adds theme registry, `crossfadeTo(themeId, durationMs)` with equal-power GainNode ramp, per-level config consumption, and `fadeOutAndStop(duration)` (currently missing)
-3. **SoundManager** (extend existing) — adds SFX variant pool per event type, randomized pitch/pan on play, noise-based SFX methods (explosion, impact, alarm)
-4. **CinematicDirector** (new helper) — thin orchestration layer over `Time.Timeline`; exposes `showSprite`, `moveTo`, `fadeIn`, `playMusic`, `playSfx`, `typeText`, `wait`; consumed by all cinematic scenes
-5. **BaseCinematicScene** (extend existing) — delegates all timeline logic to CinematicDirector; owns letterbox bars and scene lifecycle hooks
-6. **ShowcaseIntroScene** (new) — fast trailer-style intro; extends BaseCinematicScene; highest complexity, built last
-7. **LevelIntroScene** (extend/replace existing) — between-level cinematic; receives `{ levelId }` via `scene.start` data; calls `MusicManager.crossfadeTo()`
+1. **SpriteGenerator.js** — gameplay player spritesheet (128x128, 12 animation frames); produces `superzion` texture key; currently has zero imports in the codebase (orphaned but drawing code is correct)
+2. **CinematicTextures.js** — static hero portraits (128x192) for 6 level-intro cinematics and MenuScene; produces `cin_superzion` and `cin_superzion_cliff`; independent palette from SpriteGenerator
+3. **ParadeTextures.js** — parade-context hero, boss sprites, waving flag spritesheets; produces `parade_superzion`, `parade_foambeard`, `parade_turboturban`, `parade_warden`, `parade_supremeturban`, and `parade_flag_*` keys; ~1100 lines
+4. **IntroMusic.js** — 945-line psytrance engine scheduling 25-second 3-act intro at 145 BPM via Web Audio; exports 5 standalone SFX functions that are never called
+5. **EndScreen.js** — reusable victory/defeat overlay (222 lines); used by L2 and L3 only; needs migration to L4 (DroneScene), L5 (B2BomberScene), L6 (BossScene)
+6. **ControlsOverlay.js** — 107-line two-phase controls display (big overlay for 3s then fades to bottom bar); integrated in all 6 levels; cosmetic changes only needed
+7. **BaseCinematicScene.js** — act system, skip-to-menu, typewriter, transitions; parent class for all 7 cinematic scenes including GameIntroScene
+8. **MusicManager / SoundManager** — singleton audio services; well-established; do not modify during this milestone
 
-**Build order is strict:** TextureRegistry → MusicManager extensions → SoundManager extensions → CinematicDirector → BaseCinematicScene → ShowcaseIntroScene → LevelIntroScene. Manager work before scene work because scenes import managers, never the reverse.
+**Key convergence point:** `GameIntroScene.js` (818 lines) is modified by Fixes 2, 3, and 4 simultaneously. Fixes must be serialized: Fix 3 (Act 1 boss/flag display) first, Fix 4 (Act 3 title screen) second, Fix 2 (SFX wiring across all acts) last. Each fix must be committed before the next begins.
 
----
+See `.planning/research/ARCHITECTURE.md` for per-fix integration maps with file-level change lists and the full scene flow.
 
 ### Critical Pitfalls
 
-1. **Unbounded AudioBufferSourceNode accumulation** — each looping sound creates a new node per loop pass; nodes are not GC'd while "playing"; on mobile, tab crashes before level 6. Prevention: explicit `stop()` then `destroy()` in a `setTimeout(0)` gap (Chrome crash workaround) in MusicManager on theme change; never call `sound.add()` in update loops.
+1. **Sprite identity fragmentation** — three independent systems draw SuperZion with separate code and palettes. Updating SpriteGenerator.js and assuming it propagates does not work. Prevention: audit all three files (SpriteGenerator, CinematicTextures, ParadeTextures) for visual consistency before any sprite commit; extract shared `PAL` palette constants as a first step.
 
-2. **AudioContext suspended before cinematic plays** — Chrome 71+ and all mobile browsers suspend AudioContext until a user gesture; cinematic intro plays silently on first load. Prevention: gate all audio on `this.sound.once('unlocked', ...)` event; show a "tap to continue" fallback if no gesture arrives within 2 seconds; test on real mobile hardware, not DevTools simulation.
+2. **Web Audio node accumulation and clipping** — at 145 BPM over 25 seconds, IntroMusic.js creates 300+ scheduled nodes with no `DynamicsCompressorNode`. Combined with synchronized SFX, the signal chain clips. Prevention: insert a DynamicsCompressorNode (threshold -6dB, ratio 4:1) between the voice bus and master gain; batch-schedule Act 2 and Act 3 nodes late to spread allocation cost.
 
-3. **Procedural texture regeneration on every scene create** — `generateTexture()` inside `create()` on scene restarts causes 200-400ms jank and VRAM spikes. Prevention: generate once in BootScene via TextureRegistry; guard all subsequent calls with `if (!this.textures.exists(key))`.
+3. **Keyboard listener leaks on scene transitions** — EndScreen.js and ControlsOverlay.js register `addKey()` listeners inside `delayedCall` callbacks. If scene transitions before the delay fires, listeners attach to a shutting-down scene and accumulate across retries. Prevention: store key references, return a cleanup function from both modules, call cleanup in each scene's `shutdown` event.
 
-4. **Old vs new Timeline API confusion** — `this.tweens.timeline()` was removed in Phaser 3.60; any tutorial code using it throws at runtime. Prevention: use `this.add.timeline([])` exclusively; when applying `timeScale`, also set it on each child tween individually.
+4. **Restoring lost content without understanding why it was lost** — boss sprites and flags disappeared during a refactor. The texture generation (`generateAllParadeTextures`) still runs; the loss is in `_bossFlashEntry()` display code. Prevention: audit ParadeTextures key outputs vs GameIntroScene display code references first; restoration is `this.add.sprite(x, y, 'parade_foambeard')` — do not regenerate or redraw the textures.
 
-5. **Sound duplication on scene restart** — global SoundManager persists across scene restarts; `scene.restart()` adds duplicate sound instances without destroying previous ones, causing volume doubling and phasing artifacts. Prevention: explicit `destroy()` in every scene's `shutdown` event handler; check `this.sound.get('key')` before `add()`.
+5. **End-of-level screen integration with heterogeneous custom scenes** — DroneScene, B2BomberScene, and BossScene each have scene-specific stats logic and (in BossScene) a disintegration animation that must complete before the victory overlay appears. Naive replacement of custom `_showVictory()` with `showVictoryScreen()` breaks stats and animation order. Prevention: call `showVictoryScreen()` from within the existing `_showVictory()` method after stats are computed, not as a wholesale replacement.
 
 ---
 
 ## Implications for Roadmap
 
-Based on combined research, the dependency graph mandates a specific build order. Infrastructure must precede content; content must be added from simplest to most complex. Six phases are recommended.
+Based on combined research, the natural build order is 4 phases grouped by dependency and risk: three completely independent fixes first, one prerequisite fix second, three fixes that serialize through the same file third, and one fix that can parallel-track throughout.
 
-### Phase 1: Audio Infrastructure Repair
-**Rationale:** Music fade-out is the single blocking dependency called out in FEATURES.md. AudioBufferSourceNode leaks (Pitfall 1) are catastrophic on mobile and accelerate with every new track added. This phase creates the foundation every subsequent phase depends on. No new audio features should be added until the leak is fixed.
-**Delivers:** `MusicManager.fadeOutAndStop()`, `MusicManager.crossfadeTo()` with equal-power crossfade, explicit `destroy()` pattern in shutdown handlers, SoundManager variant pool scaffolding, `LEVEL_MUSIC_CONFIG` data file for all 6 levels.
-**Addresses features:** Music transitions at scene boundaries (currently missing), SFX parameter variation.
-**Avoids pitfalls:** Pitfall 1 (AudioBufferSourceNode accumulation), Pitfall 6 (sound duplication on restart), Pitfall 7 (looping music gap — ensure Web Audio path stays active).
-**Research flag:** Standard patterns — well-documented Web Audio API, LOW need for `/gsd:research-phase`.
+### Phase 1: Standalone Quick Wins
 
-### Phase 2: Texture and Animation Foundation
-**Rationale:** TextureRegistry (generating all frames at boot) must exist before any cinematic scene tries to display animated sprites. Global animation key collisions (Pitfall 8) are hard to debug after the fact. This phase also increases sprite frame counts for all characters, which cinematic scenes will depend on.
-**Delivers:** TextureRegistry utility class, all character sprite sheets updated to 8-frame walk cycles, anticipation frames added to player and enemy action sprites, idle breathing frames (2 per character), animation key namespace convention established and guarded with `anims.exists()`.
-**Addresses features:** Anticipation frame (highest-ROI animation improvement), idle breathing animation.
-**Avoids pitfalls:** Pitfall 3 (texture regeneration jank), Pitfall 8 (global animation key collision).
-**Research flag:** Standard patterns — LOW need for `/gsd:research-phase`.
+**Rationale:** Fixes 5, 6, and 8 have zero dependencies on any other fix. They touch isolated files. Doing them first eliminates three shipping blockers with low risk and validates the development environment before the harder convergence work begins.
 
-### Phase 3: CinematicDirector + BaseCinematicScene Refactor
-**Rationale:** CinematicDirector must exist before any cinematic scene is authored. Without it, each scene will inline Timeline boilerplate, producing the same 1500-line problem that BossScene already represents. This is a pure infrastructure phase with no new visible content.
-**Delivers:** `CinematicDirector` class wrapping `Time.Timeline`, letterbox bars in `BaseCinematicScene`, scene transition fade pattern using manual alpha-tween overlay (avoids camera fade bug), `CinematicController` pattern for extracting cinematic logic from scenes.
-**Addresses features:** Scene fade in/out on every transition, cinematic letterbox bars.
-**Avoids pitfalls:** Pitfall 4 (tween budget exhaustion — Director enforces budgeted timeline usage), Pitfall 5 (scene transition flicker), Pitfall 9 (old Timeline API confusion), Pitfall 10 (monolithic scene files).
-**Research flag:** LOW need — Phaser `Time.Timeline` API is well-documented; patterns are established.
+**Delivers:** Readable controls text in all 6 levels, correct F-15 swept-back wing geometry, and confirmed Level 2 completability (or the specific blocked path identified for targeted repair).
 
-### Phase 4: Per-Level Trance Music Themes
-**Rationale:** With MusicManager crossfade infrastructure from Phase 1 and level configs defined, this phase authors the 6 distinct trance patches. Each level gets BPM, scale, oscillator waveform, arpeggio pattern, and atmosphere layer. This is the highest-impact audio feature — per-level music identity.
-**Delivers:** 6 distinct trance themes, BPM-locked lookahead scheduler, trance component set per level (kick, bassline, pads, arpeggio, lead melody, atmosphere), alert/detection musical sting hooked into `_onDetection()`.
-**Addresses features:** Unique per-level BPM, per-level trance sub-genre variation, synthesized trance pad chords, alert musical sting.
-**Avoids pitfalls:** Pitfall 2 (AudioContext suspend — gesture gate applied before music plays), Pitfall 7 (looping gap — Web Audio path enforced).
-**Research flag:** MEDIUM need — trance sub-genre differentiation via PeriodicWave coefficients may benefit from `/gsd:research-phase` to define the 6 oscillator patches in detail before implementation.
+**Addresses:** Issues 5 (Level 2 container paths), 6 (F-15 wings), 8 (controls readability) — all table-stakes blockers.
 
-### Phase 5: Between-Level and Level-Title Cinematics
-**Rationale:** With CinematicDirector and TextureRegistry both stable, LevelIntroScene and boss/level-title reveal cards can be authored cleanly. This phase adds the story beats that make the game feel like a complete product.
-**Delivers:** Animated LevelIntroScene for all 6 level transitions, boss/level-title reveal card, typed dialogue with character identification, music crossfade triggered at each scene boundary.
-**Addresses features:** Between-level story beats with animated sprites, boss/level-title reveal card, music transitions at scene changes.
-**Avoids pitfalls:** Pitfall 11 (RenderTexture dimensions — cap at 2048px, test mobile), Pitfall 12 (shutdown vs destroy data manager confusion).
-**Research flag:** LOW need — builds on proven Phase 3 infrastructure.
+**Avoids:** Pitfall 9 (controls depth/contrast) — test all 6 level backgrounds for gold text readability before closing; Pitfall 6 (two F-15 sprite files) — identify the broken implementation visually before editing any coordinates.
 
-### Phase 6: Showcase Intro and High-Complexity Polish
-**Rationale:** The trailer-style intro showcase is the highest-complexity and highest-risk piece of work. Building it last ensures all primitives (Director, TextureRegistry, music themes, sprite frames) are stable. Failures here do not break existing gameplay.
-**Delivers:** Fast trailer-style intro showcase (boss/plane/character reveals synced to music beat drop), breakdowns and build-ups in MusicManager tied to cinematic phase commands, character entrance motion smear frames, squash-and-stretch tween overlays on jump/land.
-**Addresses features:** Animated intro title sequence (fully realized), per-level trance breakdowns/buildups, character entrance motion smear.
-**Avoids pitfalls:** Pitfall 4 (tween budget — audit `tweens.getTweens().length` throughout; budget 20 tweens for cinematics).
-**Research flag:** HIGH need for `/gsd:research-phase` — multi-character Timeline choreography synced to audio beat drops requires precise timing research; breakdown/buildup phase command API for MusicManager needs design work.
+**Estimated scope:** ~1.5 hours total. ControlsOverlay.js constant changes (15 min), F-15 geometry identification and fix (30 min), PortSwapScene container path investigation and playtest (30-45 min).
 
----
+### Phase 2: Sprite Visual Consistency Audit
+
+**Rationale:** Fix 1 (player sprite) is a prerequisite for Fixes 3 and 4: the intro showcase uses `parade_superzion` and boss sprites should match the established art style. The SpriteGenerator.js sprite is already drawn and detailed (573 lines of canvas drawing). This phase is verification and palette audit, not a rewrite.
+
+**Delivers:** Confirmed visual consistency across all three SuperZion sprite systems (SpriteGenerator, CinematicTextures, ParadeTextures) and verified that the 128x128 sprite reads correctly at 32-48px rendered game-scale.
+
+**Addresses:** Issue 1 (sprite proportions and consistency).
+
+**Avoids:** Pitfall 1 (sprite identity fragmentation) — mandatory audit of all three drawing systems; Pitfall 5 (proportions unreadable at game scale) — verify at actual rendered resolution, not at canvas size.
+
+**Estimated scope:** 1-2 hours. If divergence is minor (palette values differ), it is a 30-minute fix. If one system's proportions are substantially different, time-box at 2 hours and flag if it spills.
+
+### Phase 3: Intro Scene Overhaul (Serialized)
+
+**Rationale:** Fixes 2, 3, and 4 all modify `GameIntroScene.js`. They must execute in strict order with a commit between each to prevent conflicts and enable targeted rollback. This phase brings the intro from "placeholder rectangles with music playing" to a polished cinematic showcase.
+
+**Delivers:** Real boss parade sprites (Foam Beard, Turbo Turban, The Warden) with waving flag animations in Acts 1-2; giant golden semi-transparent Star of David behind the hero with arcade-weight title in Act 3; missile whoosh, jet flyby, tank rumble, and march SFX synchronized to visual events and the 145 BPM beat grid.
+
+**Addresses:** Issues 3 (boss + flag restoration), 4 (final intro title screen), 2 (SFX beat sync).
+
+**Avoids:** Pitfall 4 (restore without understanding what was lost) — audit ParadeTextures key outputs against GameIntroScene display code before writing any restoration; Pitfall 2 (Web Audio clipping) — add DynamicsCompressorNode when wiring SFX in Fix 2; Pitfall 12 (Magen David blocking skip input) — set overlay depth below BaseCinematicScene skip hint at depth 100.
+
+**Serial order within phase:**
+1. Fix 3: Rewrite `_bossFlashEntry()` to use `this.add.sprite(x, y, 'parade_foambeard')` etc.; add waving flag sprites to Acts 1 and 2
+2. Fix 4: Modify `_startAct3()` title reveal with giant Star of David graphic and larger arcade-style monospace font
+3. Fix 2: Wire the 5 unused IntroMusic SFX exports to GameIntroScene visual event callbacks; adjust beat-grid timing; add DynamicsCompressorNode
+
+**Estimated scope:** 4-5 hours total across the three serialized sub-fixes.
+
+### Phase 4: End-Screen Standardization (Parallel Track)
+
+**Rationale:** Fix 7 touches completely different files from Phases 2-3 (DroneScene, B2BomberScene, BossScene). It can run in parallel with Phases 2-3 if resources allow, or sequentially after if not.
+
+**Delivers:** Consistent RETRY/SKIP LEVEL and PLAY AGAIN/NEXT LEVEL navigation on every level, eliminating "stuck at victory text" UX bugs in L4, L5, and L6.
+
+**Addresses:** Issue 7 (end screens on all 6 levels).
+
+**Avoids:** Pitfall 7 (heterogeneous custom scenes) — integrate EndScreen.js calls inside existing `_showVictory()` methods after scene-specific stats are computed, not as wholesale replacements; Pitfall 3 (keyboard listener leaks) — add cleanup in each scene's `shutdown` event handler; BossScene disintegration animation must complete before EndScreen overlay is shown.
+
+**Scene routing map for implementation:**
+- L4 DroneScene → nextScene: `MountainBreakerIntroCinematicScene`
+- L5 B2BomberScene → nextScene: `LastStandCinematicScene`
+- L6 BossScene → nextScene: `VictoryScene` (last level, no skip needed)
+- L1 GameScene — preserve ExplosionCinematicScene flow; standardize navigation at its end
+
+**Estimated scope:** 2-3 hours.
 
 ### Phase Ordering Rationale
 
-- Infrastructure-first order directly mirrors the component dependency graph from ARCHITECTURE.md: TextureRegistry and Manager extensions have no scene dependencies and must exist before scenes consume them.
-- Phases 1-3 are purely additive to existing infrastructure — no new visible game content, no risk to existing gameplay.
-- Phase 4 is the highest-impact audio deliverable and comes before cinematic scenes so that scenes can immediately use the finished music themes.
-- Phases 5-6 are content phases that consume all prior infrastructure; reversing them with earlier phases would produce a fragile cinematic sequence that needs to be partially rewritten when foundations change.
-- This order avoids the most dangerous pitfall: adding trance music tracks before fixing the AudioBufferSourceNode leak (which would accelerate the crash trajectory on mobile).
-
----
+- **Phase 1 before everything:** Zero-risk standalone fixes reduce visible broken count and validate the dev environment without introducing any new risks.
+- **Phase 2 before Phase 3:** Sprite visual identity must be confirmed before boss sprites and the final intro title screen are locked in — otherwise the parade hero may not match gameplay hero after Phase 3 completes.
+- **Phase 3 serialized internally:** Three fixes on one 818-line file require strict ordering. Act 1 visual fix (boss sprites) before Act 3 visual fix (title screen) before audio wiring (all acts) is the safest sequence.
+- **Phase 4 parallel to Phases 2-3:** Different files, no shared state, no conflict risk.
 
 ### Research Flags
 
-Phases likely needing `/gsd:research-phase` during planning:
-- **Phase 4:** Trance sub-genre differentiation via PeriodicWave and custom oscillator patches — specific Fourier coefficients for 6 distinct patches need research; trance theory documentation is sparse on Web Audio API specifics.
-- **Phase 6:** Multi-character Timeline choreography synced to audio beat drops — precise beat-sync cue system in MusicManager (callback at beat N) is not a well-documented Phaser pattern and needs API design research.
+Phases that may need closer attention during execution:
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1:** MusicManager crossfade and node cleanup — canonical Web Audio API patterns, documented on MDN and in the Web Audio API book.
-- **Phase 2:** Canvas spritesheet generation and global animation registry — Phaser docs and existing codebase patterns cover this completely.
-- **Phase 3:** CinematicDirector and `Time.Timeline` usage — official Phaser 3.60+ docs are thorough and examples are available.
-- **Phase 5:** LevelIntroScene authoring — direct application of Phase 3 infrastructure with no novel patterns.
+- **Phase 2 (Sprite Audit):** If palette and proportion divergence across the three sprite systems is substantial, the audit expands into a rewrite of one system. Time-box at 2 hours; if it spills, flag for a dedicated sub-task before continuing to Phase 3.
+- **Phase 3 / Fix 2 (SFX sync timing):** The Web Audio clock and Phaser game-loop clock are independent. Tight beat-grid synchronization may require `setTimeout` calculated from `(scheduledTime - ctx.currentTime) * 1000` rather than `delayedCall`. Accept up to ~50ms visual drift as tolerable; beyond that, escalate.
+- **Phase 4 / Fix 7 (BossScene):** The disintegration animation + EndScreen layering interaction requires specific testing. The `victory_pending → victory` state machine must trigger EndScreen only after the animation completes.
+
+Phases with standard patterns (no additional research needed):
+
+- **Phase 1 (all three fixes):** ControlsOverlay, PortSwapScene constants, and F-15 geometry are small, isolated, and fully understood from the source audit.
+- **Phase 3 / Fix 3 (boss + flag restoration):** Texture keys confirmed present; display code fix is a standard `this.add.sprite()` call.
+- **Phase 4 / Fix 7 for L2 and L3:** Already using EndScreen.js; just verify current integration matches spec.
 
 ---
 
@@ -179,52 +174,52 @@ Phases with standard patterns (skip research-phase):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All technologies are native browser APIs or Phaser built-ins; Phaser 3.80.1 confirmed to include all required APIs (Timeline in 3.60, tween chains in 3.60, ParticleEmitter tween props in 3.60). MDN and official Phaser docs used as primary sources. |
-| Features | HIGH | Table-stakes features are well-established indie game conventions; feature research cross-referenced the existing codebase files (`CONCERNS.md`, `ARCHITECTURE.md`) which confirm the gaps (missing fadeOut, no per-level BPM) directly. |
-| Architecture | HIGH | Component boundaries and build order are grounded in Phaser's documented singleton patterns and the existing codebase structure. Equal-power crossfade math sourced from the canonical Web Audio API book (Boris Smus). |
-| Pitfalls | HIGH | All 4 critical pitfalls are backed by specific Phaser GitHub issues with issue numbers. The AudioBufferSourceNode leak and AudioContext suspend issues are among the most-cited Phaser bugs in community resources. |
+| Stack | HIGH | No new technologies; all techniques demonstrated in existing codebase; 100% procedural constraint is firm and well-understood |
+| Features | HIGH | 8 issues precisely defined with file-level attribution; scope confirmed via direct source audit of all affected files |
+| Architecture | HIGH | Full source audit of all affected files: SpriteGenerator (573 lines), GameIntroScene (818 lines), IntroMusic (945 lines), all 6 game scenes, all 6 intro cinematics; all integration points mapped |
+| Pitfalls | HIGH | Pitfalls derived from direct code inspection (keyboard listener patterns, Web Audio node counts from BPM/duration math, texture key naming) plus specific Phaser GitHub issue references |
 
-**Overall confidence:** HIGH
+**Overall confidence: HIGH**
 
 ### Gaps to Address
 
-- **PeriodicWave coefficient values for trance patches** — research identified the technique but did not specify exact Fourier coefficients for each of the 6 level timbres. Address in Phase 4 planning with `/gsd:research-phase`.
-- **Beat-sync callback API in MusicManager** — the lookahead scheduler pattern is clear, but the interface for firing scene-level callbacks at specific bar/beat positions in a trance track needs design. Address in Phase 6 planning.
-- **ConvolverNode vs. feedback delay reverb** — STACK.md rates ConvolverNode at MEDIUM confidence for procedural impulse responses; recommends feedback delay network as first attempt. Validate reverb quality during Phase 4 SFX work; fallback strategy is already identified.
-- **iOS/Safari HTML5 Audio fallback behavior** — Pitfall 7 (looping gap) applies if Web Audio path fails to unlock. The mitigation (ensure Web Audio unlock before play) is clear, but behavior on specific iOS versions should be validated with real device testing in Phase 1.
+- **F-15 exact bug location:** `BomberTextures.js` wing geometry appears correct for a rightward-facing sprite. The bug is most likely in `CinematicTextures.js` or the inline jet graphics in `GameIntroScene._spawnJetStrike()`. Must be identified visually before editing — do not change BomberTextures.js without first confirming it is the broken one.
+
+- **Level 2 actual blocked path:** Current spacing (30-32px clearance) should be passable for a 14px player body. The real blocker may be wall/building physics bodies, guard patrol choke points at narrow sections, or a crane/forklift physics body that is larger than its visual sprite. Must playtest before assuming spacing constants are the cause.
+
+- **SpriteGenerator.js import count of zero:** The source audit found zero imports of `SpriteGenerator.js` across the codebase, which is unexpected for the gameplay sprite generator. Verify that the `superzion` texture is being generated and loaded — it may be instantiated from a BootScene file that was not included in the audit.
+
+- **DynamicsCompressor threshold tuning:** The -6dB threshold and 4:1 ratio recommendation is a standard starting point for multi-voice synthesis, but optimal settings depend on current voice volumes in IntroMusic.js. Requires listening tests during Phase 3 / Fix 2 execution.
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence)
-- [Phaser 3 Time.Timeline API](https://docs.phaser.io/api-documentation/class/time-timeline) — cinematic event sequencing
-- [Phaser 3 Animations Documentation](https://docs.phaser.io/phaser/concepts/animations) — frame animation, anims.create(), generateFrameNumbers()
-- [Phaser 3 CanvasTexture API](https://docs.phaser.io/api-documentation/class/textures-canvastexture) — procedural spritesheet generation
-- [MDN Web Audio API Advanced Techniques](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Advanced_techniques) — BPM lookahead scheduler
-- [MDN Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) — OscillatorNode, BiquadFilterNode, GainNode, AudioBuffer
-- [Web Audio API — Boris Smus (O'Reilly)](https://webaudioapi.com/book/Web_Audio_API_Boris_Smus_html/ch03.html) — equal-power crossfade
-- [Phaser issue #2280](https://github.com/phaserjs/phaser/issues/2280) — AudioBufferSourceNode memory leak
-- [Phaser issue #3895](https://github.com/photonstorm/phaser/issues/3895) — each loop creates new AudioBufferSourceNode
-- [Phaser v3.60 Beta 23 discussion](https://github.com/phaserjs/phaser/discussions/6452) — Timeline/TweenChain API changes
-- [Phaser 3 audio docs — locked/UNLOCKED](https://docs.phaser.io/phaser/concepts/audio) — AudioContext gesture gate
-- [web.dev — Web Audio for Games](https://web.dev/webaudio-games/) — game audio architecture patterns
-- Codebase files: `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/STACK.md`, `.planning/codebase/CONCERNS.md` — direct source analysis
+### Primary (HIGH confidence — direct source code inspection)
+- `SpriteGenerator.js` (573 lines) — sprite system, PAL palette, 12 animation frames, applyOutline technique
+- `GameIntroScene.js` (818 lines) — 3-act cinematic, `_bossFlashEntry()` raw graphics at line 472, `_startAct3()` title reveal
+- `IntroMusic.js` (945 lines) — 699-line psytrance class + 246-line exported SFX functions (all unwired)
+- `EndScreen.js` (222 lines) — reusable victory/defeat overlay, key bindings, scene routing parameters
+- `ControlsOverlay.js` (107 lines) — two-phase controls display, depth 90-101
+- `ParadeTextures.js` (~1100 lines) — boss parade sprites, flag generation, `wavingSheet()` animation helper
+- `CinematicTextures.js`, `BomberTextures.js`, `PortSwapScene.js`, `DroneScene.js`, `B2BomberScene.js`, `BossScene.js`, `BaseCinematicScene.js` — all audited for integration mapping
+- [Phaser 3.80.0 Camera Shake API](https://newdocs.phaser.io/docs/3.80.0/focus/Phaser.Cameras.Scene2D.Camera-shake) — shake parameter signature
+- [Phaser 3 Textures Documentation](https://docs.phaser.io/phaser/concepts/textures) — texture manager lifecycle
 
-### Secondary (MEDIUM confidence)
-- [Rex Rainbow Phaser 3 Notes — Timeline](https://rexrainbow.github.io/phaser3-rex-notes/docs/site/timeline/) — Timeline event structure reference
-- [Trance Music Production — Landr](https://blog.landr.com/trance-music-production/) — trance component anatomy
-- [HTMEM — Trance Song Structure](https://howtomakeelectronicmusic.com/trance-song-structure-and-how-does-uplifting-trance-song-progress/) — BPM ranges, section structure
-- [Phaser discourse — AudioContext not allowed to start](https://phaser.discourse.group/t/audiocontext-was-not-allowed-to-start/795)
-- [Phaser discourse — Sound duplicates on scene.restart()](https://phaser.discourse.group/t/sound-duplicates-in-one-scene-when-using-scene-restart/8720)
-- [Phaser discourse — Tweens performance](https://phaser.discourse.group/t/tweens-performance/10930)
-- [Dynamic Music in Games using WebAudio](https://cschnack.de/blog/2020/webaudio/) — MusicManager patterns
-- [How to Create Procedural Audio Effects with Web Audio API](https://dev.to/hexshift/how-to-create-procedural-audio-effects-in-javascript-with-web-audio-api-199e) — noise buffer SFX patterns
+### Secondary (MEDIUM confidence — community consensus, tutorials)
+- [SLYNYRD Pixelblog 49 — Realistic Human Anatomy](https://www.slynyrd.com/blog/2024/3/25/pixelblog-49-realistic-human-anatomy) — 6-head model for action side-scrollers
+- [GameDev.net Pixel Art Sprite Proportions](https://www.gamedev.net/forums/topic/625955-pixel-art-sprite-proportions-and-size/) — display-size readability at 32-48px
+- [Psytrance Bassline Synthesis](https://dsokolovskiy.com/blog/all/psytrance-bassline-synthesis/) — 16th-note patterns, filter envelope character
+- [Gamedeveloper.com — Synchronizing Gameplay and Animation with Music](https://www.gamedeveloper.com/audio/synchronizing-gameplay-and-animation-with-music) — beat-sync pre-trigger technique
+- [Web Audio API performance notes](https://padenot.github.io/web-audio-perf/) — node lifecycle, GC behavior
+- [MDN Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) — OscillatorNode, BiquadFilterNode, GainNode, DynamicsCompressorNode
 
-### Tertiary (LOW confidence)
-- [Refactoring Phaser components into classes](https://jingchaoyu.medium.com/refining-our-phaser-game-part-1-refactoring-components-into-their-own-classes-3c748da67afa) — CinematicController pattern; single article, but consistent with established OO patterns
+### Tertiary (MEDIUM-LOW confidence — GitHub issues and community reports)
+- [Phaser GitHub Issue #3489](https://github.com/phaserjs/phaser/issues/3489) — keyboard listeners remain active after scene change
+- [Phaser GitHub Issue #6669](https://github.com/phaserjs/phaser/issues/6669) — dynamic texture memory leak
+- [Chromium Bug #576484](https://bugs.chromium.org/p/chromium/issues/detail?id=576484) — Web Audio GC behavior for disconnected nodes
 
 ---
 
-*Research completed: 2026-03-05*
+*Research completed: 2026-03-19*
 *Ready for roadmap: yes*

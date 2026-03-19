@@ -1,378 +1,340 @@
-# Technology Stack — SuperZion Polish & Cinematic Upgrade
+# Technology Stack — SuperZion v1.1 Polish Pass
 
-**Project:** SuperZion — Cinematic & Audio Polish Milestone
-**Researched:** 2026-03-05
-**Domain:** Phaser 3 game — procedural audio synthesis, animated cinematics, sprite animation
+**Project:** SuperZion v1.1 — Sprite Redesign, Psytrance Intro, Game Polish
+**Researched:** 2026-03-19
+**Domain:** Procedural canvas sprites, Web Audio synthesis, Phaser 3 camera effects, game UX
+**Overall Confidence:** HIGH
 
 ---
 
 ## Scope Constraint
 
-Everything below operates within the existing stack: **Phaser 3.80.1 + Vite 5.4.0 + Web Audio API + Canvas API**.
-No new npm packages are needed or recommended. All four areas (cinematics, music differentiation, SFX richness, sprite animation) are achievable with native browser APIs and Phaser's built-in systems.
+**No new dependencies.** Everything below uses the existing stack: Phaser 3.80.1 + Vite + Canvas API + Web Audio API. The project is 100% procedural with zero external assets. This research covers specific techniques needed for the 8 polish tasks, not general stack exploration.
+
+**Already validated (DO NOT re-implement):** MusicManager (fade/crossfade), SoundManager (oscillator SFX), SpriteGenerator (canvas procedural sprites), BaseCinematicScene, IntroMusic system.
 
 ---
 
-## Recommended Stack
+## 1. Procedural Human Sprite Drawing via Canvas API
 
-### 1. Cinematic Sequences — Animated Sprites in Phaser 3
+### The Problem
 
-| Technology | API | Purpose | Confidence |
-|------------|-----|---------|------------|
-| Phaser 3 Timeline | `this.add.timeline([])` | Orchestrate timed sprite/tween events in sequence | HIGH |
-| Phaser 3 Tween chains | `this.tweens.chain({ tweens: [] })` | Sequential property animations (x, y, alpha, scale, angle) | HIGH |
-| Phaser 3 Canvas Texture | `this.textures.createCanvas(key, w, h)` + `.refresh()` | Generate multi-frame sprite sheets procedurally | HIGH |
-| Phaser 3 Sprite Anim Manager | `this.anims.create()` + `generateFrameNumbers()` | Play frame-based animations on sprites from canvas texture | HIGH |
-| Phaser 3 Graphics | `this.add.graphics()` | Draw vector shapes for environment elements in cinematics | HIGH |
+The existing `SpriteGenerator.js` already draws a detailed 128x128 Mossad agent with head, torso, arms, legs, gloves, boots, Star of David, stubble, and a 1px outline. The proportions are approximately 7 heads tall (head center at y=18, boots end at y~96 in a 128px canvas). The current sprite is well-crafted and uses:
 
-**How they compose for cinematics:**
+- **Pixel functions:** `px()` for single pixels, `pxRect()` for rectangles, `shadedRect()` for multi-tone gradient fills
+- **Arc-based features:** `ctx.ellipse()` for head oval, `ctx.arc()` / `ctx.beginPath()` + `ctx.fill()` for curved shapes
+- **Outline pass:** `applyOutline()` reads pixel alpha via `getImageData()`, draws 1px dark border around the silhouette
+- **Animation:** 12 frames (2 idle, 6 run, 2 jump, 1 fall, 2 shoot) parameterized by `bodyBob`, `legL`, `legR`, `armSwing`
 
-The `Timeline` API (added in Phaser 3.60, present in 3.80.1) is the correct orchestration primitive. It sequences events at absolute timestamps using the `at` property — far cleaner than nested `onComplete` callbacks. Each event can: spawn a sprite, fire a tween, play a sound, or call an arbitrary function.
+### Techniques for Improvement
+
+The sprite is already organic-looking (not cubes). If further improvements are needed, here are the specific canvas techniques that work at this scale:
+
+#### A. Proportions Tuning (7-8 Head Model at 128px)
+
+| Body Part | Current Pixel Range (Y) | Ideal at 7.5 Heads | Notes |
+|-----------|------------------------|---------------------|-------|
+| Head top | ~5 | ~5 | Correct |
+| Head bottom (chin) | ~30 | ~30 | Correct (head = 25px, good for 128px canvas) |
+| Torso top | ~30 | ~30 | Correct |
+| Torso bottom (hip) | ~54 | ~56 | Could extend 2px for longer torso |
+| Legs top | ~54 | ~56 | Matches hip |
+| Feet bottom | ~96 | ~100 | Slightly longer legs add realism |
+
+At 128x128, a 7-head model works well because each "head unit" is ~13px, giving enough resolution for facial features (eyes=2px, eyebrows=1px, mouth=1px, stubble scatter).
+
+**Technique:** The current approach of direct pixel placement (`px()`, `pxRect()`) with gradient shading (`shadedRect()`) is correct for this scale. Do NOT switch to bezier curves or anti-aliased rendering -- pixel-sharp edges are intentional for the retro aesthetic. The `applyOutline()` silhouette border is the right finishing technique.
+
+#### B. Walk Cycle Physics
+
+The current 6-frame run cycle uses sine-wave parameterization:
 
 ```javascript
-// Inside BaseCinematicScene or subclass
-const tl = this.add.timeline([
-  {
-    at: 0,
-    run: () => {
-      this.bossSprite = this.add.sprite(1100, 300, 'boss_frames').setAlpha(0);
-    }
-  },
-  {
-    at: 200,
-    tween: {
-      targets: this.bossSprite,
-      x: 700,
-      alpha: 1,
-      duration: 800,
-      ease: 'Power2'
-    }
-  },
-  {
-    at: 1200,
-    tween: {
-      targets: this.bossSprite,
-      angle: { from: -5, to: 5 },
-      yoyo: true,
-      repeat: 3,
-      duration: 150
-    }
-  },
-  {
-    at: 2500,
-    run: () => this._showSubtitle('Mission: Infiltrate the compound'),
+legL: Math.sin(p) * 8,      // leg offset
+legR: Math.sin(p + PI) * 8, // opposite phase
+bodyBob: Math.abs(Math.sin(p)) * -2,  // vertical bob
+armSwing: Math.sin(p) * 0.12,         // arm rotation
+```
+
+This is correct for procedural walk animation. The key improvement opportunities:
+
+| Parameter | Current | Better Value | Why |
+|-----------|---------|-------------|-----|
+| Arm swing range | 0.12 rad | 0.18-0.22 rad | More visible arm movement at small sprite scale |
+| Leg stride | 8px | 10px | Legs need more travel to read as walking vs shuffling |
+| Body bob | 2px | 3px | More pronounced vertical movement = more organic |
+| Frame count | 6 | 6-8 | 6 is adequate; 8 only if smoothness is insufficient |
+
+#### C. Cinematic Hero Sprite (Larger Scale)
+
+The `CinematicTextures.js` already draws a 128x192 detailed hero with:
+- Bezier curves for hair
+- Multi-layer skin shading
+- Angular jawline via path operations
+
+This pattern extends to boss sprites. At cinematic scale (larger than 128x128), use `ctx.ellipse()` for heads, `ctx.quadraticCurveTo()` for hair sweep, and multi-layer fills for skin tones.
+
+#### D. Boss Sprite Construction Pattern
+
+The codebase already has working boss sprites in `BombermanTextures.js` (`drawBoss1FoamBeard`), `PlatformerTextures.js` (`drawBoss2TurboTurban`), and `DroneTextures.js` (`drawBoss4AngryEyebrows`). Each supports expression variants (normal/angry/dead).
+
+For the intro showcase, bosses need to be drawn at parade scale (the `ParadeTextures.js` pattern). The `staticSprite()` helper generates single-frame sprites and registers them with `scene.textures.addCanvas()`.
+
+**Technique for "super attack" animations in intro:** Use Phaser tweens on the sprite (scale pulse, position shake, flash tint) rather than drawing additional animation frames. This is cheaper and the existing code already does this pattern via `this.tweens.add()` in `GameIntroScene._bossFlashEntry()`.
+
+### Canvas API Confidence: HIGH
+
+These are not novel techniques. The codebase already implements all of them. The work is tuning parameters and ensuring consistency across scenes.
+
+---
+
+## 2. Psytrance 145+ BPM Synthesis via Web Audio API
+
+### Current State
+
+`IntroMusic.js` (698 lines) already implements a full psytrance intro with:
+- **Kick:** Sine sweep 150Hz->40Hz + 1200Hz click transient (0.25s)
+- **Hi-hat:** Noise buffer through highpass (9000Hz closed, 7000Hz open)
+- **Acid bass:** Sawtooth + square sub, resonant lowpass with accent envelope (Q=12-18)
+- **Dark pad:** 5 detuned sawtooth oscillators per chord note, lowpass filtered
+- **Psy lead:** 7 detuned sawtooth oscillators ("supersaw") with square-wave LFO tremolo
+- **Effects:** Impact boom, crash cymbal, reverse crash, filter sweep, acid squelch
+- **SFX:** Jet flyby, missile whoosh, tank rumble, march steps, wind ambient
+
+All 3 acts are pre-scheduled using `AudioContext.currentTime` offsets. BPM is 145 (beat = 0.4138s).
+
+### Techniques for Enhancement
+
+The existing system is solid. Here are specific refinements if the intro music needs more psytrance character:
+
+#### A. Rolling Bassline (16th-Note Pattern)
+
+**Current:** Bass plays on every beat (quarter notes). Psytrance basslines typically run 16th notes.
+
+**Technique:** Schedule 16th-note events at `beat/4` intervals. Use a gate pattern array to create rhythmic interest:
+
+```javascript
+// Classic psytrance 16th-note bass pattern
+// 1 = note on, 0 = rest, accent marks with higher filter cutoff
+const pattern = [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1];
+const sixteenth = beat / 4; // ~0.1034s at 145 BPM
+```
+
+**Why 16th notes matter:** At 145 BPM, quarter-note bass sounds like dubstep or techno -- not psytrance. The rolling 16th-note pattern with short note durations (50-70% of sixteenth length) and filter envelope per note is the defining characteristic of the genre.
+
+#### B. Acid Line Filter Envelope
+
+The existing `_acidBass()` method already implements this correctly:
+- Sawtooth oscillator + square sub-oscillator at 0.5x frequency
+- Resonant lowpass (Q=12-18) with cutoff sweep from `freq*8-12` down to `freq*1.2`
+- Accent notes get higher cutoff peak and Q
+
+**Enhancement:** Add slide/glide between notes for the classic 303 portamento effect:
+
+```javascript
+// Glide: use exponentialRampToValueAtTime between sequential notes
+osc.frequency.setValueAtTime(prevFreq, t);
+osc.frequency.exponentialRampToValueAtTime(nextFreq, t + glideTime);
+// glideTime = 0.03-0.06s for psytrance acid character
+```
+
+#### C. Gated Pad Technique
+
+**Current:** `_darkPad()` plays continuous detuned sawtooth chords through a lowpass filter with slow attack/release. This sounds like ambient trance.
+
+**Psytrance gated pad technique:** Apply a rhythmic amplitude gate synchronized to the beat grid:
+
+```javascript
+// Create an LFO that gates the pad to 16th notes
+const gateLFO = ctx.createOscillator();
+gateLFO.type = 'square';
+gateLFO.frequency.value = bpm / 60 * 4; // 16th note rate = 9.67 Hz at 145 BPM
+
+const gateDepth = ctx.createGain();
+gateDepth.gain.value = 0.5; // 0.5 = full gate, 0.3 = subtle pump
+
+gateLFO.connect(gateDepth);
+gateDepth.connect(padGainNode.gain);
+```
+
+**Why square wave LFO:** A square LFO creates hard on/off gating (the classic psytrance "chop" effect). A sine LFO creates a smoother pumping effect. The existing code already uses this pattern in `_psyLead()` with `lfo.type = 'square'` at 8Hz -- extend it to pads.
+
+#### D. Screen Shake Audio Sync
+
+The intro already synchronizes `_impactBoom()` calls with `this.cameras.main.shake()`. The technique is straightforward: schedule both the audio event and the visual event at the same `delayedCall` timestamp.
+
+**Timing precision:** Web Audio schedules ahead via `ctx.currentTime`, while Phaser's `delayedCall` uses game clock. For tight sync, the approach in `GameIntroScene.js` (scheduling camera shake in the same `delayedCall` as the SFX) is correct because both are triggered by the same JavaScript callback.
+
+### Web Audio API Confidence: HIGH
+
+The existing `IntroMusic.js` already demonstrates mastery of all required synthesis techniques. Enhancements are parameter tuning, not new API surfaces.
+
+---
+
+## 3. Phaser 3 Camera Shake API
+
+### API Signature (Phaser 3.80.1)
+
+```javascript
+camera.shake(duration, intensity, force, callback, context)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `duration` | number | 100 | Duration in milliseconds |
+| `intensity` | number or Phaser.Math.Vector2 | 0.05 | Shake magnitude. Use small floats (0.005-0.05). Can pass Vector2 for independent X/Y |
+| `force` | boolean | false | If true, resets any existing shake and starts fresh |
+| `callback` | function | undefined | Called when shake completes |
+| `context` | object | undefined | Callback context |
+
+### Existing Usage Patterns in Codebase
+
+The project already uses camera shake extensively (40+ call sites across 8 scene files). Established intensity ranges:
+
+| Context | Duration (ms) | Intensity | Example File |
+|---------|---------------|-----------|-------------|
+| Subtle beat pulse | 50-100 | 0.004-0.008 | GameIntroScene (beat shakes) |
+| Explosion nearby | 150-300 | 0.01-0.02 | GameScene, BossScene |
+| Massive impact | 400-600 | 0.03-0.05 | BomberScene, B2BomberScene |
+| Cinematic nuke | 1500-2000 | 0.035-0.06 | ExplosionCinematicScene, B2BomberScene |
+
+### Best Practices (From Existing Code)
+
+1. **Scale intensity to event magnitude:** Small hits = 0.005-0.01, medium = 0.01-0.02, large = 0.02-0.05
+2. **Cap duration for gameplay scenes:** Keep under 500ms during active gameplay to avoid nausea. Reserve 1000ms+ for cinematics only.
+3. **Combine with flash for impact:** `camera.flash(100, 255, 200, 50)` paired with shake reads as "explosion"
+4. **Use `force: false` (default):** Let concurrent shakes layer rather than resetting -- more chaotic during combat
+5. **Randomize intensity slightly:** `0.005 + Math.random() * 0.005` prevents repetitive feel (already used in GameIntroScene)
+
+### Confidence: HIGH
+
+The API is trivial and already heavily used in the codebase. No new patterns needed.
+
+---
+
+## 4. Procedural Flag Animation
+
+### Current Implementation
+
+`ParadeTextures.js` already implements waving flags via the `wavingSheet()` function:
+
+```javascript
+function wavingSheet(scene, key, drawFn, w = 140, h = 90) {
+  const N = 4;  // 4 animation frames
+  // Draw base flag, then for each frame:
+  // Apply column-by-column vertical displacement using sine wave
+  for (let x = 0; x < w; x++) {
+    const amp = (x / w) * 6;  // Amplitude increases left-to-right (pole on left)
+    const yOff = Math.sin(x * 0.1 + ph) * amp + 7;
+    sc.drawImage(base, x, 0, 1, h, f * w + x, yOff, 1, h);
   }
-]);
-tl.play();
-```
-
-**Why Timeline over tween chains:** Timeline uses absolute time (`at` property) so adding a beat in the middle doesn't require re-calculating all subsequent delays. Tween chains (`tweens.chain`) are relative and cascade — good for looping motion, fragile for cinematic scripting.
-
-**Procedural multi-frame sprites for cinematics:**
-
-The existing pattern of `this.textures.createCanvas(key, w, h)` extends naturally to spritesheets by making the canvas wide (8 frames × 128px = 1024px wide, 128px tall), drawing each frame at the correct x-offset, then calling `addSpriteSheet()` or using the texture directly with `generateFrameNumbers()`.
-
-```javascript
-// Generate 8-frame walk cycle on a canvas
-const canvas = document.createElement('canvas');
-canvas.width = 128 * 8;
-canvas.height = 128;
-const ctx = canvas.getContext('2d');
-
-for (let f = 0; f < 8; f++) {
-  ctx.save();
-  ctx.translate(f * 128 + 64, 64);
-  drawCharacterFrame(ctx, f);  // your existing canvas drawing code
-  ctx.restore();
+  // Register as spritesheet with Phaser
+  // Create animation at 8fps
 }
-
-// Add as spritesheet to Phaser texture manager
-this.textures.addSpriteSheet('player_walk', canvas, {
-  frameWidth: 128,
-  frameHeight: 128
-});
-
-// Create animation
-this.anims.create({
-  key: 'player_walk',
-  frames: this.anims.generateFrameNumbers('player_walk', { start: 0, end: 7 }),
-  frameRate: 12,
-  repeat: -1
-});
 ```
 
-**Why this over anything else:** The project is 100% procedural with no external assets. This is the exact same canvas API the project already uses — zero new concepts, zero new dependencies, consistent with the existing generator pattern.
+**How it works:** Each column of the flag image is vertically displaced by `sin(x * frequency + phase) * amplitude`, where amplitude scales with distance from the pole (left edge). This creates a physically plausible waving effect using canvas `drawImage` with 1px-wide source slices.
+
+### Existing Flags
+
+Already implemented in `ParadeTextures.js`:
+- `createIranFlag(scene)` -- green/white/red tricolor with Kufic borders
+- Lebanon, Palestine, Israel flags (referenced in generateAllParadeTextures)
+
+The `VictoryScene.js` also has a `_drawFlag()` method for Israeli flags.
+
+### Technique Assessment
+
+The column-displacement sine wave approach is the correct technique for 2D canvas flag animation. Parameters:
+- **4 frames** at 8fps = half-second wave cycle -- adequate for the visual effect
+- **Amplitude scaling** from pole (left) to tip (right) is physically correct
+- **Sine frequency** of 0.1 radians/pixel creates ~63px wavelength -- appropriate for 140px-wide flags
+
+No changes needed to the technique. The work is ensuring flags are restored in the intro showcase scene where they were lost during a refactor.
+
+### Confidence: HIGH
+
+The implementation already exists and works correctly.
 
 ---
 
-### 2. Unique Trance Theme Per Level — Web Audio API Patterns
+## 5. End-Screen UI Patterns
 
-| Technique | API | Purpose | Confidence |
-|-----------|-----|---------|------------|
-| Per-level seed config | Plain JS objects | Drive BPM, scale, pad timbre, melody contour per level | HIGH |
-| PeriodicWave (wavetable) | `ctx.createPeriodicWave(real, imag)` | Unique timbres per level beyond built-in sine/square/sawtooth | HIGH |
-| Layered LFOs | `OscillatorNode` → `GainNode.gain` AudioParam | Pad movement, filter sweep automation | HIGH |
-| BiquadFilterNode | `ctx.createBiquadFilter()` | Lowpass sweep for filter cutoff modulation (trance staple) | HIGH |
-| ScheduleAheadTime pattern | `AudioContext.currentTime` + lookahead buffer | Rock-solid BPM-locked sequencing without drift | HIGH |
+### Current Implementation
 
-**Level differentiation strategy:**
+`EndScreen.js` (223 lines) already implements both victory and defeat screens:
 
-Each level gets a config object that parameterizes the existing `MusicManager`. The music itself stays procedural — only the seed values change. This avoids rewriting MusicManager, just extending it to consume per-level parameters.
+**Victory screen:** Title ("MISSION COMPLETE"), stats list, star rating, two buttons (PLAY AGAIN + NEXT LEVEL)
+**Defeat screen:** Title ("MISSION FAILED"), stats list, two buttons (RETRY + SKIP LEVEL)
 
-```javascript
-// LevelMusicConfig.js — new data file
-export const LEVEL_MUSIC_CONFIG = {
-  1: {
-    bpm: 138,
-    scale: [0, 2, 3, 5, 7, 8, 10],  // natural minor
-    padWaveform: 'sine',
-    padAttack: 1.2,
-    filterCutoffStart: 400,
-    filterCutoffPeak: 3200,
-    basslinePattern: [1, 0, 0, 1, 0, 1, 0, 0],  // 16th-note hits
-    melodyRoot: 'A3',
-    atmosphere: 'dark',
-  },
-  2: {
-    bpm: 144,
-    scale: [0, 2, 4, 5, 7, 9, 11],  // major
-    padWaveform: 'triangle',
-    padAttack: 0.4,
-    filterCutoffStart: 800,
-    filterCutoffPeak: 6000,
-    basslinePattern: [1, 0, 1, 0, 0, 1, 0, 1],
-    melodyRoot: 'D4',
-    atmosphere: 'urgent',
-  },
-  // ... levels 3-6
-};
-```
+Both use:
+- Black overlay at 85% opacity, setScrollFactor(0) for camera independence
+- Monospace font with text shadow for glow effect
+- Button pulse animation via alpha oscillation tween
+- 500ms input delay to prevent accidental skip
+- `MusicManager.get().stop(0.3)` on transition
+- Camera fadeOut before scene transition
 
-**Trance component checklist per level (what MusicManager needs to emit):**
+### Technique Assessment
 
-1. **Kick drum** — `OscillatorNode` (sine, 150Hz → 40Hz frequency ramp in 80ms) + sharp gain envelope. Locked to BPM grid.
-2. **Bassline** — Sawtooth oscillator, 16th-note pattern from config, lowpass-filtered at ~300Hz.
-3. **Pads** — Two detuned sawtooth oscillators (±8 cents), heavy reverb via `ConvolverNode` or simulated with feedback delay chain. Chord held per bar.
-4. **Arpeggio** — Fast 16th-note sequence stepping through scale, filter sweep synchronized to phrase length.
-5. **Lead melody** — Square or custom `PeriodicWave` oscillator, plays 4-bar phrase derived from scale config, portamento via `frequency.exponentialRampToValueAtTime`.
-6. **Atmosphere layer** — Pink noise buffer through bandpass filter, very low gain, gives texture to "dark" levels.
+The existing pattern is well-structured. The key concerns for the polish pass:
 
-**BPM-locked scheduling — the correct pattern:**
+| Concern | Current State | Action Needed |
+|---------|--------------|---------------|
+| Button labels | "PLAY AGAIN (R)" / "NEXT LEVEL (ENTER)" | Correct per spec |
+| Defeat buttons | "RETRY (R)" / "SKIP LEVEL (S)" | Correct per spec |
+| Font readability | 32px title, 18px buttons, 14px stats | Adequate |
+| Integration | Exported functions, import into any scene | Drop-in ready |
+| Key bindings | R, ENTER, S via `input.keyboard.addKey` | Correct |
 
-```javascript
-// The scheduler pattern (avoids drift that setInterval causes)
-scheduleTracks() {
-  const lookahead = 0.1;  // seconds
-  const scheduleAheadTime = 0.2;
+**What may need integration work:** Each of the 6 game scenes needs to call `showVictoryScreen()` or `showDefeatScreen()` at the appropriate game-over moment, passing the correct `currentScene`, `nextScene`, and `skipScene` keys. This is wiring work, not UI technique work.
 
-  while (this.nextNoteTime < this.ctx.currentTime + scheduleAheadTime) {
-    this._scheduleNote(this.currentStep, this.nextNoteTime);
-    this._advanceNote();  // nextNoteTime += (60 / bpm) / 4  for 16th notes
-  }
+### Confidence: HIGH
 
-  this._timerID = setTimeout(() => this.scheduleTracks(), lookahead * 1000);
-}
-```
-
-**Why not setInterval for BPM:** `setInterval` drifts under load. The lookahead scheduler using `AudioContext.currentTime` is the MDN-recommended pattern and the industry standard for browser sequencers. It schedules notes slightly ahead of playback, so JavaScript jank does not cause missed beats.
-
-**Custom timbres via PeriodicWave:**
-
-```javascript
-// Supersaw approximation — 7 detuned oscillators baked into wavetable coefficients
-// Or use multiple oscillator nodes detuned ±cents for runtime implementation
-const real = new Float32Array(256);
-const imag = new Float32Array(256);
-// Populate harmonics to taste (bright lead: strong 1st, 2nd, 3rd; dark pad: roll off fast)
-const wave = ctx.createPeriodicWave(real, imag);
-oscillator.setPeriodicWave(wave);
-```
+The UI module exists and follows sound Phaser 3 patterns.
 
 ---
 
-### 3. Richer Procedural Sound Effects — Synthesis Beyond Basic Oscillators
+## 6. Controls Overlay Pattern
 
-| Technique | API | Replaces | Use For | Confidence |
-|-----------|-----|---------|---------|------------|
-| White noise buffer | `AudioBuffer` with `Math.random()` fill | Sine beep | Explosions, gunfire, static | HIGH |
-| Pink noise | White noise + `BiquadFilter` lowpass chain | N/A | Ambient rumble, wind | HIGH |
-| FM synthesis | Carrier `OscillatorNode` → frequency AudioParam of another | Plain oscillator | Metallic hits, alarm, engine | HIGH |
-| ADSR envelope | `GainNode.gain` + `linearRampToValueAtTime` / `exponentialRampToValueAtTime` | Abrupt on/off | All SFX (gives shape) | HIGH |
-| Convolver reverb | `ConvolverNode` with generated impulse response | Dry sound | Explosion tail, large spaces | MEDIUM |
-| Distortion | `WaveShaperNode` with curve | N/A | Electric buzz, harsh alarms | HIGH |
-| Pitch glide | `frequency.exponentialRampToValueAtTime` | Fixed pitch | Jump, laser fire, alert | HIGH |
+### Current Implementation
 
-**Concrete SFX recipes:**
+`ControlsOverlay.js` (107 lines) implements a two-phase overlay:
 
-**Explosion:**
-```javascript
-explode(ctx, masterGain) {
-  // 1. Noise burst (the "bang")
-  const bufferSize = ctx.sampleRate * 0.5;
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+1. **Initial:** Large centered box (700x80px, black at 75% opacity, gold border) with 18px bold monospace text in gold
+2. **Transition:** After 3 seconds, fades out the big overlay and fades in a persistent bottom bar (28px height, 13px white text)
 
-  const source = ctx.createBufferSource();
-  source.buffer = buffer;
+Also provides `addInstrTextBackground()` for retrofitting backgrounds onto existing instruction text elements.
 
-  // 2. Shape it — lowpass for body, envelope for timing
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(800, ctx.currentTime);
-  filter.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.4);
+### Technique Assessment
 
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(1.2, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+| Requirement | Status | Notes |
+|-------------|--------|-------|
+| Black semi-transparent background | Done (0x000000, 0.75 alpha) | Correct |
+| Bright yellow text | Done (gold #FFD700 with glow shadow) | Correct |
+| Large readable text | Done (18px bold monospace) | Adequate |
+| Persistent bar after initial display | Done (fades to bottom bar) | Good UX |
+| Works across all 6 levels | Exported function, scene-agnostic | Drop-in ready |
 
-  // 3. Sub thump (oscillator kick)
-  const thump = ctx.createOscillator();
-  thump.frequency.setValueAtTime(120, ctx.currentTime);
-  thump.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.15);
-  const thumpGain = ctx.createGain();
-  thumpGain.gain.setValueAtTime(1.0, ctx.currentTime);
-  thumpGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+**Integration:** Each level scene needs to call `showControlsOverlay(scene, controlsText)` in its `create()` method with the level-appropriate controls string.
 
-  source.connect(filter).connect(gain).connect(masterGain);
-  thump.connect(thumpGain).connect(masterGain);
-  source.start();
-  thump.start();
-  thump.stop(ctx.currentTime + 0.3);
-  source.stop(ctx.currentTime + 0.8);
-}
-```
+### Confidence: HIGH
 
-**Alert/Alarm:**
-```javascript
-alarm(ctx, masterGain) {
-  // FM synthesis: carrier modulated by another oscillator
-  const carrier = ctx.createOscillator();
-  carrier.type = 'sawtooth';
-  carrier.frequency.value = 440;
-
-  const modulator = ctx.createOscillator();
-  modulator.frequency.value = 880;  // 2:1 ratio → metallic
-
-  const modGain = ctx.createGain();
-  modGain.gain.value = 220;  // modulation depth in Hz
-
-  modulator.connect(modGain).connect(carrier.frequency);
-
-  // Rapid pitch alternation (alarm feel)
-  carrier.frequency.setValueAtTime(880, ctx.currentTime);
-  carrier.frequency.setValueAtTime(660, ctx.currentTime + 0.2);
-  carrier.frequency.setValueAtTime(880, ctx.currentTime + 0.4);
-
-  const distortion = ctx.createWaveShaper();
-  distortion.curve = makeDistortionCurve(200);  // harsh
-
-  carrier.connect(distortion).connect(masterGain);
-  carrier.start();
-  modulator.start();
-}
-```
-
-**Footstep (harder surface):**
-```javascript
-footstep(ctx, masterGain, surface = 'concrete') {
-  const bufferSize = ctx.sampleRate * 0.08;
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-
-  const source = ctx.createBufferSource();
-  source.buffer = buffer;
-
-  const filter = ctx.createBiquadFilter();
-  filter.type = surface === 'concrete' ? 'bandpass' : 'lowpass';
-  filter.frequency.value = surface === 'concrete' ? 2000 : 600;
-  filter.Q.value = 1.5;
-
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.4, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
-
-  source.connect(filter).connect(gain).connect(masterGain);
-  source.start();
-  source.stop(ctx.currentTime + 0.1);
-}
-```
-
-**Why noise buffers over single oscillators for percussive/transient SFX:** Real-world impacts, explosions, and gunshots contain broadband noise components. A single sine oscillator cannot reproduce this — it sounds toy-like. `AudioBuffer` filled with `Math.random()` + shaped by filter + shaped by gain envelope is the canonical Web Audio approach for this class of sounds.
-
-**Why ConvolverNode for reverb is MEDIUM confidence:** Generating a realistic impulse response procedurally (without loading an external IR file) requires more code and the result can sound artificial. A simpler alternative is a feedback delay network: two `DelayNode`s with cross-feedback into each other, which gives credible room reverb for game audio without IR files. Implement delay-based reverb first; add ConvolverNode only if the result is unsatisfactory.
+Module is complete and well-designed.
 
 ---
 
-### 4. Smoother Sprite Animations — More Frames, Better Movement
+## Recommended Stack Summary
 
-| Technique | Purpose | Confidence |
-|-----------|---------|------------|
-| 8-frame walk cycle (was 2-4) | Eliminates mechanical sliding appearance | HIGH |
-| Sub-frame easing via Phaser tweens on position | Supplements frame animation with smooth lerp | HIGH |
-| Squash-and-stretch on jump/land | Secondary animation principle, adds weight | HIGH |
-| Anticipation frame before action | One "pre-action" frame before jumps/attacks | MEDIUM |
-| Canvas offscreen pre-render per frame | Draw each frame into a named region of a wide canvas | HIGH |
+| Technology | Version | Purpose | New? |
+|------------|---------|---------|------|
+| Phaser 3 | 3.80.1 | Game framework, camera shake, tweens, scene management | Existing |
+| Canvas 2D API | Living standard | Procedural sprite drawing (px, rect, ellipse, arc, paths) | Existing |
+| Web Audio API | Living standard | Psytrance synthesis (oscillators, filters, gain envelopes, noise buffers) | Existing |
+| Vite | 5.4.0 | Dev server and build tool | Existing |
+| No external libs | N/A | Constraint: everything procedural | Constraint |
 
-**Walk cycle frame breakdown (8 frames at 12fps = smooth motion):**
-
-```
-Frame 0: Contact (right foot down, body neutral)
-Frame 1: Down (body at lowest, weight transfer)
-Frame 2: Passing (left foot passes right, body rising)
-Frame 3: High (body at highest, left foot forward)
-Frame 4: Contact (left foot down, mirror of frame 0)
-Frame 5: Down (mirror of frame 1)
-Frame 6: Passing (right foot passes left)
-Frame 7: High (right foot forward, completing cycle)
-```
-
-For a procedural pixel art character at 128×128 with limb segments drawn via canvas arcs/rects, the key variables per frame are: `torsoY` (vertical bob), `leftLegAngle`, `rightLegAngle`, `leftArmAngle`, `rightArmAngle`, `headTilt`. Parameterize these as sine functions of frame index.
-
-**Squash-and-stretch via Phaser tween (no canvas changes needed):**
-
-```javascript
-// On jump start — stretch vertically
-this.tweens.add({
-  targets: this.playerSprite,
-  scaleY: 1.3,
-  scaleX: 0.8,
-  duration: 80,
-  ease: 'Power1',
-  yoyo: true
-});
-
-// On land — squash
-this.tweens.add({
-  targets: this.playerSprite,
-  scaleY: 0.7,
-  scaleX: 1.3,
-  duration: 60,
-  ease: 'Power2',
-  yoyo: true
-});
-```
-
-**Why this is zero-cost in terms of canvas work:** Scale tweens are GPU operations on the sprite transform — no canvas redraw. They operate on top of the frame animation. This gives the feel of more frames without actually drawing more frames.
-
-**Cinematic sprite movement (for intro showcase):**
-
-Flying sprites (planes, drones, bosses moving across screen) need path-based motion, not just x/y tweens. Phaser's tween system supports `motionPath` in 3.60+ but this requires curves. Simpler alternative: multi-step tween chain with easing per segment simulating a curve.
-
-```javascript
-// Plane flies in, banks, and flies out — 3-segment motion
-this.tweens.chain({
-  tweens: [
-    // Enter from right, moving fast
-    { targets: plane, x: 700, y: 200, duration: 600, ease: 'Sine.easeOut' },
-    // Bank — slow, rotate
-    { targets: plane, x: 400, y: 280, angle: -15, duration: 900, ease: 'Sine.easeInOut' },
-    // Exit left, accelerating
-    { targets: plane, x: -100, y: 180, angle: 0, duration: 500, ease: 'Sine.easeIn' }
-  ]
-});
-```
+**No new packages, no new frameworks, no new concepts.** The entire polish pass is executing on techniques the codebase already demonstrates.
 
 ---
 
@@ -380,54 +342,43 @@ this.tweens.chain({
 
 | Anti-Pattern | Why | What Instead |
 |-------------|-----|-------------|
-| External sprite sheets / image imports | Breaks the 100% procedural constraint, adds asset pipeline | Canvas-drawn frames baked into Phaser texture cache |
-| Tone.js or Howler.js | Adds dependency, wraps the Web Audio API you already use directly | Extend MusicManager/SoundManager directly |
-| `setInterval` for BPM sequencing | Drifts under CPU load, causes missed beats | `AudioContext.currentTime` lookahead scheduler |
-| ConvolverNode with fetched IR files | External audio asset, violates procedural constraint | Feedback delay network for reverb |
-| Nested `onComplete` callbacks for cinematics | Brittle, hard to edit timing | Phaser 3 Timeline with `at:` timestamps |
-| Tweens.Timeline (old API) | Deprecated in Phaser 3.60+ in favor of `this.add.timeline` | Use `this.add.timeline([])` — the Time.Timeline class |
-| Animating every property per frame in `update()` | Bypasses Phaser's tween system, burns CPU | Phaser tweens handle interpolation natively at 60fps |
-| Pink noise via multiple filter passes in a chain on every SFX | CPU-expensive for frequent sounds | Pre-generate noise buffer once, reuse across SFX |
+| Adding Tone.js for audio | Wraps Web Audio you already use, adds 150KB | Extend IntroMusic.js / MusicManager directly |
+| Loading sprite images from files | Breaks 100% procedural constraint | Canvas API drawing (already working) |
+| Using CSS for UI overlays | Breaks Phaser's scene lifecycle and depth sorting | Phaser text + rectangle game objects (already working) |
+| Pre-rendering all boss frames as spritesheets | Overkill for intro; bosses are mostly static | Static canvas sprites + Phaser tweens for movement |
+| Complex IK/skeletal animation for sprites | Way too complex for 128px pixel art | Simple parameterized offsets (legL, armSwing, bodyBob) |
+| Using AnalyserNode for audio-visual sync | Unnecessary; timing is pre-scheduled | Schedule visual events at same timestamps as audio events |
+| Switching to WebGL renderer | Canvas renderer is correct for pixel-perfect procedural sprites | Stay on Canvas renderer |
 
 ---
 
-## Integration Points with Existing Codebase
+## Integration Map (Existing Systems -> Polish Tasks)
 
-| Existing System | What Changes | How |
-|----------------|-------------|-----|
-| `BaseCinematicScene` | Add Timeline-based sequencing API | `this.add.timeline([])` called in `create()`, exposed as `this.timeline` |
-| `MusicManager` | Accept per-level config object | New method `setLevelTheme(levelConfig)` reads BPM, scale, waveform params |
-| `SoundManager` | Add noise-based SFX methods | New methods: `playExplosion()`, `playAlarm()`, `playImpact()` using `AudioBuffer` noise |
-| `*Generator.js` files | Multi-frame canvas output | Modify to accept `frameCount` param, draw each frame at `frameIndex * spriteWidth` offset |
-| `src/data/LevelConfig.js` | Add music config per level | New `music` property on each level config object |
-
----
-
-## Versions Confirmed
-
-| Technology | Version | Status |
-|------------|---------|--------|
-| Phaser | 3.80.1 | Timeline API available (added 3.60) — HIGH confidence |
-| Web Audio API | Living standard | All nodes used (OscillatorNode, BiquadFilterNode, GainNode, AudioBuffer, ConvolverNode, WaveShaperNode) available in all modern browsers — HIGH confidence |
-| Canvas API | Living standard | Multi-frame canvas to spritesheet pattern is standard — HIGH confidence |
+| Polish Task | Primary System | Integration Point |
+|-------------|---------------|-------------------|
+| Player sprite redesign | `SpriteGenerator.js` | Already generates all frames; tune parameters across scenes |
+| Intro psytrance + SFX | `IntroMusic.js` + `GameIntroScene.js` | Already wired; enhance synthesis, add missing SFX |
+| Restore intro bosses | `ParadeTextures.js` + `GameIntroScene.js` | Boss parade sprites exist; re-wire into intro showcase |
+| Restore flags | `ParadeTextures.js` + `GameIntroScene.js` | Flag generation exists; add sprites to intro scene |
+| Final intro screen | `GameIntroScene.js` Act 3 | Extend existing Act 3 with Maguen David + title styling |
+| Level 2 path fix | `BomberScene.js` level layout | Widen corridor constants |
+| F-15 wings fix | Cinematic texture drawing code | Flip wing angle direction in canvas draw calls |
+| End screens | `EndScreen.js` + all 6 game scenes | Import and call at game-over events |
+| Controls overlay | `ControlsOverlay.js` + all 6 game scenes | Import and call in create() |
 
 ---
 
 ## Sources
 
-- [Phaser 3 Animations Documentation](https://docs.phaser.io/phaser/concepts/animations) — frame-based animation, anims.create(), generateFrameNumbers()
-- [Phaser 3 Timeline API](https://docs.phaser.io/api-documentation/class/time-timeline) — Time.Timeline class, at-based event sequencing
-- [Phaser 3 Timeline Tween Action Example](https://phaser.io/examples-show/1708) — cinematic sequence via timeline
-- [Phaser 3 CanvasTexture](https://docs.phaser.io/api-documentation/class/textures-canvastexture) — createCanvas, refresh() for WebGL
-- [Phaser 3 Create Animation From Canvas Texture Example](https://phaser.io/examples/v3.85.0/animation/view/create-animation-from-canvas-texture) — procedural animation
-- [MDN Web Audio API Advanced Techniques](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Advanced_techniques) — lookahead BPM scheduler, sequencing
-- [MDN Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) — OscillatorNode, BiquadFilterNode, GainNode, AudioBuffer
-- [How to Create Procedural Audio Effects with Web Audio API](https://dev.to/hexshift/how-to-create-procedural-audio-effects-in-javascript-with-web-audio-api-199e) — noise buffer explosion patterns
-- [How to Generate Noise with the Web Audio API](https://noisehack.com/generate-noise-web-audio-api/) — white/pink noise buffer implementation
-- [Rex Rainbow Phaser 3 Notes — Tween](https://rexrainbow.github.io/phaser3-rex-notes/docs/site/tween/) — tween chain API reference
-- [Rex Rainbow Phaser 3 Notes — Timeline](https://rexrainbow.github.io/phaser3-rex-notes/docs/site/timeline/) — timeline event structure
-- [Trance Music Production — Landr](https://blog.landr.com/trance-music-production/) — trance component anatomy (pads, bassline, arpeggio, lead)
-- [Trance Song Structure — HTMEM](https://howtomakeelectronicmusic.com/trance-song-structure-and-how-does-uplifting-trance-song-progress/) — BPM ranges, section structure
-- [Building a Modular Synth With Web Audio API](https://medium.com/geekculture/building-a-modular-synth-with-web-audio-api-and-javascript-d38ccdeca9ea) — FM synthesis, ADSR, LFO patterns
-- [Building a Sequencer using Web Audio API](https://www.ivanprignano.com/posts/building-a-sequencer-web-audio/) — step sequencer implementation reference
-- [Timed Rhythms with Web Audio API](https://middleearmedia.com/timed-rhythms-with-web-audio-api-and-javascript/) — BPM timing implementation
+- [Phaser 3.80.0 Camera Shake API](https://newdocs.phaser.io/docs/3.80.0/focus/Phaser.Cameras.Scene2D.Camera-shake) -- shake(duration, intensity, force, callback, context) signature
+- [Phaser 3 Shake Effect Class](https://docs.phaser.io/api-documentation/class/cameras-scene2d-effects-shake) -- Vector2 intensity, onUpdate callback
+- [Rex Rainbow Phaser 3 Notes -- Camera Effects](https://rexrainbow.github.io/phaser3-rex-notes/docs/site/camera-effects/) -- shake, flash, fade best practices
+- [SLYNYRD Pixelblog 49 -- Realistic Human Anatomy](https://www.slynyrd.com/blog/2024/3/25/pixelblog-49-realistic-human-anatomy) -- pixel art proportions at various head models
+- [SLYNYRD Pixelblog 17 -- Human Anatomy](https://www.slynyrd.com/blog/2019/5/21/pixelblog-17-human-anatomy) -- wireframe-to-final sprite workflow
+- [MDN Canvas Pixel Manipulation](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas) -- getImageData/putImageData for outline technique
+- [Psytrance Bassline Synthesis](https://dsokolovskiy.com/blog/all/psytrance-bassline-synthesis/) -- 16th note patterns, filter envelopes, note slides
+- [Syntorial TB-303 Tutorial](https://www.syntorial.com/tutorials/roland-tb-303-bassline/) -- acid squelch filter Q, accent behavior
+- [Roland TB-303 Acid Guide](https://www.ultimatepreset.com/roland-tb-303-acid-house-techno-guide/) -- sawtooth vs square, filter envelope characteristics
+- [MDN Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) -- OscillatorNode, BiquadFilterNode, GainNode reference
+- [Building a Modular Synth with Web Audio API](https://medium.com/geekculture/building-a-modular-synth-with-web-audio-api-and-javascript-d38ccdeca9ea) -- LFO routing, ADSR envelopes
+- [GameDev.net Pixel Art Sprite Proportions](https://www.gamedev.net/forums/topic/625955-pixel-art-sprite-proportions-and-size/) -- 128x128 proportion guidelines

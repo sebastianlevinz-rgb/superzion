@@ -1,380 +1,533 @@
-# Architecture Patterns
+# Architecture Patterns — 8-Fix Polish Integration Map
 
-**Domain:** Phaser 3 game — cinematic polish milestone (cinematics, per-level audio, richer SFX, more animation frames)
-**Researched:** 2026-03-05
-**Question:** How should cinematic sequences, per-level music themes, and richer SFX integrate with the existing Phaser 3 scene/manager architecture?
+**Domain:** Phaser 3 game polish pass (procedural textures/audio, 6-level stealth game)
+**Researched:** 2026-03-19
+**Confidence:** HIGH (based on full source code audit of all affected files)
 
 ---
 
-## Recommended Architecture
-
-The core principle is **pass-through orchestration**: scenes never produce sound or manage timing themselves — they call into singletons (MusicManager, SoundManager) and drive timelines through a CinematicDirector helper. The existing singleton pattern for MusicManager and SoundManager is correct; extend it rather than replace it.
+## Existing Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Phaser Game                        │
-│                                                      │
-│  ┌──────────────┐   ┌─────────────────────────────┐ │
-│  │  Scene Stack │   │      Global Singletons       │ │
-│  │              │   │                              │ │
-│  │ BaseCinematic│──▶│  MusicManager (Web Audio)    │ │
-│  │    Scene     │   │  - theme registry            │ │
-│  │              │   │  - GainNode crossfader       │ │
-│  │  LevelIntro  │──▶│  - per-level theme config    │ │
-│  │    Scene     │   │                              │ │
-│  │              │   │  SoundManager (Web Audio)    │ │
-│  │  ShowcaseIn  │──▶│  - SFX variant pool          │ │
-│  │  troScene    │   │  - random pitch/pan          │ │
-│  │              │   └─────────────────────────────┘ │
-│  │  Boss Scene  │                                    │
-│  └──────┬───────┘   ┌─────────────────────────────┐ │
-│         │           │  TextureRegistry (canvas)    │ │
-│         │           │  - procedural atlas cache    │ │
-│         └──────────▶│  - addSpriteSheet() frames   │ │
-│                     └─────────────────────────────┘ │
-│                                                      │
-│  ┌─────────────────────────────────────────────────┐ │
-│  │  CinematicDirector (Scene Plugin or helper)     │ │
-│  │  - wraps Phaser Time.Timeline                   │ │
-│  │  - provides: showSprite, moveTo, fadeIn,        │ │
-│  │    playMusic, playSfx, typeText, wait           │ │
-│  │  - consumed by all cinematic scenes             │ │
-│  └─────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────┘
+main.js
+  |-- BootScene (loading)
+  |-- GameIntroScene (psytrance 3-act cinematic, extends BaseCinematicScene)
+  |-- MenuScene (level select, cliff hero sprite)
+  |-- 6x IntroCinematicScenes (per-level, BaseCinematicScene subclasses)
+  |-- 6x GameScenes:
+  |     L1: GameScene (top-down bomberman, BombermanPlayer, bombs, guards)
+  |     L2: PortSwapScene (top-down stealth, containers, suspicion)
+  |     L3: BomberScene (side-scroll F-15, bombing runs)
+  |     L4: DroneScene (front-facing drone boss fight)
+  |     L5: B2BomberScene (side-scroll B-2 night bombing)
+  |     L6: BossScene (side-scroll approach + boss fight)
+  |-- ExplosionCinematicScene (L1 victory cinematic)
+  |-- VictoryScene / CreditsScene
+  |
+  |-- Systems:
+  |     MusicManager (procedural trance, Web Audio API, singleton)
+  |     SoundManager (procedural SFX, singleton)
+  |     IntroMusic (dedicated psytrance for GameIntroScene)
+  |     DifficultyManager (normal/hard toggle)
+  |     EndgameManager (L1 plant-and-escape sequence)
+  |
+  |-- Entities:
+  |     Player (BombermanPlayer, L1 only, top-down)
+  |     Guard (BombermanGuard, L1 only)
+  |     Bomb (L1 only)
+  |     Obstacle (collision objects)
+  |
+  |-- UI:
+  |     HUD (L1 HUD, health/status)
+  |     EndScreen (reusable victory/defeat overlays)
+  |     ControlsOverlay (reusable controls display)
+  |
+  |-- Utils (procedural texture generators):
+  |     SpriteGenerator (SuperZion player sprite, 128x128 frames)
+  |     CinematicTextures (cin_superzion for cinematics, panoramas)
+  |     ParadeTextures (parade_superzion, flags, boss parade sprites)
+  |     BombermanTextures (L1 tiles, player top-down sprites)
+  |     PortSwapTextures (L2 containers, port elements)
+  |     BomberTextures (L3 F-15, carrier, terrain)
+  |     DroneTextures (L4 drone, tunnel, room)
+  |     B2Textures (L5 B-2 bomber, night terrain)
+  |     BossTextures (L6 player fighter, bunker fortress)
+  |     RadarTextures, TowerDefenseTextures, PlatformerTextures (other)
 ```
+
+---
+
+## Fix-by-Fix Integration Map
+
+### Fix 1: Player Sprite Redesign (Mossad Agent)
+
+**Goal:** Replace cube/rectangle player sprites with organic human proportions across ALL scenes.
+
+**Files directly modified:**
+
+| File | What changes | Risk |
+|------|-------------|------|
+| `SpriteGenerator.js` (573 lines) | Already redesigned -- detailed Mossad agent with tactical suit, slicked-back hair, Star of David, articulated limbs, 1px outline. Generates `superzion` spritesheet with idle, run, jump, fall, shoot frames. | LOW -- self-contained, already done |
+| `CinematicTextures.js` | `createSuperZionCinematic()` draws `cin_superzion` (128x192 static portrait). Must match SpriteGenerator visual identity. Has its own `PAL` palette and separate drawing code. | MEDIUM -- independent drawing code, visual consistency risk |
+| `ParadeTextures.js` (~1100 lines) | Contains `parade_superzion` used in GameIntroScene Act 3. Has its own separate SuperZion drawing code. | MEDIUM -- third independent drawing implementation |
+
+**Files that CONSUME these textures (verify they still work):**
+
+| Consumer | Texture key used | Notes |
+|----------|-----------------|-------|
+| `ExplosionCinematicScene.js` | `superzion` (frame 1) | Direct sprite reference at line 122. Only cinematic using the gameplay spritesheet. |
+| `GameIntroScene.js` (Act 3) | `parade_superzion` | Hero walks in from right, scaled 2.0x |
+| `IntroCinematicScene.js` | `cin_superzion` | Hero in Act 3, scaled 1.8x |
+| `BeirutIntroCinematicScene.js` | `cin_superzion` | Hero appearance, scaled 1.6x |
+| `DeepStrikeIntroCinematicScene.js` | `cin_superzion` | Hero appearance, scaled 0.9x |
+| `UndergroundIntroCinematicScene.js` | `cin_superzion` | Hero appearance, scaled 1.2x |
+| `MountainBreakerIntroCinematicScene.js` | `cin_superzion` | Hero appearance, scaled 0.6x |
+| `LastStandCinematicScene.js` | `cin_superzion` | Hero appearance, scaled 2.0x |
+| `MenuScene.js` | `cin_superzion_cliff` | Separate cliff texture from CinematicTextures |
+
+**Critical insight -- THREE independent SuperZion sprite systems:**
+
+1. **`SpriteGenerator.js`** produces `superzion` spritesheet (128x128 gameplay frames). Used by gameplay + ExplosionCinematicScene.
+2. **`CinematicTextures.js`** produces `cin_superzion` (128x192 static portrait). Used by 6 cinematic intros + MenuScene.
+3. **`ParadeTextures.js`** produces `parade_superzion` (parade-sized sprite). Used by GameIntroScene Act 3 only.
+
+All three must share the same visual identity (tactical suit, slicked-back hair, Star of David) or the character looks different across scenes.
+
+**Also note:** L1 (GameScene) uses `BombermanTextures.js` for top-down `bm_player_*` sprites. These are a SEPARATE sprite system entirely (top-down perspective). The player redesign question is whether to also update these for consistency -- but top-down sprites are inherently different from side-view.
+
+---
+
+### Fix 2: Psytrance Intro Music + SFX
+
+**Goal:** 145+ BPM psytrance from frame 1 with synchronized SFX (missile whoosh, explosions, jet doppler, gunshots) and screen shake on explosions.
+
+**Files directly modified:**
+
+| File | What changes | Risk |
+|------|-------------|------|
+| `IntroMusic.js` (945 lines) | Already implemented. 3-act psytrance at 145 BPM with acid bass, psy leads, impact booms, crash cymbals. **Exports standalone SFX functions** that are NOT currently called. | LOW -- music system is working |
+| `GameIntroScene.js` (818 lines) | Currently uses generic `SoundManager.get().playExplosion()` for ALL SFX. Must wire up IntroMusic's exported SFX instead. | MEDIUM -- many timed callbacks to update |
+
+**The gap:** IntroMusic exports these SFX functions (lines 700-945):
+
+| Exported function | Purpose | Currently used? |
+|-------------------|---------|-----------------|
+| `playMissileWhoosh(ctx, gainNode, t)` | Ascending sweep + noise for missiles | NO |
+| `playJetFlyby(ctx, gainNode, t)` | Doppler sine sweep for jets | NO |
+| `playTankRumble(ctx, gainNode, t, dur)` | Low brown noise rumble | NO |
+| `playMarchSteps(ctx, gainNode, t, count, interval)` | Rhythmic march stomps | NO |
+| `playWindAmbient(ctx, gainNode, t, dur)` | Filtered noise wind | NO |
+
+GameIntroScene should call these at visual event moments instead of the generic `SoundManager.playExplosion()`.
+
+---
+
+### Fix 3: Restore Intro Bosses and Flags
+
+**Goal:** Replace rectangle silhouettes in GameIntroScene with real boss sprites. Add waving flag animations.
+
+**Files directly modified:**
+
+| File | What changes | Risk |
+|------|-------------|------|
+| `GameIntroScene.js` | `_bossFlashEntry()` (lines 472-509) draws bosses as rectangles + circles. Must replace with real sprites from ParadeTextures. | MEDIUM -- method rewrite |
+| `ParadeTextures.js` | Already has all needed textures. `generateAllParadeTextures()` creates: `parade_foambeard`, `parade_turboturban`, `parade_warden`, `parade_supremeturban`, flag textures `parade_flag_iran`, `parade_flag_lebanon`, `parade_flag_palestine`, `parade_flag_israel`. | LOW -- textures exist, no changes needed |
+
+**Integration detail:**
+
+- `GameIntroScene.create()` already calls `generateAllParadeTextures(this)` -- all parade textures ARE generated and available
+- But `_bossFlashEntry()` ignores them and draws raw graphics (rectangle body, circle head, red dot eyes)
+- Fix: replace graphics drawing with `this.add.sprite(x, y, 'parade_foambeard')` etc.
+- Flags: add waving flag sprites to Act 1 next to each boss. The waving animation system already exists in ParadeTextures (`wavingSheet()` creates 4-frame spritesheets with `key + '_wave'` animation).
+- Boss appearance mapping: Boss 1 (Iran/1.5s) = Foam Beard, Boss 2 (Lebanon/3.5s) = Turbo Turban, Boss 3 (Gaza/5.5s) = The Warden. Supreme Turban is the final boss but does not appear in Act 1.
+
+---
+
+### Fix 4: Final Intro Screen (Giant Maguen David)
+
+**Goal:** In GameIntroScene Act 3 finale, show giant golden semi-transparent Star of David behind SuperZion, arcade-retro font for "SUPERZION", larger subtitle.
+
+**Files directly modified:**
+
+| File | What changes | Risk |
+|------|-------------|------|
+| `GameIntroScene.js` | Modify `_startAct3()` (lines 268-464). The title reveal at ~5s (lines 385-416) needs: (1) giant Star of David drawn behind hero, (2) arcade-style font styling, (3) bigger subtitle. | LOW -- additive changes to existing timed events |
+
+**No new files needed.** Star of David drawing already exists in:
+- `SpriteGenerator.js` line 70: `drawStar(ctx, cx, cy, r)` -- canvas-based
+- `ParadeTextures.js` line 36: `starOfDavid(ctx, cx, cy, r, color, fill)` -- canvas-based
+
+For this fix, use Phaser Graphics API to draw the star directly in the scene (no canvas needed). Or generate a texture using the existing helper.
+
+**Font approach:** Phaser 3 uses CSS fonts. Currently `monospace` everywhere. For arcade feel: large bold monospace with heavy text shadow/glow, potentially increased letter spacing via `letterSpacing` style property. No external fonts (per project constraints -- everything procedural).
+
+---
+
+### Fix 5: Level 2 Container Pathfinding
+
+**Goal:** Wider passageways in PortSwapScene so the level is completable.
+
+**Files directly modified:**
+
+| File | What changes | Risk |
+|------|-------------|------|
+| `PortSwapScene.js` (~1550 lines) | Container spacing constants at lines 63-65. Currently: `CONT_ROW_SPACING = 48`, `CONT_COL_SPACING = 72`. Previously widened from 34 and 60. Container body is 40x18, player body is 14x14. | LOW -- numeric constants |
+
+**Current clearance math:**
+- Vertical: 48(spacing) - 18(container height) = 30px gap. Player body is 14px. Clearance = 16px. Should be passable.
+- Horizontal: 72(spacing) - 40(container width) = 32px gap. Player body is 14px. Clearance = 18px. Should be passable.
+
+**If containers are still blocked, the real issue may be:**
+- Wall/building physics bodies overlapping container paths (check wall placement code in PortSwapScene)
+- Guard patrol routes creating impassable choke points at narrow sections
+- Crane/forklift sprites having physics bodies that block paths
+- Container physics body being larger than the visual sprite
+
+**Testing strategy:** Must playtest after changes. Verify all three container zones (north, south, east) are reachable and the escape route to the starting point is clear.
+
+---
+
+### Fix 6: F-15 Reversed Wings
+
+**Goal:** Correct F-15 wing sweep direction so wings point backward (toward tail), not forward.
+
+**Files to investigate (multiple F-15 implementations):**
+
+| File | What it draws | Risk |
+|------|--------------|------|
+| `BomberTextures.js` (lines 101-120) | `createF15SideSprite()` -- gameplay Level 3 sprite (64x32). Wings use Path2D geometry. | LOW -- geometry changes |
+| `CinematicTextures.js` | `createF15Hangar()` -- Level 3 intro cinematic F-15 | MEDIUM -- separate drawing code |
+| `GameIntroScene.js` (lines 584-618) | `_spawnJetStrike()` -- GameIntro Act 2 inline graphics using raw fillTriangle/fillRect | LOW -- inline geometry |
+
+**Current BomberTextures wing geometry (jet faces RIGHT, nose at x=61):**
+```
+Upper wing: (36, cy-5) -> (24, cy-14) -> (16, cy-13) -> (26, cy-5)
+Lower wing: (36, cy+4) -> (24, cy+14) -> (16, cy+13) -> (26, cy+4)
+```
+Wing tips are at x=16-24, body attachment at x=26-36. Since nose is at x=61 (right), the tips sweeping left (toward x=16) IS backward sweep. This appears geometrically correct. The visual issue may be in CinematicTextures or GameIntroScene instead.
+
+**GameIntroScene jet wings (lines 592-593):**
+```javascript
+jet.fillTriangle(10, -3, 25, -16, 30, -3);  // upper
+jet.fillTriangle(10, 3, 25, 16, 30, 3);      // lower
+```
+Wing tips at x=25 extend from body center (~x=20), with root at x=10-30. Since this jet moves left-to-right (starts at x=-60, ends at x=W+80), nose is rightward. Tips at x=25 with root trailing at x=10 means wings sweep... this needs visual verification on which implementation looks wrong.
+
+---
+
+### Fix 7: End-of-Level Screens
+
+**Goal:** Standardize all 6 levels with consistent victory/defeat overlays. Victory = "PLAY AGAIN (R)" + "NEXT LEVEL (ENTER)". Defeat = "RETRY (R)" + "SKIP LEVEL (S)".
+
+**Current end screen state by level:**
+
+| Level | Victory implementation | Defeat implementation | Uses EndScreen.js? |
+|-------|----------------------|----------------------|-------------------|
+| L1 GameScene | Goes to ExplosionCinematicScene (separate scene with embedded victory UI) | `showDefeatScreen()` | Defeat only |
+| L2 PortSwapScene | `showVictoryScreen()` | `showDefeatScreen()` | YES, both |
+| L3 BomberScene | `showVictoryScreen()` | `showDefeatScreen()` | YES, both |
+| L4 DroneScene | Custom inline, ~120 lines (`_showVictory()` at line 3171) | Custom inline within same method | NO |
+| L5 B2BomberScene | Custom inline, ~130 lines (at line 1440) | Custom inline within same code block | NO |
+| L6 BossScene | Custom inline victory (lines 2340-2413) | Custom inline defeat (lines 2096-2153) | NO |
+
+**Files directly modified:**
+
+| File | What changes | Risk |
+|------|-------------|------|
+| `EndScreen.js` (222 lines) | May need minor enhancements for stats/stars compatibility. Currently supports `title`, `stats[]`, `stars`, `currentScene`, `nextScene`/`skipScene`. | LOW -- clean utility |
+| `ExplosionCinematicScene.js` | Has embedded victory screen (line 490+). Should use `showVictoryScreen()` or keep as cinematic but ensure proper R/ENTER navigation. | MEDIUM -- must preserve cinematic flow |
+| `DroneScene.js` (~3250 lines) | Replace custom `_showVictory()` with `showVictoryScreen()`/`showDefeatScreen()` calls. Preserve stats/stars logic. | MEDIUM -- large file |
+| `B2BomberScene.js` (~1500 lines) | Replace custom victory/defeat with EndScreen calls. Preserve stats/stars logic. | MEDIUM -- large file |
+| `BossScene.js` (~2440 lines) | Replace custom victory (lines 2340-2413) and defeat (lines 2096-2153) with EndScreen calls. | MEDIUM -- largest file |
+
+**Scene flow mapping (needed for nextScene/skipScene params):**
+
+| Level | currentScene | nextScene (victory) | skipScene (defeat) |
+|-------|-------------|--------------------|--------------------|
+| L1 | GameScene | BeirutIntroCinematicScene | BeirutIntroCinematicScene |
+| L2 | PortSwapScene | DeepStrikeIntroCinematicScene | DeepStrikeIntroCinematicScene |
+| L3 | BomberScene | UndergroundIntroCinematicScene | UndergroundIntroCinematicScene |
+| L4 | DroneScene | MountainBreakerIntroCinematicScene | MountainBreakerIntroCinematicScene |
+| L5 | B2BomberScene | LastStandCinematicScene | LastStandCinematicScene |
+| L6 | BossScene | VictoryScene | VictoryScene |
+
+**L1 special case:** Currently victory goes through ExplosionCinematicScene (explosion cinematic -> embedded victory). The fix should either: (a) keep the explosion cinematic and add EndScreen-style navigation at its end, or (b) add EndScreen overlay directly in GameScene on escape success and make the explosion cinematic optional. Option (a) is lower risk.
+
+**EndScreen.js already supports the exact button pattern** specified in PROJECT.md. The custom implementations in L4-L6 manually recreate the same layout with the same labels.
+
+---
+
+### Fix 8: Controls Overlay Readability
+
+**Goal:** Black semi-transparent background with bright yellow text in all 6 levels.
+
+**Current state -- all 6 levels already use ControlsOverlay:**
+
+| Level | Call location | Controls text |
+|-------|-------------|--------------|
+| L1 GameScene | line 99 | `'ARROWS/WASD: Move \| SPACE: Bomb \| E: Plant \| ESC: Pause'` |
+| L2 PortSwapScene | line 179 | `'WASD/ARROWS: Move \| SHIFT: Sprint \| SPACE: Scan \| E: Interact \| Q: Distract'` |
+| L3 BomberScene | line 65 | `'ARROWS: Fly \| SPACE: Drop Bomb \| C: Chaff \| M: Mute'` |
+| L4 DroneScene | line 1141 | `'ARROWS: Move \| SPACE: Shoot \| X: Missile \| ESC: Pause'` |
+| L5 B2BomberScene | line 57 | `'ARROWS: Fly \| SPACE: Drop Bomb \| C: Chaff \| ESC: Pause'` |
+| L6 BossScene | line 55 | `'ARROWS: Move \| SPACE: Shoot \| X: Heavy Bomb \| SHIFT: Roll \| C: Pulse'` |
+
+**File directly modified:**
+
+| File | What changes | Risk |
+|------|-------------|------|
+| `ControlsOverlay.js` (107 lines) | Currently: big overlay uses `#FFD700` (gold) 18px bold, bar uses `#ffffff` 13px bold. Changes needed: (1) bar text color `#ffffff` -> `#FFD700`, (2) increase font sizes (big: 18->22px, bar: 13->15px), (3) verify background opacity is sufficient. | LOW -- tiny isolated file |
+
+**ControlsOverlay already has the right structure.** The fix is purely cosmetic parameter changes.
+
+---
+
+## Integration Points Between Fixes
+
+### Cross-Fix Dependencies
+
+```
+Fix 1 (Sprites) --------> Fix 3 (Boss Restoration)
+   |                         ParadeTextures boss sprites should
+   |                         share the redesigned art style
+   |
+   +---------------------> Fix 4 (Final Intro Screen)
+                              parade_superzion in Act 3 must be
+                              the redesigned Mossad agent
+
+Fix 2 (Psytrance SFX) --> Fix 3 (Boss Restoration)
+   |                         SFX timing must sync with boss
+   |                         appearances (impact booms already
+   |                         scheduled at 1.5s, 3.5s, 5.5s)
+   |
+   +---------------------> Fix 4 (Final Intro Screen)
+                              Music climax at 5s syncs with
+                              title reveal -- no conflict
+
+Fix 7 (End Screens) ----> Fix 8 (Controls Overlay)
+                              Both are UI overlays but use
+                              non-conflicting depth layers:
+                              Controls: depth 90-101
+                              EndScreen: depth 500-502
+```
+
+### GameIntroScene.js is the Convergence Point
+
+Three fixes (2, 3, 4) all modify `GameIntroScene.js`. They must be serialized:
+
+| Order | Fix | What it changes in GameIntroScene |
+|-------|-----|----------------------------------|
+| First | Fix 3 | `_bossFlashEntry()` method rewrite (Act 1), add flag sprites |
+| Second | Fix 4 | `_startAct3()` title reveal section modification |
+| Third | Fix 2 | SFX wiring throughout all three acts |
+
+**Rationale:** Fix 3 changes Act 1 visuals (boss sprites), Fix 4 changes Act 3 visuals (title screen), Fix 2 touches all acts (SFX sync). Doing visual changes first, then audio overlay, avoids conflicts.
+
+### Shared Texture Keys
+
+| Texture key | Generated by | Consumed by | Which fix affects it |
+|-------------|-------------|-------------|---------------------|
+| `superzion` | SpriteGenerator | ExplosionCinematic | Fix 1 |
+| `cin_superzion` | CinematicTextures | 6 cinematics + MenuScene | Fix 1 |
+| `parade_superzion` | ParadeTextures | GameIntroScene Act 3 | Fix 1 |
+| `parade_foambeard` etc. | ParadeTextures | Should be GameIntroScene (currently unused) | Fix 3 |
+| `parade_flag_*` | ParadeTextures | Should be GameIntroScene (currently unused) | Fix 3 |
+| `f15_side` | BomberTextures | BomberScene (gameplay) | Fix 6 |
+
+---
+
+## Recommended Build Order
+
+### Phase 1: Quick Standalone Wins (no cross-dependencies)
+
+**1a. Controls Overlay Fix (Fix 8)** -- ~15 min
+- Only touches `ControlsOverlay.js` (107 lines)
+- Pure cosmetic: color and size constant changes
+- Zero risk, immediate visual improvement
+
+**1b. Level 2 Container Paths (Fix 5)** -- ~30 min
+- Isolated to `PortSwapScene.js` container spacing constants
+- May need playtesting, but no architectural changes
+- Independent of all other fixes
+
+**1c. F-15 Wing Fix (Fix 6)** -- ~30 min
+- Isolated to `BomberTextures.js` and/or `CinematicTextures.js` and/or `GameIntroScene.js`
+- First: visually verify which of the 3 implementations has the bug
+- Pure geometry coordinate changes
+
+### Phase 2: Sprite Visual Consistency (prerequisite for Phase 3)
+
+**2a. Player Sprite Consistency (Fix 1)** -- ~1-2 hours
+- SpriteGenerator already redesigned (verify)
+- Audit `CinematicTextures.createSuperZionCinematic()` and `ParadeTextures` parade_superzion drawing
+- Update if visual identity does not match across the three systems
+- Must complete before Fix 3 and Fix 4
+
+### Phase 3: Intro Scene Overhaul (depends on Phase 2, serialize within)
+
+**3a. Boss and Flag Restoration (Fix 3)** -- ~1-2 hours
+- Rewrite `GameIntroScene._bossFlashEntry()` to use real sprites
+- Add flag sprites with existing waving animation system
+- Depends on Phase 2 for consistent ParadeTextures sprites
+
+**3b. Final Intro Screen (Fix 4)** -- ~1 hour
+- Modify `GameIntroScene._startAct3()` title reveal section
+- Add giant Star of David graphic, arcade font styling, larger subtitle
+- Depends on Phase 2 for parade_superzion visual quality
+
+**3c. Psytrance SFX Sync (Fix 2)** -- ~1-2 hours
+- Wire IntroMusic exported SFX functions to GameIntroScene visual events
+- Replace generic `SoundManager.playExplosion()` with specific SFX
+- Must be last to touch GameIntroScene to avoid conflicts with 3a/3b
+
+### Phase 4: End Screen Standardization (independent of Phase 2-3)
+
+**4a. End Screen Migration (Fix 7)** -- ~2-3 hours
+- Can run in parallel with Phase 2-3 (different files)
+- Migrate L4 DroneScene, L5 B2BomberScene, L6 BossScene to EndScreen.js
+- Update L1 ExplosionCinematicScene for proper navigation
+- Verify L2 PortSwapScene and L3 BomberScene work correctly (already using EndScreen.js)
+
+### Dependency Graph
+
+```
+Phase 1 (standalone):
+  Fix 8 (Controls)     -- standalone, do first
+  Fix 5 (Level 2)      -- standalone
+  Fix 6 (F-15)         -- standalone
+
+Phase 2 (prerequisite):
+  Fix 1 (Sprites)      -- prerequisite for Phase 3
+
+Phase 3 (serialize, all touch GameIntroScene.js):
+  Fix 3 (Bosses)       -- after Fix 1, first to touch GameIntroScene
+  Fix 4 (Intro Screen) -- after Fix 1, second to touch GameIntroScene
+  Fix 2 (Psytrance)    -- last to touch GameIntroScene
+
+Phase 4 (parallel with Phase 2-3):
+  Fix 7 (End Screens)  -- touches different files entirely
+```
+
+---
+
+## Risk Areas
+
+### High Risk: Large Scene Files
+
+| File | Lines | Fixes that touch it |
+|------|-------|-------------------|
+| `DroneScene.js` | ~3250 | Fix 7 |
+| `BossScene.js` | ~2440 | Fix 7 |
+| `BomberScene.js` | ~1760 | Fix 7 |
+| `B2BomberScene.js` | ~1500 | Fix 7 |
+| `GameIntroScene.js` | ~818 | Fix 2, Fix 3, Fix 4 (**three fixes**) |
+
+**GameIntroScene.js is the convergence point.** Three fixes modify this single file. They must be serialized and each committed before the next begins.
+
+**Large scene files for Fix 7:** The end screen migration touches 4 files with 1500-3250 lines each. However, the changes are localized: replacing ~100-130 lines of custom victory/defeat UI with 5-10 lines calling EndScreen functions. Risk is moderate -- the replacement is straightforward but requires careful mapping of custom stats/stars logic into EndScreen opts.
+
+### Medium Risk: Triple Sprite System Consistency
+
+Three separate codebases draw SuperZion independently:
+- `SpriteGenerator.js`: 573 lines, detailed body-part functions
+- `CinematicTextures.js`: separate 128x192 drawing
+- `ParadeTextures.js`: separate parade-sized drawing
+
+After Fix 1, if CinematicTextures or ParadeTextures are not updated to match, the character will look different across scenes. Visual audit across all three is mandatory.
+
+### Low Risk: UI Module Independence
+
+`EndScreen.js` (depth 500-502) and `ControlsOverlay.js` (depth 90-101) are clean utility modules with no shared state and non-conflicting depth layers. Changes to either are isolated.
 
 ---
 
 ## Component Boundaries
 
-| Component | Responsibility | Communicates With | Does NOT Own |
-|-----------|---------------|-------------------|--------------|
-| **BaseCinematicScene** | Base class for all cutscene scenes. Lifecycle hooks (enter, play, exit). Delegates to CinematicDirector. | CinematicDirector, MusicManager, SoundManager | Tween logic, audio nodes, texture generation |
-| **ShowcaseIntroScene** | Animated intro sequence — moving sprites, logo reveal, title card. Extends BaseCinematicScene. | CinematicDirector, TextureRegistry | Music theme selection (asks MusicManager) |
-| **LevelIntroScene** | Between-level cinematic with moving sprites and level title. Receives level config via `scene.start(key, data)`. | CinematicDirector, MusicManager (crossfade call), SoundManager | Level gameplay state |
-| **CinematicDirector** | Thin orchestration layer over `this.time.addEvent` / Phaser `Time.Timeline`. Exposes a fluent or config-array API for cinematic beats. One instance per cinematic scene. | Phaser Time.Timeline, scene's display list | Audio — it calls MusicManager/SoundManager via references passed in |
-| **MusicManager** (existing, extend) | Owns the Web Audio context and all oscillator/node graphs. Adds: theme registry keyed by level ID, crossfade method (equal-power GainNode ramp), per-theme BPM/layer config. | Web Audio API (AudioContext, GainNode) | Scene lifecycle, Phaser objects |
-| **SoundManager** (existing, extend) | Owns SFX oscillator banks. Adds: SFX variant pool per event type, randomized pitch offset (±semitones), optional stereo pan spread. | Web Audio API | Scene state |
-| **TextureRegistry** (new utility) | Central cache for procedurally generated canvas textures. Wraps existing utils/generators. Calls `scene.textures.addSpriteSheet()` so any scene can reference frames by key. Generated once at boot, reused everywhere. | Phaser TextureManager, existing canvas generators | Scene display lists |
-| **GameIntroScene / existing scenes** | No change to responsibility. Calls MusicManager.playTheme(themeId) instead of whatever internal method exists today. | MusicManager, SoundManager | Animation sequencing (delegates to CinematicDirector) |
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `SpriteGenerator` | Gameplay player spritesheet (128x128 frames) | BootScene/gameplay scenes (texture generation on demand) |
+| `CinematicTextures` | Static hero portraits + level panoramas | 6 intro cinematics + MenuScene |
+| `ParadeTextures` | Parade sprites (hero, bosses, flags, soldiers) | GameIntroScene only |
+| `IntroMusic` | Psytrance music + standalone SFX functions | GameIntroScene (music), SFX functions not yet wired |
+| `EndScreen` | Reusable victory/defeat overlay | L2, L3 (currently); L1, L4, L5, L6 (after Fix 7) |
+| `ControlsOverlay` | Reusable controls display (big overlay -> bar) | All 6 game scenes |
+| `BaseCinematicScene` | Act system, skip/mute, typewriter, transitions | 7 cinematic scenes (6 intros + GameIntro) |
+| `MusicManager` | Procedural music generation + fade/crossfade | Every scene (singleton) |
+| `SoundManager` | Procedural SFX generation | Every scene (singleton) |
 
 ---
 
-## Data Flow
+## Key Data Flows
 
-### Cinematic Playback Flow
-
-```
-Scene.create()
-  │
-  ▼
-CinematicDirector.build([
-  { at: 0,    action: 'fadeIn',     target: logoSprite },
-  { at: 800,  action: 'moveTo',     target: shipSprite, x: 400, y: 300 },
-  { at: 1200, action: 'playTheme',  themeId: 'intro' },
-  { at: 2000, action: 'typeText',   text: 'LEVEL 1' },
-  { at: 4000, action: 'complete' }
-])
-  │
-  ▼
-Phaser Time.Timeline (schedules callbacks at absolute ms offsets)
-  │
-  ├── Tween chain (position/alpha/scale via this.tweens.chain)
-  ├── MusicManager.crossfadeTo(themeId, durationMs)
-  └── SoundManager.playSfx(eventId)
-```
-
-**Direction:** Scene → CinematicDirector → Phaser Timeline + Tween chains + Manager calls. Managers never call back into scenes (one-way).
-
-### Music Theme Crossfade Flow
+### Intro Sequence Flow (Fixes 2, 3, 4 affect this)
 
 ```
-LevelIntroScene.create(data: { levelId })
-  │
-  └─▶ MusicManager.crossfadeTo(levelId, 2000)
-        │
-        ├── look up levelId in themeRegistry → { layers: [...], bpm: 138 }
-        ├── rampOut(currentGainNode, 2000ms)   ← AudioParam.linearRampToValueAtTime
-        ├── start new oscillator graph for new theme
-        └── rampIn(newGainNode, 2000ms)        ← equal-power curve to avoid dip
+BootScene -> GameIntroScene.create()
+  -> generateAllParadeTextures(this)   // creates parade_* textures
+  -> new IntroMusic().start()           // starts 25s psytrance
+  -> _startAct1()                       // (0-8s)
+     -> _bossFlashEntry() x3            // FIX 3: use real sprites + flags
+     -> _spawnMissile() loop            // FIX 2: wire missile whoosh SFX
+  -> _startAct2()                       // (8-16s)
+     -> _spawnJetStrike()               // FIX 2: wire jet flyby SFX
+     -> _spawnBomber()                  // FIX 2: wire specific SFX
+     -> _spawnIronDomeSequence()
+     -> _spawnTankFiring()              // FIX 2: wire tank rumble SFX
+  -> _startAct3()                       // (16-25s)
+     -> hero walks in (parade_superzion) // FIX 1: must look correct
+     -> title "SUPERZION" impact        // FIX 4: giant star, arcade font
+  -> MenuScene
 ```
 
-**Direction:** Scene → MusicManager. MusicManager is fully self-contained. No callbacks to scene needed.
-
-### Texture / Animation Frame Flow
+### Level Completion Flow (Fix 7 affects this)
 
 ```
-BootScene.create()
-  │
-  └─▶ TextureRegistry.generateAll(scene)
-        │
-        ├── existing generator functions (utils/generators/*.js)
-        ├── draws to OffscreenCanvas (or regular canvas)
-        └── scene.textures.addSpriteSheet(key, canvas, { frameWidth, frameHeight })
-                │
-                └── Phaser TextureManager stores frames
-                    Any scene: this.anims.create({ key, frames: this.anims.generateFrameNumbers(key, ...) })
-```
+GameScene (L1) -> player death -> _gameOverScreen()
+  -> showDefeatScreen(scene, {currentScene: 'GameScene', skipScene: ...})
+  -> R: restart | S: skip
 
-**Direction:** Boot → TextureRegistry → Phaser TextureManager. All scenes downstream read frames from TextureManager by key.
+GameScene (L1) -> escape success -> scene.start('ExplosionCinematicScene')
+  -> 5-phase explosion cinematic -> embedded victory -> R: replay | ENTER: next
 
-### Scene Transition Flow
+PortSwapScene (L2) / BomberScene (L3) -> built-in endgame
+  -> showVictoryScreen() / showDefeatScreen()  [already using EndScreen.js]
 
-```
-GameplayScene (finishes level)
-  │
-  ├── MusicManager.crossfadeTo('level-intro', 1500)
-  └── scene.start('LevelIntroScene', { levelId, nextScene: 'Level2Scene' })
-        │
-        └── LevelIntroScene.shutdown()
-              └── scene.start(data.nextScene)
-                    └── MusicManager.crossfadeTo(levelThemes[levelId], 2000)
-```
-
-Level ID is passed as `data` through `scene.start(key, data)`. MusicManager theme key is derived from level ID in the scene — scenes own the mapping lookup, not the manager.
-
----
-
-## Patterns to Follow
-
-### Pattern 1: Time.Timeline for All Cinematic Beats (not Tweens.Timeline)
-
-**What:** Use `this.time.addTimeline({ events: [...] })` (Phaser 3.60+ `Time.Timeline`) to schedule every cinematic beat at an absolute millisecond offset. Tween-specific sequencing uses `this.tweens.chain([...])`.
-
-**Why:** Tweens.Timeline was removed in Phaser 3.60 due to timing bugs. Time.Timeline is the replacement for general event sequencing; tween chains handle tween-only sequences. Mixing them correctly avoids race conditions.
-
-**When:** Any cinematic scene with more than one timed event.
-
-```javascript
-// In BaseCinematicScene or CinematicDirector
-play(beats) {
-  const timeline = this.scene.time.addTimeline({
-    events: beats.map(beat => ({
-      at: beat.at,
-      run: () => this._executeBeat(beat)
-    })),
-    onComplete: () => this.onCinematicComplete()
-  });
-  timeline.play();
-  return timeline;
-}
-```
-
-### Pattern 2: Equal-Power Crossfade in MusicManager
-
-**What:** When switching themes, ramp out the current GainNode and ramp in the new one using a cosine/equal-power curve instead of linear.
-
-**Why:** Linear crossfade produces a perceived volume dip at the midpoint. Equal-power curves keep loudness constant throughout. This is especially audible on procedural trance tracks with sustained harmonics.
-
-```javascript
-// In MusicManager
-crossfadeTo(themeId, durationMs = 2000) {
-  const ctx = this._audioContext;
-  const now = ctx.currentTime;
-  const durationSec = durationMs / 1000;
-
-  // Ramp out current
-  this._masterGain.gain.setValueAtTime(this._masterGain.gain.value, now);
-  this._masterGain.gain.linearRampToValueAtTime(0, now + durationSec * 0.5);
-
-  // Start new theme graph
-  this._startThemeGraph(themeId);
-
-  // Equal-power ramp in on new gain node
-  const newGain = this._newThemeGain;
-  newGain.gain.setValueAtTime(0, now);
-  newGain.gain.linearRampToValueAtTime(1, now + durationSec);
-
-  this._masterGain = newGain;
-}
-```
-
-### Pattern 3: Scene Registry for Level-to-Theme Mapping
-
-**What:** Store the level→themeId mapping in `this.game.registry` (Phaser's built-in cross-scene DataManager) so MusicManager does not need a scene reference and scenes do not hard-code theme IDs.
-
-**Why:** Registry is the idiomatic Phaser cross-scene store. It avoids passing objects through scene.start data payloads while keeping MusicManager decoupled.
-
-```javascript
-// In BootScene
-this.registry.set('levelThemes', {
-  level1: 'theme-desert',
-  level2: 'theme-space',
-  boss:   'theme-boss'
-});
-
-// In LevelIntroScene
-const themeId = this.registry.get('levelThemes')[this.data.levelId];
-MusicManager.getInstance().crossfadeTo(themeId);
-```
-
-### Pattern 4: SFX Variant Pool in SoundManager
-
-**What:** For each logical SFX event (explosion, pickup, jump), register an array of slight parameter variants (frequency offset, ADSR variation, pan offset). On play, pick one at random.
-
-**Why:** Repetitive identical SFX is a key polish differentiator. Variety pool avoids needing to hand-craft many unique sounds; procedural variation achieves perceived richness cheaply.
-
-```javascript
-// In SoundManager
-registerVariants(eventId, variantConfigs) {
-  this._variants[eventId] = variantConfigs; // [{freq: 440, pan: -0.1}, ...]
-}
-
-playSfx(eventId) {
-  const variants = this._variants[eventId];
-  const v = variants[Math.floor(Math.random() * variants.length)];
-  this._playOscillator(v);
-}
-```
-
-### Pattern 5: TextureRegistry Generates Once at Boot
-
-**What:** All procedural canvas textures are generated during BootScene (or a dedicated PreloadScene) and registered with Phaser's TextureManager. Subsequent scenes reference textures by string key only.
-
-**Why:** Canvas generation is CPU-intensive. Doing it mid-scene causes jank. Boot is the correct place; Phaser's TextureManager caches the result for the game's lifetime.
-
-```javascript
-// In TextureRegistry (new utility class)
-generateAll(scene) {
-  SPRITE_CONFIGS.forEach(cfg => {
-    const canvas = generateSpriteCanvas(cfg); // existing utils/generators fn
-    scene.textures.addSpriteSheet(cfg.key, canvas, {
-      frameWidth:  cfg.frameWidth,
-      frameHeight: cfg.frameHeight
-    });
-  });
-}
+DroneScene (L4) / B2BomberScene (L5) / BossScene (L6) -> built-in endgame
+  -> custom inline victory/defeat UI  [FIX 7: migrate to EndScreen.js]
 ```
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Cinematic Logic Inline in Scene Files
+### Anti-Pattern 1: Duplicating End Screen Logic
+**What:** L4, L5, L6 each implement 100+ lines of custom victory/defeat UI instead of using EndScreen.js.
+**Why bad:** Inconsistent styling, duplicated button logic, harder to maintain. Any future change (e.g., adding a "MENU" button) requires 4+ edits.
+**Instead:** Migrate all to EndScreen.js. Extend EndScreen opts if needed for custom stats display.
 
-**What:** Putting tween/timeline orchestration directly in LevelIntroScene.create(), ShowcaseIntroScene.create(), etc., with no extraction.
+### Anti-Pattern 2: Multiple Independent Character Drawing Systems
+**What:** Three files draw SuperZion with separate, independent code (SpriteGenerator, CinematicTextures, ParadeTextures).
+**Why bad:** Visual inconsistency when one is updated and others lag behind.
+**Instead:** At minimum, verify visual consistency after any sprite changes. Ideally share a palette constant module.
 
-**Why bad:** BossScene is already 1577 lines. Every new cinematic scene will replicate the same tween-chaining boilerplate, making the timing logic impossible to read or test in isolation. When Phaser updates its Timeline API (as it did in 3.60), every scene file needs patching.
-
-**Instead:** CinematicDirector encapsulates all timeline/tween orchestration. Scenes declare *what* to show, not *how* to sequence it.
-
-### Anti-Pattern 2: MusicManager Receiving Scene References
-
-**What:** Passing `this` (the scene) into MusicManager.playTheme(scene, themeId) so MusicManager can fire events back or read scene state.
-
-**Why bad:** Creates circular dependency. MusicManager becomes coupled to scene lifecycle — if a scene shuts down, MusicManager breaks. The existing singleton must remain scene-agnostic.
-
-**Instead:** MusicManager is fully self-contained. Scenes call in; managers never call out to scenes. Use Phaser's global event emitter (`this.game.events`) for any reverse communication if absolutely required.
-
-### Anti-Pattern 3: Generating Textures in Multiple Scenes
-
-**What:** Calling canvas generator functions inside preload() or create() of individual scenes (LevelIntroScene, ShowcaseIntroScene, etc.) to produce their required textures.
-
-**Why bad:** The same canvas generation runs multiple times, burning CPU. On slower devices this causes visible frame drops at scene transitions. Phaser will also silently overwrite an existing texture key if called a second time, which causes subtle rendering bugs.
-
-**Instead:** TextureRegistry.generateAll() in BootScene. Every other scene reads by key.
-
-### Anti-Pattern 4: Using Tweens.Timeline (Pre-3.60 API)
-
-**What:** Using `this.tweens.timeline({...})` for cinematic sequencing.
-
-**Why bad:** Tweens.Timeline was removed entirely in Phaser 3.60 due to timing bugs. Code using it will silently break on modern Phaser or produce unreliable timing.
-
-**Instead:** `this.time.addTimeline()` for general event sequencing + `this.tweens.chain()` for tween-only sequences.
-
-### Anti-Pattern 5: Per-Level Theme as Separate AudioContext
-
-**What:** Creating a new `new AudioContext()` for each level's music theme.
-
-**Why bad:** Browsers have a hard limit (~6) on concurrent AudioContext instances. Creating contexts at level transitions hits this limit and causes audio to fail silently.
-
-**Instead:** Single AudioContext in MusicManager for the game's lifetime. Swap node graphs (oscillators, GainNodes) within it for theme changes.
-
----
-
-## Scalability Considerations
-
-| Concern | Current (1-5 levels) | At 10+ levels | Notes |
-|---------|----------------------|---------------|-------|
-| Music themes | One AudioContext, one active graph | Same — GainNode crossfade handles N themes | Theme registry config stays flat |
-| SFX variety | Small variant pool per event | Variant pool grows linearly — no structural change | Keep variant count ≤ 8 per event for memory |
-| Cinematic scenes | BaseCinematicScene + 2-3 subclasses | Each level adds one LevelIntroScene — all reuse CinematicDirector | Scene files stay thin if director pattern holds |
-| Texture frames | All generated at boot | Boot time grows; may need lazy generation per level | Flag for phase research if >50 unique sprite configs |
-| Scene file size | BossScene 1577 lines is a warning sign | Component extraction needed before adding more logic | Priority: extract from BossScene before milestone adds more |
-
----
-
-## Suggested Build Order
-
-Dependencies drive this order. Later steps require earlier steps to be stable.
-
-```
-1. TextureRegistry (no dependencies)
-   └── generates frames all other components need at boot
-
-2. MusicManager extensions (no scene dependencies)
-   ├── theme registry + crossfade method
-   └── per-level config object
-
-3. SoundManager extensions (no scene dependencies)
-   └── variant pool + randomised playback
-
-4. CinematicDirector (depends on: Phaser Time.Timeline API, MusicManager, SoundManager refs)
-   └── core sequencing abstraction all cinematic scenes use
-
-5. BaseCinematicScene refactor (depends on: CinematicDirector)
-   └── moves existing typewriter logic into director pattern
-
-6. ShowcaseIntroScene (depends on: BaseCinematicScene, TextureRegistry, MusicManager)
-   └── new scene, no existing code to break
-
-7. LevelIntroScene (depends on: BaseCinematicScene, MusicManager crossfade, TextureRegistry)
-   └── replaces or augments existing between-level transitions
-
-8. BossScene / existing large scenes (optional in this milestone)
-   └── extract components opportunistically, do not rewrite wholesale
-```
-
-**Rationale for this order:**
-- TextureRegistry first because frames are needed by cinematic scenes; generating them late causes boot-order bugs.
-- Manager extensions before scenes because scenes import managers, not the reverse.
-- CinematicDirector before any cinematic scene; no scene should inline timeline logic.
-- New scenes (Showcase, LevelIntro) before touching existing large scenes; de-risk by adding rather than modifying until the pattern is proven.
-
----
-
-## Component Dependency Graph
-
-```
-TextureRegistry ◄──────────────────────────────────┐
-MusicManager    ◄─────────────────────────┐         │
-SoundManager    ◄──────────────┐          │         │
-                               │          │         │
-CinematicDirector ─────────────┴──────────┘         │
-       │                                            │
-BaseCinematicScene ─────────────────────────────────┘
-       │
-       ├── ShowcaseIntroScene
-       ├── LevelIntroScene
-       └── (future cinematic scenes)
-
-Phaser SceneManager ──▶ all scenes (framework-managed)
-Phaser Time.Timeline ──▶ CinematicDirector (consumed)
-Phaser TextureManager ──▶ TextureRegistry (writes) + all scenes (reads)
-```
+### Anti-Pattern 3: Inline Graphics for Reusable Sprites
+**What:** GameIntroScene._bossFlashEntry() draws bosses with raw graphics (rectangles, circles) instead of using the pre-generated ParadeTextures sprites that already exist.
+**Why bad:** Low visual quality, impossible to animate, textures generated but wasted.
+**Instead:** Use `this.add.sprite(x, y, 'parade_foambeard')` with the textures that `generateAllParadeTextures()` already created in `create()`.
 
 ---
 
 ## Sources
 
-- [Phaser 3 Scenes concepts](https://docs.phaser.io/phaser/concepts/scenes) — official docs, scene lifecycle, launch vs start
-- [Time.Timeline API](https://docs.phaser.io/api-documentation/class/time-timeline) — official, current replacement for Tweens.Timeline
-- [Phaser 3.60 Tweens.Timeline removal discussion](https://github.com/phaserjs/phaser/discussions/6452) — HIGH confidence, official release notes
-- [Cross-scene singleton pattern](https://phaser.discourse.group/t/any-tips-for-making-a-cross-scene-manager-singleton/4578) — MEDIUM confidence, community verified
-- [Phaser Registry for cross-scene data](https://blog.ourcade.co/posts/2020/phaser3-how-to-communicate-between-scenes/) — MEDIUM confidence, community article
-- [Web Audio API game audio patterns](https://web.dev/webaudio-games/) — HIGH confidence, official Google/web.dev
-- [Equal-power crossfade theory](https://webaudioapi.com/book/Web_Audio_API_Boris_Smus_html/ch03.html) — HIGH confidence, canonical Web Audio API book
-- [GainNode crossfade scheduling](https://developer.mozilla.org/en-US/docs/Web/API/GainNode) — HIGH confidence, MDN official docs
-- [Phaser texture atlas and addSpriteSheet()](https://docs.phaser.io/phaser/concepts/textures) — HIGH confidence, official docs
-- [Refactoring Phaser components into classes](https://jingchaoyu.medium.com/refining-our-phaser-game-part-1-refactoring-components-into-their-own-classes-3c748da67afa) — LOW confidence, single community article
-- [Dynamic Music in Games using WebAudio](https://cschnack.de/blog/2020/webaudio/) — MEDIUM confidence, technical blog post
+- Direct source code analysis of all files in `superzion/src/` (full audit)
+- `SpriteGenerator.js`: 573 lines -- verified redesigned Mossad agent sprite
+- `GameIntroScene.js`: 818 lines -- 3-act cinematic, inline boss graphics at line 472
+- `EndScreen.js`: 222 lines -- clean reusable victory/defeat module
+- `ControlsOverlay.js`: 107 lines -- two-phase controls display
+- `IntroMusic.js`: 945 lines (699 class + 246 exported SFX functions, none wired)
+- `ParadeTextures.js`: ~1100 lines -- full parade sprite and flag system
+- `BomberTextures.js`: F-15 wing geometry at lines 101-120
+- `PortSwapScene.js`: Container spacing constants at lines 63-65
+- `BaseCinematicScene.js`: 142 lines -- act system, skip, typewriter
+- All 6 game scenes and 6 intro cinematic scenes audited for texture consumption
+- All confidence levels HIGH (direct source code inspection)
