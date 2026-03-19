@@ -28,6 +28,8 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor('#87CEEB');
     MusicManager.get().stop(0.5);
+    // Start cinematic music after brief fade to avoid silence
+    this.time.delayedCall(600, () => MusicManager.get().playCinematicMusic(1));
     this.cameras.main.setBounds(0, 0, WORLD_W, H);
 
     this.buildingX = 950;

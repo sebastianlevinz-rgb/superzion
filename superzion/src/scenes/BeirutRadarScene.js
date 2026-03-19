@@ -1,643 +1,1176 @@
 // ═══════════════════════════════════════════════════════════════
 // BeirutRadarScene — Level 2: Operation Signal Storm
-// Split-screen radar/timing mini-game
-// Left: operative at desk | Right: Beirut map with signals
+// Signal interception radar game: place jammers, activate, intercept
 // ═══════════════════════════════════════════════════════════════
 
 import Phaser from 'phaser';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import DifficultyManager from '../systems/DifficultyManager.js';
-import { STREET_PATHS, RANGE_CIRCLE, createBeirutMap, createMonitorFrame, createOperativeAtDesk } from '../utils/RadarTextures.js';
 
 const W = 960;
 const H = 540;
-const SPLIT_X = 288; // left 30% for operative, right 70% for radar
-const NUM_SIGNALS = 18;
-const GAME_TIME = 60; // seconds
+
+// Signal types
+const SIG_GREEN  = 0; // basic, 1pt
+const SIG_YELLOW = 1; // encrypted, 3pt
+const SIG_RED    = 2; // priority, 5pt
+
+const SIG_COLORS = [0x00ff66, 0xffdd00, 0xff3333];
+const SIG_POINTS = [1, 3, 5];
+const SIG_RADII  = [4, 5, 6];
+
+// Jammer defaults
+const JAMMER_RADIUS_BASE = 70;
+const JAMMER_RADIUS_UPGRADED = 95;
+
+// Lebanon map outline (simplified polygon, normalized 0-1 then scaled)
+const LEBANON_COAST = [
+  {x:0.28,y:0.08},{x:0.26,y:0.14},{x:0.24,y:0.22},{x:0.22,y:0.30},
+  {x:0.21,y:0.38},{x:0.22,y:0.44},{x:0.24,y:0.50},{x:0.23,y:0.56},
+  {x:0.25,y:0.62},{x:0.27,y:0.68},{x:0.30,y:0.74},{x:0.32,y:0.80},
+  {x:0.35,y:0.86},{x:0.38,y:0.92},
+];
+const LEBANON_EAST = [
+  {x:0.38,y:0.92},{x:0.52,y:0.88},{x:0.58,y:0.82},{x:0.62,y:0.74},
+  {x:0.60,y:0.66},{x:0.56,y:0.58},{x:0.54,y:0.50},{x:0.50,y:0.42},
+  {x:0.48,y:0.34},{x:0.44,y:0.26},{x:0.40,y:0.18},{x:0.36,y:0.12},
+  {x:0.28,y:0.08},
+];
+
+// Routes signals follow (paths on the map)
+const ROUTES = [
+  // North-south coastal road
+  [{x:0.26,y:0.05},{x:0.24,y:0.20},{x:0.22,y:0.35},{x:0.23,y:0.50},{x:0.26,y:0.65},{x:0.30,y:0.80},{x:0.36,y:0.95}],
+  // Beirut east road
+  [{x:0.24,y:0.38},{x:0.30,y:0.40},{x:0.38,y:0.42},{x:0.46,y:0.44},{x:0.54,y:0.48}],
+  // Mountain road
+  [{x:0.36,y:0.12},{x:0.40,y:0.22},{x:0.44,y:0.32},{x:0.48,y:0.42},{x:0.52,y:0.55},{x:0.56,y:0.68}],
+  // South road
+  [{x:0.52,y:0.88},{x:0.46,y:0.82},{x:0.40,y:0.78},{x:0.34,y:0.82},{x:0.36,y:0.90}],
+  // Valley road
+  [{x:0.42,y:0.18},{x:0.38,y:0.28},{x:0.34,y:0.38},{x:0.30,y:0.50},{x:0.28,y:0.62},{x:0.32,y:0.75}],
+  // Cross road north
+  [{x:0.26,y:0.20},{x:0.32,y:0.22},{x:0.38,y:0.24},{x:0.44,y:0.28}],
+  // Bekaa valley
+  [{x:0.50,y:0.35},{x:0.52,y:0.45},{x:0.54,y:0.55},{x:0.56,y:0.65},{x:0.54,y:0.75},{x:0.52,y:0.85}],
+  // Reverse coastal
+  [{x:0.36,y:0.95},{x:0.30,y:0.80},{x:0.26,y:0.65},{x:0.23,y:0.50},{x:0.22,y:0.35},{x:0.24,y:0.20},{x:0.26,y:0.05}],
+];
 
 export default class BeirutRadarScene extends Phaser.Scene {
   constructor() { super('BeirutRadarScene'); }
 
   create() {
-    this.cameras.main.setBackgroundColor('#000000');
+    this.cameras.main.setBackgroundColor('#0a0e1a');
+    this.physics.world.gravity.y = 0;
     MusicManager.get().playLevel2Music();
 
-    // Generate textures
-    createBeirutMap(this);
-    createMonitorFrame(this);
-    createOperativeAtDesk(this);
-
-    // State
-    const dm = DifficultyManager.get();
-    this.gamePhase = 'playing'; // playing | intercepted | results
-    this.timeRemaining = Math.round(GAME_TIME * dm.timerMult());
-    this.interceptUsed = false;
-    this.signals = [];
-    this.score = 0;
-    this.interceptedCount = 0;
-    this.missedMarked = 0;
-    this.totalMarked = 0;
-
-    this._buildLayout();
-    this._spawnSignals();
-    this._setupInput();
-
-    // Start radar ambient
-    this.ambientRef = SoundManager.get().playRadarAmbient();
-
-    // Mute key
-    this.mKey = this.input.keyboard.addKey('M');
-    this.pKey = this.input.keyboard.addKey('P');
-    this.escKey = this.input.keyboard.addKey('ESC');
-
-    // Pause state
+    this.gameOver = false;
     this.isPaused = false;
     this.pauseObjects = [];
+
+    // State
+    this.round = 1;
+    this.maxRounds = 2;
+    this.phase = 'placing'; // placing | activated | upgrade | results
+    this.roundTimer = 30;
+    this.roundTimerEvent = null;
+    this.totalScore = 0;
+    this.roundScores = [];
+    this.bestCombo = '';
+    this.bestRoundIntercepted = 0;
+    this.totalIntercepted = 0;
+    this.totalSignals = 0;
+
+    // Upgrades
+    this.jammerRadius = JAMMER_RADIUS_BASE;
+    this.maxJammers = 3;
+    this.hasSlowmo = false;
+    this.hasChain = false;
+    this.slowmoUsed = false;
+    this.slowmoActive = false;
+
+    // Signals
+    this.signals = [];
+    this.jammers = [];
+    this.draggingJammer = null;
+    this.activating = false;
+
+    // Radar
+    this.radarAngle = 0;
+
+    // Map offset (center Lebanon on screen)
+    this.mapOX = W * 0.18;
+    this.mapOY = H * 0.02;
+    this.mapW = W * 0.64;
+    this.mapH = H * 0.96;
+
+    // Create layers
+    this._createBackground();
+    this._createMapOutline();
+    this._createRadarArm();
+    this._createHUD();
+    this._createScanlines();
+
+    // Start round
+    this._startRound(1);
+
+    // Input
+    this._setupInput();
+
+    // Ambient sound
+    this.ambientSrc = SoundManager.get().playRadarAmbient();
+
+    // Fade in
+    this.cameras.main.fadeIn(600, 0, 0, 0);
   }
 
-  // ── BUILD LAYOUT ──────────────────────────────────────────────
-  _buildLayout() {
-    // ── Left panel: dark room with operative ──
-    const leftBg = this.add.rectangle(SPLIT_X / 2, H / 2, SPLIT_X, H, 0x0a0a0e);
-    leftBg.setDepth(0);
+  // ── BACKGROUND ─────────────────────────────────────────────
+  _createBackground() {
+    // Dark gradient background
+    const gfx = this.add.graphics();
+    gfx.setDepth(-10);
+    // Radial dark blue gradient approximation
+    for (let r = Math.max(W, H); r > 0; r -= 4) {
+      const t = r / Math.max(W, H);
+      const blue = Math.floor(10 + 20 * t);
+      const green = Math.floor(5 + 8 * t);
+      gfx.fillStyle(Phaser.Display.Color.GetColor(2, green, blue), 1);
+      gfx.fillCircle(W / 2, H / 2, r);
+    }
 
-    // Operative at desk
-    this.add.image(SPLIT_X / 2, H / 2 + 40, 'operative_desk').setDepth(1);
-
-    // Faint monitor glow on wall
-    const glow = this.add.graphics();
-    glow.setDepth(0);
-    glow.fillStyle(0x00aa30, 0.04);
-    glow.fillCircle(SPLIT_X / 2 + 40, H / 2 - 30, 100);
-
-    // Separator line
-    const sep = this.add.rectangle(SPLIT_X, H / 2, 2, H, 0x333333);
-    sep.setDepth(10);
-
-    // ── Right panel: Beirut radar ──
-    // Beirut map
-    this.add.image(W / 2, H / 2, 'beirut_map').setDepth(1);
-
-    // Monitor frame overlay
-    this.add.image(W / 2, H / 2, 'monitor_frame').setDepth(8);
-
-    // Radar sweep line (rotating)
-    this.sweepGfx = this.add.graphics();
-    this.sweepGfx.setDepth(3);
-    this.sweepAngle = 0;
-
-    // Range circle highlight (drawn live)
-    this.rangeGfx = this.add.graphics();
-    this.rangeGfx.setDepth(2);
-    this._drawRangeCircle(0.15);
-
-    // ── HUD elements ──
-    // Timer
-    this.timerText = this.add.text(W - 30, 20, '60', {
-      fontFamily: 'monospace', fontSize: '28px', color: '#00ff00',
-      shadow: { offsetX: 0, offsetY: 0, color: '#00ff00', blur: 8, fill: true },
-    });
-    this.timerText.setOrigin(1, 0); this.timerText.setDepth(20);
-
-    this.timerLabel = this.add.text(W - 80, 22, 'TIME:', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#008800',
-    });
-    this.timerLabel.setOrigin(1, 0); this.timerLabel.setDepth(20);
-
-    // Score
-    this.scoreText = this.add.text(SPLIT_X + 15, 20, 'SCORE: 0', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#00e5ff',
-    });
-    this.scoreText.setDepth(20);
-
-    // Marked count
-    this.markedText = this.add.text(SPLIT_X + 15, 42, 'MARKED: 0 / 18', {
-      fontFamily: 'monospace', fontSize: '11px', color: '#888888',
-    });
-    this.markedText.setDepth(20);
-
-    // Instructions
-    this.instrText = this.add.text(W / 2 + SPLIT_X / 2, H - 22, 'CLICK signals to mark | SPACE to intercept', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#777777',
-    });
-    this.instrText.setOrigin(0.5, 1); this.instrText.setDepth(20);
-
-    // Border flash overlay (hidden initially)
-    this.borderFlash = this.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0);
-    this.borderFlash.setDepth(25);
-    this.borderFlash.setStrokeStyle(4, 0xff0000, 0);
-  }
-
-  _drawRangeCircle(alpha) {
-    this.rangeGfx.clear();
-    this.rangeGfx.lineStyle(1.5, 0x00ff66, alpha);
-    this.rangeGfx.strokeCircle(RANGE_CIRCLE.centerX, RANGE_CIRCLE.centerY, RANGE_CIRCLE.radius);
-  }
-
-  // ── SPAWN SIGNALS ─────────────────────────────────────────────
-  _spawnSignals() {
-    for (let i = 0; i < NUM_SIGNALS; i++) {
-      const pathIndex = i % STREET_PATHS.length;
-      const path = STREET_PATHS[pathIndex];
-      const t = Math.random();
-      const pos = this._lerpPath(path.pts, t);
-      const speed = (0.04 + Math.random() * 0.06) * DifficultyManager.get().enemySpeedMult(); // units per second along path [0..1]
-      const direction = Math.random() < 0.5 ? 1 : -1;
-
-      const sprite = this.add.circle(pos.x, pos.y, 5, 0x00ff00, 0.7);
-      sprite.setDepth(5);
-      // Inner dot
-      const inner = this.add.circle(pos.x, pos.y, 2, 0x00ff88, 0.9);
-      inner.setDepth(6);
-
-      this.signals.push({
-        id: i,
-        pathIndex,
-        t,
-        speed,
-        direction,
-        x: pos.x,
-        y: pos.y,
-        marked: false,
-        sprite,
-        inner,
-        alive: true,
-      });
+    // Grid lines (subtle)
+    const grid = this.add.graphics();
+    grid.setDepth(-8);
+    grid.lineStyle(1, 0x0a3a2a, 0.15);
+    for (let x = 0; x < W; x += 40) {
+      grid.lineBetween(x, 0, x, H);
+    }
+    for (let y = 0; y < H; y += 40) {
+      grid.lineBetween(0, y, W, y);
     }
   }
 
-  _lerpPath(pts, t) {
-    const clampedT = Math.max(0, Math.min(1, t));
-    const n = pts.length - 1;
-    const seg = Math.min(Math.floor(clampedT * n), n - 1);
-    const lt = (clampedT * n) - seg;
-    const a = pts[seg], b = pts[Math.min(seg + 1, n)];
-    return { x: a.x + (b.x - a.x) * lt, y: a.y + (b.y - a.y) * lt };
+  // ── MAP OUTLINE ────────────────────────────────────────────
+  _createMapOutline() {
+    this.mapGfx = this.add.graphics();
+    this.mapGfx.setDepth(-5);
+    this._drawMapOutline();
+    this._drawRoutes();
+    this._drawCities();
   }
 
-  // ── INPUT ─────────────────────────────────────────────────────
-  _setupInput() {
-    this.spaceKey = this.input.keyboard.addKey('SPACE');
-    this.enterKey = this.input.keyboard.addKey('ENTER');
+  _toMapX(nx) { return this.mapOX + nx * this.mapW; }
+  _toMapY(ny) { return this.mapOY + ny * this.mapH; }
 
-    // Click to mark signals
-    this.input.on('pointerdown', (pointer) => {
-      if (this.gamePhase !== 'playing') return;
+  _drawMapOutline() {
+    const g = this.mapGfx;
+    // Coast line
+    g.lineStyle(2, 0x00aacc, 0.6);
+    g.beginPath();
+    LEBANON_COAST.forEach((p, i) => {
+      if (i === 0) g.moveTo(this._toMapX(p.x), this._toMapY(p.y));
+      else g.lineTo(this._toMapX(p.x), this._toMapY(p.y));
+    });
+    g.strokePath();
 
-      // Find closest signal within 20px
-      let closest = null;
-      let closestDist = 20;
-      for (const sig of this.signals) {
-        if (!sig.alive) continue;
-        const dx = pointer.x - sig.x;
-        const dy = pointer.y - sig.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < closestDist) {
-          closestDist = dist;
-          closest = sig;
+    // East border
+    g.lineStyle(1.5, 0x005566, 0.4);
+    g.beginPath();
+    LEBANON_EAST.forEach((p, i) => {
+      if (i === 0) g.moveTo(this._toMapX(p.x), this._toMapY(p.y));
+      else g.lineTo(this._toMapX(p.x), this._toMapY(p.y));
+    });
+    g.strokePath();
+
+    // Fill country area (very subtle)
+    g.fillStyle(0x003344, 0.15);
+    g.beginPath();
+    const allPts = [...LEBANON_COAST, ...LEBANON_EAST.slice(1)];
+    allPts.forEach((p, i) => {
+      if (i === 0) g.moveTo(this._toMapX(p.x), this._toMapY(p.y));
+      else g.lineTo(this._toMapX(p.x), this._toMapY(p.y));
+    });
+    g.closePath();
+    g.fillPath();
+
+    // Sea label
+    this.add.text(this._toMapX(0.10), this._toMapY(0.45), 'MEDITERRANEAN\nSEA', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#1a5566', align: 'center'
+    }).setDepth(-4).setAlpha(0.5);
+  }
+
+  _drawRoutes() {
+    const g = this.mapGfx;
+    g.lineStyle(1, 0x004433, 0.25);
+    ROUTES.forEach(route => {
+      g.beginPath();
+      route.forEach((p, i) => {
+        if (i === 0) g.moveTo(this._toMapX(p.x), this._toMapY(p.y));
+        else g.lineTo(this._toMapX(p.x), this._toMapY(p.y));
+      });
+      g.strokePath();
+    });
+  }
+
+  _drawCities() {
+    // Beirut
+    const bx = this._toMapX(0.24), by = this._toMapY(0.38);
+    this.mapGfx.fillStyle(0x00ffcc, 0.5);
+    this.mapGfx.fillCircle(bx, by, 3);
+    this.add.text(bx + 6, by - 6, 'BEIRUT', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#00aa88'
+    }).setDepth(-4).setAlpha(0.6);
+
+    // Tripoli
+    const tx = this._toMapX(0.25), ty = this._toMapY(0.22);
+    this.mapGfx.fillStyle(0x00ffcc, 0.3);
+    this.mapGfx.fillCircle(tx, ty, 2);
+    this.add.text(tx + 5, ty - 5, 'TRIPOLI', {
+      fontFamily: 'monospace', fontSize: '7px', color: '#006655'
+    }).setDepth(-4).setAlpha(0.4);
+
+    // Sidon
+    const sx = this._toMapX(0.26), sy = this._toMapY(0.58);
+    this.mapGfx.fillCircle(sx, sy, 2);
+    this.add.text(sx + 5, sy - 5, 'SIDON', {
+      fontFamily: 'monospace', fontSize: '7px', color: '#006655'
+    }).setDepth(-4).setAlpha(0.4);
+
+    // Baalbek
+    const bbx = this._toMapX(0.50), bby = this._toMapY(0.40);
+    this.mapGfx.fillCircle(bbx, bby, 2);
+    this.add.text(bbx + 5, bby - 5, 'BAALBEK', {
+      fontFamily: 'monospace', fontSize: '7px', color: '#006655'
+    }).setDepth(-4).setAlpha(0.4);
+  }
+
+  // ── RADAR ARM ──────────────────────────────────────────────
+  _createRadarArm() {
+    this.radarGfx = this.add.graphics();
+    this.radarGfx.setDepth(0);
+    this.radarCX = this._toMapX(0.38);
+    this.radarCY = this._toMapY(0.48);
+  }
+
+  _updateRadarArm(dt) {
+    this.radarAngle += dt * 0.0008; // ~50s per revolution
+    if (this.radarAngle > Math.PI * 2) this.radarAngle -= Math.PI * 2;
+
+    const g = this.radarGfx;
+    g.clear();
+
+    const len = 320;
+    const cx = this.radarCX, cy = this.radarCY;
+
+    // Trailing fade (several lines behind the arm)
+    for (let i = 12; i >= 0; i--) {
+      const a = this.radarAngle - i * 0.03;
+      const alpha = (0.15 - i * 0.012);
+      if (alpha <= 0) continue;
+      g.lineStyle(1, 0x00ff44, alpha);
+      g.lineBetween(cx, cy, cx + Math.cos(a) * len, cy + Math.sin(a) * len);
+    }
+
+    // Main arm
+    g.lineStyle(2, 0x00ff66, 0.35);
+    g.lineBetween(cx, cy, cx + Math.cos(this.radarAngle) * len, cy + Math.sin(this.radarAngle) * len);
+
+    // Center dot
+    g.fillStyle(0x00ff66, 0.4);
+    g.fillCircle(cx, cy, 3);
+  }
+
+  // ── SCANLINES ──────────────────────────────────────────────
+  _createScanlines() {
+    const gfx = this.add.graphics();
+    gfx.setDepth(200);
+    gfx.fillStyle(0x000000, 0.06);
+    for (let y = 0; y < H; y += 3) {
+      gfx.fillRect(0, y, W, 1);
+    }
+    // Vignette corners
+    gfx.fillStyle(0x000000, 0.3);
+    gfx.fillCircle(0, 0, 120);
+    gfx.fillCircle(W, 0, 120);
+    gfx.fillCircle(0, H, 120);
+    gfx.fillCircle(W, H, 120);
+
+    // CRT slight color fringe at edges
+    const edge = this.add.graphics();
+    edge.setDepth(199);
+    edge.lineStyle(2, 0x000000, 0.4);
+    edge.strokeRect(0, 0, W, H);
+    edge.lineStyle(1, 0x001122, 0.2);
+    edge.strokeRect(2, 2, W - 4, H - 4);
+  }
+
+  // ── HUD ────────────────────────────────────────────────────
+  _createHUD() {
+    // Top bar
+    this.add.rectangle(W / 2, 16, W, 32, 0x000000, 0.5).setDepth(100);
+
+    // Title
+    this.titleText = this.add.text(W / 2, 16, 'OPERATION SIGNAL STORM', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#00ffaa',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(101);
+
+    // Round indicator
+    this.roundText = this.add.text(16, 16, 'ROUND 1/2', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#00cc88'
+    }).setOrigin(0, 0.5).setDepth(101);
+
+    // Timer
+    this.timerText = this.add.text(W - 16, 16, '30s', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#00ff66',
+      fontStyle: 'bold'
+    }).setOrigin(1, 0.5).setDepth(101);
+
+    // Score
+    this.scoreText = this.add.text(W - 140, 16, 'SCORE: 0', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#00ddaa'
+    }).setOrigin(1, 0.5).setDepth(101);
+
+    // Jammer count
+    this.jammerCountText = this.add.text(W / 2, H - 20, '', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#00ccff'
+    }).setOrigin(0.5).setDepth(101);
+
+    // Instructions
+    this.instrText = this.add.text(W / 2, H - 40, 'CLICK TO PLACE JAMMERS — DRAG TO REPOSITION', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#448866'
+    }).setOrigin(0.5).setDepth(101);
+
+    // Activate button (hidden initially)
+    this.activateBtn = this.add.rectangle(W / 2, H - 60, 200, 40, 0x00ff66, 0.15)
+      .setDepth(101).setVisible(false).setInteractive({ useHandCursor: true });
+    this.activateBtnBorder = this.add.graphics().setDepth(101).setVisible(false);
+    this.activateBtnText = this.add.text(W / 2, H - 60, '[ SPACE ] ACTIVATE', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#00ff66', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(102).setVisible(false);
+
+    // Combo text (center, hidden)
+    this.comboText = this.add.text(W / 2, H / 2, '', {
+      fontFamily: 'monospace', fontSize: '28px', color: '#ffffff',
+      fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5).setDepth(150).setAlpha(0);
+
+    // Intercept count text
+    this.interceptText = this.add.text(W / 2, H / 2 + 40, '', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#00ffcc',
+      stroke: '#000000', strokeThickness: 3
+    }).setOrigin(0.5).setDepth(150).setAlpha(0);
+
+    // Slowmo hint
+    this.slowmoText = this.add.text(16, H - 20, '', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#ff66ff'
+    }).setDepth(101);
+
+    // Hard mode badge
+    if (DifficultyManager.get().isHard()) {
+      this.add.text(W - 8, 36, 'HARD', {
+        fontFamily: 'monospace', fontSize: '10px', color: '#ff4444', fontStyle: 'bold'
+      }).setOrigin(1, 0).setDepth(101);
+    }
+  }
+
+  _updateHUD() {
+    const placed = this.jammers.length;
+    this.jammerCountText.setText(`JAMMERS: ${placed}/${this.maxJammers}`);
+
+    if (this.hasSlowmo && !this.slowmoUsed && this.phase === 'placing') {
+      this.slowmoText.setText('[S] SLOW MOTION');
+    } else {
+      this.slowmoText.setText('');
+    }
+
+    this.scoreText.setText(`SCORE: ${this.totalScore}`);
+    this.timerText.setText(`${Math.ceil(this.roundTimer)}s`);
+    if (this.roundTimer <= 5) {
+      this.timerText.setColor('#ff4444');
+    } else {
+      this.timerText.setColor('#00ff66');
+    }
+
+    // Show activate button when all jammers placed
+    const allPlaced = placed >= this.maxJammers;
+    this.activateBtn.setVisible(allPlaced && this.phase === 'placing');
+    this.activateBtnText.setVisible(allPlaced && this.phase === 'placing');
+
+    if (allPlaced && this.phase === 'placing') {
+      this._drawActivateBtn();
+      this.instrText.setText('PRESS SPACE TO ACTIVATE ALL JAMMERS');
+    } else if (this.phase === 'placing') {
+      this.activateBtnBorder.setVisible(false);
+      this.instrText.setText(`CLICK TO PLACE JAMMERS (${this.maxJammers - placed} LEFT)`);
+    }
+
+    this.roundText.setText(`ROUND ${this.round}/${this.maxRounds}`);
+  }
+
+  _drawActivateBtn() {
+    const g = this.activateBtnBorder;
+    g.setVisible(true);
+    g.clear();
+    const pulse = 0.4 + 0.3 * Math.sin(this.time.now * 0.005);
+    g.lineStyle(2, 0x00ff66, pulse);
+    g.strokeRoundedRect(W / 2 - 100, H - 80, 200, 40, 6);
+  }
+
+  // ── SIGNALS ────────────────────────────────────────────────
+  _spawnSignals(count, includeRed) {
+    const types = includeRed
+      ? [SIG_GREEN, SIG_GREEN, SIG_GREEN, SIG_YELLOW, SIG_YELLOW, SIG_RED]
+      : [SIG_GREEN, SIG_GREEN, SIG_GREEN, SIG_GREEN, SIG_YELLOW, SIG_YELLOW];
+
+    for (let i = 0; i < count; i++) {
+      const type = types[Math.floor(Math.random() * types.length)];
+      const route = ROUTES[Math.floor(Math.random() * ROUTES.length)];
+      const reverse = Math.random() < 0.5;
+      const path = reverse ? [...route].reverse() : [...route];
+      const speedBase = this.round === 1 ? 0.06 : 0.10;
+      const speed = speedBase + Math.random() * 0.04 + (type === SIG_RED ? 0.04 : 0);
+
+      // Stagger spawn
+      const delay = Math.random() * 15;
+
+      this.signals.push({
+        type,
+        path,
+        pathIdx: 0,
+        progress: 0,
+        speed,
+        x: this._toMapX(path[0].x),
+        y: this._toMapY(path[0].y),
+        alive: true,
+        spawned: false,
+        spawnDelay: delay,
+        elapsed: 0,
+        pulsePhase: Math.random() * Math.PI * 2,
+        intercepted: false,
+      });
+    }
+    this.totalSignals += count;
+  }
+
+  _updateSignals(dt) {
+    const dtSec = dt / 1000;
+    const speedMult = this.slowmoActive ? 0.25 : 1;
+
+    for (const sig of this.signals) {
+      if (!sig.alive) continue;
+
+      sig.elapsed += dtSec;
+      if (sig.elapsed < sig.spawnDelay) continue;
+      sig.spawned = true;
+
+      // Move along path
+      sig.progress += sig.speed * dtSec * speedMult;
+      if (sig.progress >= 1) {
+        sig.progress = 0;
+        sig.pathIdx++;
+        if (sig.pathIdx >= sig.path.length - 1) {
+          sig.alive = false;
+          continue;
         }
       }
 
-      if (closest && !closest.marked) {
-        closest.marked = true;
-        closest.sprite.setFillStyle(0xffff00, 0.9);
-        closest.inner.setFillStyle(0xffaa00, 1);
-        this.totalMarked++;
-        this._updateMarkedText();
-        SoundManager.get().playRadarMark();
+      const p0 = sig.path[sig.pathIdx];
+      const p1 = sig.path[sig.pathIdx + 1];
+      sig.x = this._toMapX(p0.x + (p1.x - p0.x) * sig.progress);
+      sig.y = this._toMapY(p0.y + (p1.y - p0.y) * sig.progress);
+      sig.pulsePhase += dt * 0.006;
+    }
+  }
 
-        // Pulse animation
-        this.tweens.add({
-          targets: closest.sprite,
-          scaleX: 1.8, scaleY: 1.8,
-          duration: 150,
-          yoyo: true,
-          ease: 'Quad.easeOut',
+  _drawSignals() {
+    if (!this.signalGfx) {
+      this.signalGfx = this.add.graphics().setDepth(5);
+    }
+    const g = this.signalGfx;
+    g.clear();
+
+    // Check if radar arm is illuminating each signal
+    const cx = this.radarCX, cy = this.radarCY;
+
+    for (const sig of this.signals) {
+      if (!sig.alive || !sig.spawned) continue;
+
+      const color = SIG_COLORS[sig.type];
+      const r = SIG_RADII[sig.type];
+      const pulse = 0.6 + 0.4 * Math.sin(sig.pulsePhase);
+
+      // Check angle to radar arm for brightness boost
+      const dx = sig.x - cx, dy = sig.y - cy;
+      const sigAngle = Math.atan2(dy, dx);
+      let angleDiff = Math.abs(sigAngle - this.radarAngle);
+      if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+      const radarBoost = angleDiff < 0.3 ? (1 - angleDiff / 0.3) * 0.5 : 0;
+
+      // Signal dot
+      const alpha = 0.5 * pulse + radarBoost;
+      g.fillStyle(color, Math.min(alpha, 1));
+      g.fillCircle(sig.x, sig.y, r);
+
+      // Radio wave rings
+      const waveR = r + 4 + 3 * Math.sin(sig.pulsePhase * 0.7);
+      g.lineStyle(1, color, 0.2 * pulse + radarBoost * 0.3);
+      g.strokeCircle(sig.x, sig.y, waveR);
+      if (sig.type >= SIG_YELLOW) {
+        g.strokeCircle(sig.x, sig.y, waveR + 4);
+      }
+    }
+  }
+
+  // ── JAMMERS ────────────────────────────────────────────────
+  _placeJammer(x, y) {
+    if (this.phase !== 'placing') return;
+    if (this.jammers.length >= this.maxJammers) return;
+
+    // Clamp to playable area
+    x = Phaser.Math.Clamp(x, 30, W - 30);
+    y = Phaser.Math.Clamp(y, 40, H - 30);
+
+    const jammer = {
+      x, y,
+      radius: this.jammerRadius,
+      placed: true,
+    };
+    this.jammers.push(jammer);
+
+    SoundManager.get().playRadarBlip();
+    this._updateHUD();
+  }
+
+  _findJammerAt(px, py) {
+    for (let i = this.jammers.length - 1; i >= 0; i--) {
+      const j = this.jammers[i];
+      const dist = Phaser.Math.Distance.Between(px, py, j.x, j.y);
+      if (dist < 20) return i;
+    }
+    return -1;
+  }
+
+  _drawJammers() {
+    if (!this.jammerGfx) {
+      this.jammerGfx = this.add.graphics().setDepth(10);
+    }
+    const g = this.jammerGfx;
+    g.clear();
+
+    for (const j of this.jammers) {
+      const pulse = 0.3 + 0.2 * Math.sin(this.time.now * 0.004);
+
+      // Radius circle
+      g.lineStyle(1.5, 0x00ccff, 0.15 + pulse * 0.1);
+      g.strokeCircle(j.x, j.y, j.radius);
+
+      // Inner fill
+      g.fillStyle(0x00ccff, 0.04 + pulse * 0.02);
+      g.fillCircle(j.x, j.y, j.radius);
+
+      // Center marker
+      g.fillStyle(0x00ccff, 0.6 + pulse * 0.3);
+      g.fillCircle(j.x, j.y, 6);
+
+      // Crosshair
+      g.lineStyle(1, 0x00ccff, 0.4);
+      g.lineBetween(j.x - 12, j.y, j.x - 4, j.y);
+      g.lineBetween(j.x + 4, j.y, j.x + 12, j.y);
+      g.lineBetween(j.x, j.y - 12, j.x, j.y - 4);
+      g.lineBetween(j.x, j.y + 4, j.x, j.y + 12);
+
+      // Blinking ring
+      if (Math.sin(this.time.now * 0.008) > 0) {
+        g.lineStyle(1, 0x00ffff, 0.3);
+        g.strokeCircle(j.x, j.y, 10);
+      }
+    }
+  }
+
+  // ── ACTIVATION ─────────────────────────────────────────────
+  _activateJammers() {
+    if (this.phase !== 'placing') return;
+    if (this.jammers.length === 0) return;
+
+    this.phase = 'activated';
+    this.activating = true;
+    if (this.roundTimerEvent) this.roundTimerEvent.remove();
+    this.instrText.setText('');
+    this.activateBtn.setVisible(false);
+    this.activateBtnText.setVisible(false);
+    this.activateBtnBorder.setVisible(false);
+
+    // Flash
+    this.cameras.main.flash(200, 0, 255, 100);
+
+    // Count intercepted signals
+    let intercepted = 0;
+    let points = 0;
+    const interceptedSigs = [];
+
+    for (const sig of this.signals) {
+      if (!sig.alive || !sig.spawned) continue;
+      for (const j of this.jammers) {
+        const dist = Phaser.Math.Distance.Between(sig.x, sig.y, j.x, j.y);
+        if (dist <= j.radius) {
+          sig.intercepted = true;
+          intercepted++;
+          points += SIG_POINTS[sig.type];
+          interceptedSigs.push({ ...sig });
+          break;
+        }
+      }
+    }
+
+    // Chain reaction upgrade
+    if (this.hasChain) {
+      let chainMore = true;
+      while (chainMore) {
+        chainMore = false;
+        for (const sig of this.signals) {
+          if (!sig.alive || !sig.spawned || sig.intercepted) continue;
+          for (const ic of interceptedSigs) {
+            const dist = Phaser.Math.Distance.Between(sig.x, sig.y, ic.x, ic.y);
+            if (dist <= 30) {
+              sig.intercepted = true;
+              intercepted++;
+              points += SIG_POINTS[sig.type];
+              interceptedSigs.push({ ...sig });
+              chainMore = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Animate expansion + intercepts
+    this._animateActivation(interceptedSigs, intercepted, points);
+
+    // Update stats
+    this.totalIntercepted += intercepted;
+    this.totalScore += points;
+    this.roundScores.push(intercepted);
+    if (intercepted > this.bestRoundIntercepted) this.bestRoundIntercepted = intercepted;
+
+    SoundManager.get().playRadarIntercept();
+  }
+
+  _animateActivation(interceptedSigs, intercepted, points) {
+    // Expanding rings from each jammer
+    const rings = [];
+    for (const j of this.jammers) {
+      rings.push({ x: j.x, y: j.y, r: 0, maxR: j.radius, alpha: 1 });
+    }
+
+    // Particle system for intercepted signals
+    this.particles = [];
+    for (const sig of interceptedSigs) {
+      const count = sig.type === SIG_RED ? 16 : sig.type === SIG_YELLOW ? 12 : 8;
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+        const speed = 40 + Math.random() * 80;
+        this.particles.push({
+          x: sig.x, y: sig.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          color: SIG_COLORS[sig.type],
+          life: 1,
+          decay: 0.8 + Math.random() * 0.5,
+          size: 2 + Math.random() * 2,
         });
-      } else if (closest && closest.marked) {
-        // Unmark
-        closest.marked = false;
-        closest.sprite.setFillStyle(0x00ff00, 0.7);
-        closest.inner.setFillStyle(0x00ff88, 0.9);
-        this.totalMarked--;
-        this._updateMarkedText();
-        SoundManager.get().playRadarBlip();
+      }
+    }
+
+    // Kill intercepted signals
+    for (const sig of this.signals) {
+      if (sig.intercepted) sig.alive = false;
+    }
+
+    // Expansion animation
+    this.activationRings = rings;
+    this.activationTimer = 0;
+    this.activationDuration = 1.2;
+
+    // Combo text
+    let comboLabel = '';
+    if (intercepted >= 40) { comboLabel = 'PERFECT OPERATION!'; points += 500; this.totalScore += 500; }
+    else if (intercepted >= 30) { comboLabel = 'INCREDIBLE!'; points += 300; this.totalScore += 300; }
+    else if (intercepted >= 20) { comboLabel = 'GREAT!'; points += 150; this.totalScore += 150; }
+    else if (intercepted >= 10) { comboLabel = 'GOOD!'; points += 50; this.totalScore += 50; }
+
+    if (comboLabel && (!this.bestCombo || intercepted > this._comboThreshold(this.bestCombo))) {
+      this.bestCombo = comboLabel;
+    }
+
+    this.interceptText.setText(`SIGNALS INTERCEPTED: ${intercepted}`);
+    this.interceptText.setAlpha(1);
+    this.tweens.add({
+      targets: this.interceptText,
+      alpha: 0,
+      y: H / 2 + 20,
+      duration: 2500,
+      ease: 'Power2',
+      onComplete: () => { this.interceptText.y = H / 2 + 40; }
+    });
+
+    if (comboLabel) {
+      this.comboText.setText(comboLabel);
+      this.comboText.setAlpha(1);
+      this.comboText.setScale(0.5);
+      this.tweens.add({
+        targets: this.comboText,
+        alpha: 0,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        duration: 2000,
+        ease: 'Power2',
+        onComplete: () => { this.comboText.setScale(1); }
+      });
+
+      // Screen shake for big combos
+      if (intercepted >= 20) {
+        this.cameras.main.shake(300, intercepted >= 30 ? 0.015 : 0.008);
+      }
+    }
+
+    SoundManager.get().playInterceptSuccess();
+
+    // After animation, advance to next phase
+    this.time.delayedCall(2500, () => {
+      this.activating = false;
+      if (this.round < this.maxRounds) {
+        this._showUpgradeScreen();
+      } else {
+        this._showResults();
       }
     });
   }
 
-  _updateMarkedText() {
-    this.markedText.setText(`MARKED: ${this.totalMarked} / ${NUM_SIGNALS}`);
+  _comboThreshold(label) {
+    if (label === 'PERFECT OPERATION!') return 40;
+    if (label === 'INCREDIBLE!') return 30;
+    if (label === 'GREAT!') return 20;
+    if (label === 'GOOD!') return 10;
+    return 0;
   }
 
-  // ── UPDATE LOOP ───────────────────────────────────────────────
-  // ── PAUSE ────────────────────────────────────────────────────
+  _updateActivationEffects(dt) {
+    if (!this.activationRings) return;
+    const dtSec = dt / 1000;
+    this.activationTimer += dtSec;
+
+    if (!this.activationGfx) {
+      this.activationGfx = this.add.graphics().setDepth(15);
+    }
+    const g = this.activationGfx;
+    g.clear();
+
+    // Expanding rings
+    const progress = Math.min(this.activationTimer / this.activationDuration, 1);
+    for (const ring of this.activationRings) {
+      ring.r = ring.maxR * Phaser.Math.Easing.Cubic.Out(progress);
+      ring.alpha = 1 - progress;
+      g.lineStyle(3, 0x00ffff, ring.alpha * 0.6);
+      g.strokeCircle(ring.x, ring.y, ring.r);
+      g.fillStyle(0x00ffff, ring.alpha * 0.08);
+      g.fillCircle(ring.x, ring.y, ring.r);
+    }
+
+    // Particles
+    if (this.particles) {
+      for (const p of this.particles) {
+        p.x += p.vx * dtSec;
+        p.y += p.vy * dtSec;
+        p.life -= p.decay * dtSec;
+        if (p.life <= 0) continue;
+        g.fillStyle(p.color, p.life);
+        g.fillCircle(p.x, p.y, p.size * p.life);
+      }
+      this.particles = this.particles.filter(p => p.life > 0);
+    }
+
+    if (progress >= 1 && (!this.particles || this.particles.length === 0)) {
+      this.activationRings = null;
+      g.clear();
+    }
+  }
+
+  // ── ROUNDS ─────────────────────────────────────────────────
+  _startRound(num) {
+    this.round = num;
+    this.phase = 'placing';
+    this.jammers = [];
+    this.signals = [];
+    this.roundTimer = 30;
+    this.slowmoUsed = false;
+    this.slowmoActive = false;
+    this.activating = false;
+
+    if (this.activationGfx) this.activationGfx.clear();
+    this.activationRings = null;
+    this.particles = [];
+
+    // Spawn signals
+    if (num === 1) {
+      this._spawnSignals(40, false);
+    } else {
+      this._spawnSignals(80, true);
+    }
+
+    // Timer
+    this.roundTimerEvent = this.time.addEvent({
+      delay: 1000,
+      callback: () => {
+        if (this.isPaused || this.phase !== 'placing') return;
+        this.roundTimer--;
+        if (this.roundTimer <= 5 && this.roundTimer > 0) {
+          SoundManager.get().playCountdownTick();
+        }
+        if (this.roundTimer <= 0) {
+          this._activateJammers();
+        }
+      },
+      repeat: 29,
+    });
+
+    this._updateHUD();
+  }
+
+  // ── UPGRADE SCREEN ─────────────────────────────────────────
+  _showUpgradeScreen() {
+    this.phase = 'upgrade';
+    this.instrText.setText('');
+
+    // Dim overlay
+    this.upgradeOverlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setDepth(180);
+
+    this.add.text(W / 2, 60, 'CHOOSE UPGRADE', {
+      fontFamily: 'monospace', fontSize: '22px', color: '#00ffcc', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(181).setName('upgrade_title');
+
+    this.add.text(W / 2, 95, `Round 1 — ${this.roundScores[0]} signals intercepted`, {
+      fontFamily: 'monospace', fontSize: '12px', color: '#448866'
+    }).setOrigin(0.5).setDepth(181).setName('upgrade_sub');
+
+    const upgrades = [
+      { key: 'range', label: 'RANGE+', desc: 'Jammers have 35% bigger radius', color: '#00ff66' },
+      { key: 'extra', label: 'JAMMER EXTRA', desc: '4 jammers instead of 3', color: '#00ccff' },
+      { key: 'slowmo', label: 'SLOWMO', desc: 'Press S for 3s slow motion', color: '#ff66ff' },
+      { key: 'chain', label: 'CHAIN', desc: 'Intercepted signals damage nearby ones', color: '#ffaa00' },
+    ];
+
+    this.upgradeButtons = [];
+    const startY = 160;
+    const gap = 80;
+
+    upgrades.forEach((upg, i) => {
+      const y = startY + i * gap;
+      const bg = this.add.rectangle(W / 2, y, 360, 60, 0x112233, 0.8)
+        .setDepth(181).setInteractive({ useHandCursor: true }).setName(`upg_bg_${i}`);
+      const border = this.add.graphics().setDepth(181).setName(`upg_border_${i}`);
+      border.lineStyle(1.5, Phaser.Display.Color.HexStringToColor(upg.color).color, 0.6);
+      border.strokeRoundedRect(W / 2 - 180, y - 30, 360, 60, 8);
+
+      const title = this.add.text(W / 2, y - 10, upg.label, {
+        fontFamily: 'monospace', fontSize: '16px', color: upg.color, fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(182).setName(`upg_title_${i}`);
+
+      const desc = this.add.text(W / 2, y + 12, upg.desc, {
+        fontFamily: 'monospace', fontSize: '10px', color: '#668877'
+      }).setOrigin(0.5).setDepth(182).setName(`upg_desc_${i}`);
+
+      bg.on('pointerover', () => bg.setFillStyle(0x224455, 0.9));
+      bg.on('pointerout', () => bg.setFillStyle(0x112233, 0.8));
+      bg.on('pointerdown', () => this._selectUpgrade(upg.key));
+
+      this.upgradeButtons.push({ bg, border, title, desc });
+    });
+
+    // Also allow keyboard 1-4
+    this._upgradeKeys = this.input.keyboard.addKeys({
+      one: Phaser.Input.Keyboard.KeyCodes.ONE,
+      two: Phaser.Input.Keyboard.KeyCodes.TWO,
+      three: Phaser.Input.Keyboard.KeyCodes.THREE,
+      four: Phaser.Input.Keyboard.KeyCodes.FOUR,
+    });
+  }
+
+  _selectUpgrade(key) {
+    switch (key) {
+      case 'range':
+        this.jammerRadius = JAMMER_RADIUS_UPGRADED;
+        break;
+      case 'extra':
+        this.maxJammers = 4;
+        break;
+      case 'slowmo':
+        this.hasSlowmo = true;
+        break;
+      case 'chain':
+        this.hasChain = true;
+        break;
+    }
+
+    SoundManager.get().playRadarMark();
+    this._clearUpgradeScreen();
+    this._startRound(2);
+  }
+
+  _clearUpgradeScreen() {
+    if (this.upgradeOverlay) { this.upgradeOverlay.destroy(); this.upgradeOverlay = null; }
+    // Destroy all named upgrade objects
+    const names = ['upgrade_title', 'upgrade_sub'];
+    for (let i = 0; i < 4; i++) {
+      names.push(`upg_bg_${i}`, `upg_border_${i}`, `upg_title_${i}`, `upg_desc_${i}`);
+    }
+    for (const name of names) {
+      const obj = this.children.getByName(name);
+      if (obj) obj.destroy();
+    }
+    this.upgradeButtons = [];
+    if (this._upgradeKeys) {
+      this.input.keyboard.removeKey(this._upgradeKeys.one);
+      this.input.keyboard.removeKey(this._upgradeKeys.two);
+      this.input.keyboard.removeKey(this._upgradeKeys.three);
+      this.input.keyboard.removeKey(this._upgradeKeys.four);
+      this._upgradeKeys = null;
+    }
+  }
+
+  // ── RESULTS SCREEN ─────────────────────────────────────────
+  _showResults() {
+    this.phase = 'results';
+    this.instrText.setText('');
+
+    // Stop ambient
+    if (this.ambientSrc) { try { this.ambientSrc.stop(); } catch (e) {} }
+
+    MusicManager.get().stop(1);
+
+    // Rating
+    const pct = this.totalIntercepted / Math.max(this.totalSignals, 1);
+    let stars = 1;
+    if (pct >= 0.7) stars = 2;
+    if (pct >= 0.85) stars = 3;
+    const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+
+    // Overlay
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.8).setDepth(200);
+
+    const lines = [
+      { text: 'MISSION COMPLETE', size: '24px', color: '#00ffcc', y: 80 },
+      { text: 'OPERATION SIGNAL STORM', size: '14px', color: '#448866', y: 110 },
+      { text: `Signals Intercepted: ${this.totalIntercepted}/${this.totalSignals}`, size: '14px', color: '#00ddaa', y: 160 },
+      { text: `Best Round: ${this.bestRoundIntercepted} intercepted`, size: '12px', color: '#00aa88', y: 190 },
+      { text: `Best Combo: ${this.bestCombo || 'NONE'}`, size: '12px', color: '#00aa88', y: 215 },
+      { text: `Total Score: ${this.totalScore}`, size: '18px', color: '#00ff66', y: 260 },
+      { text: starStr, size: '32px', color: '#ffdd00', y: 310 },
+      { text: 'PRESS ENTER TO CONTINUE', size: '12px', color: '#446655', y: 400 },
+    ];
+
+    lines.forEach(l => {
+      this.add.text(W / 2, l.y, l.text, {
+        fontFamily: 'monospace', fontSize: l.size, color: l.color,
+        fontStyle: l.size === '24px' || l.size === '18px' ? 'bold' : 'normal'
+      }).setOrigin(0.5).setDepth(201);
+    });
+
+    SoundManager.get().playVictory();
+    this._resultReady = true;
+  }
+
+  // ── INPUT ──────────────────────────────────────────────────
+  _setupInput() {
+    this.input.on('pointerdown', (pointer) => {
+      if (this.isPaused || this.phase !== 'placing') return;
+
+      // Check if clicking on existing jammer (start drag)
+      const idx = this._findJammerAt(pointer.x, pointer.y);
+      if (idx >= 0) {
+        this.draggingJammer = idx;
+        return;
+      }
+
+      // Place new jammer
+      this._placeJammer(pointer.x, pointer.y);
+    });
+
+    this.input.on('pointermove', (pointer) => {
+      if (this.draggingJammer !== null && pointer.isDown) {
+        const j = this.jammers[this.draggingJammer];
+        if (j) {
+          j.x = Phaser.Math.Clamp(pointer.x, 30, W - 30);
+          j.y = Phaser.Math.Clamp(pointer.y, 40, H - 30);
+        }
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      this.draggingJammer = null;
+    });
+
+    // Keyboard
+    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.sKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    this.pKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+    this.mKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+    this.rKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+    this.yKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Y);
+    this.nKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.N);
+  }
+
+  // ── PAUSE ──────────────────────────────────────────────────
   _togglePause() {
     this.isPaused = !this.isPaused;
     if (this.isPaused) {
-      const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setDepth(60);
-      this.pauseObjects.push(overlay);
-      const title = this.add.text(W / 2, H / 2 - 30, 'PAUSED', {
-        fontFamily: 'monospace', fontSize: '36px', color: '#ffffff',
-      }).setOrigin(0.5).setDepth(61);
-      this.pauseObjects.push(title);
-      const opts = this.add.text(W / 2, H / 2 + 20, 'ESC — Resume  |  M — Mute', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa',
-      }).setOrigin(0.5).setDepth(61);
-      this.pauseObjects.push(opts);
+      this.pauseOverlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setDepth(300);
+      this.pauseText = this.add.text(W / 2, H / 2 - 20, 'PAUSED', {
+        fontFamily: 'monospace', fontSize: '28px', color: '#00ffcc', fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(301);
+      this.pauseSubText = this.add.text(W / 2, H / 2 + 20, 'ESC to resume — R to restart — Q to menu', {
+        fontFamily: 'monospace', fontSize: '11px', color: '#448866'
+      }).setOrigin(0.5).setDepth(301);
+      this.pauseObjects = [this.pauseOverlay, this.pauseText, this.pauseSubText];
     } else {
-      for (const obj of this.pauseObjects) obj.destroy();
+      this.pauseObjects.forEach(o => o.destroy());
       this.pauseObjects = [];
     }
   }
 
+  // ── SKIP PROMPT ────────────────────────────────────────────
+  _showSkipPrompt() {
+    if (this.skipPromptShown) return;
+    this.skipPromptShown = true;
+    this.isPaused = true;
+    this.skipBg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setDepth(300);
+    this.skipText = this.add.text(W / 2, H / 2 - 10, 'SKIP LEVEL?', {
+      fontFamily: 'monospace', fontSize: '20px', color: '#ffcc00', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(301);
+    this.skipSubText = this.add.text(W / 2, H / 2 + 15, 'Y = Skip   N = Cancel', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#888'
+    }).setOrigin(0.5).setDepth(301);
+  }
+
+  _handleSkipResponse() {
+    if (!this.skipPromptShown) return;
+    if (Phaser.Input.Keyboard.JustDown(this.yKey)) {
+      this._cleanupAndTransition();
+    } else if (Phaser.Input.Keyboard.JustDown(this.nKey)) {
+      this.skipBg.destroy();
+      this.skipText.destroy();
+      this.skipSubText.destroy();
+      this.skipPromptShown = false;
+      this.isPaused = false;
+    }
+  }
+
+  _cleanupAndTransition() {
+    if (this.ambientSrc) { try { this.ambientSrc.stop(); } catch (e) {} }
+    MusicManager.get().stop(0.5);
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(600, () => {
+      this.scene.start('DeepStrikeIntroCinematicScene');
+    });
+  }
+
+  // ── SLOWMO ─────────────────────────────────────────────────
+  _activateSlowmo() {
+    if (!this.hasSlowmo || this.slowmoUsed || this.phase !== 'placing') return;
+    this.slowmoUsed = true;
+    this.slowmoActive = true;
+    SoundManager.get().playRadarBlip();
+
+    // Visual tint
+    this.cameras.main.flash(100, 100, 0, 150);
+
+    this.time.delayedCall(3000, () => {
+      this.slowmoActive = false;
+    });
+  }
+
+  // ── UPDATE LOOP ────────────────────────────────────────────
   update(time, delta) {
+    // Skip prompt takes priority
+    if (this.skipPromptShown) {
+      this._handleSkipResponse();
+      return;
+    }
+
     // Mute toggle
     if (Phaser.Input.Keyboard.JustDown(this.mKey)) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
 
-    // ESC pause
-    if (Phaser.Input.Keyboard.JustDown(this.escKey) && this.gamePhase !== 'results') {
+    // Pause
+    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
       this._togglePause();
       return;
     }
-    if (this.isPaused) return;
-
-    // P skip to results
-    if (Phaser.Input.Keyboard.JustDown(this.pKey) && this.gamePhase === 'playing') {
-      this.interceptedCount = 12;
-      this.score = 1200;
-      this.missedMarked = 0;
-      this._cleanup();
-      this._showResults();
+    if (this.isPaused) {
+      if (Phaser.Input.Keyboard.JustDown(this.rKey)) {
+        if (this.ambientSrc) { try { this.ambientSrc.stop(); } catch (e) {} }
+        this.scene.restart();
+      }
       return;
     }
 
-    if (this.gamePhase === 'playing') {
-      this._updatePlaying(delta);
-    } else if (this.gamePhase === 'results') {
-      if (Phaser.Input.Keyboard.JustDown(this.enterKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
-        this._cleanup();
-        this.scene.start('DeepStrikeIntroCinematicScene');
-      }
-    }
-  }
-
-  _updatePlaying(delta) {
-    const dt = delta / 1000;
-
-    // Decrement timer
-    this.timeRemaining -= dt;
-    if (this.timeRemaining <= 0) {
-      this.timeRemaining = 0;
-      this._endGame(false);
+    // Skip
+    if (Phaser.Input.Keyboard.JustDown(this.pKey)) {
+      this._showSkipPrompt();
       return;
     }
 
-    // Update timer display
-    const secs = Math.ceil(this.timeRemaining);
-    this.timerText.setText(String(secs));
+    const dt = Math.min(delta, 33);
 
-    // Timer urgency at ≤10s
-    if (secs <= 10) {
-      this.timerText.setColor('#ff0000');
-      this.timerText.setShadow(0, 0, '#ff0000', 8, true);
-      // Tick sounds every second
-      if (Math.ceil(this.timeRemaining + dt) > secs) {
-        SoundManager.get().playCountdownTick();
-      }
-      // Border flash
-      const flashAlpha = (Math.sin(this.timeRemaining * 8) * 0.5 + 0.5) * 0.15;
-      this.borderFlash.setAlpha(1);
-      this.borderFlash.setStrokeStyle(4, 0xff0000, flashAlpha);
-    }
+    // Radar arm always rotates
+    this._updateRadarArm(dt);
 
-    // Move signals along paths
-    for (const sig of this.signals) {
-      if (!sig.alive) continue;
-
-      sig.t += sig.speed * dt * sig.direction;
-      // Bounce at ends
-      if (sig.t > 1) { sig.t = 1; sig.direction = -1; }
-      if (sig.t < 0) { sig.t = 0; sig.direction = 1; }
-
-      const path = STREET_PATHS[sig.pathIndex];
-      const pos = this._lerpPath(path.pts, sig.t);
-      sig.x = pos.x;
-      sig.y = pos.y;
-      sig.sprite.setPosition(pos.x, pos.y);
-      sig.inner.setPosition(pos.x, pos.y);
-    }
-
-    // Radar sweep rotation
-    this.sweepAngle += dt * 1.2;
-    this.sweepGfx.clear();
-    const rc = RANGE_CIRCLE;
-    const sx = rc.centerX + Math.cos(this.sweepAngle) * rc.radius;
-    const sy = rc.centerY + Math.sin(this.sweepAngle) * rc.radius;
-    this.sweepGfx.lineStyle(1, 0x00ff00, 0.3);
-    this.sweepGfx.beginPath();
-    this.sweepGfx.moveTo(rc.centerX, rc.centerY);
-    this.sweepGfx.lineTo(sx, sy);
-    this.sweepGfx.strokePath();
-
-    // SPACE to intercept
-    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && !this.interceptUsed) {
-      this._executeIntercept();
-    }
-  }
-
-  // ── EXECUTE INTERCEPT ─────────────────────────────────────────
-  _executeIntercept() {
-    this.interceptUsed = true;
-    this.gamePhase = 'intercepted';
-
-    SoundManager.get().playRadarIntercept();
-    MusicManager.get().playLevel2Music(true);
-
-    // Flash cyan
-    const flash = this.add.rectangle(W / 2, H / 2, W, H, 0x00ffff, 0.3);
-    flash.setDepth(30);
-    this.tweens.add({
-      targets: flash, alpha: 0, duration: 500,
-      onComplete: () => flash.destroy(),
-    });
-
-    // Camera shake
-    this.cameras.main.shake(400, 0.02);
-
-    // Radio wave animation from center
-    for (let i = 0; i < 3; i++) {
-      const wave = this.add.circle(RANGE_CIRCLE.centerX, RANGE_CIRCLE.centerY, 5, 0x00ffff, 0);
-      wave.setDepth(15);
-      wave.setStrokeStyle(2, 0x00ffff, 0.6);
-      this.tweens.add({
-        targets: wave,
-        scaleX: RANGE_CIRCLE.radius / 5,
-        scaleY: RANGE_CIRCLE.radius / 5,
-        alpha: 0,
-        duration: 800,
-        delay: i * 200,
-        onComplete: () => wave.destroy(),
-      });
-    }
-
-    // "INTERCEPTION ACTIVATED" text
-    const interceptText = this.add.text(W / 2 + SPLIT_X / 2, H / 2, 'INTERCEPTION ACTIVATED', {
-      fontFamily: 'monospace', fontSize: '24px', color: '#00ffff',
-      shadow: { offsetX: 0, offsetY: 0, color: '#00ffff', blur: 16, fill: true },
-    });
-    interceptText.setOrigin(0.5); interceptText.setDepth(35);
-    this.tweens.add({
-      targets: interceptText, alpha: 0, y: H / 2 - 40,
-      duration: 1500, ease: 'Quad.easeOut',
-      onComplete: () => interceptText.destroy(),
-    });
-
-    // Process each signal
-    let intercepted = 0;
-    let missedMarked = 0;
-    let score = 0;
-
-    for (const sig of this.signals) {
-      if (!sig.alive) continue;
-
-      const dx = sig.x - RANGE_CIRCLE.centerX;
-      const dy = sig.y - RANGE_CIRCLE.centerY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const inRange = dist <= RANGE_CIRCLE.radius;
-
-      if (sig.marked && inRange) {
-        // SUCCESS — green
-        sig.sprite.setFillStyle(0x00ff00, 1);
-        sig.inner.setFillStyle(0xffffff, 1);
-        score += 100;
-        intercepted++;
-
-        // Green pulse
-        this.tweens.add({
-          targets: sig.sprite,
-          scaleX: 2.5, scaleY: 2.5, alpha: 0,
-          duration: 800, delay: 200 + Math.random() * 300,
-        });
-        this.tweens.add({
-          targets: sig.inner,
-          scaleX: 2, scaleY: 2, alpha: 0,
-          duration: 800, delay: 200 + Math.random() * 300,
-        });
-
-        // +100 floating text
-        const plusText = this.add.text(sig.x, sig.y - 10, '+100', {
-          fontFamily: 'monospace', fontSize: '12px', color: '#00ff00',
-        });
-        plusText.setOrigin(0.5); plusText.setDepth(20);
-        this.tweens.add({
-          targets: plusText, y: sig.y - 40, alpha: 0,
-          duration: 1000,
-          onComplete: () => plusText.destroy(),
-        });
-
-      } else if (sig.marked && !inRange) {
-        // MISS — red (marked but out of range)
-        sig.sprite.setFillStyle(0xff0000, 1);
-        sig.inner.setFillStyle(0xff4444, 1);
-        score -= 50;
-        missedMarked++;
-
-        // Red flash
-        this.tweens.add({
-          targets: sig.sprite,
-          scaleX: 2, scaleY: 2, alpha: 0,
-          duration: 600, delay: 100 + Math.random() * 300,
-        });
-        this.tweens.add({
-          targets: sig.inner, alpha: 0,
-          duration: 600, delay: 100 + Math.random() * 300,
-        });
-
-        // -50 floating text
-        const minusText = this.add.text(sig.x, sig.y - 10, '-50', {
-          fontFamily: 'monospace', fontSize: '12px', color: '#ff0000',
-        });
-        minusText.setOrigin(0.5); minusText.setDepth(20);
-        this.tweens.add({
-          targets: minusText, y: sig.y - 40, alpha: 0,
-          duration: 1000,
-          onComplete: () => minusText.destroy(),
-        });
-
-      } else {
-        // Not marked — fades out silently
-        this.tweens.add({
-          targets: [sig.sprite, sig.inner],
-          alpha: 0, duration: 800, delay: Math.random() * 500,
-        });
+    if (this.phase === 'placing') {
+      // Space = activate
+      if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && this.jammers.length > 0) {
+        this._activateJammers();
       }
 
-      sig.alive = false;
-    }
+      // Slowmo
+      if (Phaser.Input.Keyboard.JustDown(this.sKey)) {
+        this._activateSlowmo();
+      }
 
-    // Bonuses
-    let bonus = 0;
-    if (intercepted >= 15) { bonus = 1000; }
-    else if (intercepted >= 10) { bonus = 500; }
-    else if (intercepted >= 5) { bonus = 200; }
-
-    if (bonus > 0) {
-      score += bonus;
-      this.time.delayedCall(800, () => {
-        const bonusText = this.add.text(W / 2 + SPLIT_X / 2, H / 2 + 40, `BONUS: +${bonus}`, {
-          fontFamily: 'monospace', fontSize: '20px', color: '#FFD700',
-          shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 12, fill: true },
-        });
-        bonusText.setOrigin(0.5); bonusText.setDepth(35);
-        this.tweens.add({
-          targets: bonusText, alpha: 0, y: H / 2 + 10,
-          duration: 1500,
-          onComplete: () => bonusText.destroy(),
-        });
-      });
-    }
-
-    this.score = Math.max(0, score);
-    this.interceptedCount = intercepted;
-    this.missedMarked = missedMarked;
-
-    // Update score display
-    this.scoreText.setText(`SCORE: ${this.score}`);
-
-    // After 2s → results
-    this.time.delayedCall(2000, () => this._showResults());
-  }
-
-  // ── END GAME (timer ran out) ──────────────────────────────────
-  _endGame(/* intercepted */) {
-    this.gamePhase = 'intercepted';
-
-    // Everything fades out
-    for (const sig of this.signals) {
-      if (!sig.alive) continue;
-      sig.alive = false;
-      this.tweens.add({
-        targets: [sig.sprite, sig.inner],
-        alpha: 0, duration: 600,
-      });
-    }
-
-    // "TIME'S UP" text
-    const timeUp = this.add.text(W / 2 + SPLIT_X / 2, H / 2, 'TIME\'S UP', {
-      fontFamily: 'monospace', fontSize: '28px', color: '#ff0000',
-      shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 16, fill: true },
-    });
-    timeUp.setOrigin(0.5); timeUp.setDepth(35);
-    this.tweens.add({
-      targets: timeUp, alpha: 0.3,
-      duration: 600, yoyo: true,
-      onComplete: () => timeUp.destroy(),
-    });
-
-    this.score = 0;
-    this.interceptedCount = 0;
-
-    this.time.delayedCall(2000, () => this._showResults());
-  }
-
-  // ── RESULTS SCREEN ────────────────────────────────────────────
-  _showResults() {
-    this.gamePhase = 'results';
-    MusicManager.get().stop(1);
-    if (this.interceptedCount > 0) {
-      SoundManager.get().playVictory();
-    } else {
-      SoundManager.get().playGameOver();
-    }
-
-    // Black overlay
-    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.85);
-    overlay.setDepth(40);
-
-    // Title
-    const title = this.add.text(W / 2, 80, 'INTERCEPT COMPLETE', {
-      fontFamily: 'monospace', fontSize: '32px', color: '#FFD700',
-      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 16, fill: true },
-    });
-    title.setOrigin(0.5); title.setDepth(41);
-    title.setAlpha(0);
-    this.tweens.add({ targets: title, alpha: 1, duration: 500 });
-
-    // Subtitle
-    const sub = this.add.text(W / 2, 120, 'OPERATION SIGNAL STORM', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#ffffff',
-    });
-    sub.setOrigin(0.5); sub.setDepth(41);
-    sub.setAlpha(0);
-    this.tweens.add({ targets: sub, alpha: 1, duration: 500, delay: 200 });
-
-    // Separator
-    const sep = this.add.rectangle(W / 2, 145, 280, 2, 0x00e5ff, 0.5);
-    sep.setDepth(41); sep.setAlpha(0);
-    this.tweens.add({ targets: sep, alpha: 1, duration: 300, delay: 400 });
-
-    // Star rating
-    let stars;
-    if (this.interceptedCount >= 12) stars = '\u2605\u2605\u2605';
-    else if (this.interceptedCount >= 8) stars = '\u2605\u2605\u2606';
-    else stars = '\u2605\u2606\u2606';
-
-    try { const sc = this.interceptedCount >= 12 ? 3 : this.interceptedCount >= 8 ? 2 : 1; localStorage.setItem('superzion_stars_2', String(sc)); } catch(e) {}
-
-    const lines = [
-      `SIGNALS INTERCEPTED: ${this.interceptedCount} / ${NUM_SIGNALS}`,
-      `MARKED OUT OF RANGE: ${this.missedMarked}`,
-      `SCORE: ${this.score}`,
-      `TIME REMAINING: ${Math.ceil(this.timeRemaining)}s`,
-      `RATING: ${stars}`,
-    ];
-
-    let yPos = 175;
-    lines.forEach((line, i) => {
-      const t = this.add.text(W / 2, yPos, line, {
-        fontFamily: 'monospace', fontSize: '14px', color: '#00e5ff',
-      });
-      t.setOrigin(0.5); t.setDepth(41);
-      t.setAlpha(0);
-      this.tweens.add({ targets: t, alpha: 1, duration: 300, delay: 600 + i * 250 });
-      yPos += 30;
-    });
-
-    // Separator 2
-    this.time.delayedCall(1800, () => {
-      const sep2 = this.add.rectangle(W / 2, yPos + 10, 260, 2, 0x00e5ff, 0.5);
-      sep2.setDepth(41);
-    });
-
-    // Continue prompt
-    this.time.delayedCall(2000, () => {
-      const cont = this.add.text(W / 2, yPos + 40, 'PRESS ENTER FOR NEXT MISSION', {
-        fontFamily: 'monospace', fontSize: '18px', color: '#ffffff',
-      });
-      cont.setOrigin(0.5); cont.setDepth(41);
-      this.tweens.add({ targets: cont, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
-    });
-  }
-
-  // ── CLEANUP ───────────────────────────────────────────────────
-  _cleanup() {
-    // Stop ambient noise
-    if (this.ambientRef) {
-      try {
-        this.ambientRef.source.stop();
-      } catch (e) { /* already stopped */ }
-      this.ambientRef = null;
+      this._updateSignals(dt);
+      this._drawSignals();
+      this._drawJammers();
+      this._updateHUD();
+    } else if (this.phase === 'activated') {
+      this._updateSignals(dt);
+      this._drawSignals();
+      this._drawJammers();
+      this._updateActivationEffects(dt);
+      this._updateHUD();
+    } else if (this.phase === 'upgrade') {
+      this._updateSignals(dt);
+      this._drawSignals();
+      // Keyboard selection
+      if (this._upgradeKeys) {
+        if (Phaser.Input.Keyboard.JustDown(this._upgradeKeys.one)) this._selectUpgrade('range');
+        else if (Phaser.Input.Keyboard.JustDown(this._upgradeKeys.two)) this._selectUpgrade('extra');
+        else if (Phaser.Input.Keyboard.JustDown(this._upgradeKeys.three)) this._selectUpgrade('slowmo');
+        else if (Phaser.Input.Keyboard.JustDown(this._upgradeKeys.four)) this._selectUpgrade('chain');
+      }
+    } else if (this.phase === 'results') {
+      if (this._resultReady && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+        this._cleanupAndTransition();
+      }
     }
   }
 
   shutdown() {
-    this._cleanup();
-    this.tweens.killAll();
-    this.time.removeAllEvents();
+    if (this.ambientSrc) { try { this.ambientSrc.stop(); } catch (e) {} }
   }
 }

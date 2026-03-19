@@ -763,7 +763,8 @@ export default class PortSwapScene extends Phaser.Scene {
 
     // Mute
     if (Phaser.Input.Keyboard.JustDown(this.keys.mute)) {
-      SoundManager.get().toggleMute();
+      const muted = SoundManager.get().toggleMute();
+      MusicManager.get().setMuted(muted);
     }
 
     // Pause
