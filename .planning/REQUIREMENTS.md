@@ -1,80 +1,83 @@
-# Requirements: SuperZion — Cinematic Polish
+# Requirements: SuperZion v1.1 — Polish Pass
 
-**Defined:** 2026-03-05
-**Core Value:** The game must feel cinematic and polished — every transition, intro, and gameplay moment should have audiovisual punch.
+**Defined:** 2026-03-19
+**Core Value:** Every visible element must look intentional and polished — no placeholder cubes, no missing audio, no broken levels.
 
-## v1 Requirements
+## v1.1 Requirements
 
-### Audio Infrastructure
+### Visual Identity
 
-- [x] **AUDIO-01**: Music fades out cleanly (over configurable duration) before any scene transition instead of cutting abruptly
-- [ ] **AUDIO-02**: Each of the 6 levels plays a unique trance theme with distinct BPM, melody line, pad chords, and atmospheric feel
-- [ ] **AUDIO-03**: Each level has ambient environmental audio (wind, city hum, distant aircraft, etc.) that plays during gameplay as a separate audio layer
+- [ ] **VIS-01**: Player sprite displays as a Mossad agent (tactical black suit, slicked-back hair, subtle beard shadow, Maguen David on chest, organic human proportions) consistently across all scenes — SpriteGenerator, CinematicTextures, and ParadeTextures produce visually matching sprites
+- [ ] **VIS-02**: Intro boss parade shows 4 real boss sprites (Foam Beard, Turbo Turban, The Warden, Supreme Turban) performing their super attacks — not rectangles or placeholder graphics
 
-### Cinematics
+### Intro Sequence
 
-- [ ] **CINE-01**: Between-level story sequences use animated sprites that move, enter/exit screen, and gesture — with narrative text — replacing typewriter-only text
-- [ ] **CINE-02**: Animated intro showcase plays before the menu with rapid-fire boss/plane/character reveals choreographed to trance music
+- [ ] **INTRO-01**: Intro sequence restores 4 waving flag animations (Iran, Lebanon, Palestine, Israel) using existing ParadeTextures generation code
+- [ ] **INTRO-02**: Final intro screen displays a giant golden semi-transparent Maguen David behind SuperZion, with "SUPERZION" in wide thick arcade retro font and a larger subtitle
+- [ ] **INTRO-03**: Psytrance music at 145+ BPM plays from frame 1 of the intro with SFX synchronized to visual events — missile whoosh, varied explosion booms, jet Doppler flyby, gunfire
+- [ ] **INTRO-04**: Camera shakes on intro explosions using Phaser camera shake API
 
-### Animation
+### Gameplay Fixes
 
-- [ ] **ANIM-01**: Fast character movements and entrances display a motion smear frame (1 frame of horizontal blur/stretch) for visual weight
+- [ ] **GAME-01**: Level 2 container paths are wide enough for the player to reach the target — level is verified completable
+- [ ] **GAME-02**: Level 3 cinematic F-15 has correct swept-back wings pointing backward (not forward)
 
-## v2 Requirements
+### UX Polish
 
-### Audio
+- [ ] **UX-01**: All 6 levels show end-of-level screen: Win = "PLAY AGAIN (R)" + "NEXT LEVEL (ENTER)", Lose = "RETRY (R)" + "SKIP LEVEL (S)" — using shared EndScreen.js module
+- [ ] **UX-02**: Controls overlay in all 6 levels uses semi-transparent black background with large bright yellow text for readability
 
+## Future Requirements
+
+### Audio (deferred from v1.0)
+
+- **AUDIO-02**: Per-level unique trance themes with distinct BPM, melody, and atmosphere
+- **AUDIO-03**: Per-level ambient environmental audio layers
 - **AUDIO-04**: Per-level trance sub-genre variation (progressive, psytrance, uplifting)
-- **AUDIO-05**: Breakdowns and build-ups synced to cinematic moments (strip drums → filter sweep → drop)
-- **AUDIO-06**: Synthesized trance pad chords with LFO on filter cutoff for emotional depth
 
-### Sound Effects
+### Cinematics (deferred from v1.0)
 
-- **SFX-01**: SFX parameter variation — random pitch/detune on repeated sound plays
-- **SFX-02**: Alert/detection musical sting (dissonant chord on guard detection)
-- **SFX-03**: Per-character voice bleeps during typed dialogue
-
-### Cinematics
-
+- **CINE-01**: Between-level story sequences with animated sprites
 - **CINE-03**: Scene fade in/out on every scene transition
 - **CINE-04**: Cinematic letterbox bars during cutscenes
-- **CINE-05**: Boss/level-title reveal cards at mission start
-- **CINE-06**: Parallax camera pan during dialogue cinematics
 
-### Animation
+### Animation (deferred from v1.0)
 
-- **ANIM-02**: Anticipation frames (1-2 wind-up frames before major actions)
-- **ANIM-03**: Idle breathing animation (2-frame cycle on stationary characters)
+- **ANIM-01**: Motion smear on fast character movements
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Pre-recorded audio files (MP3/OGG) | Game is 100% procedural — no external assets |
-| Spine/skeletal animation | Requires external .spine files; conflicts with procedural approach |
-| Video cutscenes (.webm, .mp4) | Breaks zero-external-assets constraint |
-| AI-generated music (Mubert, Suno) | Network dependency, licensing uncertainty |
-| Dialogue branching / narrative engine | Milestone is presentation polish, not story authoring |
-| Voice acting | Out of scope, inconsistent with retro-bleep aesthetic |
-| Dynamic stem-based music (FMOD/Wwise style) | Requires pre-authored multi-track assets |
-| Tone.js dependency | Raw Web Audio API is sufficient; avoids extra dependency |
+| Pre-recorded audio files (MP3/OGG) | 100% procedural constraint |
+| Per-level unique music themes | Deferred to future milestone |
+| Between-level animated cinematics | Deferred to future milestone |
+| Motion smear animation | Deferred to future milestone |
+| CinematicDirector infrastructure | Deferred — not needed for this pass |
+| Shared palette extraction | Nice-to-have but not blocking; visual audit sufficient |
+| New gameplay mechanics | Polish only, no new features |
+| Save/load system | Not priorized |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUDIO-01 | Phase 1 | Complete |
-| AUDIO-02 | Phase 2 | Pending |
-| AUDIO-03 | Phase 2 | Pending |
-| CINE-01 | Phase 4 | Pending |
-| CINE-02 | Phase 4 | Pending |
-| ANIM-01 | Phase 4 | Pending |
+| VIS-01 | — | Pending |
+| VIS-02 | — | Pending |
+| INTRO-01 | — | Pending |
+| INTRO-02 | — | Pending |
+| INTRO-03 | — | Pending |
+| INTRO-04 | — | Pending |
+| GAME-01 | — | Pending |
+| GAME-02 | — | Pending |
+| UX-01 | — | Pending |
+| UX-02 | — | Pending |
 
 **Coverage:**
-- v1 requirements: 6 total
-- Mapped to phases: 6
-- Unmapped: 0 ✓
+- v1.1 requirements: 10 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 10
 
 ---
-*Requirements defined: 2026-03-05*
-*Last updated: 2026-03-05 — traceability mapped to 4-phase roadmap*
+*Requirements defined: 2026-03-19*
+*Last updated: 2026-03-19 after initial definition*
