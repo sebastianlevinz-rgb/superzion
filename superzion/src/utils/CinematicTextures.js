@@ -25,20 +25,21 @@ export function createSuperZionCinematic(scene) {
   c.width = 64; c.height = 96;
   const ctx = c.getContext('2d');
 
-  // Head (side view)
+  // Head (side view) — arc, keep as-is
   ctx.fillStyle = PAL.skin2;
   ctx.beginPath(); ctx.arc(32, 16, 9, 0, Math.PI * 2); ctx.fill();
-  // Slicked-back hair
+  // Slicked-back hair — ellipse, keep as-is
   ctx.fillStyle = PAL.hair0;
   ctx.beginPath(); ctx.ellipse(32, 10, 8, 4, 0, Math.PI, 0); ctx.fill();
   // Side hair
   ctx.fillStyle = PAL.hair1;
   ctx.fillRect(23, 10, 3, 6);
   ctx.fillRect(38, 10, 3, 6);
-  // Eye
+  // Eye — small ellipse instead of rect
   ctx.fillStyle = '#eeeee8';
-  rect(ctx, 36, 14, 3, 2, '#eeeee8');
-  rect(ctx, 37, 14, 1, 2, '#0e0e0e');
+  ctx.beginPath(); ctx.ellipse(37.5, 15, 1.5, 1, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0e0e0e';
+  ctx.beginPath(); ctx.ellipse(37.5, 15, 0.7, 0.9, 0, 0, Math.PI * 2); ctx.fill();
   // Ear
   rect(ctx, 23, 14, 2, 4, PAL.skin3);
   // Stubble / beard shadow
@@ -51,17 +52,42 @@ export function createSuperZionCinematic(scene) {
     }
   }
 
-  // Torso
-  rect(ctx, 24, 26, 16, 24, PAL.tac1);
-  // Vest straps
-  rect(ctx, 25, 26, 3, 20, PAL.vest1);
-  rect(ctx, 36, 26, 3, 20, PAL.vest1);
-  // Belt
-  rect(ctx, 23, 48, 18, 3, PAL.blk1);
-  rect(ctx, 30, 48, 4, 3, PAL.gld3);
+  // Torso — bezier trapezoid (wider at shoulders, narrower at waist)
+  ctx.fillStyle = PAL.tac1;
+  ctx.beginPath();
+  ctx.moveTo(22, 26);                              // top-left shoulder
+  ctx.bezierCurveTo(22, 26, 24, 28, 25, 50);      // left side curves in
+  ctx.lineTo(39, 50);                              // waist bottom
+  ctx.bezierCurveTo(40, 28, 42, 26, 42, 26);      // right side curves in
+  ctx.closePath();
+  ctx.fill();
 
-  // Star of David on chest
-  const sx = 31, sy = 36;
+  // Vest straps — curved lines instead of rects
+  ctx.strokeStyle = PAL.vest1;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(27, 26);
+  ctx.quadraticCurveTo(26, 36, 26, 50);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(37, 26);
+  ctx.quadraticCurveTo(38, 36, 38, 50);
+  ctx.stroke();
+
+  // Belt — rounded capsule
+  ctx.fillStyle = PAL.blk1;
+  ctx.beginPath();
+  ctx.roundRect(23, 48, 18, 4, 2);
+  ctx.fill();
+  // Belt buckle — small rounded rect
+  ctx.fillStyle = PAL.gld3;
+  ctx.beginPath();
+  ctx.roundRect(29, 48, 6, 4, 1);
+  ctx.fill();
+
+  // Star of David on chest — moved up to y=32
+  const sx = 32, sy = 32;
   ctx.strokeStyle = PAL.gld3;
   ctx.lineWidth = 0.8;
   ctx.beginPath();
@@ -71,26 +97,54 @@ export function createSuperZionCinematic(scene) {
   ctx.moveTo(sx, sy + 4); ctx.lineTo(sx + 4, sy - 3); ctx.lineTo(sx - 4, sy - 3); ctx.closePath();
   ctx.stroke();
 
-  // Arms
-  rect(ctx, 16, 28, 8, 18, PAL.tac2);
-  rect(ctx, 40, 28, 8, 18, PAL.tac2);
-  // Gloves
-  rect(ctx, 16, 44, 8, 4, PAL.blk2);
-  rect(ctx, 40, 44, 8, 4, PAL.blk2);
+  // Arms — ellipses (rotated to hang vertically)
+  ctx.fillStyle = PAL.tac2;
+  ctx.save();
+  ctx.translate(20, 37);
+  ctx.beginPath(); ctx.ellipse(0, 0, 4, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(44, 37);
+  ctx.beginPath(); ctx.ellipse(0, 0, 4, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 
-  // Legs
-  rect(ctx, 24, 52, 7, 24, PAL.tac0);
-  rect(ctx, 33, 52, 7, 24, PAL.tac0);
-  // Knee pads
-  rect(ctx, 25, 62, 5, 3, PAL.blk2);
-  rect(ctx, 34, 62, 5, 3, PAL.blk2);
+  // Gloves — rounded shapes instead of rects
+  ctx.fillStyle = PAL.blk2;
+  ctx.beginPath(); ctx.ellipse(20, 47, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(44, 47, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Boots
-  rect(ctx, 22, 76, 10, 8, PAL.blk0);
-  rect(ctx, 32, 76, 10, 8, PAL.blk0);
-  // Soles
-  rect(ctx, 21, 83, 12, 2, PAL.blk1);
-  rect(ctx, 31, 83, 12, 2, PAL.blk1);
+  // Legs — tapered shapes with rounded edges using bezier
+  ctx.fillStyle = PAL.tac0;
+  // Left leg
+  ctx.beginPath();
+  ctx.moveTo(25, 52);                              // top-left
+  ctx.bezierCurveTo(24, 60, 23, 68, 24, 76);      // outer taper
+  ctx.lineTo(31, 76);                              // bottom-right
+  ctx.bezierCurveTo(32, 68, 31, 60, 31, 52);      // inner side
+  ctx.closePath();
+  ctx.fill();
+  // Right leg
+  ctx.beginPath();
+  ctx.moveTo(33, 52);
+  ctx.bezierCurveTo(33, 60, 33, 68, 33, 76);
+  ctx.lineTo(39, 76);
+  ctx.bezierCurveTo(40, 68, 40, 60, 39, 52);
+  ctx.closePath();
+  ctx.fill();
+
+  // Knee pads — rounded capsules
+  ctx.fillStyle = PAL.blk2;
+  ctx.beginPath(); ctx.roundRect(24, 61, 7, 4, 2); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(33, 61, 7, 4, 2); ctx.fill();
+
+  // Boots — rounded shapes
+  ctx.fillStyle = PAL.blk0;
+  ctx.beginPath(); ctx.roundRect(22, 76, 11, 8, [3, 3, 4, 4]); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(32, 76, 11, 8, [3, 3, 4, 4]); ctx.fill();
+  // Soles — slightly wider rounded base
+  ctx.fillStyle = PAL.blk1;
+  ctx.beginPath(); ctx.roundRect(21, 82, 13, 3, [0, 0, 2, 2]); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(31, 82, 13, 3, [0, 0, 2, 2]); ctx.fill();
 
   scene.textures.addCanvas('cin_superzion', c);
 }
@@ -442,37 +496,76 @@ export function createSuperZionOnCliff(scene) {
   const ctx = c.getContext('2d');
 
   // Figure silhouette against sunset
-  ctx.fillStyle = '#0a0804';
+  const sil = '#0a0804';
+  ctx.fillStyle = sil;
 
-  // Head
+  // Head — arc, keep as-is
   ctx.beginPath(); ctx.arc(64, 28, 10, 0, Math.PI * 2); ctx.fill();
-  // Flat-top hair shape (no dome)
+  // Flat-top hair — fillRect kept for flat-top silhouette style
   ctx.fillRect(54, 20, 20, 5);
 
-  // Body
-  rect(ctx, 54, 38, 20, 30, '#0a0804');
-  // Arms (slightly wind-blown — one arm out)
-  rect(ctx, 38, 42, 16, 6, '#0a0804');
-  rect(ctx, 74, 40, 18, 6, '#0a0804');
-  // Legs (standing pose)
-  rect(ctx, 54, 68, 9, 32, '#0a0804');
-  rect(ctx, 65, 68, 9, 32, '#0a0804');
-  // Boots
-  rect(ctx, 52, 98, 13, 6, '#0a0804');
-  rect(ctx, 63, 98, 13, 6, '#0a0804');
+  // Body — bezier trapezoid (broader shoulders, tapered waist)
+  ctx.fillStyle = sil;
+  ctx.beginPath();
+  ctx.moveTo(51, 38);                               // top-left shoulder
+  ctx.bezierCurveTo(50, 48, 52, 58, 54, 68);       // left side curves in
+  ctx.lineTo(74, 68);                               // waist/hip bottom
+  ctx.bezierCurveTo(76, 58, 78, 48, 77, 38);       // right side curves in
+  ctx.closePath();
+  ctx.fill();
+
+  // Arms — rounded ellipse shapes (wind-blown pose)
+  ctx.fillStyle = sil;
+  // Left arm — angled outward
+  ctx.save();
+  ctx.translate(42, 47);
+  ctx.rotate(-0.15);
+  ctx.beginPath(); ctx.ellipse(0, 0, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  // Right arm — reaching slightly forward/out
+  ctx.save();
+  ctx.translate(83, 45);
+  ctx.rotate(0.1);
+  ctx.beginPath(); ctx.ellipse(0, 0, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // Legs — tapered silhouette shapes
+  ctx.fillStyle = sil;
+  // Left leg
+  ctx.beginPath();
+  ctx.moveTo(54, 68);
+  ctx.bezierCurveTo(53, 78, 52, 88, 53, 100);
+  ctx.lineTo(62, 100);
+  ctx.bezierCurveTo(63, 88, 63, 78, 63, 68);
+  ctx.closePath();
+  ctx.fill();
+  // Right leg
+  ctx.beginPath();
+  ctx.moveTo(65, 68);
+  ctx.bezierCurveTo(65, 78, 65, 88, 65, 100);
+  ctx.lineTo(74, 100);
+  ctx.bezierCurveTo(76, 88, 75, 78, 74, 68);
+  ctx.closePath();
+  ctx.fill();
+
+  // Boots — rounded silhouette shapes
+  ctx.fillStyle = sil;
+  ctx.beginPath(); ctx.roundRect(51, 99, 13, 7, [2, 2, 4, 4]); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(63, 99, 13, 7, [2, 2, 4, 4]); ctx.fill();
 
   // Wind-blown gear strap
-  ctx.strokeStyle = '#0a0804';
+  ctx.strokeStyle = sil;
   ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(74, 50);
-  ctx.quadraticCurveTo(88, 46, 95, 52);
+  ctx.moveTo(77, 50);
+  ctx.quadraticCurveTo(90, 46, 97, 52);
   ctx.stroke();
 
-  // Subtle gold Star of David glow on chest
+  // Subtle gold Star of David glow on chest — moved up to sy=46
   ctx.strokeStyle = 'rgba(218,165,32,0.4)';
   ctx.lineWidth = 0.8;
-  const sx = 64, sy = 52;
+  const sx = 64, sy = 46;
   ctx.beginPath();
   ctx.moveTo(sx, sy - 5); ctx.lineTo(sx + 5, sy + 3); ctx.lineTo(sx - 5, sy + 3); ctx.closePath();
   ctx.stroke();

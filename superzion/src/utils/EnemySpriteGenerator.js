@@ -110,42 +110,196 @@ export function generateGuardSprites(scene) {
     const cx = SIZE / 2;
     const legOffset = (frame === 1 || frame === 3) ? 3 : frame === 2 ? -3 : 0;
 
-    // Legs
+    // ── LEGS (rounded pill shapes) ──────────────────────────────
     const lx1 = cx - 6;
     const lx2 = cx + 2;
-    shadedRect(ctx, lx1, 42 + legOffset, 5, 12, hit ? ['#664444', '#553333'] : [uniform[1], uniform[0]]);
-    shadedRect(ctx, lx2, 42 - legOffset, 5, 12, hit ? ['#664444', '#553333'] : [uniform[1], uniform[0]]);
-    // Boots
-    pxRect(ctx, lx1, 54 + legOffset, 6, 4, hit ? '#442222' : boot[0]);
-    pxRect(ctx, lx1, 54 + legOffset, 6, 1, hit ? '#553333' : boot[2]);
-    pxRect(ctx, lx2, 54 - legOffset, 6, 4, hit ? '#442222' : boot[0]);
-    pxRect(ctx, lx2, 54 - legOffset, 6, 1, hit ? '#553333' : boot[2]);
+    const legColor1 = hit ? '#664444' : uniform[1];
+    const legColor2 = hit ? '#553333' : uniform[0];
 
-    // Torso
-    shadedRect(ctx, cx - 8, 24, 16, 18, hit ? ['#884444', '#773333', '#662222'] : [uniform[3], uniform[2], uniform[1]]);
-    // Belt
-    pxRect(ctx, cx - 8, 40, 16, 2, hit ? '#442222' : '#1a1a1a');
+    // Left leg — filled rounded rectangle via arc caps
+    function drawLeg(lx, ly, w, h, colorTop, colorBot) {
+      const r = Math.floor(w / 2);
+      // gradient body
+      const steps = h - r;
+      for (let row = 0; row < steps; row++) {
+        const t = row / Math.max(steps - 1, 1);
+        ctx.fillStyle = t < 0.5 ? colorTop : colorBot;
+        ctx.fillRect(Math.round(lx), Math.round(ly + r + row), w, 1);
+      }
+      // top arc cap
+      ctx.fillStyle = colorTop;
+      ctx.beginPath();
+      ctx.arc(Math.round(lx + r), Math.round(ly + r), r, Math.PI, 0);
+      ctx.fill();
+      // bottom arc cap
+      ctx.fillStyle = colorBot;
+      ctx.beginPath();
+      ctx.arc(Math.round(lx + r), Math.round(ly + h - r), r, 0, Math.PI);
+      ctx.fill();
+    }
 
-    // Arms
+    drawLeg(lx1, 42 + legOffset, 5, 12, legColor1, legColor2);
+    drawLeg(lx2, 42 - legOffset, 5, 12, legColor1, legColor2);
+
+    // ── BOOTS (rounded toe caps) ────────────────────────────────
+    function drawBoot(bx, by, hit) {
+      const bc = hit ? '#442222' : boot[0];
+      const bh = hit ? '#553333' : boot[2];
+      // main boot block
+      ctx.fillStyle = bc;
+      ctx.beginPath();
+      // rounded bottom-right toe corner, rest square
+      ctx.moveTo(Math.round(bx), Math.round(by));
+      ctx.lineTo(Math.round(bx + 7), Math.round(by));
+      ctx.quadraticCurveTo(Math.round(bx + 8), Math.round(by), Math.round(bx + 8), Math.round(by + 1));
+      ctx.lineTo(Math.round(bx + 8), Math.round(by + 3));
+      ctx.quadraticCurveTo(Math.round(bx + 8), Math.round(by + 4), Math.round(bx + 7), Math.round(by + 4));
+      ctx.lineTo(Math.round(bx), Math.round(by + 4));
+      ctx.closePath();
+      ctx.fill();
+      // highlight strip on top
+      ctx.fillStyle = bh;
+      ctx.fillRect(Math.round(bx), Math.round(by), 8, 1);
+    }
+
+    drawBoot(lx1 - 1, 54 + legOffset, hit);
+    drawBoot(lx2 - 1, 54 - legOffset, hit);
+
+    // ── TORSO (bezier trapezoid — wider at shoulders, taper at waist) ──
+    const torsoColors = hit ? ['#884444', '#773333', '#662222'] : [uniform[3], uniform[2], uniform[1]];
+    const torsoTop = 24;
+    const torsoBot = 42;
+    const torsoH = torsoBot - torsoTop;
+    // Draw row-by-row, interpolating width from shoulder (18px) to waist (14px)
+    for (let row = 0; row < torsoH; row++) {
+      const t = row / (torsoH - 1);
+      const ci = Math.min(Math.floor(t * torsoColors.length), torsoColors.length - 1);
+      // shoulder width 18, waist width 14 — slight trapezoid
+      const w = Math.round(18 - t * 4);
+      const xOff = Math.round((18 - w) / 2);
+      ctx.fillStyle = torsoColors[ci];
+      ctx.fillRect(Math.round(cx - 9 + xOff), Math.round(torsoTop + row), w, 1);
+    }
+    // Subtle chest shading — lighter centre column
+    ctx.fillStyle = hit ? '#994444' : uniform[3];
+    for (let row = 0; row < 8; row++) {
+      ctx.fillRect(Math.round(cx - 2), Math.round(torsoTop + 2 + row), 4, 1);
+    }
+
+    // ── BELT (rounded capsule) ──────────────────────────────────
+    const beltColor = hit ? '#442222' : '#1a1a1a';
+    const beltY = 40;
+    ctx.fillStyle = beltColor;
+    ctx.beginPath();
+    ctx.ellipse(cx, beltY + 1, 9, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Belt buckle highlight
+    ctx.fillStyle = hit ? '#553333' : '#333333';
+    ctx.fillRect(Math.round(cx - 2), beltY, 4, 2);
+
+    // ── ARMS (elliptical pill shapes) ───────────────────────────
     const armY = shooting ? 28 : 30;
-    shadedRect(ctx, cx - 12, armY, 4, 12, hit ? ['#774444', '#663333'] : [uniform[2], uniform[1]]);
-    shadedRect(ctx, cx + 8, armY, 4, 12, hit ? ['#774444', '#663333'] : [uniform[2], uniform[1]]);
+    const armColor1 = hit ? '#774444' : uniform[2];
+    const armColor2 = hit ? '#663333' : uniform[1];
 
-    // Head
-    pxRect(ctx, cx - 5, 12, 10, 12, hit ? '#886655' : skin[1]);
-    pxRect(ctx, cx - 4, 13, 8, 2, hit ? '#997766' : skin[2]);
-    // Eyes
-    px(ctx, cx - 3, 17, '#111111');
-    px(ctx, cx + 2, 17, '#111111');
-    // Mouth
-    pxRect(ctx, cx - 2, 21, 4, 1, hit ? '#664444' : skin[0]);
+    function drawArm(ax, ay, w, h, c1, c2) {
+      const r = Math.floor(w / 2);
+      // body
+      for (let row = 0; row <= h - w; row++) {
+        const t = row / Math.max(h - w, 1);
+        ctx.fillStyle = t < 0.5 ? c1 : c2;
+        ctx.fillRect(Math.round(ax), Math.round(ay + r + row), w, 1);
+      }
+      // top ellipse cap
+      ctx.fillStyle = c1;
+      ctx.beginPath();
+      ctx.ellipse(Math.round(ax + r), Math.round(ay + r), r, r, 0, Math.PI, 0);
+      ctx.fill();
+      // bottom ellipse cap
+      ctx.fillStyle = c2;
+      ctx.beginPath();
+      ctx.ellipse(Math.round(ax + r), Math.round(ay + h - r), r, r, 0, 0, Math.PI);
+      ctx.fill();
+    }
 
-    // Beret
-    pxRect(ctx, cx - 6, 8, 12, 5, hit ? '#553333' : beret);
-    pxRect(ctx, cx - 7, 11, 14, 2, hit ? '#664444' : beretLt);
-    pxRect(ctx, cx - 4, 6, 8, 3, hit ? '#553333' : beret);
+    // Left arm
+    drawArm(cx - 13, armY, 4, 12, armColor1, armColor2);
+    // Right arm
+    drawArm(cx + 9, armY, 4, 12, armColor1, armColor2);
 
-    // Rifle (when shooting, horizontal; otherwise angled down)
+    // ── HEAD (oval — wider than tall, with skin gradient) ────────
+    const headCX = cx;
+    const headCY = 18;   // centre of head oval
+    const headRX = 6;    // horizontal radius
+    const headRY = 7;    // vertical radius
+    const headColor = hit ? '#886655' : skin[1];
+    const headHi    = hit ? '#997766' : skin[2];
+    const headSha   = hit ? '#7a5a40' : skin[0];
+
+    ctx.fillStyle = headColor;
+    ctx.beginPath();
+    ctx.ellipse(headCX, headCY, headRX, headRY, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Top highlight band
+    ctx.fillStyle = headHi;
+    ctx.beginPath();
+    ctx.ellipse(headCX, headCY - 2, headRX - 1, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Chin shadow
+    ctx.fillStyle = headSha;
+    ctx.beginPath();
+    ctx.ellipse(headCX, headCY + 4, headRX - 2, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── EYES (small arcs) ───────────────────────────────────────
+    const eyeY = headCY - 1;
+    ctx.fillStyle = '#111111';
+    // Left eye
+    ctx.beginPath();
+    ctx.ellipse(headCX - 3, eyeY, 1.5, 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Right eye
+    ctx.beginPath();
+    ctx.ellipse(headCX + 3, eyeY, 1.5, 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye whites / catchlight
+    if (!hit) {
+      ctx.fillStyle = '#ffffff';
+      px(ctx, headCX - 3, eyeY - 1, '#ffffff');
+      px(ctx, headCX + 3, eyeY - 1, '#ffffff');
+    }
+
+    // Mouth — a subtle curved shadow line
+    ctx.strokeStyle = hit ? '#664444' : headSha;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(headCX, headCY + 3, 2, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+
+    // ── BERET (ellipse dome + brim arc) ─────────────────────────
+    const beretCY = headCY - headRY + 1; // sits on top of head
+
+    // Brim (wide flat ellipse)
+    ctx.fillStyle = hit ? '#664444' : beretLt;
+    ctx.beginPath();
+    ctx.ellipse(headCX, beretCY + 3, headRX + 2, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dome (upper half of an ellipse)
+    ctx.fillStyle = hit ? '#553333' : beret;
+    ctx.beginPath();
+    ctx.ellipse(headCX - 1, beretCY, headRX + 1, 5, -0.15, Math.PI, 0);
+    ctx.fill();
+
+    // Highlight on dome
+    ctx.fillStyle = hit ? '#664444' : beretLt;
+    ctx.beginPath();
+    ctx.ellipse(headCX - 2, beretCY - 1, 3, 2, -0.2, Math.PI, 0);
+    ctx.fill();
+
+    // ── RIFLE (rectangular — it's an object) ────────────────────
     if (shooting) {
       pxRect(ctx, cx + 10, 30, 18, 3, rifle[0]);
       pxRect(ctx, cx + 10, 30, 18, 1, rifle[2]);

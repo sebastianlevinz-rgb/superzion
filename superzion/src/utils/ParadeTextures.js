@@ -211,34 +211,65 @@ export function createEnemyFlag(scene) {
 export function createFoamBeardParade(scene) {
   staticSprite(scene, 'parade_foambeard', (ctx, w, h) => {
     const cx = w / 2, by = h - 4;
-    // Legs (dark suit pants)
+    // Legs (dark suit pants) — tapered ellipses
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(cx - 9, by - 34, 7, 28);
-    ctx.fillRect(cx + 2, by - 30, 7, 24);
-    // Shoes
+    ctx.beginPath();
+    ctx.ellipse(cx - 5.5, by - 20, 3.5, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 5.5, by - 18, 3.5, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Shoes — rounded arc-based shapes
     ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(cx - 10, by - 6, 9, 6);
-    ctx.fillRect(cx + 1, by - 6, 9, 6);
-    // Body (dark suit)
+    ctx.beginPath();
+    ctx.ellipse(cx - 5.5, by - 3, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 5.5, by - 3, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Body (dark suit) — bezier trapezoid
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(cx - 14, by - 60, 28, 30);
+    ctx.beginPath();
+    ctx.moveTo(cx - 12, by - 60);
+    ctx.bezierCurveTo(cx - 14, by - 54, cx - 14, by - 36, cx - 12, by - 30);
+    ctx.lineTo(cx + 12, by - 30);
+    ctx.bezierCurveTo(cx + 14, by - 36, cx + 14, by - 54, cx + 12, by - 60);
+    ctx.closePath();
+    ctx.fill();
     // White shirt
     ctx.fillStyle = '#e8e8e8';
-    ctx.fillRect(cx - 5, by - 60, 10, 5);
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 58, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Red tie
     ctx.fillStyle = '#8a1020';
-    ctx.fillRect(cx - 2, by - 55, 4, 18);
-    // Arms (suit)
+    ctx.beginPath();
+    ctx.moveTo(cx - 2, by - 55);
+    ctx.quadraticCurveTo(cx - 3, by - 46, cx, by - 37);
+    ctx.quadraticCurveTo(cx + 3, by - 46, cx + 2, by - 55);
+    ctx.closePath();
+    ctx.fill();
+    // Arms (suit) — ellipses
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(cx - 19, by - 58, 6, 24);
-    ctx.fillRect(cx + 13, by - 56, 6, 22);
-    // Hands
+    ctx.beginPath();
+    ctx.ellipse(cx - 16, by - 46, 3, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 16, by - 45, 3, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Hands — small ellipses
     ctx.fillStyle = '#c8a080';
-    ctx.fillRect(cx - 19, by - 36, 6, 5);
-    ctx.fillRect(cx + 13, by - 36, 6, 5);
-    // Neck
+    ctx.beginPath();
+    ctx.ellipse(cx - 16, by - 33, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 16, by - 33, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Neck — small ellipse
     ctx.fillStyle = '#c8a080';
-    ctx.fillRect(cx - 4, by - 64, 8, 5);
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 62, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Head (bald egg shape)
     ctx.fillStyle = '#c8a080';
     ctx.beginPath();
@@ -289,13 +320,22 @@ export function createFoamBeardParade(scene) {
 export function createTurboTurbanParade(scene) {
   staticSprite(scene, 'parade_turboturban', (ctx, w, h) => {
     const cx = w / 2, by = h - 4;
-    // Legs (dark robe split)
+    // Legs (dark robe split) — tapered ellipses
     ctx.fillStyle = '#1a1a22';
-    ctx.fillRect(cx - 10, by - 30, 8, 24);
-    ctx.fillRect(cx + 2, by - 26, 8, 20);
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, by - 18, 4, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, by - 16, 4, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Sandals/boots — rounded ellipses
     ctx.fillStyle = '#1a1008';
-    ctx.fillRect(cx - 11, by - 6, 10, 6);
-    ctx.fillRect(cx + 1, by - 6, 10, 6);
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, by - 3, 5.5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, by - 3, 5.5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Dark robe body
     ctx.fillStyle = '#1a1a22';
     ctx.beginPath();
@@ -315,24 +355,36 @@ export function createTurboTurbanParade(scene) {
       ctx.quadraticCurveTo(cx, ry + 2, cx + 14, ry);
       ctx.stroke();
     }
-    // Arms (pointing left, threatening)
+    // Arms (pointing left, threatening) — ellipses
     ctx.fillStyle = '#1a1a22';
-    ctx.fillRect(cx - 22, by - 54, 7, 20);
+    ctx.beginPath();
+    ctx.ellipse(cx - 18.5, by - 44, 3.5, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.save();
-    ctx.translate(cx + 14, by - 54);
+    ctx.translate(cx + 17.5, by - 43);
     ctx.rotate(-0.4);
-    ctx.fillRect(0, 0, 7, 22);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 3.5, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
-    // Pointing hand
+    // Pointing hand — small ellipse + finger
     ctx.fillStyle = '#c4956a';
-    ctx.fillRect(cx + 28, by - 66, 5, 4);
-    ctx.fillRect(cx + 32, by - 67, 6, 2); // pointing finger
-    // Left hand
+    ctx.beginPath();
+    ctx.ellipse(cx + 30, by - 64, 3, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 35, by - 66, 3.5, 1.2, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // Left hand — small ellipse
     ctx.fillStyle = '#c4956a';
-    ctx.fillRect(cx - 22, by - 36, 7, 4);
-    // Neck
+    ctx.beginPath();
+    ctx.ellipse(cx - 18.5, by - 34, 3.5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Neck — small ellipse
     ctx.fillStyle = '#c4956a';
-    ctx.fillRect(cx - 4, by - 60, 8, 5);
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 57.5, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Head
     ctx.fillStyle = '#c4956a';
     ctx.beginPath();
@@ -400,51 +452,87 @@ export function createTurboTurbanParade(scene) {
 export function createWardenParade(scene) {
   staticSprite(scene, 'parade_warden', (ctx, w, h) => {
     const cx = w / 2, by = h - 4;
-    // Legs (military pants)
+    // Legs (military pants) — tapered ellipses
     ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(cx - 9, by - 32, 7, 26);
-    ctx.fillRect(cx + 2, by - 28, 7, 22);
-    // Combat boots
+    ctx.beginPath();
+    ctx.ellipse(cx - 5.5, by - 19, 3.5, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 5.5, by - 17, 3.5, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Combat boots — rounded arc-based shapes
     ctx.fillStyle = '#2a1810';
-    ctx.fillRect(cx - 10, by - 6, 9, 6);
-    ctx.fillRect(cx + 1, by - 6, 9, 6);
-    // Military body (olive drab)
+    ctx.beginPath();
+    ctx.ellipse(cx - 5.5, by - 3, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 5.5, by - 3, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Military body — bezier trapezoid
     ctx.fillStyle = '#222222';
-    ctx.fillRect(cx - 15, by - 58, 30, 28);
-    // Vest/harness
+    ctx.beginPath();
+    ctx.moveTo(cx - 13, by - 58);
+    ctx.bezierCurveTo(cx - 15, by - 50, cx - 15, by - 36, cx - 13, by - 30);
+    ctx.lineTo(cx + 13, by - 30);
+    ctx.bezierCurveTo(cx + 15, by - 36, cx + 15, by - 50, cx + 13, by - 58);
+    ctx.closePath();
+    ctx.fill();
+    // Vest/harness — curved shape
     ctx.fillStyle = '#5a5a60';
-    ctx.fillRect(cx - 12, by - 56, 24, 24);
-    // Chest pouches
+    ctx.beginPath();
+    ctx.moveTo(cx - 11, by - 56);
+    ctx.bezierCurveTo(cx - 12, by - 48, cx - 12, by - 38, cx - 11, by - 32);
+    ctx.lineTo(cx + 11, by - 32);
+    ctx.bezierCurveTo(cx + 12, by - 38, cx + 12, by - 48, cx + 11, by - 56);
+    ctx.closePath();
+    ctx.fill();
+    // Chest pouches — small rounded rects via arc corners
     ctx.fillStyle = '#4a4a50';
-    ctx.fillRect(cx - 10, by - 48, 6, 5);
-    ctx.fillRect(cx + 4, by - 48, 6, 5);
-    // Arms (left raised fist!)
+    ctx.beginPath();
+    ctx.ellipse(cx - 7, by - 45.5, 3.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 7, by - 45.5, 3.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Arms (left straight, right raised) — ellipses
     ctx.fillStyle = '#222222';
-    ctx.fillRect(cx - 20, by - 56, 6, 22);
+    ctx.beginPath();
+    ctx.ellipse(cx - 17, by - 45, 3, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Raised right arm with fist
     ctx.save();
-    ctx.translate(cx + 14, by - 56);
+    ctx.translate(cx + 17, by - 46);
     ctx.rotate(-0.8);
     ctx.fillStyle = '#222222';
-    ctx.fillRect(0, 0, 6, 20);
-    ctx.fillStyle = '#7a5030';
-    ctx.fillRect(0, -4, 7, 5); // fist
-    ctx.restore();
-    // Left hand
-    ctx.fillStyle = '#7a5030';
-    ctx.fillRect(cx - 20, by - 36, 6, 4);
-    // Neck (thick)
-    ctx.fillStyle = '#7a5030';
-    ctx.fillRect(cx - 5, by - 62, 10, 5);
-    // Head (angular, scarred)
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 3, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#7a5030';
     ctx.beginPath();
-    ctx.moveTo(cx - 12, by - 64);
-    ctx.lineTo(cx + 12, by - 64);
-    ctx.lineTo(cx + 14, by - 74);
-    ctx.lineTo(cx + 12, by - 84);
+    ctx.ellipse(0, -12, 3.5, 2.5, 0, 0, Math.PI * 2); // fist
+    ctx.fill();
+    ctx.restore();
+    // Left hand — small ellipse
+    ctx.fillStyle = '#7a5030';
+    ctx.beginPath();
+    ctx.ellipse(cx - 17, by - 34, 3, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Neck (thick) — ellipse
+    ctx.fillStyle = '#7a5030';
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 60, 5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Head (angular, scarred) — keep military shape, soften corners with curves
+    ctx.fillStyle = '#7a5030';
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, by - 64);
+    ctx.quadraticCurveTo(cx - 12, by - 64, cx - 12, by - 66);
+    ctx.lineTo(cx + 12, by - 66);
+    ctx.quadraticCurveTo(cx + 12, by - 64, cx + 10, by - 64);
+    ctx.lineTo(cx + 13, by - 74);
+    ctx.quadraticCurveTo(cx + 14, by - 74, cx + 12, by - 84);
     ctx.lineTo(cx - 12, by - 84);
-    ctx.lineTo(cx - 14, by - 74);
+    ctx.quadraticCurveTo(cx - 14, by - 74, cx - 13, by - 74);
     ctx.closePath();
     ctx.fill();
     // Scars
@@ -522,13 +610,22 @@ export function createWardenParade(scene) {
 export function createSupremeTurbanParade(scene) {
   staticSprite(scene, 'parade_supremeturban', (ctx, w, h) => {
     const cx = w / 2, by = h - 4;
-    // Legs (hidden under long robes)
+    // Legs (hidden under long robes) — tapered ellipses
     ctx.fillStyle = '#1a1812';
-    ctx.fillRect(cx - 12, by - 28, 10, 22);
-    ctx.fillRect(cx + 2, by - 24, 10, 18);
+    ctx.beginPath();
+    ctx.ellipse(cx - 7, by - 17, 5, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 7, by - 15, 5, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Sandals/footwear — rounded ellipses
     ctx.fillStyle = '#0a0806';
-    ctx.fillRect(cx - 14, by - 6, 12, 6);
-    ctx.fillRect(cx + 2, by - 6, 12, 6);
+    ctx.beginPath();
+    ctx.ellipse(cx - 8, by - 3, 6.5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 8, by - 3, 6.5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Long dark robes
     ctx.fillStyle = '#1a1812';
     ctx.beginPath();
@@ -569,17 +666,27 @@ export function createSupremeTurbanParade(scene) {
     ctx.beginPath();
     ctx.arc(cx + 33, by - 136, 16, 0, Math.PI * 2);
     ctx.fill();
-    // Arms
+    // Arms — ellipses
     ctx.fillStyle = '#1a1812';
-    ctx.fillRect(cx - 34, by - 68, 8, 28);
-    ctx.fillRect(cx + 22, by - 68, 8, 28);
-    // Hands
+    ctx.beginPath();
+    ctx.ellipse(cx - 30, by - 54, 4, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 26, by - 54, 4, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Hands — small ellipses
     ctx.fillStyle = '#6a4020';
-    ctx.fillRect(cx - 34, by - 42, 8, 5);
-    ctx.fillRect(cx + 24, by - 42, 8, 5);
-    // Neck
+    ctx.beginPath();
+    ctx.ellipse(cx - 30, by - 39.5, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 28, by - 39.5, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Neck — ellipse
     ctx.fillStyle = '#6a4020';
-    ctx.fillRect(cx - 6, by - 76, 12, 7);
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 72.5, 6, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Head (angular, ancient, powerful)
     ctx.fillStyle = '#6a4020';
     ctx.beginPath();
@@ -710,25 +817,44 @@ export function createSupremeTurbanParade(scene) {
 export function createEnemySoldier(scene, key = 'parade_soldier', uniformColor = '#3a4a30') {
   staticSprite(scene, key, (ctx, w, h) => {
     const cx = w / 2, by = h - 1;
-    // Legs
+    // Legs — small ellipses
     ctx.fillStyle = uniformColor;
-    ctx.fillRect(cx - 4, by - 14, 3, 10);
-    ctx.fillRect(cx + 1, by - 12, 3, 8);
+    ctx.beginPath();
+    ctx.ellipse(cx - 2.5, by - 9, 1.5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 2.5, by - 8, 1.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Boots — small rounded ellipses
     ctx.fillStyle = '#1a1008';
-    ctx.fillRect(cx - 5, by - 4, 4, 4);
-    ctx.fillRect(cx, by - 4, 4, 4);
-    // Body
+    ctx.beginPath();
+    ctx.ellipse(cx - 2.5, by - 2, 2.5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 2.5, by - 2, 2.5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Body — rounded rect via bezier
     ctx.fillStyle = uniformColor;
-    ctx.fillRect(cx - 5, by - 24, 10, 12);
-    // Arms
-    ctx.fillRect(cx - 7, by - 23, 3, 9);
-    ctx.fillRect(cx + 4, by - 22, 3, 9);
-    // Head
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 18, 5, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Arms — small ellipses
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, by - 19, 1.5, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, by - 18.5, 1.5, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Head — small ellipse
     ctx.fillStyle = '#8a7060';
-    ctx.fillRect(cx - 3, by - 30, 6, 6);
-    // Helmet / beret
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 27, 3, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Helmet / beret — arc cap
     ctx.fillStyle = '#2a2a20';
-    ctx.fillRect(cx - 4, by - 33, 8, 4);
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 29, 4, 2.5, 0, Math.PI, 0);
+    ctx.fill();
     // Rifle (diagonal on back)
     ctx.strokeStyle = '#2a2018';
     ctx.lineWidth = 1.5;
