@@ -1197,8 +1197,8 @@ export default class DroneScene extends Phaser.Scene {
     // ── Setup ──
     this._setupHUD();
     this._setupInput();
-    // Skip recon and tunnel — go straight to boss fight
-    this._startBossDirectly();
+    // Start with city intro, then boss fight
+    this._startCityIntro();
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -1235,7 +1235,12 @@ export default class DroneScene extends Phaser.Scene {
     this.hudHP.setColor(this.droneHP <= 1 ? '#ff4444' : '#ffffff');
 
     let timeLeft;
-    if (this.phase === 'recon') {
+    if (this.phase === 'city') {
+      this.hudPhase.setText('CITY RECON');
+      this.hudObjective.setText('FIND THE GLOWING WINDOW');
+      this.hudTimer.setText('');
+      return;
+    } else if (this.phase === 'recon') {
       timeLeft = Math.max(0, Math.ceil(RECON_TIME * this.dm.timerMult() - this.phaseTimer));
       this.hudPhase.setText('RECON PHASE');
       this.hudObjective.setText(`TARGETS: ${this.targetsFound}/${RECON_TARGETS.length}`);
@@ -1269,6 +1274,7 @@ export default class DroneScene extends Phaser.Scene {
       z: this.input.keyboard.addKey('Z'),
       x: this.input.keyboard.addKey('X'),
       c: this.input.keyboard.addKey('C'),
+      shift: this.input.keyboard.addKey('SHIFT'),
       r: this.input.keyboard.addKey('R'),
       s: this.input.keyboard.addKey('S'),
     };
@@ -1747,6 +1753,602 @@ export default class DroneScene extends Phaser.Scene {
     if (this.droneSprite) { this.droneSprite.destroy(); this.droneSprite = null; }
   }
 
+  // ═════════════════════════════════════════════════════════════
+  // CITY INTRO — Top-down drone flight through ruined city
+  // ═════════════════════════════════════════════════════════════
+
+  _startCityIntro() {
+    this.phase = 'city';
+    MusicManager.get().playLevel4Music('command');
+
+    // ── City constants ──
+    const CITY_SCROLL_SPEED = 45;     // px/s auto-scroll upward
+    const CITY_DRONE_SPEED = 250;     // player movement speed
+    const CITY_LENGTH = 4200;         // total city height in world pixels
+    const BLOCK_H = 300;              // height of each city block
+    const STREET_GAP = 60;            // gap between blocks (cross-street)
+    const BUILDING_MIN_W = 80;
+    const BUILDING_MAX_W = 160;
+    const SIDEWALK = 40;              // gap from edge to first building
+    const STREET_W = 180;             // central street width
+
+    this._city = {
+      scrollSpeed: CITY_SCROLL_SPEED,
+      droneSpeed: CITY_DRONE_SPEED,
+      totalLength: CITY_LENGTH,
+      scrollY: 0,
+      blocks: [],
+      rubble: [],
+      cables: [],
+      enemyDrones: [],
+      enemyBullets: [],
+      windowTarget: null,
+      promptShown: false,
+      enterReady: false,
+      transitioning: false,
+      gfx: this.add.graphics().setDepth(1),
+      objects: [],          // track all created game objects for cleanup
+      invulnTimer: 0,
+      hitFlashTimer: 0,
+    };
+    const city = this._city;
+
+    // ── Generate city blocks procedurally ──
+    const numBlocks = Math.ceil(CITY_LENGTH / (BLOCK_H + STREET_GAP));
+    const streetLeft = (W - STREET_W) / 2;
+    const streetRight = streetLeft + STREET_W;
+
+    for (let i = 0; i < numBlocks; i++) {
+      const blockY = i * (BLOCK_H + STREET_GAP);
+      const block = { y: blockY, h: BLOCK_H, buildings: [], windows: [] };
+
+      // Left-side buildings
+      let bx = SIDEWALK;
+      while (bx < streetLeft - 10) {
+        const bw = BUILDING_MIN_W + Math.random() * (BUILDING_MAX_W - BUILDING_MIN_W);
+        const clampW = Math.min(bw, streetLeft - 10 - bx);
+        if (clampW < 30) break;
+        const bh = BLOCK_H - 10 + Math.random() * 20;
+        block.buildings.push({ x: bx, y: blockY, w: clampW, h: bh, side: 'left' });
+
+        // Windows on this building
+        const cols = Math.floor(clampW / 24);
+        const rows = Math.floor(bh / 30);
+        for (let wr = 0; wr < rows; wr++) {
+          for (let wc = 0; wc < cols; wc++) {
+            block.windows.push({
+              x: bx + 12 + wc * 24,
+              y: blockY + 15 + wr * 30,
+              w: 14, h: 18,
+              lit: false,
+            });
+          }
+        }
+        bx += clampW + 6;
+      }
+
+      // Right-side buildings
+      bx = streetRight + 10;
+      while (bx < W - SIDEWALK) {
+        const bw = BUILDING_MIN_W + Math.random() * (BUILDING_MAX_W - BUILDING_MIN_W);
+        const clampW = Math.min(bw, W - SIDEWALK - bx);
+        if (clampW < 30) break;
+        const bh = BLOCK_H - 10 + Math.random() * 20;
+        block.buildings.push({ x: bx, y: blockY, w: clampW, h: bh, side: 'right' });
+
+        const cols = Math.floor(clampW / 24);
+        const rows = Math.floor(bh / 30);
+        for (let wr = 0; wr < rows; wr++) {
+          for (let wc = 0; wc < cols; wc++) {
+            block.windows.push({
+              x: bx + 12 + wc * 24,
+              y: blockY + 15 + wr * 30,
+              w: 14, h: 18,
+              lit: false,
+            });
+          }
+        }
+        bx += clampW + 6;
+      }
+
+      city.blocks.push(block);
+    }
+
+    // ── Rubble in the streets ──
+    for (let i = 0; i < 80; i++) {
+      city.rubble.push({
+        x: streetLeft + Math.random() * STREET_W,
+        y: Math.random() * CITY_LENGTH,
+        w: 6 + Math.random() * 14,
+        h: 4 + Math.random() * 10,
+        color: Math.random() > 0.5 ? 0x3a3a3a : 0x4a3a2a,
+        angle: Math.random() * Math.PI,
+      });
+    }
+
+    // ── Fallen cables across streets ──
+    for (let i = 0; i < 12; i++) {
+      const cy = 200 + Math.random() * (CITY_LENGTH - 400);
+      city.cables.push({
+        x1: streetLeft + Math.random() * 20,
+        y1: cy - 10 + Math.random() * 20,
+        x2: streetRight - Math.random() * 20,
+        y2: cy - 10 + Math.random() * 20,
+        sag: 10 + Math.random() * 20,
+      });
+    }
+
+    // ── THE target window — near the end of the city ──
+    // Pick a window on the last few blocks
+    const targetBlockIdx = numBlocks - 2;
+    const targetBlock = city.blocks[targetBlockIdx];
+    if (targetBlock && targetBlock.windows.length > 0) {
+      // Pick a window on a building adjacent to the street for visibility
+      const streetAdjacentWins = targetBlock.windows.filter(w =>
+        (w.x > streetLeft - 60 && w.x < streetLeft + 30) ||
+        (w.x > streetRight - 30 && w.x < streetRight + 60)
+      );
+      const candidates = streetAdjacentWins.length > 0 ? streetAdjacentWins : targetBlock.windows;
+      const tw = candidates[Math.floor(Math.random() * candidates.length)];
+      tw.lit = true;
+      tw.isTarget = true;
+      city.windowTarget = tw;
+    } else {
+      // Fallback: put it at a fixed position
+      city.windowTarget = {
+        x: streetLeft - 30,
+        y: targetBlockIdx * (BLOCK_H + STREET_GAP) + BLOCK_H / 2,
+        w: 14, h: 18, lit: true, isTarget: true,
+      };
+    }
+
+    // ── Enemy patrol drones ──
+    const enemyCount = 8;
+    for (let i = 0; i < enemyCount; i++) {
+      const ey = 400 + i * (CITY_LENGTH - 600) / enemyCount;
+      const patrolLeft = streetLeft + 20;
+      const patrolRight = streetRight - 20;
+      city.enemyDrones.push({
+        x: patrolLeft + Math.random() * (patrolRight - patrolLeft),
+        y: ey,
+        speed: 50 + Math.random() * 40,
+        dir: Math.random() > 0.5 ? 1 : -1,
+        patrolLeft,
+        patrolRight,
+        detectRange: 120,
+        detectAngle: Math.PI / 4,   // 45-degree cone half-angle
+        alertTimer: 0,
+        shootCooldown: 0,
+        alerted: false,
+      });
+    }
+
+    // ── Player drone position ──
+    this.droneX = W / 2;
+    this.droneY = H - 80;
+    this._cityDroneWorldY = CITY_LENGTH - 80; // world Y (scroll-adjusted)
+
+    // ── Instruction text ──
+    this.instrText.setText('FLY THROUGH THE CITY — FIND THE GLOWING WINDOW');
+    this.instrText.setAlpha(1);
+    this.instrBg.setAlpha(0.7);
+    this.time.delayedCall(4000, () => {
+      if (this.phase === 'city') {
+        this.tweens.add({ targets: [this.instrText, this.instrBg], alpha: 0, duration: 800 });
+      }
+    });
+  }
+
+  _updateCityIntro(dt) {
+    const city = this._city;
+    if (!city || city.transitioning) return;
+
+    const streetLeft = (W - 180) / 2;
+    const streetRight = streetLeft + 180;
+
+    // ── Auto-scroll (move world upward) ──
+    city.scrollY += city.scrollSpeed * dt;
+
+    // ── Player movement ──
+    let dx = 0, dy = 0;
+    if (this.keys.left.isDown) dx -= 1;
+    if (this.keys.right.isDown) dx += 1;
+    if (this.keys.up.isDown) dy -= 1;
+    if (this.keys.down.isDown) dy += 1;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    dx /= len; dy /= len;
+
+    const speed = city.droneSpeed;
+    this.droneX += dx * speed * dt;
+    this._cityDroneWorldY -= dy * speed * dt; // up in world = negative
+
+    // Also move world position with scroll
+    this._cityDroneWorldY -= city.scrollSpeed * dt;
+
+    // Clamp to street bounds (with some margin into sidewalk)
+    const margin = 30;
+    this.droneX = Math.max(margin, Math.min(W - margin, this.droneX));
+    this._cityDroneWorldY = Math.max(100, Math.min(city.totalLength - 50, this._cityDroneWorldY));
+
+    // Screen Y of drone stays roughly at bottom 1/3 but adjust if near edges
+    this.droneY = H - 120;
+
+    // Camera offset = how far scrolled into the city
+    const cameraY = city.totalLength - this._cityDroneWorldY - (H - this.droneY);
+    city.scrollY = Math.max(0, Math.min(city.totalLength - H, cameraY));
+
+    // ── Invulnerability timer ──
+    if (city.invulnTimer > 0) city.invulnTimer -= dt;
+
+    // ── Collision with rubble (slow down) ──
+    // Simple: if drone overlaps rubble, reduce effective speed briefly (already handled)
+
+    // ── Enemy drone AI ──
+    for (const e of city.enemyDrones) {
+      // Patrol left-right
+      e.x += e.speed * e.dir * dt;
+      if (e.x <= e.patrolLeft) { e.x = e.patrolLeft; e.dir = 1; }
+      if (e.x >= e.patrolRight) { e.x = e.patrolRight; e.dir = -1; }
+
+      // Screen position
+      const eScreenY = e.y - city.scrollY;
+
+      // Detection: check if player is in detection cone below enemy
+      const dxToPlayer = this.droneX - e.x;
+      const dyToPlayer = this.droneY - eScreenY;
+      const distToPlayer = Math.sqrt(dxToPlayer * dxToPlayer + dyToPlayer * dyToPlayer);
+
+      e.alerted = false;
+      if (distToPlayer < e.detectRange && distToPlayer > 5) {
+        // Check if player is generally below/above the enemy (cone facing down)
+        const angleTo = Math.atan2(dyToPlayer, dxToPlayer);
+        const coneCenter = Math.PI / 2; // straight down
+        let angleDiff = Math.abs(angleTo - coneCenter);
+        if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+        if (angleDiff < e.detectAngle) {
+          e.alerted = true;
+        }
+      }
+
+      // Shoot if alerted
+      if (e.alerted) {
+        e.alertTimer += dt;
+        e.shootCooldown -= dt;
+        if (e.shootCooldown <= 0 && e.alertTimer > 0.3) {
+          e.shootCooldown = 1.2;
+          // Fire bullet toward player
+          const bAngle = Math.atan2(this.droneY - eScreenY, this.droneX - e.x);
+          city.enemyBullets.push({
+            x: e.x,
+            y: e.y,
+            vx: Math.cos(bAngle) * 200,
+            vy: Math.sin(bAngle) * 200,
+            life: 3,
+          });
+          SoundManager.get().playPlayerShoot();
+        }
+      } else {
+        e.alertTimer = 0;
+      }
+    }
+
+    // ── Update enemy bullets ──
+    for (let i = city.enemyBullets.length - 1; i >= 0; i--) {
+      const b = city.enemyBullets[i];
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
+
+      // Screen position
+      const bScreenY = b.y - city.scrollY;
+
+      // Hit player?
+      const bDx = b.x - this.droneX;
+      const bDy = bScreenY - this.droneY;
+      if (Math.sqrt(bDx * bDx + bDy * bDy) < 14 && city.invulnTimer <= 0) {
+        this._takeDamage(1);
+        city.invulnTimer = 1.0;
+        city.enemyBullets.splice(i, 1);
+        continue;
+      }
+
+      // Off screen or expired?
+      if (b.life <= 0 || bScreenY < -50 || bScreenY > H + 50 || b.x < -50 || b.x > W + 50) {
+        city.enemyBullets.splice(i, 1);
+      }
+    }
+
+    // ── Check proximity to target window ──
+    if (city.windowTarget) {
+      const tw = city.windowTarget;
+      const twScreenY = tw.y - city.scrollY;
+      const twDx = this.droneX - tw.x;
+      const twDy = this.droneY - twScreenY;
+      const twDist = Math.sqrt(twDx * twDx + twDy * twDy);
+
+      if (twDist < 50) {
+        if (!city.promptShown) {
+          city.promptShown = true;
+          city.enterReady = true;
+          this.instrText.setText('PRESS SPACE TO ENTER');
+          this.instrText.setAlpha(1);
+          this.instrBg.setAlpha(0.7);
+        }
+      } else {
+        if (city.promptShown && !city.transitioning) {
+          city.promptShown = false;
+          city.enterReady = false;
+          this.instrText.setAlpha(0);
+          this.instrBg.setAlpha(0);
+        }
+      }
+
+      // Enter the window
+      if (city.enterReady && Phaser.Input.Keyboard.JustDown(this.keys.space)) {
+        this._cityEnterWindow();
+        return;
+      }
+    }
+
+    // ── Draw everything ──
+    this._drawCityScene();
+  }
+
+  _drawCityScene() {
+    const city = this._city;
+    const gfx = city.gfx;
+    gfx.clear();
+
+    const offY = city.scrollY;
+
+    // Background — dark city
+    gfx.fillStyle(0x0a0a10);
+    gfx.fillRect(0, 0, W, H);
+
+    // Street surface (slightly lighter)
+    const streetLeft = (W - 180) / 2;
+    const streetRight = streetLeft + 180;
+    gfx.fillStyle(0x141418);
+    gfx.fillRect(streetLeft, 0, 180, H);
+
+    // Street center line (dashed)
+    gfx.lineStyle(1, 0x2a2a30, 0.5);
+    const centerX = W / 2;
+    for (let sy = -((offY * 0.8) % 40); sy < H; sy += 40) {
+      gfx.beginPath();
+      gfx.moveTo(centerX, sy);
+      gfx.lineTo(centerX, sy + 20);
+      gfx.strokePath();
+    }
+
+    // ── Draw buildings and windows ──
+    for (const block of city.blocks) {
+      for (const b of block.buildings) {
+        const sy = b.y - offY;
+        if (sy > H + 20 || sy + b.h < -20) continue;
+
+        // Building body — dark gray with slight variation
+        const shade = 0x1a1a22;
+        gfx.fillStyle(shade);
+        gfx.fillRect(b.x, sy, b.w, b.h);
+
+        // Building outline
+        gfx.lineStyle(1, 0x2a2a35, 0.6);
+        gfx.strokeRect(b.x, sy, b.w, b.h);
+
+        // Roof edge
+        gfx.fillStyle(0x252530);
+        gfx.fillRect(b.x - 2, sy, b.w + 4, 4);
+      }
+
+      // Windows
+      for (const w of block.windows) {
+        const sy = w.y - offY;
+        if (sy > H + 10 || sy + w.h < -10) continue;
+
+        if (w.isTarget) {
+          // THE glowing window — golden pulse
+          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+          const alpha = 0.4 + pulse * 0.6;
+          gfx.fillStyle(0xffaa22, alpha);
+          gfx.fillRect(w.x - 1, sy - 1, w.w + 2, w.h + 2);
+          // Inner glow
+          gfx.fillStyle(0xffdd66, alpha * 0.8);
+          gfx.fillRect(w.x + 2, sy + 2, w.w - 4, w.h - 4);
+          // Outer glow halo
+          gfx.lineStyle(3, 0xffaa22, alpha * 0.4);
+          gfx.strokeRect(w.x - 4, sy - 4, w.w + 8, w.h + 8);
+        } else {
+          // Dark/boarded window
+          const dark = Math.random() > 0.98 ? 0x1a1a22 : 0x0e0e14;
+          gfx.fillStyle(dark, 0.8);
+          gfx.fillRect(w.x, sy, w.w, w.h);
+          // Occasional board across window
+          if ((w.x * 7 + w.y * 3) % 11 < 3) {
+            gfx.lineStyle(2, 0x3a3020, 0.5);
+            gfx.beginPath();
+            gfx.moveTo(w.x, sy + w.h / 2);
+            gfx.lineTo(w.x + w.w, sy + w.h / 2);
+            gfx.strokePath();
+          }
+        }
+      }
+    }
+
+    // ── Draw rubble ──
+    for (const r of city.rubble) {
+      const sy = r.y - offY;
+      if (sy > H + 20 || sy < -20) continue;
+      gfx.fillStyle(r.color, 0.7);
+      gfx.fillRect(r.x - r.w / 2, sy - r.h / 2, r.w, r.h);
+    }
+
+    // ── Draw cables ──
+    gfx.lineStyle(2, 0x3a3a3a, 0.6);
+    for (const c of city.cables) {
+      const sy1 = c.y1 - offY;
+      const sy2 = c.y2 - offY;
+      if (sy1 > H + 30 && sy2 > H + 30) continue;
+      if (sy1 < -30 && sy2 < -30) continue;
+      const midX = (c.x1 + c.x2) / 2;
+      const midY = (sy1 + sy2) / 2 + c.sag;
+      gfx.beginPath();
+      gfx.moveTo(c.x1, sy1);
+      gfx.lineTo(midX - 30, (sy1 + midY) / 2 + c.sag * 0.3);
+      gfx.lineTo(midX, midY);
+      gfx.lineTo(midX + 30, (sy2 + midY) / 2 + c.sag * 0.3);
+      gfx.lineTo(c.x2, sy2);
+      gfx.strokePath();
+    }
+
+    // ── Draw enemy drones ──
+    for (const e of city.enemyDrones) {
+      const eScreenY = e.y - offY;
+      if (eScreenY > H + 30 || eScreenY < -30) continue;
+
+      // Detection cone (faint)
+      if (e.alerted) {
+        gfx.fillStyle(0xff0000, 0.08);
+      } else {
+        gfx.fillStyle(0xffff00, 0.04);
+      }
+      gfx.beginPath();
+      gfx.moveTo(e.x, eScreenY);
+      gfx.lineTo(e.x - 40, eScreenY + e.detectRange);
+      gfx.lineTo(e.x + 40, eScreenY + e.detectRange);
+      gfx.closePath();
+      gfx.fillPath();
+
+      // Drone body — triangle
+      const color = e.alerted ? 0xff2222 : 0xff6644;
+      gfx.fillStyle(color, 0.9);
+      gfx.beginPath();
+      gfx.moveTo(e.x, eScreenY - 8);
+      gfx.lineTo(e.x - 8, eScreenY + 6);
+      gfx.lineTo(e.x + 8, eScreenY + 6);
+      gfx.closePath();
+      gfx.fillPath();
+
+      // Eye / sensor
+      gfx.fillStyle(0xffff00, e.alerted ? 1 : 0.6);
+      gfx.fillCircle(e.x, eScreenY, 2);
+    }
+
+    // ── Draw enemy bullets ──
+    for (const b of city.enemyBullets) {
+      const bScreenY = b.y - offY;
+      if (bScreenY > H + 10 || bScreenY < -10) continue;
+      gfx.fillStyle(0xff4444, 0.9);
+      gfx.fillCircle(b.x, bScreenY, 3);
+      // Trail
+      gfx.fillStyle(0xff2222, 0.3);
+      gfx.fillCircle(b.x - b.vx * 0.02, bScreenY - b.vy * 0.02, 2);
+    }
+
+    // ── Draw player drone ──
+    const flashOn = this._city.invulnTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
+    if (!flashOn) {
+      // Drone body (circle with propeller hints)
+      gfx.fillStyle(0x00ccff, 0.9);
+      gfx.fillCircle(this.droneX, this.droneY, 8);
+      // Inner
+      gfx.fillStyle(0x0088cc, 0.8);
+      gfx.fillCircle(this.droneX, this.droneY, 4);
+      // Propeller arms
+      gfx.lineStyle(2, 0x00aadd, 0.7);
+      for (let a = 0; a < 4; a++) {
+        const angle = a * Math.PI / 2 + Date.now() / 200;
+        gfx.beginPath();
+        gfx.moveTo(this.droneX, this.droneY);
+        gfx.lineTo(this.droneX + Math.cos(angle) * 12, this.droneY + Math.sin(angle) * 12);
+        gfx.strokePath();
+      }
+      // Glow
+      gfx.fillStyle(0x00ccff, 0.15);
+      gfx.fillCircle(this.droneX, this.droneY, 18);
+    }
+  }
+
+  _cityEnterWindow() {
+    const city = this._city;
+    city.transitioning = true;
+    this.instrText.setAlpha(0);
+    this.instrBg.setAlpha(0);
+
+    SoundManager.get().playDoorOpen();
+
+    // Fade to black
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(40);
+    city.objects.push(overlay);
+    this.tweens.add({
+      targets: overlay,
+      alpha: 1,
+      duration: 1200,
+      onComplete: () => {
+        // Dark interior
+        const interiorBg = this.add.rectangle(W / 2, H / 2, W, H, 0x050505).setDepth(41);
+        city.objects.push(interiorBg);
+
+        // Flickering light effect
+        let flickerCount = 0;
+        const flickerEvent = this.time.addEvent({
+          delay: 150,
+          repeat: 5,
+          callback: () => {
+            flickerCount++;
+            interiorBg.setFillStyle(flickerCount % 2 === 0 ? 0x050505 : 0x1a1810);
+          },
+        });
+
+        // After flicker, light stabilizes
+        this.time.delayedCall(1200, () => {
+          interiorBg.setFillStyle(0x1a1810);
+
+          // "THE WARDEN" text
+          const wardenTitle = this.add.text(W / 2, H / 2 - 30, 'THE WARDEN', {
+            fontFamily: 'monospace', fontSize: '42px', color: '#ff4400',
+            fontStyle: 'bold',
+            shadow: { offsetX: 0, offsetY: 0, color: '#ff4400', blur: 20, fill: true },
+          }).setOrigin(0.5).setDepth(42).setAlpha(0);
+          city.objects.push(wardenTitle);
+
+          const wardenSub = this.add.text(W / 2, H / 2 + 20, 'HE KNOWS YOU\'RE HERE', {
+            fontFamily: 'monospace', fontSize: '14px', color: '#ff8844',
+          }).setOrigin(0.5).setDepth(42).setAlpha(0);
+          city.objects.push(wardenSub);
+
+          this.tweens.add({
+            targets: [wardenTitle, wardenSub],
+            alpha: 1,
+            duration: 800,
+          });
+
+          // After reveal, transition to boss fight
+          this.time.delayedCall(2500, () => {
+            this._cleanupCityIntro();
+            this._startBossFight();
+          });
+        });
+      },
+    });
+  }
+
+  _cleanupCityIntro() {
+    if (!this._city) return;
+    const city = this._city;
+    if (city.gfx) { city.gfx.destroy(); city.gfx = null; }
+    for (const obj of city.objects) {
+      if (obj && obj.destroy) obj.destroy();
+    }
+    city.objects = [];
+    city.blocks = [];
+    city.rubble = [];
+    city.cables = [];
+    city.enemyDrones = [];
+    city.enemyBullets = [];
+    this._city = null;
+  }
+
   _startBossTransition() {
     this.phase = 'transition';
     const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.9).setDepth(40);
@@ -1870,7 +2472,7 @@ export default class DroneScene extends Phaser.Scene {
 
     // Boss cover state machine
     this.bossCoverState = 'exposed';   // 'exposed' | 'moving_to_cover' | 'behind_cover' | 'peeking'
-    this.bossCoverTimer = 6 + Math.random() * 4;  // first cover attempt in 6-10s
+    this.bossCoverTimer = 3 + Math.random() * 2;  // first cover attempt in 3-5s (aggressive)
     this.bossPeekTimer = 0;
     this.bossCoverDuration = 0;
     this.bossBehindCouchY = COUCH_Y - 50; // Y position when behind couch (taller couch)
@@ -1893,8 +2495,15 @@ export default class DroneScene extends Phaser.Scene {
     this._spawnAmbientDust();
 
     // Instructions
-    this.instrText.setText('ARROWS aim — Z shoot — X missile — C dodge — Eliminate the target!');
+    this.instrText.setText('ARROWS aim — Z shoot — X missile — SHIFT dodge — Eliminate the target!');
     this.instrText.setColor('#ff8800');
+
+    // Dodge cooldown HUD indicator (bottom-left)
+    this.dodgeHudLabel = this.add.text(20, H - 55, 'SHIFT', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#00ccff',
+    }).setDepth(52).setScrollFactor(0);
+    this.dodgeHudBg = this.add.rectangle(62, H - 50, 40, 6, 0x222222).setDepth(51).setScrollFactor(0);
+    this.dodgeHudFill = this.add.rectangle(62, H - 50, 40, 6, 0x00ccff).setDepth(52).setScrollFactor(0);
 
     // Start boss entrance
     this._bossEntrance();
@@ -2447,8 +3056,8 @@ export default class DroneScene extends Phaser.Scene {
         if (distX < reachDist) {
           // Duck behind cover
           this.bossCoverState = 'behind_cover';
-          this.bossCoverDuration = 5 + Math.random() * 4;
-          this.bossPeekTimer = 1.2 + Math.random() * 0.8;
+          this.bossCoverDuration = 3 + Math.random() * 2; // 3-5s total cover time (was 5-9s)
+          this.bossPeekTimer = 0.8 + Math.random() * 0.4; // peek sooner (was 1.2-2.0s)
           this.bossVx = 0;
           this.bossY = behindCoverY;
           if (this.bossSprite) {
@@ -2491,10 +3100,10 @@ export default class DroneScene extends Phaser.Scene {
           this.tweens.add({ targets: hint, alpha: 0, duration: 800, onComplete: () => hint.destroy() });
         }
 
-        // Done hiding
+        // Done hiding — emerge and fight exposed briefly, then seek cover again
         if (this.bossCoverDuration <= 0) {
           this.bossCoverState = 'exposed';
-          this.bossCoverTimer = 7 + Math.random() * 5;
+          this.bossCoverTimer = 3 + Math.random() * 3; // 3-6s exposed (was 7-12s)
           this.bossY = BOSS_AREA_TOP + (BOSS_AREA_BOTTOM - BOSS_AREA_TOP) * 0.4;
           if (this.bossSprite) {
             this.bossSprite.setAlpha(1);
@@ -2513,16 +3122,16 @@ export default class DroneScene extends Phaser.Scene {
           this.bossSprite.setPosition(this.bossX, this.bossY);
         }
         if (this.bossPeekTimer <= 0) {
-          // Throw objects while peeking then duck back
+          // Rapid throw burst while peeking (3-5 objects), then duck back quickly
           this._bossThrowObject();
-          this.time.delayedCall(200, () => {
-            if (this.bossActive && !this.bossDefeated) this._bossThrowObject();
-          });
-          this.time.delayedCall(400, () => {
-            if (this.bossActive && !this.bossDefeated) this._bossThrowObject();
-          });
+          const burstCount = 2 + Math.floor(Math.random() * 3); // 2-4 additional throws
+          for (let t = 1; t <= burstCount; t++) {
+            this.time.delayedCall(t * 150, () => {
+              if (this.bossActive && !this.bossDefeated) this._bossThrowObject();
+            });
+          }
           this.bossCoverState = 'behind_cover';
-          this.bossPeekTimer = 1.2 + Math.random() * 1.0;
+          this.bossPeekTimer = 0.7 + Math.random() * 0.5; // faster re-peek (was 1.2-2.2s)
           this.bossY = behindCoverY;
           if (this.bossSprite) {
             this.bossSprite.setAlpha(0.25);
@@ -3065,27 +3674,39 @@ export default class DroneScene extends Phaser.Scene {
       }
     }
 
-    // C = dodge (quick dash to the side, brief invulnerability)
-    if (Phaser.Input.Keyboard.JustDown(this.keys.c) && this.dodgeCooldown <= 0 && !this.dodgeActive) {
-      this.dodgeCooldown = 1.2; // 1.2s cooldown
+    // SHIFT = dodge (quick dash to the side, brief invulnerability) — also accept C for backwards compat
+    const dodgePressed = Phaser.Input.Keyboard.JustDown(this.keys.shift) || Phaser.Input.Keyboard.JustDown(this.keys.c);
+    if (dodgePressed && this.dodgeCooldown <= 0 && !this.dodgeActive) {
+      this.dodgeCooldown = 1.0; // 1s cooldown
       this.dodgeActive = true;
       this.dodgeTimer = 0.25; // 250ms dodge window
       this.droneInvulnTimer = 0.35; // brief invulnerability
-      // Dash in the direction the player is pressing, or right by default
-      let dashDir = 0;
-      if (this.keys.left.isDown) dashDir = -1;
-      else if (this.keys.right.isDown) dashDir = 1;
-      else dashDir = (this.droneX < W / 2) ? 1 : -1; // dash away from center
-      const dashDist = 120;
-      this.droneX = Phaser.Math.Clamp(this.droneX + dashDir * dashDist, 30, W - 30);
+      // Dash in the direction the player is pressing, or away from center
+      let dashDirX = 0, dashDirY = 0;
+      if (this.keys.left.isDown) dashDirX = -1;
+      else if (this.keys.right.isDown) dashDirX = 1;
+      if (this.keys.up.isDown) dashDirY = -1;
+      else if (this.keys.down.isDown) dashDirY = 1;
+      // Default: dash away from center horizontally
+      if (dashDirX === 0 && dashDirY === 0) {
+        dashDirX = (this.droneX < W / 2) ? 1 : -1;
+      }
+      const dashDist = 130;
+      const mag = Math.sqrt(dashDirX * dashDirX + dashDirY * dashDirY) || 1;
+      this.droneX = Phaser.Math.Clamp(this.droneX + (dashDirX / mag) * dashDist, 30, W - 30);
+      this.droneY = Phaser.Math.Clamp(this.droneY + (dashDirY / mag) * dashDist, 90, H - 30);
       // Visual feedback
       if (this.droneSprite) {
         this.droneSprite.setAlpha(0.4);
         this.droneSprite.setPosition(this.droneX, this.droneY);
       }
       // Dodge trail effect
-      const trail = this.add.circle(this.droneX - dashDir * dashDist * 0.5, this.droneY, 16, 0x00ccff, 0.3).setDepth(24);
+      const trailX = this.droneX - (dashDirX / mag) * dashDist * 0.5;
+      const trailY = this.droneY - (dashDirY / mag) * dashDist * 0.5;
+      const trail = this.add.circle(trailX, trailY, 16, 0x00ccff, 0.3).setDepth(24);
       this.tweens.add({ targets: trail, alpha: 0, scaleX: 2, scaleY: 0.3, duration: 300, onComplete: () => trail.destroy() });
+      // Sound cue
+      SoundManager.get().playStep();
     }
 
     // Crosshair/drone movement (free movement across screen — represents aiming)
@@ -3105,6 +3726,15 @@ export default class DroneScene extends Phaser.Scene {
     this.droneX = Phaser.Math.Clamp(this.droneX, 30, W - 30);
     this.droneY = Phaser.Math.Clamp(this.droneY, 90, H - 30);
     if (this.droneSprite) this.droneSprite.setPosition(this.droneX, this.droneY);
+
+    // Update dodge cooldown HUD indicator
+    if (this.dodgeHudFill) {
+      const ready = this.dodgeCooldown <= 0;
+      const pct = ready ? 1 : Math.max(0, 1 - (this.dodgeCooldown / 1.0));
+      this.dodgeHudFill.setScale(pct, 1);
+      this.dodgeHudFill.setFillStyle(ready ? 0x00ccff : 0x555555);
+      if (this.dodgeHudLabel) this.dodgeHudLabel.setColor(ready ? '#00ccff' : '#555555');
+    }
 
     // Boss logic
     this._updateBoss(dt);
@@ -3239,6 +3869,7 @@ export default class DroneScene extends Phaser.Scene {
       this.doorsOpened = 2;
       this.score = 2000;
       // Cleanup whichever phase we're in
+      if (this.phase === 'city') this._cleanupCityIntro();
       if (this.phase === 'recon') this._cleanupRecon();
       if (this.phase === 'tunnel') this._cleanupTunnel();
       this._startBossTransition();
@@ -3246,6 +3877,9 @@ export default class DroneScene extends Phaser.Scene {
     }
 
     switch (this.phase) {
+      case 'city':
+        this._updateCityIntro(dt);
+        break;
       case 'recon':
         this._updateRecon(dt);
         break;
@@ -3260,7 +3894,7 @@ export default class DroneScene extends Phaser.Scene {
     }
 
     // Update HUD
-    const activePhases = ['recon', 'tunnel', 'boss'];
+    const activePhases = ['city', 'recon', 'tunnel', 'boss'];
     if (activePhases.includes(this.phase)) {
       this._updateHUD();
     }
@@ -3268,6 +3902,7 @@ export default class DroneScene extends Phaser.Scene {
 
   shutdown() {
     if (this._endScreen) this._endScreen.destroy();
+    this._cleanupCityIntro();
     this._stopAmbient();
     this.tweens.killAll();
     this.time.removeAllEvents();
