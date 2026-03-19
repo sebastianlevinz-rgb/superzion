@@ -34,23 +34,27 @@ export default class GameIntroScene extends BaseCinematicScene {
       {
         text: 'For 3,000 years, they tried to erase us.',
         color: '#ffffff', size: 24, y: H * 0.45,
-        setup: () => this._setupDarkBg(),
+        setup: () => this._setupDestructionBg(),
       },
       {
         text: 'Babylon. Rome. The Inquisition. The Camps.',
         color: '#cccccc', size: 22, y: H * 0.45,
+        setup: () => this._setupDestructionIntenseBg(),
       },
       {
         text: 'Every time, we came back.',
         color: '#FFD700', size: 26, y: H * 0.45,
+        setup: () => this._setupLightPointBg(),
       },
       {
         text: 'Our enemies change their names. Their flags. Their weapons.',
         color: '#cccccc', size: 20, y: H * 0.45,
+        setup: () => this._setupGrowingLight1(),
       },
       {
         text: 'But we are still here. The same people. The same land. The same fire.',
         color: '#ffffff', size: 22, y: H * 0.45,
+        setup: () => this._setupGrowingLight2(),
       },
 
       // --- Map of Israel surrounded by enemy logos ---
@@ -137,6 +141,509 @@ export default class GameIntroScene extends BaseCinematicScene {
     for (let i = 0; i < 6; i++) {
       bg.fillStyle(0x111111, 0.15);
       bg.fillCircle(Math.random() * W, Math.random() * H, 40 + Math.random() * 60);
+    }
+  }
+
+  // ── INTR-01: Destruction backgrounds (pages 0-1) ──
+
+  /** Page 0 — Flames, dark ruins, floating embers */
+  _setupDestructionBg() {
+    // Almost-black gradient background
+    const bg = this.add.graphics().setDepth(0);
+    this._addPageVisual(bg);
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        8 + t * 25 | 0,
+        2 + t * 6 | 0,
+        2 + t * 4 | 0
+      ));
+      bg.fillRect(0, y, W, 1);
+    }
+
+    // Abstract ruin silhouettes — dark gray rectangles suggesting crumbling buildings
+    const ruins = this.add.graphics().setDepth(1);
+    this._addPageVisual(ruins);
+    const ruinDefs = [
+      { x: 60, w: 35, h: 120 }, { x: 130, w: 20, h: 80 },
+      { x: 200, w: 45, h: 140 }, { x: 780, w: 30, h: 100 },
+      { x: 850, w: 40, h: 130 }, { x: 900, w: 25, h: 90 },
+    ];
+    for (const rd of ruinDefs) {
+      // Main column
+      ruins.fillStyle(0x1a1210, 0.8);
+      ruins.fillRect(rd.x, H - rd.h, rd.w, rd.h);
+      // Jagged top — broken edge
+      ruins.fillStyle(0x1a1210, 0.8);
+      ruins.fillTriangle(
+        rd.x, H - rd.h,
+        rd.x + rd.w * 0.6, H - rd.h - 15,
+        rd.x + rd.w, H - rd.h
+      );
+      // Crack line
+      ruins.lineStyle(1, 0x0d0a08, 0.6);
+      ruins.lineBetween(
+        rd.x + rd.w * 0.4, H - rd.h + 10,
+        rd.x + rd.w * 0.6, H
+      );
+    }
+
+    // Animated flame-like graphics at bottom
+    const flameColors = [0xff4400, 0xff6600, 0xff8800, 0xcc2200];
+    for (let i = 0; i < 8; i++) {
+      const fx = 40 + (i / 8) * (W - 80) + (Math.random() - 0.5) * 60;
+      const fy = H - 20 - Math.random() * 30;
+      const fr = 12 + Math.random() * 18;
+      const color = flameColors[i % flameColors.length];
+      const flame = this.add.circle(fx, fy, fr, color, 0.35).setDepth(2);
+      this._addPageVisual(flame);
+      // Pulsing scale to simulate flickering
+      this.tweens.add({
+        targets: flame,
+        scaleX: 0.6 + Math.random() * 0.5,
+        scaleY: 1.2 + Math.random() * 0.6,
+        alpha: 0.15 + Math.random() * 0.2,
+        duration: 400 + Math.random() * 400,
+        yoyo: true, repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 300,
+      });
+    }
+
+    // Floating ember particles rising upward
+    for (let i = 0; i < 12; i++) {
+      const ex = Math.random() * W;
+      const ey = H + 10 + Math.random() * 40;
+      const eSize = 1.5 + Math.random() * 2.5;
+      const emberColor = Math.random() > 0.5 ? 0xffaa00 : 0xff6600;
+      const ember = this.add.circle(ex, ey, eSize, emberColor, 0.6).setDepth(3);
+      this._addPageVisual(ember);
+      this.tweens.add({
+        targets: ember,
+        y: -20,
+        x: ex + (Math.random() - 0.5) * 80,
+        alpha: 0,
+        duration: 3000 + Math.random() * 3000,
+        delay: Math.random() * 2000,
+        repeat: -1,
+        ease: 'Sine.easeIn',
+        onRepeat: () => {
+          ember.x = Math.random() * W;
+          ember.y = H + 10;
+          ember.alpha = 0.6;
+        },
+      });
+    }
+  }
+
+  /** Page 1 — More intense destruction: wider flames, red glow from below */
+  _setupDestructionIntenseBg() {
+    // Dark background with stronger red tint
+    const bg = this.add.graphics().setDepth(0);
+    this._addPageVisual(bg);
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        12 + t * 45 | 0,
+        2 + t * 6 | 0,
+        2 + t * 4 | 0
+      ));
+      bg.fillRect(0, y, W, 1);
+    }
+
+    // Red glow from below — large gradient circles at bottom
+    const glowGfx = this.add.graphics().setDepth(1);
+    this._addPageVisual(glowGfx);
+    const glowPositions = [
+      { x: W * 0.15, r: 120 }, { x: W * 0.4, r: 140 },
+      { x: W * 0.65, r: 130 }, { x: W * 0.85, r: 110 },
+    ];
+    for (const gp of glowPositions) {
+      // Layered circles for soft gradient effect
+      for (let lr = gp.r; lr > 10; lr -= 15) {
+        const alpha = 0.03 + (1 - lr / gp.r) * 0.06;
+        glowGfx.fillStyle(0xff2200, alpha);
+        glowGfx.fillCircle(gp.x, H + 10, lr);
+      }
+    }
+
+    // More ruin silhouettes — denser, more broken
+    const ruins = this.add.graphics().setDepth(2);
+    this._addPageVisual(ruins);
+    const ruinDefs = [
+      { x: 30, w: 40, h: 150 }, { x: 100, w: 25, h: 90 },
+      { x: 160, w: 50, h: 170 }, { x: 260, w: 30, h: 110 },
+      { x: 680, w: 35, h: 120 }, { x: 750, w: 45, h: 160 },
+      { x: 830, w: 28, h: 95 }, { x: 890, w: 38, h: 140 },
+    ];
+    for (const rd of ruinDefs) {
+      ruins.fillStyle(0x1a0d08, 0.85);
+      ruins.fillRect(rd.x, H - rd.h, rd.w, rd.h);
+      // Jagged broken top
+      ruins.fillTriangle(
+        rd.x - 3, H - rd.h,
+        rd.x + rd.w * 0.5, H - rd.h - 12 - Math.random() * 10,
+        rd.x + rd.w + 3, H - rd.h
+      );
+    }
+
+    // Intense flames — wider spread, more layers
+    const flameColors = [0xff2200, 0xff4400, 0xff6600, 0xff8800, 0xffaa00];
+    for (let i = 0; i < 16; i++) {
+      const fx = (i / 16) * W + (Math.random() - 0.5) * 40;
+      const fy = H - 15 - Math.random() * 40;
+      const fr = 14 + Math.random() * 22;
+      const color = flameColors[i % flameColors.length];
+      const flame = this.add.circle(fx, fy, fr, color, 0.4).setDepth(3);
+      this._addPageVisual(flame);
+      this.tweens.add({
+        targets: flame,
+        scaleX: 0.5 + Math.random() * 0.5,
+        scaleY: 1.3 + Math.random() * 0.8,
+        alpha: 0.1 + Math.random() * 0.25,
+        duration: 300 + Math.random() * 400,
+        yoyo: true, repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 200,
+      });
+    }
+
+    // Dense ember shower
+    for (let i = 0; i < 20; i++) {
+      const ex = Math.random() * W;
+      const ey = H + 10 + Math.random() * 50;
+      const eSize = 1 + Math.random() * 3;
+      const emberColor = [0xffaa00, 0xff6600, 0xff4400, 0xffcc00][i % 4];
+      const ember = this.add.circle(ex, ey, eSize, emberColor, 0.7).setDepth(3);
+      this._addPageVisual(ember);
+      this.tweens.add({
+        targets: ember,
+        y: -30,
+        x: ex + (Math.random() - 0.5) * 120,
+        alpha: 0,
+        duration: 2500 + Math.random() * 2500,
+        delay: Math.random() * 1500,
+        repeat: -1,
+        ease: 'Sine.easeIn',
+        onRepeat: () => {
+          ember.x = Math.random() * W;
+          ember.y = H + 10;
+          ember.alpha = 0.7;
+        },
+      });
+    }
+
+    // Occasional camera flicker to suggest instability
+    this.time.delayedCall(800, () => {
+      if (this.skipped) return;
+      this.cameras.main.shake(150, 0.004);
+    });
+  }
+
+  // ── INTR-02: Point of light (page 2) ──
+
+  /** Page 2 — A spark of hope in total darkness */
+  _setupLightPointBg() {
+    // Very dark background — near black
+    const bg = this.add.graphics().setDepth(0);
+    this._addPageVisual(bg);
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        3 + t * 5 | 0,
+        2 + t * 4 | 0,
+        4 + t * 6 | 0
+      ));
+      bg.fillRect(0, y, W, 1);
+    }
+
+    const cx = W / 2, cy = H / 2;
+
+    // Outer soft pulsing glow — warm golden
+    const outerGlow = this.add.circle(cx, cy, 60, 0xFFD700, 0).setDepth(1);
+    this._addPageVisual(outerGlow);
+    this.tweens.add({
+      targets: outerGlow,
+      alpha: 0.08,
+      scale: 1.3,
+      duration: 1200,
+      ease: 'Sine.easeOut',
+    });
+    // Pulsing
+    this.tweens.add({
+      targets: outerGlow,
+      alpha: { from: 0.08, to: 0.14 },
+      scale: { from: 1.3, to: 1.5 },
+      duration: 1500,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 1200,
+    });
+
+    // Middle glow layer
+    const midGlow = this.add.circle(cx, cy, 25, 0xFFF0C0, 0).setDepth(2);
+    this._addPageVisual(midGlow);
+    this.tweens.add({
+      targets: midGlow,
+      alpha: 0.2,
+      duration: 1000,
+      delay: 300,
+      ease: 'Sine.easeOut',
+    });
+    this.tweens.add({
+      targets: midGlow,
+      alpha: { from: 0.2, to: 0.3 },
+      scale: { from: 1, to: 1.15 },
+      duration: 1200,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 1300,
+    });
+
+    // Core light — small bright point, starts tiny and grows
+    const core = this.add.circle(cx, cy, 4, 0xffffff, 0).setDepth(3);
+    this._addPageVisual(core);
+    this.tweens.add({
+      targets: core,
+      alpha: 0.9,
+      scale: 1.5,
+      duration: 800,
+      delay: 500,
+      ease: 'Back.easeOut',
+    });
+    // Gentle breathing
+    this.tweens.add({
+      targets: core,
+      alpha: { from: 0.9, to: 1 },
+      scale: { from: 1.5, to: 1.8 },
+      duration: 1000,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 1300,
+    });
+  }
+
+  // ── INTR-03: Growing light (pages 3-4) ──
+
+  /** Page 3 — Light is bigger, warm golden glow spreading */
+  _setupGrowingLight1() {
+    // Dark background but slightly warmer than light-point page
+    const bg = this.add.graphics().setDepth(0);
+    this._addPageVisual(bg);
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        5 + t * 10 | 0,
+        4 + t * 8 | 0,
+        2 + t * 5 | 0
+      ));
+      bg.fillRect(0, y, W, 1);
+    }
+
+    const cx = W / 2, cy = H / 2;
+
+    // Outer wide glow — the light has grown significantly
+    const wideGlow = this.add.circle(cx, cy, 150, 0xFFD700, 0).setDepth(1);
+    this._addPageVisual(wideGlow);
+    this.tweens.add({
+      targets: wideGlow,
+      alpha: 0.06,
+      duration: 800,
+      ease: 'Sine.easeOut',
+    });
+    this.tweens.add({
+      targets: wideGlow,
+      alpha: { from: 0.06, to: 0.1 },
+      scale: { from: 1, to: 1.15 },
+      duration: 2000,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 800,
+    });
+
+    // Middle glow — warmer and brighter
+    const midGlow = this.add.circle(cx, cy, 70, 0xFFF0C0, 0).setDepth(2);
+    this._addPageVisual(midGlow);
+    this.tweens.add({
+      targets: midGlow,
+      alpha: 0.18,
+      duration: 600,
+      ease: 'Sine.easeOut',
+    });
+    this.tweens.add({
+      targets: midGlow,
+      alpha: { from: 0.18, to: 0.28 },
+      scale: { from: 1, to: 1.12 },
+      duration: 1500,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 600,
+    });
+
+    // Inner bright core — bigger than before
+    const core = this.add.circle(cx, cy, 12, 0xffffff, 0).setDepth(3);
+    this._addPageVisual(core);
+    this.tweens.add({
+      targets: core,
+      alpha: 0.85,
+      duration: 500,
+      ease: 'Sine.easeOut',
+    });
+    this.tweens.add({
+      targets: core,
+      alpha: { from: 0.85, to: 1 },
+      scale: { from: 1, to: 1.2 },
+      duration: 1200,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 500,
+    });
+
+    // Subtle ray hints — small elongated ellipses radiating out
+    const rayCount = 6;
+    for (let i = 0; i < rayCount; i++) {
+      const angle = (i / rayCount) * Math.PI * 2;
+      const rayDist = 90;
+      const rx = cx + Math.cos(angle) * rayDist;
+      const ry = cy + Math.sin(angle) * rayDist;
+      const ray = this.add.ellipse(rx, ry, 4, 30, 0xFFD700, 0).setDepth(2);
+      ray.setRotation(angle + Math.PI / 2);
+      this._addPageVisual(ray);
+      this.tweens.add({
+        targets: ray,
+        alpha: 0.12,
+        duration: 800,
+        delay: 200 + i * 100,
+        ease: 'Sine.easeOut',
+      });
+      this.tweens.add({
+        targets: ray,
+        alpha: { from: 0.12, to: 0.2 },
+        scaleY: { from: 1, to: 1.3 },
+        duration: 1400,
+        yoyo: true, repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: 1000 + i * 100,
+      });
+    }
+  }
+
+  /** Page 4 — Light fills more of the screen, golden rays emerging, darkness retreating */
+  _setupGrowingLight2() {
+    // Background is warmer — darkness pushed to edges
+    const bg = this.add.graphics().setDepth(0);
+    this._addPageVisual(bg);
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        10 + t * 18 | 0,
+        8 + t * 14 | 0,
+        3 + t * 8 | 0
+      ));
+      bg.fillRect(0, y, W, 1);
+    }
+
+    const cx = W / 2, cy = H / 2;
+
+    // Very wide ambient glow — light is dominating
+    const ambientGlow = this.add.circle(cx, cy, 250, 0xFFD700, 0).setDepth(1);
+    this._addPageVisual(ambientGlow);
+    this.tweens.add({
+      targets: ambientGlow,
+      alpha: 0.07,
+      duration: 600,
+      ease: 'Sine.easeOut',
+    });
+    this.tweens.add({
+      targets: ambientGlow,
+      alpha: { from: 0.07, to: 0.12 },
+      scale: { from: 1, to: 1.1 },
+      duration: 2500,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 600,
+    });
+
+    // Secondary warm layer
+    const warmLayer = this.add.circle(cx, cy, 130, 0xFFF8E0, 0).setDepth(1);
+    this._addPageVisual(warmLayer);
+    this.tweens.add({
+      targets: warmLayer,
+      alpha: 0.12,
+      duration: 500,
+      ease: 'Sine.easeOut',
+    });
+    this.tweens.add({
+      targets: warmLayer,
+      alpha: { from: 0.12, to: 0.2 },
+      scale: { from: 1, to: 1.08 },
+      duration: 1800,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 500,
+    });
+
+    // Bright core — substantially bigger
+    const core = this.add.circle(cx, cy, 22, 0xffffff, 0).setDepth(3);
+    this._addPageVisual(core);
+    this.tweens.add({
+      targets: core,
+      alpha: 0.9,
+      duration: 400,
+      ease: 'Sine.easeOut',
+    });
+    this.tweens.add({
+      targets: core,
+      alpha: { from: 0.9, to: 1 },
+      scale: { from: 1, to: 1.15 },
+      duration: 1000,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 400,
+    });
+
+    // Prominent golden rays — longer, brighter, more of them
+    const rayCount = 10;
+    for (let i = 0; i < rayCount; i++) {
+      const angle = (i / rayCount) * Math.PI * 2;
+      const rayDist = 120;
+      const rx = cx + Math.cos(angle) * rayDist;
+      const ry = cy + Math.sin(angle) * rayDist;
+      const ray = this.add.ellipse(rx, ry, 5, 50, 0xFFD700, 0).setDepth(2);
+      ray.setRotation(angle + Math.PI / 2);
+      this._addPageVisual(ray);
+      this.tweens.add({
+        targets: ray,
+        alpha: 0.18,
+        duration: 600,
+        delay: i * 80,
+        ease: 'Sine.easeOut',
+      });
+      this.tweens.add({
+        targets: ray,
+        alpha: { from: 0.18, to: 0.3 },
+        scaleY: { from: 1, to: 1.4 },
+        duration: 1200,
+        yoyo: true, repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: 600 + i * 80,
+      });
+    }
+
+    // Dark edge vignette — darkness retreating to corners
+    const vignette = this.add.graphics().setDepth(1);
+    this._addPageVisual(vignette);
+    // Corner shadows to show darkness pushed outward
+    const cornerData = [
+      { x: 0, y: 0 }, { x: W, y: 0 },
+      { x: 0, y: H }, { x: W, y: H },
+    ];
+    for (const cd of cornerData) {
+      for (let lr = 180; lr > 30; lr -= 20) {
+        const alpha = 0.02 + (lr / 180) * 0.04;
+        vignette.fillStyle(0x000000, alpha);
+        vignette.fillCircle(cd.x, cd.y, lr);
+      }
     }
   }
 
