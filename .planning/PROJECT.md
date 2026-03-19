@@ -65,6 +65,7 @@ Every visible element must look intentional and polished — no placeholder cube
 
 - Shipped v1.1 Polish Pass: 4 phases, 7 plans, 10 requirements fulfilled
 - Shipped v1.2 Sprite & Polish v2: 6 phases, 6 plans, 18 requirements fulfilled
+- Shipped v1.3 Narrative & Audio: 6 phases (15-20), 18 requirements fulfilled
 - Codebase 100% procedural: no external assets, everything runtime-generated via canvas API and Web Audio API
 - `SpriteGenerator` produces canonical Mossad agent design; `CinematicTextures` and `ParadeTextures` aligned to match
 - `EndScreen.js` is the shared end-of-level module with `destroy()` cleanup — all 7 scenes use it
@@ -91,19 +92,21 @@ Every visible element must look intentional and polished — no placeholder cube
 | Camera shake inside _spawnExplosion() | Single insertion point covers all callers automatically | ✓ Good — DRY pattern |
 
 ---
-## Current Milestone: v1.3 Narrative & Audio
+## Current Milestone: v1.4 Final Polish
 
-**Goal:** Replace all cinematic text with a complete narrative script using page-by-page SPACE/ENTER advancement, and perform a full audio audit to guarantee zero silence anywhere in the game.
+**Goal:** Elevate every aspect of the game — real melodic intro music, sprite fixes, gameplay balance, new Level 4 drone intro, flight route animations, spectacular victory/title screens, and visual backgrounds for intro text.
 
 **Target features:**
-- Complete narrative script across intro, all 6 level cinematics, transitions, and victory
-- Page-by-page text advancement (SPACE/ENTER), blinking "► SPACE" indicator, ESC skip
-- New tagline: "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST."
-- New VictoryFinalScene with epic ending narrative
-- Mood-appropriate music in all cinematics (dark→heroic→epic)
-- Typewriter click SFX, impact booms, synchronized visual/audio effects
-- Full level audio verification — no silence anywhere
-- Global M key mute/unmute in all scenes
+- Real hummable melody in intro (piano/strings → military → heroic → epic drop)
+- Beard geometry fix (concave curve) across all SuperZion sprites
+- Star of David centered on chest in Level 1 top-down sprite
+- B-2 visual contrast enhancement (moonlight highlights, engine glow)
+- Level 3 missile rebalance (double plane speed, slower missiles, warnings, max 2)
+- Level 4 playable drone city intro + Warden boss rework + dodge mechanic
+- Flight route animations (Israel → destination) before each level
+- Victory scene with sunset, crowd, confetti, fireworks
+- Title screen with destroyed city background, glowing star, 3D text
+- Intro text pages with abstract visual backgrounds
 
 ---
-*Last updated: 2026-03-19 after v1.3 Narrative & Audio milestone started*
+*Last updated: 2026-03-19 after v1.4 Final Polish milestone started*

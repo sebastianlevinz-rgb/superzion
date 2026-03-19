@@ -1,89 +1,114 @@
 # Requirements: SuperZion
 
 **Defined:** 2026-03-19
-**Core Value:** Every visible element must look intentional and polished -- no placeholder cubes, no missing audio, no broken levels.
+**Core Value:** Every visible element must look intentional and polished — no placeholder cubes, no missing audio, no broken levels.
 
-## v1.3 Requirements
+## v1.4 Requirements
 
-Requirements for Narrative & Audio milestone. Each maps to roadmap phases.
+### Sprites & Visuals
 
-### Cinematic Text Engine
+- [ ] **SPRT-01**: SuperZion beard curves concave (downward following jawline) in all sprite generators
+- [ ] **SPRT-02**: Star of David centered on chest in Level 1 top-down sprite only
+- [ ] **SPRT-03**: B-2 has moonlight highlights on upper wing edges, darker lower shadows, 1px outline, brighter engine glow, heat distortion behind engines
 
-- [ ] **TEXT-01**: All cinematics use page-by-page text advancement — player presses SPACE or ENTER to advance, never auto-advances
-- [ ] **TEXT-02**: Blinking "► SPACE" indicator always visible at bottom during text pages
-- [ ] **TEXT-03**: ESC key skips entire cinematic in all scenes
+### Intro Music
 
-### Narrative - Intro
+- [ ] **MUSC-01**: Intro has real melodic music with hummable melody from first text line
+- [ ] **MUSC-02**: Music transitions through 4 moods (emotional minor → dark military → heroic major → epic climax drop)
+- [ ] **MUSC-03**: Music plays continuously from first text line through to menu transition
 
-- [ ] **NARR-01**: GameIntroScene completely rewritten with new narrative script (3000 years history → enemies → Israel responds → SuperZion reveal)
-- [ ] **NARR-02**: Each text line appears with typewriter effect, advances only on SPACE/ENTER
+### Level 3 Balance
 
-### Narrative - Level Cinematics
+- [ ] **LV3-01**: Player plane movement speed doubled
+- [ ] **LV3-02**: Missiles 30% slower with wider turning radius
+- [ ] **LV3-03**: 1.5s flashing red arrow warning before each missile
+- [ ] **LV3-04**: Maximum 2 missiles on screen simultaneously
 
-- [ ] **NARR-03**: All 6 level intro cinematics rewritten with new narrative script
-- [ ] **NARR-04**: 5 transition cinematics between levels with new narrative (post-level → next level setup)
+### Level 4 Overhaul
 
-### Narrative - Victory & Tagline
+- [ ] **LV4-01**: New playable drone intro through ruined city (top-down, 1-2 min)
+- [ ] **LV4-02**: Navigate rubble and find the glowing open window
+- [ ] **LV4-03**: Enemy patrol drones during city search
+- [ ] **LV4-04**: The Warden hides behind sofa, peeks to throw objects
+- [ ] **LV4-05**: SHIFT dodge/dash with 1-second cooldown
 
-- [ ] **NARR-05**: New VictoryFinalScene with complete victory narrative ending in "Am Yisrael Chai"
-- [ ] **NARR-06**: Tagline changed from "ONE SOLDIER. SIX MISSIONS. ZERO MERCY." to "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST." everywhere
+### Flight Animations
 
-### Audio - Cinematics
+- [ ] **CINE-01**: Mini flight animation from Israel to destination before each of 6 levels
+- [ ] **CINE-02**: Simplified Middle East map, dotted route line, "EN ROUTE TO [CITY]" text
+- [ ] **CINE-03**: Skippeable with SPACE, 3-4 seconds duration
 
-- [ ] **AUD-01**: Intro has psytrance 145+ BPM from frame 1 with mood transitions (dark → heroic → epic climax)
-- [ ] **AUD-02**: All cinematics (intro, level intros, transitions, victory) have mood-appropriate background music
-- [ ] **AUD-03**: Typewriter text produces click sound per letter in all cinematics
-- [ ] **AUD-04**: Boss appearances, explosions, and visual impacts have synchronized sound effects
+### Victory Enhancement
 
-### Audio - Global
+- [ ] **VICT-01**: Spectacular sunset with detailed clouds, sun rays, gradient sky
+- [ ] **VICT-02**: SuperZion illuminated by sunset (not black silhouette)
+- [ ] **VICT-03**: Celebrating crowd silhouettes applauding, jumping, waving Israel flags
+- [ ] **VICT-04**: Golden, blue, white confetti particles falling
+- [ ] **VICT-05**: Fireworks explosions in sky, intensify at "Am Yisrael Chai"
 
-- [ ] **AUD-05**: All 6 gameplay levels verified to have background music playing
-- [ ] **AUD-06**: All player and enemy actions have corresponding sound effects
-- [ ] **AUD-07**: Victory sequence has epic music with climax at "Am Yisrael Chai" moment
-- [ ] **AUD-08**: M key mute/unmute works globally in every scene (menu, cinematics, gameplay, victory)
-- [ ] **AUD-09**: Zero silence anywhere in the game from intro through credits
+### Title Screen
 
-## Future Requirements
+- [ ] **TITL-01**: Destroyed city background with smoke, fire, golden light entering
+- [ ] **TITL-02**: Maguen David with light rays emanating from points
+- [ ] **TITL-03**: SUPERZION text with 3D effect (shadow, dark outline, metallic gold reflection)
+- [ ] **TITL-04**: Floating spark/ember particles
+- [ ] **TITL-05**: Subtle screen shake when title appears
 
-None — all audio/narrative scope captured in this milestone.
+### Intro Backgrounds
+
+- [ ] **INTR-01**: Abstract destruction imagery (flames, ruins) during persecution text lines
+- [ ] **INTR-02**: Point of light appearing at "Every time, we came back"
+- [ ] **INTR-03**: Light growing at "We are still here"
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| External audio files (mp3/ogg) | Everything stays procedural via Web Audio API |
-| Voice acting / text-to-speech | Not feasible with procedural approach |
-| Subtitle language options | Single language (English) |
-| Save/load system | Not relevant to narrative/audio milestone |
+| External audio files | Everything stays procedural via Web Audio API |
+| Save/load system | Not in current milestone scope |
+| Accessibility features | Deferred |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEXT-01 | Phase 15 | Pending |
-| TEXT-02 | Phase 15 | Pending |
-| TEXT-03 | Phase 15 | Pending |
-| NARR-01 | Phase 16 | Pending |
-| NARR-02 | Phase 16 | Pending |
-| NARR-03 | Phase 17 | Pending |
-| NARR-04 | Phase 17 | Pending |
-| NARR-05 | Phase 18 | Pending |
-| NARR-06 | Phase 18 | Pending |
-| AUD-01 | Phase 19 | Pending |
-| AUD-02 | Phase 19 | Pending |
-| AUD-03 | Phase 19 | Pending |
-| AUD-04 | Phase 19 | Pending |
-| AUD-05 | Phase 20 | Pending |
-| AUD-06 | Phase 20 | Pending |
-| AUD-07 | Phase 20 | Pending |
-| AUD-08 | Phase 20 | Pending |
-| AUD-09 | Phase 20 | Pending |
+| SPRT-01 | Phase 21 | Pending |
+| SPRT-02 | Phase 21 | Pending |
+| SPRT-03 | Phase 21 | Pending |
+| MUSC-01 | Phase 22 | Pending |
+| MUSC-02 | Phase 22 | Pending |
+| MUSC-03 | Phase 22 | Pending |
+| LV3-01 | Phase 23 | Pending |
+| LV3-02 | Phase 23 | Pending |
+| LV3-03 | Phase 23 | Pending |
+| LV3-04 | Phase 23 | Pending |
+| LV4-01 | Phase 24 | Pending |
+| LV4-02 | Phase 24 | Pending |
+| LV4-03 | Phase 24 | Pending |
+| LV4-04 | Phase 25 | Pending |
+| LV4-05 | Phase 25 | Pending |
+| CINE-01 | Phase 26 | Pending |
+| CINE-02 | Phase 26 | Pending |
+| CINE-03 | Phase 26 | Pending |
+| VICT-01 | Phase 27 | Pending |
+| VICT-02 | Phase 27 | Pending |
+| VICT-03 | Phase 27 | Pending |
+| VICT-04 | Phase 27 | Pending |
+| VICT-05 | Phase 27 | Pending |
+| TITL-01 | Phase 28 | Pending |
+| TITL-02 | Phase 28 | Pending |
+| TITL-03 | Phase 28 | Pending |
+| TITL-04 | Phase 28 | Pending |
+| TITL-05 | Phase 28 | Pending |
+| INTR-01 | Phase 29 | Pending |
+| INTR-02 | Phase 29 | Pending |
+| INTR-03 | Phase 29 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 18 total
-- Mapped to phases: 18
+- v1.4 requirements: 31 total
+- Mapped to phases: 31
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after initial definition*
+*Last updated: 2026-03-19 after v1.4 milestone definition*

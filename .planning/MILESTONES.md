@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.3 Narrative & Audio (Shipped: 2026-03-19)
+
+**Phases completed:** 6 phases (15-20), 6 plans
+
+**Key accomplishments:**
+- Complete narrative script across all cinematics (intro, 6 levels, transitions, victory)
+- Page-by-page SPACE/ENTER text advancement with ESC skip
+- New tagline: "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST."
+- VictoryFinalScene with "Am Yisrael Chai" ending
+- Mood-appropriate music in all cinematics
+- Full audio audit — zero silence anywhere, global M key mute
+
+**Last phase:** 20 (Audio Global Audit)
+
+---
+
 ## v1.2 Sprite & Polish v2 (Shipped: 2026-03-19)
 
 **Phases completed:** 6 phases (9-14), 6 plans
