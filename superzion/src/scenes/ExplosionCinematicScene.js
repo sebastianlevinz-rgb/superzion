@@ -5,6 +5,7 @@
 import Phaser from 'phaser';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
+import { showVictoryScreen } from '../ui/EndScreen.js';
 
 const W = 960;
 const H = 540;
@@ -17,7 +18,11 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
   constructor() { super('ExplosionCinematicScene'); }
 
   init(data) {
-    this.stats = data.stats || { timesDetected: 0, elapsed: 0, hp: 5, maxHp: 5 };
+    this.stats = data.stats || { timesDetected: 0, elapsed: 0, hp: 3, maxHp: 3 };
+    // Support both old (timesDetected) and new (guardsKilled) stat formats
+    if (this.stats.guardsKilled !== undefined && this.stats.timesDetected === 0) {
+      this.stats._bomberman = true;
+    }
   }
 
   create() {
@@ -39,6 +44,7 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
     this.enterKey = this.input.keyboard.addKey('ENTER');
     this.spaceKey = this.input.keyboard.addKey('SPACE');
     this.mKey = this.input.keyboard.addKey('M');
+    this.rKey = this.input.keyboard.addKey('R');
 
     // Skip hint during cinematic
     this.skipHint = this.add.text(W - 16, H - 14, 'PRESS ENTER TO SKIP', {
@@ -489,81 +495,42 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.fadeIn(500, 0, 0, 0);
 
-    // Black background (screen space)
-    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000);
-    bg.setScrollFactor(0); bg.setDepth(200);
-
-    // Title
-    const title = this.add.text(W / 2, 90, 'MISSION COMPLETE', {
-      fontFamily: 'monospace', fontSize: '36px', color: '#FFD700',
-      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 16, fill: true },
-    });
-    title.setOrigin(0.5); title.setScrollFactor(0); title.setDepth(201);
-    title.setAlpha(0);
-    this.tweens.add({ targets: title, alpha: 1, duration: 500 });
-
-    // Subtitle
-    const sub = this.add.text(W / 2, 132, 'OPERATION TEHRAN \u2014 SUCCESS', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#ffffff',
-    });
-    sub.setOrigin(0.5); sub.setScrollFactor(0); sub.setDepth(201);
-    sub.setAlpha(0);
-    this.tweens.add({ targets: sub, alpha: 1, duration: 500, delay: 200 });
-
-    // Separator
-    const sep1 = this.add.rectangle(W / 2, 156, 280, 2, 0x00e5ff, 0.5);
-    sep1.setScrollFactor(0); sep1.setDepth(201);
-    sep1.setAlpha(0);
-    this.tweens.add({ targets: sep1, alpha: 1, duration: 300, delay: 400 });
-
-    // Stats
+    // Stats computation
     const elapsed = this.stats.elapsed;
     const mins = Math.floor(elapsed / 60000);
     const secs = Math.floor((elapsed % 60000) / 1000);
     const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
 
-    const detected = this.stats.timesDetected;
-    let rating;
-    if (detected === 0)       rating = '\u2605\u2605\u2605 GHOST';
-    else if (detected <= 3)   rating = '\u2605\u2605\u2606 SHADOW';
-    else if (detected <= 6)   rating = '\u2605\u2606\u2606 OPERATIVE';
-    else                      rating = '\u2606\u2606\u2606 DETECTED';
+    const lives = this.stats.hp || 0;
+    const maxLives = this.stats.maxHp || 3;
+    let ratingLabel;
+    if (lives === maxLives)   ratingLabel = 'PERFECT';
+    else if (lives >= 2)      ratingLabel = 'GREAT';
+    else if (lives >= 1)      ratingLabel = 'GOOD';
+    else                      ratingLabel = 'SURVIVED';
 
-    try { const sc = detected === 0 ? 3 : detected <= 3 ? 2 : detected <= 6 ? 1 : 0; localStorage.setItem('superzion_stars_1', String(sc)); } catch(e) {}
+    const starCount = lives === maxLives ? 3 : lives >= 2 ? 2 : lives >= 1 ? 1 : 0;
+    try { localStorage.setItem('superzion_stars_1', String(starCount)); } catch(e) {}
 
-    const lines = [
-      `TIME: ${timeStr}`,
-      `HP REMAINING: ${this.stats.hp}/${this.stats.maxHp}`,
-      `TIMES DETECTED: ${detected}`,
-      `RATING: ${rating}`,
+    const stats = this.stats._bomberman ? [
+      { label: 'TIME', value: timeStr },
+      { label: 'LIVES REMAINING', value: `${lives}/${maxLives}` },
+      { label: 'GUARDS ELIMINATED', value: `${this.stats.guardsKilled || 0}` },
+      { label: 'POWER-UPS', value: `${this.stats.powerupsCollected || 0}` },
+      { label: 'RATING', value: ratingLabel },
+    ] : [
+      { label: 'TIME', value: timeStr },
+      { label: 'HP REMAINING', value: `${lives}/${maxLives}` },
+      { label: 'TIMES DETECTED', value: `${this.stats.timesDetected || 0}` },
+      { label: 'RATING', value: ratingLabel },
     ];
 
-    let yPos = 190;
-    lines.forEach((line, i) => {
-      const t = this.add.text(W / 2, yPos, line, {
-        fontFamily: 'monospace', fontSize: '14px', color: '#00e5ff',
-      });
-      t.setOrigin(0.5); t.setScrollFactor(0); t.setDepth(201);
-      t.setAlpha(0);
-      this.tweens.add({ targets: t, alpha: 1, duration: 300, delay: 600 + i * 250 });
-      yPos += 30;
-    });
-
-    // Separator 2
-    this.time.delayedCall(1600, () => {
-      const sep2 = this.add.rectangle(W / 2, yPos + 10, 260, 2, 0x00e5ff, 0.5);
-      sep2.setScrollFactor(0); sep2.setDepth(201);
-    });
-
-    // Continue prompt
-    this.time.delayedCall(1800, () => {
-      const cont = this.add.text(W / 2, yPos + 40, 'PRESS ENTER FOR NEXT MISSION', {
-        fontFamily: 'monospace', fontSize: '18px', color: '#ffffff',
-      });
-      cont.setOrigin(0.5); cont.setScrollFactor(0); cont.setDepth(201);
-      this.tweens.add({ targets: cont, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
-
-      this.canSkipToMenu = true;
+    this._endScreen = showVictoryScreen(this, {
+      title: 'MISSION COMPLETE',
+      stats,
+      stars: starCount,
+      currentScene: 'GameScene',
+      nextScene: 'BeirutIntroCinematicScene',
     });
   }
 
@@ -573,19 +540,24 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
-    const skip = Phaser.Input.Keyboard.JustDown(this.enterKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey);
-    if (!skip) return;
 
+    // Victory screen keys handled by EndScreen.js
     if (this.canSkipToMenu) {
-      // On victory screen → go to Level 2 intro
-      this.scene.start('BeirutIntroCinematicScene');
-    } else if (!this.victoryShown) {
-      // During cinematic → skip to victory
+      return;
+    }
+
+    // During cinematic: ENTER/SPACE = skip to victory
+    const skip = Phaser.Input.Keyboard.JustDown(this.enterKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey);
+    if (skip && !this.victoryShown) {
       this.victoryShown = true;
       this.tweens.killAll();
       this.time.removeAllEvents();
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.time.delayedCall(400, () => this._showVictory());
     }
+  }
+
+  shutdown() {
+    if (this._endScreen) this._endScreen.destroy();
   }
 }

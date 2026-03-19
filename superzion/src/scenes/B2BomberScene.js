@@ -12,6 +12,8 @@ import {
   createDesertNight, createCityNight, createMountainNight,
   createNatanzMountain,
 } from '../utils/B2Textures.js';
+import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
+import { showControlsOverlay } from '../ui/ControlsOverlay.js';
 
 const W = 960;
 const H = 540;
@@ -21,6 +23,15 @@ const GRAVITY = 380;
 const BUSTER_TOTAL = 6;
 const MOUNTAIN_LAYERS = 5;
 const CHAFF_TOTAL = 5;
+
+// B-2 physics constants
+const B2_GRAVITY = 150;         // gravity on B-2 px/s²
+const B2_STALL_SPEED = 80;     // stall speed
+const B2_STALL_GRAVITY = 300;  // extra gravity when stalling
+const B2_CLIMB_ACCEL = 350;    // UP accel
+const B2_DIVE_ACCEL = 200;     // DOWN accel
+const B2_MAX_CLIMB_VY = -250;  // max climb speed
+const B2_MAX_FALL_VY = 350;    // max fall speed
 
 // Distance thresholds (shorter phases — get to bombing faster)
 const STEALTH_CITY_DIST = 1800;
@@ -42,6 +53,9 @@ export default class B2BomberScene extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor('#000000');
+
+    // Controls overlay
+    showControlsOverlay(this, 'ARROWS: Fly | SPACE: Drop Bomb | C: Chaff | ESC: Pause');
 
     // Generate textures
     createB2SideSprite(this);
@@ -67,6 +81,8 @@ export default class B2BomberScene extends Phaser.Scene {
     this.jetX = 120;
     this.jetY = 160;
     this.jetVX = B2_SPEED;
+    this.jetVY = 0;
+    this.crashed = false;
     this.facingRight = true;
     this.scrollX = 0;
     this.phaseTimer = 0;
@@ -158,9 +174,11 @@ export default class B2BomberScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(30);
 
     this.instrText = this.add.text(W / 2, H - 35, '', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#888888',
+      fontFamily: 'monospace', fontSize: '14px', color: '#ffffff', fontStyle: 'bold',
       shadow: { offsetX: 0, offsetY: 0, color: '#000000', blur: 4, fill: true },
     }).setOrigin(0.5).setDepth(30);
+    this.instrBg = this.add.rectangle(this.instrText.x, this.instrText.y, 960, 28, 0x000000, 0.7)
+      .setScrollFactor(0).setDepth(this.instrText.depth - 1);
   }
 
   _setupInput() {
@@ -173,8 +191,10 @@ export default class B2BomberScene extends Phaser.Scene {
       enter: this.input.keyboard.addKey('ENTER'),
       c: this.input.keyboard.addKey('C'),
       m: this.input.keyboard.addKey('M'),
-      // p: this.input.keyboard.addKey('P'), // debug skip (disabled)
+      p: this.input.keyboard.addKey('P'),
       esc: this.input.keyboard.addKey('ESC'),
+      r: this.input.keyboard.addKey('R'),
+      s: this.input.keyboard.addKey('S'),
     };
     this.isPaused = false;
     this.pauseObjects = [];
@@ -304,10 +324,12 @@ export default class B2BomberScene extends Phaser.Scene {
 
   _updateEngineTrail(dt) {
     if (Math.random() < 0.2) {
-      const ox = this.facingRight ? -55 : 55;
+      const ox = this.facingRight ? -65 : 65;
+      // Two engine exhaust ports offset from center (top-down planform view)
+      const engineOffset = (Math.random() < 0.5 ? -5 : 5) + (Math.random() - 0.5) * 3;
       const p = this.add.circle(
         this.jetX + ox + (Math.random() - 0.5) * 6,
-        this.jetY + (Math.random() - 0.5) * 3,
+        this.jetY + engineOffset,
         1 + Math.random(),
         Phaser.Display.Color.GetColor(80, 60 + Math.floor(Math.random() * 30), 40),
         0.15
@@ -448,7 +470,7 @@ export default class B2BomberScene extends Phaser.Scene {
     }
   }
 
-  _releaseChaffa() {
+  _releaseChaff() {
     if (this.chaff <= 0) return;
     this.chaff--;
     this.chaffUsed++;
@@ -493,6 +515,7 @@ export default class B2BomberScene extends Phaser.Scene {
     this.jetX = 120;
     this.jetY = 160;
     this.jetVX = B2_SPEED;
+    this.jetVY = 0;
     this.facingRight = true;
 
     this.farTerrain.setVisible(false);
@@ -568,17 +591,28 @@ export default class B2BomberScene extends Phaser.Scene {
       this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 200 * dt);
     }
 
-    const vSpeed = 280;
-    if (this.keys.up.isDown) this.jetY = Math.max(40, this.jetY - vSpeed * dt);
-    if (this.keys.down.isDown) this.jetY = Math.min(GROUND_Y - 60, this.jetY + vSpeed * dt);
+    // Gravity physics
+    this.jetVY += B2_GRAVITY * dt;
+    if (this.keys.up.isDown) this.jetVY -= B2_CLIMB_ACCEL * dt;
+    if (this.keys.down.isDown) this.jetVY += B2_DIVE_ACCEL * dt;
+    if (this.jetVX < B2_STALL_SPEED) this.jetVY += B2_STALL_GRAVITY * dt;
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, B2_MAX_CLIMB_VY, B2_MAX_FALL_VY);
+    this.jetY += this.jetVY * dt;
+    if (this.jetY < 40) { this.jetY = 40; this.jetVY = Math.max(0, this.jetVY); }
+    if (this.jetY >= GROUND_Y - 20) { this._crashJet('ground'); return; }
 
     // Chaff
-    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaffa();
+    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaff();
 
     const targetX = 200 + (this.jetVX - B2_SPEED) * 0.5;
     this.jetX += (targetX - this.jetX) * 3 * dt;
     this.jetX = Phaser.Math.Clamp(this.jetX, 60, W - 60);
     this.jetSprite.setPosition(this.jetX, this.jetY);
+
+    // Tilt based on vertical velocity
+    const stealthTilt = Phaser.Math.Clamp(this.jetVY / 400, -0.3, 0.3);
+    const curAngle = this.jetSprite.rotation || 0;
+    this.jetSprite.setRotation(curAngle + (stealthTilt - curAngle) * 5 * dt);
 
     this._scrollLayers(this.jetVX, dt);
     this.flightDistance += this.jetVX * dt;
@@ -832,6 +866,7 @@ export default class B2BomberScene extends Phaser.Scene {
     this.phase = 'defense';
     MusicManager.get().playLevel5Music('defense');
     this.phaseTimer = 0;
+    this.jetVY = 0;
     this.missileSpawnTimer = 0;
     this.flakTimer = 0;
     this.defenseDistance = 0;
@@ -867,16 +902,27 @@ export default class B2BomberScene extends Phaser.Scene {
       this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 200 * dt);
     }
 
-    const vSpeed = 320;
-    if (this.keys.up.isDown) this.jetY = Math.max(40, this.jetY - vSpeed * dt);
-    if (this.keys.down.isDown) this.jetY = Math.min(GROUND_Y - 60, this.jetY + vSpeed * dt);
+    // Gravity physics
+    this.jetVY += B2_GRAVITY * dt;
+    if (this.keys.up.isDown) this.jetVY -= B2_CLIMB_ACCEL * dt;
+    if (this.keys.down.isDown) this.jetVY += B2_DIVE_ACCEL * dt;
+    if (this.jetVX < B2_STALL_SPEED) this.jetVY += B2_STALL_GRAVITY * dt;
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, B2_MAX_CLIMB_VY, B2_MAX_FALL_VY);
+    this.jetY += this.jetVY * dt;
+    if (this.jetY < 40) { this.jetY = 40; this.jetVY = Math.max(0, this.jetVY); }
+    if (this.jetY >= GROUND_Y - 20) { this._crashJet('ground'); return; }
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaffa();
+    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaff();
 
     const targetX = 250 + (this.jetVX - B2_SPEED) * 0.5;
     this.jetX += (targetX - this.jetX) * 3 * dt;
     this.jetX = Phaser.Math.Clamp(this.jetX, 60, W - 60);
     this.jetSprite.setPosition(this.jetX, this.jetY);
+
+    // Tilt
+    const defTilt = Phaser.Math.Clamp(this.jetVY / 400, -0.3, 0.3);
+    const defAngle = this.jetSprite.rotation || 0;
+    this.jetSprite.setRotation(defAngle + (defTilt - defAngle) * 5 * dt);
 
     this._scrollLayers(this.jetVX, dt);
     this.defenseDistance += this.jetVX * dt;
@@ -944,6 +990,7 @@ export default class B2BomberScene extends Phaser.Scene {
     this.jetX = 80;
     this.jetY = 100;
     this.jetVX = B2_SPEED;
+    this.jetVY = 0;
 
     // Place mountain
     this.mountainSprite = this.add.image(MTN_X, GROUND_Y - 80, 'natanz_mountain').setDepth(2);
@@ -983,11 +1030,21 @@ export default class B2BomberScene extends Phaser.Scene {
     if (this.jetX > W - 60) { this.facingRight = false; this.jetSprite.setFlipX(true); }
     if (this.jetX < 60) { this.facingRight = true; this.jetSprite.setFlipX(false); }
 
-    // Vertical dodge (responsive)
-    if (this.keys.up.isDown) this.jetY = Math.max(40, this.jetY - 320 * dt);
-    if (this.keys.down.isDown) this.jetY = Math.min(160, this.jetY + 320 * dt);
+    // Gravity physics (reduced during bombing — auto-fly keeps altitude better)
+    this.jetVY += B2_GRAVITY * 0.6 * dt;
+    if (this.keys.up.isDown) this.jetVY -= B2_CLIMB_ACCEL * dt;
+    if (this.keys.down.isDown) this.jetVY += B2_DIVE_ACCEL * dt;
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, B2_MAX_CLIMB_VY, B2_MAX_FALL_VY);
+    this.jetY += this.jetVY * dt;
+    if (this.jetY < 40) { this.jetY = 40; this.jetVY = Math.max(0, this.jetVY); }
+    if (this.jetY >= GROUND_Y - 20) { this._crashJet('ground'); return; }
 
     this.jetSprite.setPosition(this.jetX, this.jetY);
+
+    // Tilt
+    const bombTilt = Phaser.Math.Clamp(this.jetVY / 400, -0.3, 0.3);
+    const bombAngle = this.jetSprite.rotation || 0;
+    this.jetSprite.setRotation(bombAngle + (bombTilt - bombAngle) * 5 * dt);
     this.jetVX = moveSpeed * (this.facingRight ? 1 : -1);
 
     // Bomb cooldown
@@ -1237,6 +1294,7 @@ export default class B2BomberScene extends Phaser.Scene {
     this.jetX = W - 200;
     this.jetY = 140;
     this.jetVX = -B2_SPEED;
+    this.jetVY = 0;
     this._cleanupMissiles();
     this.missileSpawnTimer = 0;
     this.escapeDistance = 0;
@@ -1272,17 +1330,27 @@ export default class B2BomberScene extends Phaser.Scene {
       this.jetVX += Math.sign(diff) * Math.min(Math.abs(diff), 200 * dt);
     }
 
-    const vSpeed = 300;
-    if (this.keys.up.isDown) this.jetY = Math.max(40, this.jetY - vSpeed * dt);
-    if (this.keys.down.isDown) this.jetY = Math.min(GROUND_Y - 60, this.jetY + vSpeed * dt);
+    // Gravity physics
+    this.jetVY += B2_GRAVITY * dt;
+    if (this.keys.up.isDown) this.jetVY -= B2_CLIMB_ACCEL * dt;
+    if (this.keys.down.isDown) this.jetVY += B2_DIVE_ACCEL * dt;
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, B2_MAX_CLIMB_VY, B2_MAX_FALL_VY);
+    this.jetY += this.jetVY * dt;
+    if (this.jetY < 40) { this.jetY = 40; this.jetVY = Math.max(0, this.jetVY); }
+    if (this.jetY >= GROUND_Y - 20) { this._crashJet('ground'); return; }
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaffa();
+    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaff();
 
     const targetX = (W - 250) + (this.jetVX + B2_SPEED) * 0.5;
     this.jetX += (targetX - this.jetX) * 3 * dt;
     this.jetX = Phaser.Math.Clamp(this.jetX, 60, W - 60);
     this.jetSprite.setFlipX(true);
     this.jetSprite.setPosition(this.jetX, this.jetY);
+
+    // Tilt
+    const escTilt = Phaser.Math.Clamp(this.jetVY / 400, -0.3, 0.3);
+    const escAngle = this.jetSprite.rotation || 0;
+    this.jetSprite.setRotation(escAngle + (escTilt - escAngle) * 5 * dt);
 
     this._scrollLayers(this.jetVX, dt);
     this.escapeDistance += Math.abs(this.jetVX) * dt;
@@ -1325,6 +1393,46 @@ export default class B2BomberScene extends Phaser.Scene {
   }
 
   // ═════════════════════════════════════════════════════════════
+  // CRASH
+  // ═════════════════════════════════════════════════════════════
+  _crashJet(reason) {
+    if (this.crashed) return;
+    this.crashed = true;
+    this.phase = 'dead';
+    this._stopAmbient();
+
+    SoundManager.get().playExplosion();
+    this.cameras.main.shake(600, 0.05);
+
+    if (this.jetSprite) this.jetSprite.setVisible(false);
+
+    for (let i = 0; i < 15; i++) {
+      const ex = this.jetX + (Math.random() - 0.5) * 80;
+      const ey = this.jetY + (Math.random() - 0.5) * 40;
+      const r = 5 + Math.random() * 15;
+      const color = [0xff4400, 0xff8800, 0xffcc00][Math.floor(Math.random() * 3)];
+      const fireball = this.add.circle(ex, ey, r, color, 0.9).setDepth(25);
+      this.tweens.add({
+        targets: fireball,
+        scaleX: 2 + Math.random(), scaleY: 2 + Math.random(),
+        alpha: 0, duration: 600 + Math.random() * 400, delay: i * 50,
+        onComplete: () => fireball.destroy(),
+      });
+    }
+
+    const crashText = this.add.text(W / 2, H / 2, 'CRASHED', {
+      fontFamily: 'monospace', fontSize: '48px', color: '#ff4444',
+      shadow: { offsetX: 0, offsetY: 0, color: '#ff4444', blur: 20, fill: true },
+    }).setOrigin(0.5).setDepth(55).setAlpha(0);
+    this.tweens.add({ targets: crashText, alpha: 1, duration: 500 });
+
+    this.time.delayedCall(3000, () => {
+      crashText.destroy();
+      this._showVictory();
+    });
+  }
+
+  // ═════════════════════════════════════════════════════════════
   // VICTORY / RESULTS
   // ═════════════════════════════════════════════════════════════
   _showVictory() {
@@ -1335,68 +1443,44 @@ export default class B2BomberScene extends Phaser.Scene {
 
     const layersDestroyed = MOUNTAIN_LAYERS - Math.max(0, this.mountainHP);
     const missionSuccess = layersDestroyed >= MOUNTAIN_LAYERS;
-    this.missionSuccess = missionSuccess; // store for ENTER handler
+    this.missionSuccess = missionSuccess;
     const stealthRating = Math.max(0, Math.round(100 - this.maxDetection));
 
     if (missionSuccess) SoundManager.get().playVictory();
 
-    this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.9).setDepth(40);
+    // Star rating
+    const starCount = missionSuccess && stealthRating >= 70 ? 3
+      : missionSuccess ? 2
+      : layersDestroyed >= 3 ? 1 : 0;
 
-    const titleText = missionSuccess ? 'MISSION COMPLETE' : 'MISSION FAILED';
-    const titleColor = missionSuccess ? '#FFD700' : '#ff4444';
-    const title = this.add.text(W / 2, 45, titleText, {
-      fontFamily: 'monospace', fontSize: '30px', color: titleColor,
-      shadow: { offsetX: 0, offsetY: 0, color: titleColor, blur: 16, fill: true },
-    }).setOrigin(0.5).setDepth(41).setAlpha(0);
-    this.tweens.add({ targets: title, alpha: 1, duration: 500 });
+    try { localStorage.setItem('superzion_stars_5', String(starCount)); } catch(e) {}
 
-    const sub = this.add.text(W / 2, 80, 'OPERATION MOUNTAIN BREAKER', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#ffffff',
-    }).setOrigin(0.5).setDepth(41).setAlpha(0);
-    this.tweens.add({ targets: sub, alpha: 1, duration: 500, delay: 200 });
-
-    const sep = this.add.rectangle(W / 2, 102, 300, 2, 0x00e5ff, 0.5).setDepth(41).setAlpha(0);
-    this.tweens.add({ targets: sep, alpha: 1, duration: 300, delay: 400 });
-
-    let stars;
-    if (missionSuccess && stealthRating >= 70) stars = '\u2605\u2605\u2605';
-    else if (missionSuccess) stars = '\u2605\u2605\u2606';
-    else if (layersDestroyed >= 3) stars = '\u2605\u2606\u2606';
-    else stars = '\u2606\u2606\u2606';
-
-    try { const sc = missionSuccess && stealthRating >= 70 ? 3 : missionSuccess ? 2 : layersDestroyed >= 3 ? 1 : 0; localStorage.setItem('superzion_stars_5', String(sc)); } catch(e) {}
-
-    const lines = [
-      `BUNKER BUSTERS USED: ${this.bustersUsed}/${BUSTER_TOTAL}`,
-      `LAYERS PENETRATED: ${layersDestroyed}/${MOUNTAIN_LAYERS}`,
-      `CENTRIFUGES DESTROYED: ${missionSuccess ? '8,000' : '0'}`,
-      `MISSILES EVADED: ${this.missilesEvaded}`,
-      `CHAFF USED: ${this.chaffUsed}/${CHAFF_TOTAL}`,
-      `STEALTH RATING: ${stealthRating}%`,
-      `ARMOR REMAINING: ${Math.max(0, this.armor)}/3`,
-      `RATING: ${stars}`,
+    const stats = [
+      { label: 'BUNKER BUSTERS USED', value: `${this.bustersUsed}/${BUSTER_TOTAL}` },
+      { label: 'LAYERS PENETRATED', value: `${layersDestroyed}/${MOUNTAIN_LAYERS}` },
+      { label: 'CENTRIFUGES DESTROYED', value: missionSuccess ? '8,000' : '0' },
+      { label: 'MISSILES EVADED', value: `${this.missilesEvaded}` },
+      { label: 'CHAFF USED', value: `${this.chaffUsed}/${CHAFF_TOTAL}` },
+      { label: 'STEALTH RATING', value: `${stealthRating}%` },
+      { label: 'ARMOR REMAINING', value: `${Math.max(0, this.armor)}/3` },
     ];
+    const beforeTransition = () => this._stopAmbient();
 
-    let yPos = 125;
-    lines.forEach((line, i) => {
-      const t = this.add.text(W / 2, yPos, line, {
-        fontFamily: 'monospace', fontSize: '13px', color: '#00e5ff',
-      }).setOrigin(0.5).setDepth(41).setAlpha(0);
-      this.tweens.add({ targets: t, alpha: 1, duration: 300, delay: 600 + i * 220 });
-      yPos += 24;
-    });
-
-    this.time.delayedCall(3000, () => {
-      this.add.rectangle(W / 2, yPos + 5, 280, 2, 0x00e5ff, 0.5).setDepth(41);
-    });
-
-    this.time.delayedCall(3400, () => {
-      const promptText = missionSuccess ? 'PRESS ENTER FOR FINAL MISSION' : 'PRESS ENTER TO RETURN TO MENU';
-      const cont = this.add.text(W / 2, yPos + 28, promptText, {
-        fontFamily: 'monospace', fontSize: '18px', color: '#ffffff',
-      }).setOrigin(0.5).setDepth(41);
-      this.tweens.add({ targets: cont, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
-    });
+    if (missionSuccess) {
+      this._endScreen = showVictoryScreen(this, {
+        title: 'MISSION COMPLETE', stats, stars: starCount,
+        currentScene: 'B2BomberScene',
+        nextScene: 'LastStandCinematicScene',
+        onBeforeTransition: beforeTransition,
+      });
+    } else {
+      this._endScreen = showDefeatScreen(this, {
+        title: 'MISSION FAILED', stats,
+        currentScene: 'B2BomberScene',
+        skipScene: 'LastStandCinematicScene',
+        onBeforeTransition: beforeTransition,
+      });
+    }
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -1417,7 +1501,16 @@ export default class B2BomberScene extends Phaser.Scene {
     }
     if (this.isPaused) return;
 
-
+    // P key — skip to victory
+    if (Phaser.Input.Keyboard.JustDown(this.keys.p) && this.phase !== 'victory' && this.phase !== 'explosion') {
+      this._stopAmbient();
+      this.mountainHP = 0;
+      this.bustersUsed = 4;
+      this.armor = 2;
+      this.missionSuccess = true;
+      this._showVictory();
+      return;
+    }
 
     switch (this.phase) {
       case 'stealth':
@@ -1434,10 +1527,6 @@ export default class B2BomberScene extends Phaser.Scene {
         this._updateEscape(dt);
         break;
       case 'victory':
-        if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
-          this._stopAmbient();
-          this.scene.start(this.missionSuccess ? 'LastStandCinematicScene' : 'MenuScene');
-        }
         break;
     }
 
@@ -1472,6 +1561,7 @@ export default class B2BomberScene extends Phaser.Scene {
   }
 
   shutdown() {
+    if (this._endScreen) this._endScreen.destroy();
     this._stopAmbient();
     this.tweens.killAll();
     this.time.removeAllEvents();
