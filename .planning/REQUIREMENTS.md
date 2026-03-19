@@ -7,7 +7,7 @@
 
 ### Visual Identity
 
-- [ ] **VIS-01**: Player sprite displays as a Mossad agent (tactical black suit, slicked-back hair, subtle beard shadow, Maguen David on chest, organic human proportions) consistently across all scenes — SpriteGenerator, CinematicTextures, and ParadeTextures produce visually matching sprites
+- [x] **VIS-01**: Player sprite displays as a Mossad agent (tactical black suit, slicked-back hair, subtle beard shadow, Maguen David on chest, organic human proportions) consistently across all scenes — SpriteGenerator, CinematicTextures, and ParadeTextures produce visually matching sprites
 - [x] **VIS-02**: Intro boss parade shows 4 real boss sprites (Foam Beard, Turbo Turban, The Warden, Supreme Turban) performing their super attacks — not rectangles or placeholder graphics
 
 ### Intro Sequence
@@ -62,7 +62,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIS-01 | Phase 6 | Pending |
+| VIS-01 | Phase 6 | Complete |
 | VIS-02 | Phase 6 | Complete |
 | INTRO-01 | Phase 7 | Pending |
 | INTRO-02 | Phase 7 | Pending |
