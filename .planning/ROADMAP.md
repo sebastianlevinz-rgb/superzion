@@ -86,10 +86,12 @@ Plans:
   3. Guards on rooftops walk with feet touching the ground (never floating)
   4. Reaching the target building triggers a visual transition into top-down Bomberman gameplay where key pickup and Star of David (at chest center) work correctly
   5. Bomberman phase gameplay is preserved intact from current implementation
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 32-01: TBD
+- [ ] 32-01-PLAN.md -- Create platformer textures (Tehran skyline, platforms, player, guards, obstacles) and wire scene flow
+- [ ] 32-02-PLAN.md -- Create PlatformerScene with side-scrolling gameplay, obstacles, guards, and building transition
+- [ ] 32-03-PLAN.md -- Fix Star of David position on Bomberman sprite and verify key pickup
 
 ### Phase 33: Level 2 Rename + Level 3 Physics
 **Goal**: Level 2 gets its correct name and Level 3 plane feels like a real aircraft with weight, gravity, and crash consequences
@@ -189,8 +191,8 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 9-14. Sprite & Polish v2 | v1.2 | 6/6 | Complete | 2026-03-19 |
 | 15-20. Narrative & Audio | v1.3 | 6/6 | Complete | 2026-03-19 |
 | 21-30. Final Polish | v1.4 | 10/10 | Complete | 2026-03-19 |
-| 31. Intro Audio Fix | 1/1 | Complete    | 2026-03-19 | - |
-| 32. Level 1 Platformer Redesign | v1.5 | 0/TBD | Not started | - |
+| 31. Intro Audio Fix | v1.5 | 1/1 | Complete | 2026-03-19 |
+| 32. Level 1 Platformer Redesign | v1.5 | 0/3 | Not started | - |
 | 33. Level 2 Rename + Level 3 Physics | v1.5 | 0/TBD | Not started | - |
 | 34. Level 4 Complete Redesign | v1.5 | 0/TBD | Not started | - |
 | 35. Level 5 B-2 + Explosion | v1.5 | 0/TBD | Not started | - |
