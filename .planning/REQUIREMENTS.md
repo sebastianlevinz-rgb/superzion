@@ -24,7 +24,7 @@
 
 ### UX Polish
 
-- [ ] **UX-01**: All 6 levels show end-of-level screen: Win = "PLAY AGAIN (R)" + "NEXT LEVEL (ENTER)", Lose = "RETRY (R)" + "SKIP LEVEL (S)" — using shared EndScreen.js module
+- [x] **UX-01**: All 6 levels show end-of-level screen: Win = "PLAY AGAIN (R)" + "NEXT LEVEL (ENTER)", Lose = "RETRY (R)" + "SKIP LEVEL (S)" — using shared EndScreen.js module
 - [x] **UX-02**: Controls overlay in all 6 levels uses semi-transparent black background with large bright yellow text for readability
 
 ## Future Requirements
@@ -70,7 +70,7 @@
 | INTRO-04 | Phase 7 | Complete |
 | GAME-01 | Phase 5 | Complete |
 | GAME-02 | Phase 5 | Complete |
-| UX-01 | Phase 8 | Pending |
+| UX-01 | Phase 8 | Complete |
 | UX-02 | Phase 5 | Complete |
 
 **Coverage:**
@@ -80,4 +80,4 @@
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 — GAME-02, UX-02 marked complete (Plan 05-02)*
+*Last updated: 2026-03-19 — UX-01 marked complete (Plan 08-01)*

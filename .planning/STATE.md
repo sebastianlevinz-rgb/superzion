@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish Pass
 status: completed
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-03-19T15:50:03.545Z"
-last_activity: 2026-03-19 — Completed Plan 07-02 (SFX diversification + camera shake)
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-19T16:28:00Z"
+last_activity: 2026-03-19 — Completed Plan 08-01 (End screen standardization)
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 5
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Every visible element must look intentional and polished — no placeholder cubes, no missing audio, no broken levels.
-**Current focus:** Phase 7 — Intro Overhaul (COMPLETE)
+**Current focus:** Phase 8 — End Screen Standardization (COMPLETE)
 
 ## Current Position
 
-Phase: 7 of 8 (Intro Overhaul) — COMPLETE
-Plan: 2 of 2 in current phase (all plans complete)
-Status: Phase 07 complete. All intro overhaul requirements done.
-Last activity: 2026-03-19 — Completed Plan 07-02 (SFX diversification + camera shake)
+Phase: 8 of 8 (End Screen Standardization) — COMPLETE
+Plan: 1 of 1 in current phase (all plans complete)
+Status: Phase 08 complete. All end screen standardization done. Milestone v1.1 complete.
+Last activity: 2026-03-19 — Completed Plan 08-01 (End screen standardization)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7 (1 v1.0, 6 v1.1)
+- Total plans completed: 8 (1 v1.0, 7 v1.1)
 - Average duration: ~6min
-- Total execution time: ~37min (v1.1)
+- Total execution time: ~44min (v1.1)
 
 **By Phase:**
 
@@ -47,6 +47,7 @@ Progress: [██████████] 100%
 | 5. Standalone Fixes | 2/2 | ~25min | ~12min |
 | 6. Visual Identity | 2/2 | ~7min | ~3.5min |
 | 7. Intro Overhaul | 2/2 | ~5min | ~2.5min |
+| 8. End Screen Standardization | 1/1 | ~7min | ~7min |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -57,6 +58,7 @@ Progress: [██████████] 100%
 | Phase 06 P01 | 4min | 2 tasks | 2 files |
 | Phase 07 P01 | 2min | 2 tasks | 1 files |
 | Phase 07 P02 | 3min | 2 tasks | 2 files |
+| Phase 08 P01 | 7min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -87,6 +89,9 @@ Recent decisions affecting current work:
 - [Phase 07]: Missile whoosh every 3rd launch to avoid stacking 18 simultaneous whooshes
 - [Phase 07]: Camera shake 120ms/0.005-0.01 inside _spawnExplosion avoids Phaser shake-replacement
 - [Phase 07]: Removed _spawnFallingBomb standalone shake to prevent double-shake
+- [Phase 08]: EndScreen cleanups array per-call scoped (not module-level) for concurrent scene safety
+- [Phase 08]: onBeforeTransition invoked before MusicManager.stop() for scene-specific ambient cleanup
+- [Phase 08]: BossScene victory drops crossfadeTo; VictoryScene starts its own music on create
 
 ### Pending Todos
 
@@ -98,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T15:45:26.090Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-03-19T16:28:00Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None

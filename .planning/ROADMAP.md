@@ -3,7 +3,7 @@
 ## Milestones
 
 - **v1.0 Cinematic & Audio** - Phases 1-4 (deferred after Phase 1 shipped)
-- **v1.1 Polish Pass** - Phases 5-8 (in progress)
+- **v1.1 Polish Pass** - Phases 5-8 (complete)
 
 ## Phases
 
@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Standalone Fixes** - Fix Level 2 passability, F-15 wings, and controls overlay readability
 - [ ] **Phase 6: Visual Identity** - Audit and align player sprite across all three texture systems; restore real boss parade sprites
 - [ ] **Phase 7: Intro Overhaul** - Restore flags, build final title screen, wire psytrance SFX, and add camera shake to intro
-- [ ] **Phase 8: End-Screen Standardization** - Migrate all 6 levels to shared EndScreen.js with consistent win/lose navigation
+- [x] **Phase 8: End-Screen Standardization** - Migrate all 6 levels to shared EndScreen.js with consistent win/lose navigation
 
 ## Phase Details
 
@@ -124,7 +124,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 08-01-PLAN.md — Enhance EndScreen.js with cleanup + migrate all 6 levels to shared module (UX-01)
+- [x] 08-01-PLAN.md — Enhance EndScreen.js with cleanup + migrate all 6 levels to shared module (UX-01)
 
 ## Progress
 
@@ -141,4 +141,4 @@ Phases execute in numeric order: 5 → 6 → 7 → 8
 | 5. Standalone Fixes | v1.1 | 2/2 | Complete | 2026-03-19 |
 | 6. Visual Identity | v1.1 | 0/2 | Not started | - |
 | 7. Intro Overhaul | v1.1 | 0/2 | Not started | - |
-| 8. End-Screen Standardization | v1.1 | 0/1 | Not started | - |
+| 8. End-Screen Standardization | v1.1 | 1/1 | Complete | 2026-03-19 |
