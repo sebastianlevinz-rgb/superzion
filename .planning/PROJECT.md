@@ -36,20 +36,42 @@ Every visible element must look intentional and polished — no placeholder cube
 - ✓ Consistent end-of-level screens across all 6 levels via shared EndScreen.js — v1.1
 - ✓ Controls overlay with yellow text on dark background — v1.1
 
+- ✓ All cinematics use page-by-page SPACE/ENTER text advancement with blinking "► SPACE" indicator — v1.3
+- ✓ ESC skips entire cinematic in all scenes — v1.3
+- ✓ GameIntroScene rewritten with complete new narrative (3000 years history → hero reveal) — v1.3
+- ✓ All 6 level intro cinematics rewritten with new narrative script — v1.3
+- ✓ 5 transition cinematics between levels with new narrative — v1.3
+- ✓ New VictoryFinalScene with epic ending narrative and "Am Yisrael Chai" — v1.3
+- ✓ Tagline changed to "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST." everywhere — v1.3
+- ✓ All cinematics have mood-appropriate background music — v1.3
+- ✓ All visual events synchronized with audio (explosions, impacts, boss appearances) — v1.3
+- ✓ All 6 levels verified to have background music and complete SFX — v1.3
+- ✓ M key mute/unmute works globally in all scenes — v1.3
+- ✓ Zero silence anywhere in the game from intro to credits — v1.3
+- ✓ Real melodic intro music (4-act piano/strings/brass/drums composition) — v1.4
+- ✓ Beard geometry fix (concave curve) across all SuperZion sprites — v1.4
+- ✓ Star of David repositioned on chest in Level 1 top-down sprite — v1.4
+- ✓ B-2 visual contrast enhancement (moonlight highlights, engine glow) — v1.4
+- ✓ Level 3 missile rebalance (double plane speed, slower missiles, max 2) — v1.4
+- ✓ Level 4 playable drone city intro + Warden boss rework + SHIFT dodge — v1.4
+- ✓ Flight route animations (Israel → destination) before each level — v1.4
+- ✓ Victory scene with sunset, crowd, confetti, fireworks — v1.4
+- ✓ Title screen with destroyed city background, glowing star, 3D text — v1.4
+- ✓ Intro text pages with abstract visual backgrounds — v1.4
+
 ### Active
 
-- [ ] All cinematics use page-by-page SPACE/ENTER text advancement with blinking "► SPACE" indicator
-- [ ] ESC skips entire cinematic in all scenes
-- [ ] GameIntroScene rewritten with complete new narrative (3000 years history → hero reveal)
-- [ ] All 6 level intro cinematics rewritten with new narrative script
-- [ ] 5 transition cinematics between levels with new narrative
-- [ ] New VictoryFinalScene with epic ending narrative and "Am Yisrael Chai"
-- [ ] Tagline changed to "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST." everywhere
-- [ ] All cinematics have mood-appropriate background music
-- [ ] All visual events synchronized with audio (explosions, impacts, boss appearances)
-- [ ] All 6 levels verified to have background music and complete SFX
-- [ ] M key mute/unmute works globally in all scenes
-- [ ] Zero silence anywhere in the game from intro to credits
+- [ ] Intro uses menu music (delete current intro music, reuse MenuScene music)
+- [ ] No loud sounds during title screen Maguen David appearance
+- [ ] Level 1 Phase 1: platformer across Tehran rooftops at night
+- [ ] Level 1 Phase 2: Bomberman with working key + Star of David at chest center
+- [ ] Level 2 renamed to "Operation Explosive Interception"
+- [ ] Level 3 lunar lander physics (gravity, thrust, tilt, crash mechanics)
+- [ ] Level 4 daytime drone flight RIGHT through detailed ruined city
+- [ ] Level 4 boss fight in destroyed room with individual armchair + dodge
+- [ ] Level 5 B-2 as proper flying wing shape + spectacular mountain explosion
+- [ ] Supreme Turban cinematic with army background + dramatic music
+- [ ] Victory scene: SuperZion facing forward with celebrating people, animations, new narrative
 
 ### Out of Scope
 
@@ -66,6 +88,7 @@ Every visible element must look intentional and polished — no placeholder cube
 - Shipped v1.1 Polish Pass: 4 phases, 7 plans, 10 requirements fulfilled
 - Shipped v1.2 Sprite & Polish v2: 6 phases, 6 plans, 18 requirements fulfilled
 - Shipped v1.3 Narrative & Audio: 6 phases (15-20), 18 requirements fulfilled
+- Shipped v1.4 Final Polish: 10 phases (21-30), 31 requirements fulfilled
 - Codebase 100% procedural: no external assets, everything runtime-generated via canvas API and Web Audio API
 - `SpriteGenerator` produces canonical Mossad agent design; `CinematicTextures` and `ParadeTextures` aligned to match
 - `EndScreen.js` is the shared end-of-level module with `destroy()` cleanup — all 7 scenes use it
@@ -92,21 +115,19 @@ Every visible element must look intentional and polished — no placeholder cube
 | Camera shake inside _spawnExplosion() | Single insertion point covers all callers automatically | ✓ Good — DRY pattern |
 
 ---
-## Current Milestone: v1.4 Final Polish
+## Current Milestone: v1.5 Megafix v3
 
-**Goal:** Elevate every aspect of the game — real melodic intro music, sprite fixes, gameplay balance, new Level 4 drone intro, flight route animations, spectacular victory/title screens, and visual backgrounds for intro text.
+**Goal:** Massive corrections pass — fix intro audio, redesign Level 1 with platformer phase, lunar lander physics for Level 3, complete Level 4 redesign with daytime ruins, proper B-2 flying wing + spectacular explosion, dramatic Supreme Turban cinematic, and epic victory scene with celebrating people.
 
 **Target features:**
-- Real hummable melody in intro (piano/strings → military → heroic → epic drop)
-- Beard geometry fix (concave curve) across all SuperZion sprites
-- Star of David centered on chest in Level 1 top-down sprite
-- B-2 visual contrast enhancement (moonlight highlights, engine glow)
-- Level 3 missile rebalance (double plane speed, slower missiles, warnings, max 2)
-- Level 4 playable drone city intro + Warden boss rework + dodge mechanic
-- Flight route animations (Israel → destination) before each level
-- Victory scene with sunset, crowd, confetti, fireworks
-- Title screen with destroyed city background, glowing star, 3D text
-- Intro text pages with abstract visual backgrounds
+- Intro uses menu music (delete horrible intro music), no loud title screen sounds
+- Level 1 two-phase: platformer across Tehran rooftops (night) → Bomberman indoors
+- Level 2 renamed to "Operation Explosive Interception"
+- Level 3 lunar lander physics (gravity, thrust, tilt, crash on bad landing/water)
+- Level 4 daytime drone through ruined city (scrolls RIGHT) + detailed boss room
+- Level 5 B-2 proper flying wing shape + spectacular Natanz mountain explosion
+- Supreme Turban cinematic with army/war background + ominous music
+- Victory scene: SuperZion facing forward, celebrating people, animated sunrise, fireworks
 
 ---
-*Last updated: 2026-03-19 after v1.4 Final Polish milestone started*
+*Last updated: 2026-03-19 after v1.5 Megafix v3 milestone started*

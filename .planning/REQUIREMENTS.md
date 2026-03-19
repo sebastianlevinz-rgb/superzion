@@ -3,112 +3,110 @@
 **Defined:** 2026-03-19
 **Core Value:** Every visible element must look intentional and polished — no placeholder cubes, no missing audio, no broken levels.
 
-## v1.4 Requirements
+## v1.5 Requirements
 
-### Sprites & Visuals
+Requirements for Megafix v3. Each maps to roadmap phases.
 
-- [ ] **SPRT-01**: SuperZion beard curves concave (downward following jawline) in all sprite generators
-- [ ] **SPRT-02**: Star of David centered on chest in Level 1 top-down sprite only
-- [ ] **SPRT-03**: B-2 has moonlight highlights on upper wing edges, darker lower shadows, 1px outline, brighter engine glow, heat distortion behind engines
+### Intro Audio
 
-### Intro Music
+- [ ] **INTRO-01**: Intro uses menu music instead of current intro music (delete current intro music entirely)
+- [ ] **INTRO-02**: No loud/unpleasant sounds during title screen Maguen David appearance (smooth transition)
+- [ ] **INTRO-03**: Music plays continuously from first frame of intro through to menu scene
 
-- [ ] **MUSC-01**: Intro has real melodic music with hummable melody from first text line
-- [ ] **MUSC-02**: Music transitions through 4 moods (emotional minor → dark military → heroic major → epic climax drop)
-- [ ] **MUSC-03**: Music plays continuously from first text line through to menu transition
+### Level 1 Redesign
 
-### Level 3 Balance
+- [ ] **LVL1-01**: Phase 1 platformer — SuperZion runs across Tehran rooftops at night (side-scrolling, Super Mario style)
+- [ ] **LVL1-02**: Tehran night skyline background with Azadi Tower, Milad Tower, Alborz mountains, moon, stars (detailed)
+- [ ] **LVL1-03**: Platforms are Iranian building rooftops, balconies, cornices, mosque domes
+- [ ] **LVL1-04**: Obstacles: rotating security cameras with vision cones, patrolling guards on rooftops, searchlights, electric wire
+- [ ] **LVL1-05**: Guards walk ON the floor — feet touch ground, never float (verify with console.log)
+- [ ] **LVL1-06**: End of platformer phase: reach target building, enter through window, visual transition to top-down
+- [ ] **LVL1-07**: Phase 2 Bomberman gameplay preserved intact from current implementation
+- [ ] **LVL1-08**: Key is visible, pickable, and functional in Bomberman phase (fix if bugged)
+- [ ] **LVL1-09**: Star of David lowered to center of chest on top-down sprite (currently at neck level)
 
-- [ ] **LV3-01**: Player plane movement speed doubled
-- [ ] **LV3-02**: Missiles 30% slower with wider turning radius
-- [ ] **LV3-03**: 1.5s flashing red arrow warning before each missile
-- [ ] **LV3-04**: Maximum 2 missiles on screen simultaneously
+### Level 2 Rename
 
-### Level 4 Overhaul
+- [ ] **LVL2-01**: "Operation Signal Storm" renamed to "Operation Explosive Interception" in all locations (cinematic, HUD, menu, victory)
 
-- [ ] **LV4-01**: New playable drone intro through ruined city (top-down, 1-2 min)
-- [ ] **LV4-02**: Navigate rubble and find the glowing open window
-- [ ] **LV4-03**: Enemy patrol drones during city search
-- [ ] **LV4-04**: The Warden hides behind sofa, peeks to throw objects
-- [ ] **LV4-05**: SHIFT dodge/dash with 1-second cooldown
+### Level 3 Physics
 
-### Flight Animations
+- [ ] **LVL3-01**: Constant gravity — plane always falls if no input
+- [ ] **LVL3-02**: Up arrow = thrust — plane rises while held
+- [ ] **LVL3-03**: Left/right arrows = plane tilt/inclination
+- [ ] **LVL3-04**: Crash (explosion) on high vertical speed landing on carrier
+- [ ] **LVL3-05**: Crash (explosion) on water contact
+- [ ] **LVL3-06**: Crash (explosion) on insufficient takeoff thrust (falls into water)
+- [ ] **LVL3-07**: Landing requires precision — slow descent, aligned, controlled speed
+- [ ] **LVL3-08**: Plane feels like it has weight and momentum (not a floating cursor)
 
-- [ ] **CINE-01**: Mini flight animation from Israel to destination before each of 6 levels
-- [ ] **CINE-02**: Simplified Middle East map, dotted route line, "EN ROUTE TO [CITY]" text
-- [ ] **CINE-03**: Skippeable with SPACE, 3-4 seconds duration
+### Level 4 Redesign
 
-### Victory Enhancement
+- [ ] **LVL4-01**: Daytime setting (not night) for entire level
+- [ ] **LVL4-02**: Phase 1 — drone flies RIGHT through ruined city (horizontal scroll, not downward)
+- [ ] **LVL4-03**: Detailed ruins: destroyed buildings, missing walls, collapsed roofs, rubble, craters, hanging cables, exposed furniture, destroyed cars, dust
+- [ ] **LVL4-04**: Target building identified by subtle glow or marker
+- [ ] **LVL4-05**: Enemy drones patrol and shoot on detection
+- [ ] **LVL4-06**: Enter target building through open window to trigger Phase 2
+- [ ] **LVL4-07**: Phase 2 boss fight in destroyed building interior with daytime light through holes in walls/ceiling
+- [ ] **LVL4-08**: Detailed room: broken lamps, cracked mirrors, overturned tables, broken chairs, rubble, cables, dust in air
+- [ ] **LVL4-09**: Individual armchair (mono-sillón, NOT sofa), larger than before
+- [ ] **LVL4-10**: The Warden hides behind armchair, peeks to throw objects, hides again
+- [ ] **LVL4-11**: SHIFT dodge/dash works in boss fight
 
-- [ ] **VICT-01**: Spectacular sunset with detailed clouds, sun rays, gradient sky
-- [ ] **VICT-02**: SuperZion illuminated by sunset (not black silhouette)
-- [ ] **VICT-03**: Celebrating crowd silhouettes applauding, jumping, waving Israel flags
-- [ ] **VICT-04**: Golden, blue, white confetti particles falling
-- [ ] **VICT-05**: Fireworks explosions in sky, intensify at "Am Yisrael Chai"
+### Level 5 Redesign
 
-### Title Screen
+- [ ] **LVL5-01**: B-2 redesigned as flying wing — boomerang/bat shape, wide and flat (NOT triangle with line)
+- [ ] **LVL5-02**: B-2 dark gray with panel lines, moonlight highlights on upper edges, subtle outline
+- [ ] **LVL5-03**: Mountain clearly looks like a mountain (texture, vegetation, rock detail)
+- [ ] **LVL5-04**: Spectacular explosion: white flash → fireball → mountain cracks → fire columns through cracks → partial collapse → mushroom cloud → falling debris → secondary fires
+- [ ] **LVL5-05**: Strong prolonged screen shake during mountain explosion
 
-- [ ] **TITL-01**: Destroyed city background with smoke, fire, golden light entering
-- [ ] **TITL-02**: Maguen David with light rays emanating from points
-- [ ] **TITL-03**: SUPERZION text with 3D effect (shadow, dark outline, metallic gold reflection)
-- [ ] **TITL-04**: Floating spark/ember particles
-- [ ] **TITL-05**: Subtle screen shake when title appears
+### Supreme Turban Cinematic
 
-### Intro Backgrounds
+- [ ] **CINE-01**: Dark dramatic music — slow grave drums, ominous brass, minor key, sense of final danger
+- [ ] **CINE-02**: Background: fire, smoke, army silhouettes, missile trucks, soldiers loading weapons, stacked armaments (detailed war scene)
+- [ ] **CINE-03**: Supreme Turban more imposing — larger, more detailed, brighter red eyes, crescent moon staff glowing
 
-- [ ] **INTR-01**: Abstract destruction imagery (flames, ruins) during persecution text lines
-- [ ] **INTR-02**: Point of light appearing at "Every time, we came back"
-- [ ] **INTR-03**: Light growing at "We are still here"
+### Victory Scene
+
+- [ ] **VICT-01**: Opening line: "The weapons are silent. For the first time in years... silence."
+- [ ] **VICT-02**: Complete new narrative text (ashes/peace, 3000 years, belongs to every soul, those who came before/beside/after)
+- [ ] **VICT-03**: SuperZion facing forward, illuminated, detailed, SMILING (not silhouette from behind)
+- [ ] **VICT-04**: Maguen David on chest or as giant golden background (not on back)
+- [ ] **VICT-05**: SuperZion surrounded by celebrating people: soldiers, civilians, children, dogs, cats
+- [ ] **VICT-06**: People with Israel flags, hugging, jumping, clapping
+- [ ] **VICT-07**: Gold, blue, and white confetti falling
+- [ ] **VICT-08**: Animated fireworks in sky (explode and fade)
+- [ ] **VICT-09**: Animated sunrise (sun slowly rises)
+- [ ] **VICT-10**: Moving clouds
+- [ ] **VICT-11**: Emotional epic music with memorable melody (most emotional moment in the game)
+- [ ] **VICT-12**: Final lines: "Am Yisrael Chai." + "THEY FIGHT TO CONQUER. WE FIGHT TO EXIST."
+
+### Verification
+
+- [ ] **VRFY-01**: Full game playthrough verifying all 9 areas work correctly, fixing any issues found
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| External audio files | Everything stays procedural via Web Audio API |
+| External audio files (mp3/ogg) | Everything stays procedural via Web Audio API |
 | Save/load system | Not in current milestone scope |
+| New levels beyond existing 6 | Megafix focuses on improving existing content |
 | Accessibility features | Deferred |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SPRT-01 | Phase 21 | Pending |
-| SPRT-02 | Phase 21 | Pending |
-| SPRT-03 | Phase 21 | Pending |
-| MUSC-01 | Phase 22 | Pending |
-| MUSC-02 | Phase 22 | Pending |
-| MUSC-03 | Phase 22 | Pending |
-| LV3-01 | Phase 23 | Pending |
-| LV3-02 | Phase 23 | Pending |
-| LV3-03 | Phase 23 | Pending |
-| LV3-04 | Phase 23 | Pending |
-| LV4-01 | Phase 24 | Pending |
-| LV4-02 | Phase 24 | Pending |
-| LV4-03 | Phase 24 | Pending |
-| LV4-04 | Phase 25 | Pending |
-| LV4-05 | Phase 25 | Pending |
-| CINE-01 | Phase 26 | Pending |
-| CINE-02 | Phase 26 | Pending |
-| CINE-03 | Phase 26 | Pending |
-| VICT-01 | Phase 27 | Pending |
-| VICT-02 | Phase 27 | Pending |
-| VICT-03 | Phase 27 | Pending |
-| VICT-04 | Phase 27 | Pending |
-| VICT-05 | Phase 27 | Pending |
-| TITL-01 | Phase 28 | Pending |
-| TITL-02 | Phase 28 | Pending |
-| TITL-03 | Phase 28 | Pending |
-| TITL-04 | Phase 28 | Pending |
-| TITL-05 | Phase 28 | Pending |
-| INTR-01 | Phase 29 | Pending |
-| INTR-02 | Phase 29 | Pending |
-| INTR-03 | Phase 29 | Pending |
+| (Populated during roadmap creation) | | |
 
 **Coverage:**
-- v1.4 requirements: 31 total
-- Mapped to phases: 31
-- Unmapped: 0 ✓
+- v1.5 requirements: 53 total
+- Mapped to phases: 0
+- Unmapped: 53 ⚠️
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after v1.4 milestone definition*
+*Last updated: 2026-03-19 after initial definition*
