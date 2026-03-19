@@ -3,7 +3,7 @@
 ## Milestones
 
 - **v1.0 Cinematic & Audio** - Phases 1-4 (deferred after Phase 1 shipped)
-- **v1.1 Polish Pass** - Phases 5-8 (complete)
+- ✅ **v1.1 Polish Pass** - Phases 5-8 (shipped 2026-03-19)
 
 ## Phases
 
@@ -23,12 +23,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 </details>
 
-### v1.1 Polish Pass
+<details>
+<summary>✅ v1.1 Polish Pass (Phases 5-8) — SHIPPED 2026-03-19</summary>
 
-- [x] **Phase 5: Standalone Fixes** - Fix Level 2 passability, F-15 wings, and controls overlay readability
-- [ ] **Phase 6: Visual Identity** - Audit and align player sprite across all three texture systems; restore real boss parade sprites
-- [ ] **Phase 7: Intro Overhaul** - Restore flags, build final title screen, wire psytrance SFX, and add camera shake to intro
-- [x] **Phase 8: End-Screen Standardization** - Migrate all 6 levels to shared EndScreen.js with consistent win/lose navigation
+- [x] Phase 5: Standalone Fixes (2/2 plans) — completed 2026-03-19
+- [x] Phase 6: Visual Identity (2/2 plans) — completed 2026-03-19
+- [x] Phase 7: Intro Overhaul (2/2 plans) — completed 2026-03-19
+- [x] Phase 8: End-Screen Standardization (1/1 plan) — completed 2026-03-19
+
+</details>
 
 ## Phase Details
 
@@ -69,76 +72,25 @@ Plans:
 
 </details>
 
-### Phase 5: Standalone Fixes
-**Goal**: Three isolated shipping blockers are resolved without touching shared systems
-**Depends on**: Phase 1 (v1.0 audio foundation)
-**Requirements**: GAME-01, GAME-02, UX-02
-**Success Criteria** (what must be TRUE):
-  1. Player can navigate Level 2 container corridors from start to bomb-plant target and back to exit without getting stuck on any wall or obstacle
-  2. The F-15 jet in Level 3 cinematic displays swept-back wings angled toward the tail (not forward-pointing)
-  3. Controls overlay text in all 6 levels renders as large bright yellow text on a semi-transparent black background, readable against every level's background
-**Plans:** 2 plans
+<details>
+<summary>v1.1 Phase Details (Phases 5-8)</summary>
 
-Plans:
-- [x] 05-01-PLAN.md — Fix Level 2 container passability (GAME-01)
-- [x] 05-02-PLAN.md — Fix F-15 wing direction and controls overlay styling (GAME-02, UX-02)
+### Phase 5: Standalone Fixes — 2/2 plans, completed 2026-03-19
+### Phase 6: Visual Identity — 2/2 plans, completed 2026-03-19
+### Phase 7: Intro Overhaul — 2/2 plans, completed 2026-03-19
+### Phase 8: End-Screen Standardization — 1/1 plan, completed 2026-03-19
 
-### Phase 6: Visual Identity
-**Goal**: The player character looks like a Mossad agent (not placeholder cubes) everywhere, and boss parade sprites display as real characters
-**Depends on**: Phase 5
-**Requirements**: VIS-01, VIS-02
-**Success Criteria** (what must be TRUE):
-  1. Player sprite in gameplay (SpriteGenerator), cinematics (CinematicTextures), and intro parade (ParadeTextures) all display a human figure with tactical black suit, slicked-back hair, beard shadow, and chest emblem — visually consistent across all three contexts
-  2. The intro boss parade shows four distinct boss characters (Foam Beard, Turbo Turban, The Warden, Supreme Turban) as real sprites with animated super attacks, not colored rectangles
-  3. Player sprite reads clearly at game-scale rendered sizes (32-48px height) with recognizable silhouette and details
-**Plans:** 2 plans
+See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
-Plans:
-- [ ] 06-01-PLAN.md — Align player sprite palette across CinematicTextures and ParadeTextures (VIS-01)
-- [ ] 06-02-PLAN.md — Replace boss rectangles with real parade sprites and attack animations (VIS-02)
-
-### Phase 7: Intro Overhaul
-**Goal**: The intro sequence is a polished cinematic showcase with real sprites, waving flags, synchronized audio, screen shake, and a dramatic title reveal
-**Depends on**: Phase 6
-**Requirements**: INTRO-01, INTRO-02, INTRO-03, INTRO-04
-**Success Criteria** (what must be TRUE):
-  1. Four waving flag animations (Iran, Lebanon, Palestine, Israel) appear in the intro parade sequence using generated flag spritesheets
-  2. Final intro screen displays a giant golden semi-transparent Maguen David behind SuperZion with "SUPERZION" in wide thick arcade-style font and a larger subtitle below
-  3. Psytrance music at 145+ BPM plays from the first frame of the intro, and visual events (missile launches, explosions, jet flybys, gunfire) are accompanied by synchronized SFX
-  4. Camera shakes visibly on every explosion during the intro sequence
-**Plans:** 2 plans
-
-Plans:
-- [ ] 07-01-PLAN.md — Restore waving flags in Act 1 and restyle Act 3 title with Maguen David + arcade font (INTRO-01, INTRO-02)
-- [ ] 07-02-PLAN.md — Wire distinct SFX to visual events and add camera shake to all explosions (INTRO-03, INTRO-04)
-
-### Phase 8: End-Screen Standardization
-**Goal**: Every level ends with a clear, consistent navigation screen so players always know how to retry, continue, or skip
-**Depends on**: Phase 5 (independent of Phases 6-7)
-**Requirements**: UX-01
-**Success Criteria** (what must be TRUE):
-  1. Winning any of the 6 levels shows "PLAY AGAIN (R)" and "NEXT LEVEL (ENTER)" options that work correctly when pressed
-  2. Losing any of the 6 levels shows "RETRY (R)" and "SKIP LEVEL (S)" options that work correctly when pressed
-  3. End screens appear after any scene-specific victory/defeat animations complete (no overlay clipping boss disintegration, no stats skipped)
-  4. No keyboard listener leaks accumulate across retries — scene shutdown cleans up all EndScreen key bindings
-**Plans:** 1 plan
-
-Plans:
-- [x] 08-01-PLAN.md — Enhance EndScreen.js with cleanup + migrate all 6 levels to shared module (UX-01)
+</details>
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 5 → 6 → 7 → 8
-(Phase 8 depends only on Phase 5 and can parallel Phases 6-7 if needed)
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
+| Phase | Milestone | Plans | Status | Completed |
+|-------|-----------|-------|--------|-----------|
 | 1. Audio Foundation | v1.0 | 1/1 | Complete | 2026-03-05 |
-| 2. Level Audio | v1.0 | 0/TBD | Deferred | - |
-| 3. Cinematic Infrastructure | v1.0 | 0/TBD | Deferred | - |
-| 4. Cinematics and Animation | v1.0 | 0/TBD | Deferred | - |
+| 2-4. Level Audio, Cinematic Infra, Cinematics | v1.0 | 0/TBD | Deferred | - |
 | 5. Standalone Fixes | v1.1 | 2/2 | Complete | 2026-03-19 |
-| 6. Visual Identity | v1.1 | 0/2 | Not started | - |
-| 7. Intro Overhaul | v1.1 | 0/2 | Not started | - |
+| 6. Visual Identity | v1.1 | 2/2 | Complete | 2026-03-19 |
+| 7. Intro Overhaul | v1.1 | 2/2 | Complete | 2026-03-19 |
 | 8. End-Screen Standardization | v1.1 | 1/1 | Complete | 2026-03-19 |

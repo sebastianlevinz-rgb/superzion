@@ -1,26 +1,12 @@
-# SuperZion — Polish Pass
+# SuperZion
 
 ## What This Is
 
-A 6-level stealth side-scroller built in Phaser 3 where the player infiltrates enemy locations, avoids detection, plants bombs, and escapes. Everything is procedurally generated (textures, sprites, music, SFX). This milestone is a targeted polish pass fixing 8 specific visual, audio, gameplay, and UX issues to make the game feel finished.
+A 6-level stealth side-scroller built in Phaser 3 where the player (a Mossad agent) infiltrates enemy locations, avoids detection, plants bombs, and escapes. Everything is 100% procedurally generated — textures, sprites, music, SFX. The game features a polished intro cinematic with waving flags, boss parade, psytrance music, and a dramatic title reveal.
 
 ## Core Value
 
 Every visible element must look intentional and polished — no placeholder cubes, no missing audio, no broken levels. The game should feel complete on first impression.
-
-## Current Milestone: v1.1 Polish Pass
-
-**Goal:** Fix 8 specific issues across visuals, audio, content restoration, gameplay, and UX.
-
-**Target issues:**
-1. Player sprite redesign (Mossad agent, not cubes)
-2. Intro music + SFX (psytrance 145+ BPM from frame 1)
-3. Restore intro bosses and flags
-4. Final intro screen (giant Maguen David, arcade font)
-5. Level 2 container path blocked
-6. Level 3 F-15 reversed wings
-7. End-of-level screens (win/lose with proper options)
-8. Controls overlay readability
 
 ## Requirements
 
@@ -39,43 +25,40 @@ Every visible element must look intentional and polished — no placeholder cube
 - ✓ Basic synthesized sound effects (jump, land, step, laser, damage) — existing
 - ✓ CRT scanline visual overlay — existing
 - ✓ Parallax scrolling backgrounds — existing
-- ✓ MusicManager fade/crossfade on scene transitions — v1.0 phase 1
+- ✓ MusicManager fade/crossfade on scene transitions — v1.0
+- ✓ Player sprite as Mossad agent (tactical black suit, hair, beard shadow, Maguen David) across all scenes — v1.1
+- ✓ 4 real boss parade sprites with animated super attacks — v1.1
+- ✓ 4 waving flag animations in intro (Iran, Lebanon, Palestine, Israel) — v1.1
+- ✓ Giant golden Maguen David + arcade font title in intro — v1.1
+- ✓ Psytrance 145+ BPM from frame 1 with synchronized SFX and camera shake — v1.1
+- ✓ Level 2 container corridors passable — v1.1
+- ✓ Level 3 F-15 swept-back wings — v1.1
+- ✓ Consistent end-of-level screens across all 6 levels via shared EndScreen.js — v1.1
+- ✓ Controls overlay with yellow text on dark background — v1.1
 
 ### Active
 
-- [ ] SuperZion sprite redesign: agente Mossad con traje táctico negro, pelo peinado atrás, barba sutil (sombra), Maguen David en el pecho, proporciones humanas orgánicas — aplicar en TODAS las escenas
-- [ ] Intro psytrance 145+ BPM desde frame 1 con SFX sincronizados (misiles whoosh, explosiones boom, aviones doppler, disparos) y screen shake en explosiones
-- [ ] Restaurar 4 bosses (Foam Beard, Turbo Turban, The Warden, Supreme Turban) con super ataques animados en intro — sprites reales, no rectángulos
-- [ ] Restaurar banderas ondeando (Irán, Líbano, Palestina, Israel) en intro
-- [ ] Pantalla final intro: Maguen David gigante dorado semi-transparente detrás de SuperZion, fuente ancha gruesa arcade retro para "SUPERZION", subtítulo más grande
-- [ ] Nivel 2 container: pasillos más anchos, verificar que el nivel sea completable
-- [ ] Nivel 3 cinemática: corregir F-15 con alas swept-back hacia atrás (no apuntando adelante)
-- [ ] Pantallas fin de nivel en los 6 niveles: Ganar = "PLAY AGAIN (R)" + "NEXT LEVEL (ENTER)", Perder = "RETRY (R)" + "SKIP LEVEL (S)"
-- [ ] Controles overlay en los 6 niveles: fondo negro semi-transparente, texto amarillo brillante grande
+(None — define next milestone requirements with `/gsd:new-milestone`)
 
 ### Out of Scope
 
 - Audio files externos (mp3/ogg) — se mantiene todo procedural via Web Audio API
-- Niveles nuevos o cambios de gameplay — solo polish de lo existente
-- Cinematics entre niveles (diferido de v1.0) — no en este pass
-- Per-level unique trance themes (diferido de v1.0) — no en este pass
-- Motion smear animation (diferido de v1.0) — no en este pass
-- CinematicDirector/TextureRegistry infrastructure (diferido de v1.0) — no en este pass
-- Save/load system — no priorizado
-- Accessibility features — no priorizado
+- Per-level unique trance themes (deferred from v1.0)
+- Between-level animated cinematics (deferred from v1.0)
+- CinematicDirector/TextureRegistry infrastructure (deferred from v1.0)
+- Motion smear animation (deferred from v1.0)
+- Save/load system
+- Accessibility features
 
 ## Context
 
-- Codebase 100% procedural: no hay assets externos, todo se genera en runtime via canvas API
-- Ya existe `BaseCinematicScene` como base para escenas cinemáticas
-- `MusicManager` (1027 líneas) genera música trance procedural con fade/crossfade (v1.0 fix)
-- `SoundManager` (1501 líneas) genera SFX con oscillators — básico (beeps/tonos)
-- `SpriteGenerator` genera sprites procedurales — actualmente produce cubos/rectángulos
-- Archivos de escena son grandes (BossScene 1577 líneas, B2BomberScene 1492 líneas)
-- 6 intros cinemáticas ya existen pero usan principalmente texto typewriter
-- Intro showcase existe pero perdió bosses y banderas en algún refactor
-- Juego se llama "SuperZion" internamente
-- Viewport: 960x540, canvas rendering
+- Shipped v1.1 Polish Pass: 4 phases, 7 plans, 10 requirements fulfilled
+- Codebase 100% procedural: no external assets, everything runtime-generated via canvas API and Web Audio API
+- `SpriteGenerator` produces canonical Mossad agent design; `CinematicTextures` and `ParadeTextures` aligned to match
+- `EndScreen.js` is the shared end-of-level module with `destroy()` cleanup — all 7 scenes use it
+- `MusicManager` handles fade/crossfade; `SoundManager` handles SFX including new `playGunfire()`
+- `GameIntroScene` (989+ lines) has 3-act structure with real boss sprites, waving flags, diversified SFX, camera shake
+- Viewport: 960x540, canvas rendering, Phaser 3.80.1 + Vite
 
 ## Constraints
 
@@ -83,16 +66,17 @@ Every visible element must look intentional and polished — no placeholder cube
 - **No assets externos**: Todo debe seguir siendo procedural (canvas API, Web Audio API)
 - **Performance**: Mantener 60 FPS en navegadores modernos
 - **Compatibilidad**: Sin cambios breaking en gameplay existente
-- **Sprite consistency**: El rediseño del player debe aplicarse en TODAS las escenas donde aparece
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Mantener audio 100% procedural | Coherencia con el approach del juego, sin dependencia de archivos | ✓ Good |
-| Pivotar de v1.0 cinematic milestone a polish pass | Los 8 issues son más urgentes que features nuevas | — Pending |
-| SuperZion = agente Mossad, no cubos | Identidad visual clara, proporciones humanas orgánicas | — Pending |
-| Psytrance 145+ BPM para intro | Energía alta desde el primer segundo, coherente con el tema del juego | — Pending |
+| Pivotar de v1.0 cinematic milestone a polish pass | Los 8 issues son más urgentes que features nuevas | ✓ Good — all 10 requirements shipped |
+| SuperZion = agente Mossad, no cubos | Identidad visual clara, proporciones humanas orgánicas | ✓ Good — consistent across all 3 texture systems |
+| Psytrance 145+ BPM para intro | Energía alta desde el primer segundo, coherente con el tema del juego | ✓ Good — diversified SFX + camera shake |
+| Shared EndScreen.js with destroy() | Centralized win/lose navigation, fixes keyboard listener leaks | ✓ Good — zero inline duplicates |
+| Camera shake inside _spawnExplosion() | Single insertion point covers all callers automatically | ✓ Good — DRY pattern |
 
 ---
-*Last updated: 2026-03-19 after milestone v1.1 pivot*
+*Last updated: 2026-03-19 after v1.1 Polish Pass milestone complete*
