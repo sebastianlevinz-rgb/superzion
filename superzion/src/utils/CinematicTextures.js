@@ -168,10 +168,10 @@ export function createF15Hangar(scene) {
   ctx.fill();
   // Wings
   ctx.beginPath();
-  ctx.moveTo(120, 105); ctx.lineTo(100, 70); ctx.lineTo(180, 100);
+  ctx.moveTo(120, 105); ctx.lineTo(170, 70); ctx.lineTo(200, 100);
   ctx.closePath(); ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(120, 135); ctx.lineTo(100, 170); ctx.lineTo(180, 140);
+  ctx.moveTo(120, 135); ctx.lineTo(170, 170); ctx.lineTo(200, 140);
   ctx.closePath(); ctx.fill();
   // Tail fins
   ctx.beginPath();
@@ -467,4 +467,265 @@ export function createSuperZionOnCliff(scene) {
   ctx.stroke();
 
   scene.textures.addCanvas('cin_superzion_cliff', c);
+}
+
+// ── 9. Tehran city panorama (960×540) ──────────────────────────
+export function createTehranPanorama(scene) {
+  if (scene.textures.exists('cin_tehran')) return;
+  const c = document.createElement('canvas');
+  c.width = 960; c.height = 540;
+  const ctx = c.getContext('2d');
+
+  // Night sky gradient
+  const sky = ctx.createLinearGradient(0, 0, 0, 400);
+  sky.addColorStop(0, '#0a0a1a');
+  sky.addColorStop(0.5, '#141428');
+  sky.addColorStop(1, '#1e1e30');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 960, 400);
+
+  // Stars
+  for (let i = 0; i < 60; i++) {
+    const sx = Math.random() * 960;
+    const sy = Math.random() * 250;
+    ctx.fillStyle = `rgba(255,255,255,${0.15 + Math.random() * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 0.3 + Math.random() * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // City skyline silhouette
+  ctx.fillStyle = '#0e0e18';
+  const buildings = [
+    { x: 0, w: 60, h: 180 }, { x: 70, w: 45, h: 220 },
+    { x: 125, w: 55, h: 160 }, { x: 190, w: 40, h: 250 },
+    { x: 240, w: 70, h: 200 }, { x: 320, w: 50, h: 280 },
+    { x: 380, w: 60, h: 190 }, { x: 450, w: 45, h: 240 },
+    { x: 505, w: 55, h: 210 }, { x: 570, w: 40, h: 260 },
+    { x: 620, w: 65, h: 175 }, { x: 695, w: 50, h: 230 },
+    { x: 755, w: 55, h: 195 }, { x: 820, w: 45, h: 270 },
+    { x: 875, w: 85, h: 200 },
+  ];
+  for (const b of buildings) {
+    const by = 400 - b.h;
+    ctx.fillRect(b.x, by, b.w, b.h);
+    // Windows
+    for (let wy = by + 8; wy < 395; wy += 12) {
+      for (let wx = b.x + 5; wx < b.x + b.w - 5; wx += 10) {
+        if (Math.random() > 0.4) {
+          ctx.fillStyle = `rgba(255,220,120,${0.1 + Math.random() * 0.2})`;
+          ctx.fillRect(wx, wy, 4, 4);
+        }
+      }
+    }
+    ctx.fillStyle = '#0e0e18';
+  }
+
+  // Ground
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(0, 400, 960, 140);
+
+  // Distant mountain ridge
+  ctx.fillStyle = '#12121e';
+  ctx.beginPath();
+  ctx.moveTo(0, 400);
+  for (let x = 0; x <= 960; x += 15) {
+    ctx.lineTo(x, 385 + Math.sin(x * 0.005) * 20 + Math.sin(x * 0.015) * 8);
+  }
+  ctx.lineTo(960, 400);
+  ctx.closePath();
+  ctx.fill();
+
+  scene.textures.addCanvas('cin_tehran', c);
+}
+
+// ── 10. Beirut port panorama (960×540) ─────────────────────────
+export function createBeirutPortPanorama(scene) {
+  if (scene.textures.exists('cin_beirut_port')) return;
+  const c = document.createElement('canvas');
+  c.width = 960; c.height = 540;
+  const ctx = c.getContext('2d');
+
+  // Dawn sky over Mediterranean
+  const sky = ctx.createLinearGradient(0, 0, 0, 350);
+  sky.addColorStop(0, '#0a1428');
+  sky.addColorStop(0.4, '#1a3050');
+  sky.addColorStop(0.7, '#2a4060');
+  sky.addColorStop(1, '#3a5575');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 960, 350);
+
+  // Sea
+  const sea = ctx.createLinearGradient(0, 350, 0, 420);
+  sea.addColorStop(0, '#1a3048');
+  sea.addColorStop(1, '#0e2030');
+  ctx.fillStyle = sea;
+  ctx.fillRect(0, 350, 960, 70);
+
+  // Port skyline
+  ctx.fillStyle = '#0c0c16';
+  const portBuildings = [
+    { x: 50, w: 80, h: 120 }, { x: 150, w: 60, h: 160 },
+    { x: 230, w: 90, h: 140 }, { x: 340, w: 50, h: 200 },
+    { x: 410, w: 70, h: 170 }, { x: 500, w: 80, h: 130 },
+    { x: 600, w: 60, h: 190 }, { x: 680, w: 90, h: 150 },
+    { x: 790, w: 70, h: 180 }, { x: 880, w: 80, h: 140 },
+  ];
+  for (const b of portBuildings) {
+    ctx.fillRect(b.x, 350 - b.h, b.w, b.h);
+  }
+
+  // Ground / dock area
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(0, 420, 960, 120);
+
+  scene.textures.addCanvas('cin_beirut_port', c);
+}
+
+// ── 11. Lebanon coast panorama (960×540) ───────────────────────
+export function createLebanonCoastPanorama(scene) {
+  if (scene.textures.exists('cin_lebanon_coast')) return;
+  const c = document.createElement('canvas');
+  c.width = 960; c.height = 540;
+  const ctx = c.getContext('2d');
+
+  // Twilight sky
+  const sky = ctx.createLinearGradient(0, 0, 0, 350);
+  sky.addColorStop(0, '#0c1020');
+  sky.addColorStop(0.5, '#1a2848');
+  sky.addColorStop(1, '#2a3858');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 960, 350);
+
+  // Mediterranean sea
+  ctx.fillStyle = '#0e1830';
+  ctx.fillRect(0, 350, 960, 100);
+
+  // Coastal mountains
+  ctx.fillStyle = '#0a0e1a';
+  ctx.beginPath();
+  ctx.moveTo(0, 340);
+  for (let x = 0; x <= 960; x += 20) {
+    ctx.lineTo(x, 300 + Math.sin(x * 0.004) * 40 + Math.sin(x * 0.012) * 15);
+  }
+  ctx.lineTo(960, 450); ctx.lineTo(0, 450);
+  ctx.closePath();
+  ctx.fill();
+
+  // Ground
+  ctx.fillStyle = '#080a14';
+  ctx.fillRect(0, 450, 960, 90);
+
+  scene.textures.addCanvas('cin_lebanon_coast', c);
+}
+
+// ── 12. Fortress panorama (960×540) ────────────────────────────
+export function createFortressPanorama(scene) {
+  if (scene.textures.exists('cin_fortress')) return;
+  const c = document.createElement('canvas');
+  c.width = 960; c.height = 540;
+  const ctx = c.getContext('2d');
+
+  // Dark stormy sky
+  const sky = ctx.createLinearGradient(0, 0, 0, 350);
+  sky.addColorStop(0, '#080810');
+  sky.addColorStop(0.5, '#101020');
+  sky.addColorStop(1, '#181828');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 960, 350);
+
+  // Fortress walls
+  ctx.fillStyle = '#141420';
+  ctx.fillRect(200, 180, 560, 170);
+  // Towers
+  ctx.fillRect(180, 120, 60, 230);
+  ctx.fillRect(720, 120, 60, 230);
+  // Battlements
+  for (let x = 200; x < 760; x += 30) {
+    ctx.fillRect(x, 165, 15, 20);
+  }
+
+  // Ground
+  ctx.fillStyle = '#0a0a14';
+  ctx.fillRect(0, 350, 960, 190);
+
+  scene.textures.addCanvas('cin_fortress', c);
+}
+
+// ── 13. Natanz panorama (960×540) ──────────────────────────────
+export function createNatanzPanorama(scene) {
+  if (scene.textures.exists('cin_natanz')) return;
+  const c = document.createElement('canvas');
+  c.width = 960; c.height = 540;
+  const ctx = c.getContext('2d');
+
+  // Desert night sky
+  const sky = ctx.createLinearGradient(0, 0, 0, 380);
+  sky.addColorStop(0, '#0a0812');
+  sky.addColorStop(0.5, '#1a1420');
+  sky.addColorStop(1, '#2a2028');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 960, 380);
+
+  // Stars
+  for (let i = 0; i < 50; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${0.1 + Math.random() * 0.35})`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * 960, Math.random() * 220, 0.3 + Math.random() * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Facility structures
+  ctx.fillStyle = '#121218';
+  ctx.fillRect(300, 260, 360, 120);
+  // Dome
+  ctx.beginPath();
+  ctx.arc(480, 260, 60, Math.PI, 0);
+  ctx.fill();
+  // Cooling towers
+  ctx.fillRect(200, 240, 40, 140);
+  ctx.fillRect(720, 240, 40, 140);
+
+  // Desert ground
+  ctx.fillStyle = '#1a1610';
+  ctx.fillRect(0, 380, 960, 160);
+
+  scene.textures.addCanvas('cin_natanz', c);
+}
+
+// ── 14. Gaza panorama (960×540) ────────────────────────────────
+export function createGazaPanorama(scene) {
+  if (scene.textures.exists('cin_gaza')) return;
+  const c = document.createElement('canvas');
+  c.width = 960; c.height = 540;
+  const ctx = c.getContext('2d');
+
+  // Dark urban sky
+  const sky = ctx.createLinearGradient(0, 0, 0, 360);
+  sky.addColorStop(0, '#080810');
+  sky.addColorStop(0.5, '#0e0e1a');
+  sky.addColorStop(1, '#141420');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 960, 360);
+
+  // Urban skyline — dense low buildings
+  ctx.fillStyle = '#0a0a14';
+  for (let x = 0; x < 960; x += 25 + Math.floor(Math.random() * 15)) {
+    const bw = 20 + Math.floor(Math.random() * 25);
+    const bh = 60 + Math.floor(Math.random() * 100);
+    ctx.fillRect(x, 360 - bh, bw, bh);
+  }
+
+  // Ground
+  ctx.fillStyle = '#0c0c10';
+  ctx.fillRect(0, 360, 960, 180);
+
+  // Tunnel entrance hint (dark opening)
+  ctx.fillStyle = '#040408';
+  ctx.beginPath();
+  ctx.arc(480, 450, 30, Math.PI, 0);
+  ctx.fillRect(450, 430, 60, 40);
+  ctx.fill();
+
+  scene.textures.addCanvas('cin_gaza', c);
 }
