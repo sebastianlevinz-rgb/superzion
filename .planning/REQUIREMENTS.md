@@ -12,8 +12,8 @@
 
 ### Intro Sequence
 
-- [ ] **INTRO-01**: Intro sequence restores 4 waving flag animations (Iran, Lebanon, Palestine, Israel) using existing ParadeTextures generation code
-- [ ] **INTRO-02**: Final intro screen displays a giant golden semi-transparent Maguen David behind SuperZion, with "SUPERZION" in wide thick arcade retro font and a larger subtitle
+- [x] **INTRO-01**: Intro sequence restores 4 waving flag animations (Iran, Lebanon, Palestine, Israel) using existing ParadeTextures generation code
+- [x] **INTRO-02**: Final intro screen displays a giant golden semi-transparent Maguen David behind SuperZion, with "SUPERZION" in wide thick arcade retro font and a larger subtitle
 - [ ] **INTRO-03**: Psytrance music at 145+ BPM plays from frame 1 of the intro with SFX synchronized to visual events — missile whoosh, varied explosion booms, jet Doppler flyby, gunfire
 - [ ] **INTRO-04**: Camera shakes on intro explosions using Phaser camera shake API
 
@@ -64,8 +64,8 @@
 |-------------|-------|--------|
 | VIS-01 | Phase 6 | Complete |
 | VIS-02 | Phase 6 | Complete |
-| INTRO-01 | Phase 7 | Pending |
-| INTRO-02 | Phase 7 | Pending |
+| INTRO-01 | Phase 7 | Complete |
+| INTRO-02 | Phase 7 | Complete |
 | INTRO-03 | Phase 7 | Pending |
 | INTRO-04 | Phase 7 | Pending |
 | GAME-01 | Phase 5 | Complete |
