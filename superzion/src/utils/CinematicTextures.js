@@ -5,13 +5,14 @@
 const PAL = {
   skin0: '#8a6040', skin1: '#b08657', skin2: '#c49668',
   skin3: '#d2a679', skin4: '#e0b689',
-  kip0: '#0e1445', kip1: '#1a237e', kip2: '#283593',
-  tac0: '#3a5530', tac1: '#4a6840', tac2: '#5a7a50',
-  tac3: '#6a8a62', tac4: '#7a9a72',
-  vest0: '#5a5a60', vest1: '#6a6a70', vest2: '#7a7a80',
-  blk0: '#2a2018', blk1: '#3a3028', blk2: '#4a4038', blk3: '#5a5048',
+  hair0: '#0a0a0a', hair1: '#111110', hair2: '#1a1816',
+  tac0: '#1a1a1a', tac1: '#222222', tac2: '#2a2a2a',
+  tac3: '#333333', tac4: '#3a3a3a',
+  vest0: '#4e4e52', vest1: '#58585c', vest2: '#626266',
+  blk0: '#121212', blk1: '#1a1a1a', blk2: '#222222', blk3: '#2a2a2a',
   gld0: '#806010', gld1: '#a07a18', gld2: '#c49520',
-  gld3: '#daa520', gld4: '#eab530',
+  gld3: '#FFD700', gld4: '#eab530',
+  stubble: 'rgba(30, 22, 16, 0.25)',
 };
 
 function px(ctx, x, y, c) { ctx.fillStyle = c; ctx.fillRect(x, y, 1, 1); }
@@ -27,15 +28,28 @@ export function createSuperZionCinematic(scene) {
   // Head (side view)
   ctx.fillStyle = PAL.skin2;
   ctx.beginPath(); ctx.arc(32, 16, 9, 0, Math.PI * 2); ctx.fill();
-  // Kippah
-  ctx.fillStyle = PAL.kip1;
-  ctx.beginPath(); ctx.arc(32, 10, 7, Math.PI, 0); ctx.fill();
+  // Slicked-back hair
+  ctx.fillStyle = PAL.hair0;
+  ctx.beginPath(); ctx.ellipse(32, 10, 8, 4, 0, Math.PI, 0); ctx.fill();
+  // Side hair
+  ctx.fillStyle = PAL.hair1;
+  ctx.fillRect(23, 10, 3, 6);
+  ctx.fillRect(38, 10, 3, 6);
   // Eye
   ctx.fillStyle = '#eeeee8';
   rect(ctx, 36, 14, 3, 2, '#eeeee8');
   rect(ctx, 37, 14, 1, 2, '#0e0e0e');
   // Ear
   rect(ctx, 23, 14, 2, 4, PAL.skin3);
+  // Stubble / beard shadow
+  for (let dy = 0; dy < 4; dy++) {
+    for (let dx = -5; dx <= 5; dx++) {
+      if ((dx + dy) % 3 === 0) {
+        ctx.fillStyle = PAL.stubble;
+        ctx.fillRect(32 + dx, 20 + dy, 1, 1);
+      }
+    }
+  }
 
   // Torso
   rect(ctx, 24, 26, 16, 24, PAL.tac1);
@@ -432,8 +446,8 @@ export function createSuperZionOnCliff(scene) {
 
   // Head
   ctx.beginPath(); ctx.arc(64, 28, 10, 0, Math.PI * 2); ctx.fill();
-  // Kippah
-  ctx.beginPath(); ctx.arc(64, 22, 8, Math.PI, 0); ctx.fill();
+  // Flat-top hair shape (no dome)
+  ctx.fillRect(54, 20, 20, 5);
 
   // Body
   rect(ctx, 54, 38, 20, 30, '#0a0804');
