@@ -303,8 +303,11 @@ export default class MenuScene extends Phaser.Scene {
       targets: prompt, alpha: 0.3, duration: 700, yoyo: true, repeat: -1,
     });
 
-    // Start menu music
-    MusicManager.get().playMenuMusic();
+    // Only start menu music if not already playing (intro scene starts it and it continues seamlessly)
+    const mm = MusicManager.get();
+    if (mm.currentTrack !== 'menu') {
+      mm.playMenuMusic();
+    }
 
     // Scroll offset for parallax
     this.scrollOffset = 0;
