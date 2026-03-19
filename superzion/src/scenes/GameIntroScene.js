@@ -1,423 +1,818 @@
 // ═══════════════════════════════════════════════════════════════
-// GameIntroScene — 30-second skippable opening cinematic
-// Scene 1: World Map  →  Scene 2: The Villains  →  Scene 3: The Hero
+// GameIntroScene — PSYTRANCE Action Intro (25s, skippable)
+// Act 1: THE AXIS OF EVIL — red sky, missiles launching, bosses shooting
+// Act 2: ISRAEL RESPONDS — blue sky, jets firing, Iron Dome, tanks
+// Act 3: SUPERZION — hero walks in, pistol shot, title impact
 // ═══════════════════════════════════════════════════════════════
 
 import Phaser from 'phaser';
 import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
+import IntroMusic from '../systems/IntroMusic.js';
+import { generateAllParadeTextures } from '../utils/ParadeTextures.js';
 
 export default class GameIntroScene extends BaseCinematicScene {
   constructor() { super('GameIntroScene'); }
 
   create() {
-    MusicManager.get().playCinematicMusic(1);
     this._initCinematic();
-    this._startScene1();
+    generateAllParadeTextures(this);
+
+    // Start psytrance intro music
+    this._introMusic = new IntroMusic();
+    this._introMusic.start();
+
+    this._startAct1();
   }
 
   // ═════════════════════════════════════════════════════════════
-  // SCENE 1 — THE WORLD MAP (8s)
+  // ACT 1 — THE AXIS OF EVIL (0-8s)
+  // Missiles launching, bosses shooting, explosions, chaos
   // ═════════════════════════════════════════════════════════════
-  _startScene1() {
-    // Create radar map background
-    const mapGfx = this.add.graphics().setDepth(0);
-    this.actObjects.push(mapGfx);
+  _startAct1() {
+    this.currentAct = 1;
 
-    // Black bg + green grid
-    mapGfx.fillStyle(0x020204, 1);
-    mapGfx.fillRect(0, 0, W, H);
-    mapGfx.lineStyle(0.5, 0x00c800, 0.06);
-    for (let x = 0; x < W; x += 48) {
-      mapGfx.beginPath(); mapGfx.moveTo(x, 0); mapGfx.lineTo(x, H); mapGfx.strokePath();
-    }
-    for (let y = 0; y < H; y += 48) {
-      mapGfx.beginPath(); mapGfx.moveTo(0, y); mapGfx.lineTo(W, y); mapGfx.strokePath();
-    }
-    // Scanlines
-    for (let y = 0; y < H; y += 3) {
-      mapGfx.fillStyle(0x00ff00, 0.005 + Math.random() * 0.004);
-      mapGfx.fillRect(0, y, W, 1);
-    }
-
-    // Country outlines
-    const countries = [
-      { pts: [[120,260],[180,210],[210,230],[230,300],[250,370],[210,430],[150,450],[100,410],[80,320]], label: 'EGYPT' },
-      { pts: [[240,215],[252,200],[262,215],[264,245],[260,270],[252,285],[244,270],[238,245]], label: 'ISRAEL' },
-      { pts: [[265,220],[295,210],[312,230],[308,270],[292,300],[265,290],[260,260]], label: 'JORDAN' },
-      { pts: [[278,155],[325,140],[358,155],[348,190],[315,205],[282,200],[272,180]], label: 'SYRIA' },
-      { pts: [[358,155],[415,130],[465,150],[485,200],[475,270],[445,320],[405,340],[355,310],[335,260],[345,200]], label: 'IRAQ' },
-      { pts: [[485,110],[545,90],[615,80],[695,90],[755,120],[785,180],[775,250],[745,310],[705,350],[645,370],[585,360],[525,320],[495,270],[485,200]], label: 'IRAN' },
-      { pts: [[245,100],[315,80],[395,75],[465,85],[505,110],[475,140],[415,150],[355,155],[295,155],[265,140]], label: 'TURKEY' },
-      { pts: [[260,150],[278,155],[272,180],[255,170]], label: 'LEBANON' },
-      { pts: [[238,270],[252,285],[244,310],[230,300]], label: 'GAZA' },
-    ];
-
-    for (const c of countries) {
-      mapGfx.lineStyle(1.2, 0x00c800, 0.35);
-      mapGfx.beginPath();
-      mapGfx.moveTo(c.pts[0][0], c.pts[0][1]);
-      for (let i = 1; i < c.pts.length; i++) mapGfx.lineTo(c.pts[i][0], c.pts[i][1]);
-      mapGfx.closePath();
-      mapGfx.strokePath();
-      mapGfx.fillStyle(0x005000, 0.04);
-      mapGfx.fillPath();
-    }
-
-    // Sequential red light-up: Iran → Lebanon → Gaza → Syria
-    const threats = [
-      { name: 'IRAN', pts: countries[5].pts, delay: 800 },
-      { name: 'LEBANON', pts: countries[7].pts, delay: 2000 },
-      { name: 'GAZA', pts: countries[8].pts, delay: 3000 },
-      { name: 'SYRIA', pts: countries[3].pts, delay: 4000 },
-    ];
-
-    for (const t of threats) {
-      this.time.delayedCall(t.delay, () => {
-        if (this.skipped) return;
-        const gfx = this.add.graphics().setDepth(2);
-        this.actObjects.push(gfx);
-        gfx.fillStyle(0xff2222, 0.25);
-        gfx.beginPath();
-        gfx.moveTo(t.pts[0][0], t.pts[0][1]);
-        for (let i = 1; i < t.pts.length; i++) gfx.lineTo(t.pts[i][0], t.pts[i][1]);
-        gfx.closePath();
-        gfx.fillPath();
-        gfx.setAlpha(0);
-        this.tweens.add({ targets: gfx, alpha: 1, duration: 400 });
-        SoundManager.get().playMissileWarning();
-      });
-    }
-
-    // Red connection lines
-    const redLineGfx = this.add.graphics().setDepth(3);
-    this.actObjects.push(redLineGfx);
-    this.time.delayedCall(4500, () => {
-      if (this.skipped) return;
-      redLineGfx.lineStyle(1, 0xff2222, 0.5);
-      const centers = [
-        { x: 640, y: 210 }, // Iran
-        { x: 265, y: 165 }, // Lebanon
-        { x: 242, y: 290 }, // Gaza
-        { x: 310, y: 178 }, // Syria
-      ];
-      for (let i = 1; i < centers.length; i++) {
-        redLineGfx.beginPath();
-        redLineGfx.moveTo(centers[0].x, centers[0].y);
-        redLineGfx.lineTo(centers[i].x, centers[i].y);
-        redLineGfx.strokePath();
-      }
-    });
-
-    // Israel lights up BLUE/GOLD with pulse
-    this.time.delayedCall(5000, () => {
-      if (this.skipped) return;
-      const isr = countries[1].pts;
-      const gfx = this.add.graphics().setDepth(4);
-      this.actObjects.push(gfx);
-      gfx.fillStyle(0x3366ff, 0.35);
-      gfx.beginPath();
-      gfx.moveTo(isr[0][0], isr[0][1]);
-      for (let i = 1; i < isr.length; i++) gfx.lineTo(isr[i][0], isr[i][1]);
-      gfx.closePath();
-      gfx.fillPath();
-
-      // Gold pulse ring around Israel
-      const ring = this.add.circle(252, 245, 8, 0xffd700, 0.4).setDepth(5);
-      this.actObjects.push(ring);
-      this.tweens.add({ targets: ring, scale: 4, alpha: 0, duration: 1000, repeat: -1 });
-    });
-
-    // Typewriter text
-    this.time.delayedCall(5500, () => {
-      if (this.skipped) return;
-      this._typewriter(W / 2, H - 60, 'THEY THOUGHT THEY WERE SAFE...', '#ff2222', 20, 50);
-    });
-
-    // Transition to Scene 2
-    this.time.delayedCall(7500, () => {
-      if (this.skipped) return;
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-    });
-    this.time.delayedCall(8000, () => {
-      if (this.skipped) return;
-      this._clearAct();
-      this.cameras.main.fadeIn(400, 0, 0, 0);
-      this._startScene2();
-    });
-  }
-
-  // ═════════════════════════════════════════════════════════════
-  // SCENE 2 — THE VILLAINS (10s)
-  // ═════════════════════════════════════════════════════════════
-  _startScene2() {
-    // Dark background
-    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x060608).setDepth(0);
+    // ── Red/dark sky background ──
+    const bg = this.add.graphics().setDepth(0);
     this.actObjects.push(bg);
-
-    const header = this.add.text(W / 2, 30, 'SIX TARGETS. SIX MISSIONS.', {
-      fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
-      shadow: { offsetX: 0, offsetY: 0, color: '#ff2222', blur: 8, fill: true },
-    }).setOrigin(0.5).setDepth(10);
-    this.actObjects.push(header);
-
-    // 6 panels in 2×3 grid
-    const panels = [
-      { label: 'TEHRAN', sub: 'Azadi Tower', color: 0x884422 },
-      { label: 'BEIRUT', sub: 'Radar Network', color: 0x226644 },
-      { label: 'LEBANON', sub: 'Underground Bunker', color: 0x446622 },
-      { label: 'GAZA', sub: 'Tunnel Network', color: 0x664422 },
-      { label: 'NATANZ', sub: 'Nuclear Facility', color: 0x226644 },
-      { label: 'THE COMMANDER', sub: 'Final Boss', color: 0x662222 },
-    ];
-
-    const cols = 3, gapX = 260, gapY = 190;
-    const startX = 200, startY = 120;
-
-    panels.forEach((p, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const px = startX + col * gapX;
-      const py = startY + row * gapY;
-
-      this.time.delayedCall(500 + i * 1200, () => {
-        if (this.skipped) return;
-
-        // Panel background
-        const panel = this.add.rectangle(px, py + 40, 220, 140, p.color, 0.4).setDepth(5);
-        panel.setScale(0);
-        this.actObjects.push(panel);
-        this.tweens.add({ targets: panel, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.easeOut' });
-
-        // Panel border
-        const border = this.add.rectangle(px, py + 40, 220, 140).setDepth(6);
-        border.setStrokeStyle(1, 0xff4444, 0.5);
-        border.setFillStyle(0, 0);
-        border.setScale(0);
-        this.actObjects.push(border);
-        this.tweens.add({ targets: border, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.easeOut' });
-
-        // Icon area (threat specific)
-        const iconGfx = this.add.graphics().setDepth(7);
-        this.actObjects.push(iconGfx);
-        this._drawThreatIcon(iconGfx, px, py + 20, i);
-
-        // Label
-        const label = this.add.text(px, py + 80, p.label, {
-          fontFamily: 'monospace', fontSize: '14px', color: '#ffffff',
-          shadow: { offsetX: 0, offsetY: 0, color: '#ffffff', blur: 4, fill: true },
-        }).setOrigin(0.5).setDepth(8);
-        this.actObjects.push(label);
-
-        const subLabel = this.add.text(px, py + 98, p.sub, {
-          fontFamily: 'monospace', fontSize: '10px', color: '#888888',
-        }).setOrigin(0.5).setDepth(8);
-        this.actObjects.push(subLabel);
-
-        SoundManager.get().playBombImpact();
-      });
-    });
-
-    // Transition to Scene 3
-    this.time.delayedCall(9000, () => {
-      if (this.skipped) return;
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-    });
-    this.time.delayedCall(9500, () => {
-      if (this.skipped) return;
-      this._clearAct();
-      this.cameras.main.fadeIn(400, 0, 0, 0);
-      this._startScene3();
-    });
-  }
-
-  _drawThreatIcon(gfx, cx, cy, index) {
-    switch (index) {
-      case 0: // Tehran — Azadi Tower silhouette
-        gfx.fillStyle(0x886644, 0.6);
-        gfx.fillRect(cx - 3, cy - 30, 6, 40);
-        gfx.fillTriangle(cx - 18, cy + 10, cx + 18, cy + 10, cx, cy - 35);
-        break;
-      case 1: // Beirut — Radar screen
-        gfx.fillStyle(0x004400, 0.6);
-        gfx.fillCircle(cx, cy, 22);
-        gfx.lineStyle(1, 0x00ff00, 0.4);
-        gfx.strokeCircle(cx, cy, 10);
-        gfx.strokeCircle(cx, cy, 20);
-        gfx.beginPath(); gfx.moveTo(cx, cy); gfx.lineTo(cx + 18, cy - 8); gfx.strokePath();
-        break;
-      case 2: // Lebanon — Bunker in mountain
-        gfx.fillStyle(0x444422, 0.6);
-        gfx.fillTriangle(cx - 30, cy + 15, cx + 30, cy + 15, cx, cy - 25);
-        gfx.fillStyle(0x222222, 0.8);
-        gfx.fillRect(cx - 8, cy + 2, 16, 13);
-        break;
-      case 3: // Gaza — Tunnel network
-        gfx.fillStyle(0x443322, 0.6);
-        gfx.fillRect(cx - 25, cy - 5, 50, 3);
-        gfx.fillRect(cx - 20, cy + 5, 40, 3);
-        gfx.fillRect(cx - 15, cy + 15, 30, 3);
-        gfx.lineStyle(1, 0x664433, 0.5);
-        gfx.beginPath(); gfx.moveTo(cx - 15, cy - 5); gfx.lineTo(cx - 10, cy + 5); gfx.strokePath();
-        gfx.beginPath(); gfx.moveTo(cx + 10, cy - 5); gfx.lineTo(cx + 5, cy + 5); gfx.strokePath();
-        gfx.beginPath(); gfx.moveTo(cx - 5, cy + 5); gfx.lineTo(cx, cy + 15); gfx.strokePath();
-        break;
-      case 4: // Natanz — Mountain with green glow
-        gfx.fillStyle(0x444422, 0.6);
-        gfx.fillTriangle(cx - 30, cy + 15, cx + 30, cy + 15, cx, cy - 25);
-        gfx.fillStyle(0x00ff00, 0.15);
-        gfx.fillCircle(cx, cy, 12);
-        gfx.fillStyle(0x00ff00, 0.3);
-        gfx.fillCircle(cx, cy, 5);
-        break;
-      case 5: // Commander — Dark silhouette with red eyes
-        gfx.fillStyle(0x1a1a1a, 0.8);
-        gfx.fillCircle(cx, cy - 12, 12);
-        gfx.fillRect(cx - 14, cy, 28, 25);
-        gfx.fillStyle(0xff0000, 0.9);
-        gfx.fillCircle(cx - 5, cy - 14, 2);
-        gfx.fillCircle(cx + 5, cy - 14, 2);
-        break;
-    }
-  }
-
-  // ═════════════════════════════════════════════════════════════
-  // SCENE 3 — THE HERO (8s)
-  // ═════════════════════════════════════════════════════════════
-  _startScene3() {
-    // Golden sunrise gradient rising from bottom
-    const sunriseGfx = this.add.graphics().setDepth(0);
-    this.actObjects.push(sunriseGfx);
-
     for (let y = 0; y < H; y++) {
       const t = y / H;
-      let r, g, b;
-      if (t < 0.3) {
-        r = 10; g = 5; b = 20 + t * 30;
-      } else if (t < 0.6) {
-        const lt = (t - 0.3) / 0.3;
-        r = 10 + lt * 180; g = 5 + lt * 80; b = 30 - lt * 10;
-      } else {
-        const lt = (t - 0.6) / 0.4;
-        r = 190 + lt * 65; g = 85 + lt * 100; b = 20 + lt * 40;
-      }
-      sunriseGfx.fillStyle(Phaser.Display.Color.GetColor(r | 0, g | 0, b | 0), 1);
-      sunriseGfx.fillRect(0, y, W, 1);
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        30 + t * 80 | 0, 2 + t * 8 | 0, 2 + t * 5 | 0
+      ));
+      bg.fillRect(0, y, W, 1);
+    }
+    // Dark smoke clouds
+    for (const [cx, cy, r] of [[120, 70, 80], [350, 100, 65], [600, 60, 70], [800, 110, 55], [250, 150, 60]]) {
+      bg.fillStyle(0x1a0505, 0.3);
+      bg.fillCircle(cx, cy, r);
+    }
+    // Ground strip — scorched earth
+    bg.fillStyle(0x2a1508, 1);
+    bg.fillRect(0, H - 60, W, 60);
+    bg.fillStyle(0x3a2010, 1);
+    bg.fillRect(0, H - 60, W, 3);
+
+    // ── Persistent fire glow on ground ──
+    const fireGlow = this.add.graphics().setDepth(1);
+    this.actObjects.push(fireGlow);
+    for (let i = 0; i < 8; i++) {
+      const fx = Math.random() * W;
+      const fy = H - 55 + Math.random() * 10;
+      fireGlow.fillStyle(0xff4400, 0.08);
+      fireGlow.fillCircle(fx, fy, 20 + Math.random() * 25);
+      fireGlow.fillStyle(0xff2200, 0.05);
+      fireGlow.fillCircle(fx, fy, 35 + Math.random() * 20);
     }
 
-    // Sun glow at bottom center
-    const sunCircle = this.add.circle(W / 2, H - 40, 60, 0xffcc40, 0.5).setDepth(1);
-    this.actObjects.push(sunCircle);
-    this.tweens.add({ targets: sunCircle, alpha: 0.8, scale: 1.3, duration: 2000, yoyo: true, repeat: -1 });
-
-    // SuperZion silhouette (drawn inline, facing away initially)
-    const silGfx = this.add.graphics().setDepth(5);
-    this.actObjects.push(silGfx);
-    this._drawHeroSilhouette(silGfx, W / 2, H - 180);
-
-    // "Turns around" — flipX tween via container
-    const starGlow = this.add.circle(W / 2, H - 170, 8, 0xffd700, 0).setDepth(6);
-    this.actObjects.push(starGlow);
-    this.time.delayedCall(2000, () => {
-      if (this.skipped) return;
-      // Flash + Star of David glow
-      this.tweens.add({ targets: silGfx, scaleX: -1, duration: 300, ease: 'Sine.easeInOut',
-        onComplete: () => {
-          this.tweens.add({ targets: silGfx, scaleX: 1, duration: 300, ease: 'Sine.easeInOut' });
-        }
-      });
-      this.tweens.add({ targets: starGlow, alpha: 0.7, duration: 400, yoyo: true, repeat: 3 });
+    // ── "THE AXIS OF EVIL" title with red glow ──
+    const titleText = this.add.text(W / 2, H / 2 - 60, 'THE AXIS OF EVIL', {
+      fontFamily: 'monospace', fontSize: '42px', color: '#ff1111',
+      shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 30, fill: true },
+    }).setOrigin(0.5).setDepth(60).setAlpha(0);
+    this.actObjects.push(titleText);
+    this.tweens.add({ targets: titleText, alpha: 1, duration: 600 });
+    // Pulsing red glow
+    this.tweens.add({
+      targets: titleText, scaleX: 1.03, scaleY: 1.03,
+      duration: 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
+    this.tweens.add({ targets: titleText, alpha: 0, duration: 400, delay: 2500 });
 
-    // Vehicle silhouettes appear
-    this.time.delayedCall(3000, () => {
+    // ── Boss appearances with flash + boom ──
+    // Boss 1: Foam Beard (Iran) at ~1.2s
+    this.time.delayedCall(1200, () => {
       if (this.skipped) return;
-      const vGfx = this.add.graphics().setDepth(3);
-      this.actObjects.push(vGfx);
-      vGfx.setAlpha(0);
-
-      // F-15 outline
-      vGfx.fillStyle(0x1a1008, 0.7);
-      vGfx.fillTriangle(120, 200, 180, 180, 180, 220);
-      vGfx.fillRect(140, 190, 60, 20);
-
-      // B-2 outline
-      vGfx.fillTriangle(700, 200, 800, 220, 600, 220);
-
-      // Drone outline
-      vGfx.fillRect(430, 180, 30, 6);
-      vGfx.fillRect(435, 174, 20, 6);
-      vGfx.fillRect(440, 186, 10, 10);
-
-      this.tweens.add({ targets: vGfx, alpha: 0.6, duration: 800 });
-    });
-
-    // Typewriter text
-    this.time.delayedCall(3500, () => {
-      if (this.skipped) return;
-      this._typewriter(W / 2, 50, 'ONE SOLDIER. SIX MISSIONS.', '#ffffff', 18, 45);
-    });
-
-    // SUPERZION title with flash
-    this.time.delayedCall(5500, () => {
-      if (this.skipped) return;
-      // White flash
-      const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.8).setDepth(30);
-      this.actObjects.push(flash);
-      this.tweens.add({ targets: flash, alpha: 0, duration: 500 });
+      this._bossFlashEntry(150, H / 2 + 40, 'parade_foambeard', 'IRAN', this._attackFoamBeard);
       SoundManager.get().playExplosion();
-
-      const title = this.add.text(W / 2, 100, 'SUPERZION', {
-        fontFamily: 'monospace', fontSize: '52px', color: '#FFD700',
-        shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 25, fill: true },
-      }).setOrigin(0.5).setDepth(25);
-      this.actObjects.push(title);
-      title.setAlpha(0);
-      this.tweens.add({ targets: title, alpha: 1, duration: 300 });
-      this.tweens.add({
-        targets: title, scaleX: 1.05, scaleY: 1.05,
-        duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-      });
+      this.cameras.main.shake(200, 0.012);
     });
 
-    // Fade to MenuScene
+    // Boss 2: Turbo Turban (Lebanon) at ~2.8s
+    this.time.delayedCall(2800, () => {
+      if (this.skipped) return;
+      this._bossFlashEntry(W / 2 - 100, H / 2 + 40, 'parade_turboturban', 'HEZBOLLAH', this._attackTurboTurban);
+      SoundManager.get().playExplosion();
+      this.cameras.main.shake(200, 0.012);
+    });
+
+    // Boss 3: The Warden (Gaza) at ~4.4s
+    this.time.delayedCall(4400, () => {
+      if (this.skipped) return;
+      this._bossFlashEntry(W / 2 + 100, H / 2 + 40, 'parade_warden', 'HAMAS', this._attackWarden);
+      SoundManager.get().playExplosion();
+      this.cameras.main.shake(250, 0.015);
+    });
+
+    // Boss 4: Supreme Turban (Supreme Leader) at ~6.0s
+    this.time.delayedCall(6000, () => {
+      if (this.skipped) return;
+      this._bossFlashEntry(W - 150, H / 2 + 40, 'parade_supremeturban', 'SUPREME LEADER', this._attackSupremeTurban);
+      SoundManager.get().playExplosion();
+      this.cameras.main.shake(300, 0.018);
+    });
+
+    // ── Missiles flying across screen continuously ──
+    this._missileTimer = this.time.addEvent({
+      delay: 400, repeat: 18,
+      callback: () => {
+        if (this.skipped) return;
+        this._spawnMissile();
+      },
+    });
+    this.actObjects.push(this._missileTimer);
+
+    // ── Explosions popping randomly ──
+    this._explosionTimer = this.time.addEvent({
+      delay: 500, repeat: 14,
+      callback: () => {
+        if (this.skipped) return;
+        this._spawnExplosion(
+          100 + Math.random() * (W - 200),
+          80 + Math.random() * (H - 180)
+        );
+      },
+    });
+    this.actObjects.push(this._explosionTimer);
+
+    // ── Screen shakes on every other beat (~0.83s) ──
+    for (let i = 0; i < 9; i++) {
+      this.time.delayedCall(i * 830, () => {
+        if (this.skipped) return;
+        this.cameras.main.shake(100, 0.005 + Math.random() * 0.005);
+      });
+    }
+
+    // ── Transition to Act 2 ──
     this.time.delayedCall(7500, () => {
       if (this.skipped) return;
       this.cameras.main.fadeOut(500, 0, 0, 0);
     });
     this.time.delayedCall(8000, () => {
       if (this.skipped) return;
+      this._clearAct();
+      this.cameras.main.fadeIn(400, 0, 0, 0);
+      this._startAct2();
+    });
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // ACT 2 — ISRAEL RESPONDS (8-16s)
+  // Jets firing, bombs dropping, Iron Dome, tanks, EXPLOSIONS
+  // ═════════════════════════════════════════════════════════════
+  _startAct2() {
+    this.currentAct = 2;
+
+    // ── Blue sky background ──
+    const bg = this.add.graphics().setDepth(0);
+    this.actObjects.push(bg);
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        30 + t * 100 | 0, 80 + t * 130 | 0, 180 + t * 50 | 0
+      ));
+      bg.fillRect(0, y, W, 1);
+    }
+    // Sun
+    bg.fillStyle(0xfff8e0, 0.7);
+    bg.fillCircle(160, 80, 25);
+    bg.fillStyle(0xfff0c0, 0.2);
+    bg.fillCircle(160, 80, 55);
+    // Ground — desert
+    bg.fillStyle(0x9a8a60, 1);
+    bg.fillRect(0, H - 70, W, 70);
+    bg.fillStyle(0xaa9a70, 1);
+    bg.fillRect(0, H - 70, W, 3);
+
+    // ── "ISRAEL DEFENSE FORCES" title ──
+    const idfText = this.add.text(W / 2, H / 2 - 80, 'ISRAEL DEFENSE FORCES', {
+      fontFamily: 'monospace', fontSize: '34px', color: '#4488ff',
+      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 20, fill: true },
+    }).setOrigin(0.5).setDepth(60).setAlpha(0);
+    this.actObjects.push(idfText);
+    this.tweens.add({ targets: idfText, alpha: 1, duration: 600 });
+    this.tweens.add({ targets: idfText, alpha: 0, duration: 400, delay: 2500 });
+
+    // ── F-15 jets streak across firing missiles (1s) ──
+    this.time.delayedCall(800, () => {
+      if (this.skipped) return;
+      this._spawnJetStrike(100, 120, true);
+      SoundManager.get().playExplosion();
+      this.cameras.main.shake(200, 0.01);
+    });
+    this.time.delayedCall(1500, () => {
+      if (this.skipped) return;
+      this._spawnJetStrike(200, 150, true);
+    });
+
+    // ── F-35 dropping bombs (3s) ──
+    this.time.delayedCall(2800, () => {
+      if (this.skipped) return;
+      this._spawnBomber(W / 2, 100);
+      SoundManager.get().playExplosion();
+      this.cameras.main.shake(300, 0.018);
+    });
+
+    // ── Iron Dome interceptions (4.5s) ──
+    this.time.delayedCall(4200, () => {
+      if (this.skipped) return;
+      this._spawnIronDomeSequence();
+      SoundManager.get().playExplosion();
+      this.cameras.main.shake(250, 0.015);
+    });
+
+    // ── Tanks firing (6s) ──
+    this.time.delayedCall(5500, () => {
+      if (this.skipped) return;
+      this._spawnTankFiring(200, H - 90);
+      SoundManager.get().playExplosion();
+      this.cameras.main.shake(300, 0.02);
+    });
+    this.time.delayedCall(6200, () => {
+      if (this.skipped) return;
+      this._spawnTankFiring(550, H - 85);
+      SoundManager.get().playExplosion();
+    });
+
+    // ── Continuous explosions ──
+    this._act2ExpTimer = this.time.addEvent({
+      delay: 600, repeat: 12,
+      callback: () => {
+        if (this.skipped) return;
+        this._spawnExplosion(
+          50 + Math.random() * (W - 100),
+          60 + Math.random() * (H - 160)
+        );
+      },
+    });
+    this.actObjects.push(this._act2ExpTimer);
+
+    // ── Beat-synced shakes ──
+    for (let i = 0; i < 9; i++) {
+      this.time.delayedCall(i * 830, () => {
+        if (this.skipped) return;
+        this.cameras.main.shake(80, 0.004 + Math.random() * 0.004);
+      });
+    }
+
+    // ── Transition to Act 3 ──
+    this.time.delayedCall(7500, () => {
+      if (this.skipped) return;
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+    });
+    this.time.delayedCall(8000, () => {
+      if (this.skipped) return;
+      this._clearAct();
+      this.cameras.main.fadeIn(400, 0, 0, 0);
+      this._startAct3();
+    });
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // ACT 3 — SUPERZION (16-25s)
+  // Hero walks in, pistol shot, title IMPACT
+  // ═════════════════════════════════════════════════════════════
+  _startAct3() {
+    this.currentAct = 3;
+
+    // ── Smoky battlefield background ──
+    const bg = this.add.graphics().setDepth(0);
+    this.actObjects.push(bg);
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        12 + t * 30 | 0, 10 + t * 22 | 0, 8 + t * 18 | 0
+      ));
+      bg.fillRect(0, y, W, 1);
+    }
+    // Scorched ground
+    bg.fillStyle(0x3a2818, 1);
+    bg.fillRect(0, H - 80, W, 80);
+
+    // ── Fires and smoke in background ──
+    const smokeGfx = this.add.graphics().setDepth(1);
+    this.actObjects.push(smokeGfx);
+    // Distant fires (left side — enemy territory)
+    for (const [cx, cy, r] of [[80, 200, 50], [40, 300, 40], [150, 340, 35], [100, 140, 30]]) {
+      smokeGfx.fillStyle(0x3a1a08, 0.25);
+      smokeGfx.fillCircle(cx, cy, r);
+    }
+    smokeGfx.fillStyle(0xff3300, 0.06);
+    smokeGfx.fillCircle(60, 260, 55);
+    smokeGfx.fillCircle(130, 330, 45);
+
+    // Explosions behind hero (right side)
+    const bgExplosions = this.add.graphics().setDepth(2);
+    this.actObjects.push(bgExplosions);
+    for (const [cx, cy, r] of [[700, 250, 35], [820, 200, 40], [750, 320, 30], [880, 280, 25]]) {
+      bgExplosions.fillStyle(0xff6600, 0.08);
+      bgExplosions.fillCircle(cx, cy, r);
+      bgExplosions.fillStyle(0xffaa00, 0.04);
+      bgExplosions.fillCircle(cx, cy, r * 0.5);
+    }
+
+    // ── Smoke particles drifting ──
+    for (let i = 0; i < 12; i++) {
+      const smoke = this.add.circle(
+        Math.random() * W, 100 + Math.random() * 300,
+        15 + Math.random() * 30, 0x222222, 0.1 + Math.random() * 0.1
+      ).setDepth(3);
+      this.actObjects.push(smoke);
+      this.tweens.add({
+        targets: smoke,
+        x: smoke.x - 60 - Math.random() * 80,
+        y: smoke.y - 30 - Math.random() * 40,
+        alpha: 0,
+        duration: 3000 + Math.random() * 3000,
+        ease: 'Sine.easeOut',
+      });
+    }
+
+    // ── Background explosions keep going ──
+    this._act3ExpTimer = this.time.addEvent({
+      delay: 700, repeat: 10,
+      callback: () => {
+        if (this.skipped) return;
+        // Explosions behind hero (right side mostly)
+        this._spawnExplosion(
+          500 + Math.random() * 400,
+          100 + Math.random() * 250
+        );
+      },
+    });
+    this.actObjects.push(this._act3ExpTimer);
+
+    // ── SuperZion walks in from RIGHT through smoke ──
+    const heroY = H - 80 - 80;
+    const hero = this.add.sprite(W + 80, heroY, 'parade_superzion')
+      .setDepth(20).setScale(2.0);
+    this.actObjects.push(hero);
+
+    // Walk bob
+    const heroBob = this.tweens.add({
+      targets: hero, y: heroY - 4,
+      duration: 300, yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    // Walk to center-right position
+    this.tweens.add({
+      targets: hero,
+      x: W / 2 + 60,
+      duration: 3500,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        heroBob.stop();
+        hero.y = heroY;
+      },
+    });
+
+    // ── At 4s: Hero pulls out pistol and fires at camera ──
+    this.time.delayedCall(4000, () => {
+      if (this.skipped) return;
+
+      // Muzzle flash
+      const muzzle = this.add.circle(hero.x - 40, heroY - 10, 15, 0xffff00, 0.9)
+        .setDepth(25);
+      this.actObjects.push(muzzle);
+      this.tweens.add({ targets: muzzle, alpha: 0, scale: 3, duration: 150 });
+
+      // Gunshot line
+      const shotLine = this.add.graphics().setDepth(24);
+      this.actObjects.push(shotLine);
+      shotLine.lineStyle(3, 0xffff00, 0.8);
+      shotLine.lineBetween(hero.x - 40, heroY - 10, W / 2 - 100, H / 2);
+      this.tweens.add({ targets: shotLine, alpha: 0, duration: 200 });
+
+      SoundManager.get().playExplosion();
+      this.cameras.main.shake(150, 0.01);
+    });
+
+    // ── At 5s: "SUPERZION" TITLE with MASSIVE IMPACT ──
+    this.time.delayedCall(5000, () => {
+      if (this.skipped) return;
+
+      // WHITE FLASH — full screen
+      const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.9).setDepth(30);
+      this.actObjects.push(flash);
+      this.tweens.add({ targets: flash, alpha: 0, duration: 600 });
+
+      // SCREEN SHAKE — heavy
+      this.cameras.main.shake(500, 0.03);
+      SoundManager.get().playExplosion();
+
+      // "SUPERZION" title — slams in with impact
+      const title = this.add.text(W / 2, H / 2 - 40, 'SUPERZION', {
+        fontFamily: 'monospace', fontSize: '64px', color: '#FFD700',
+        shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 40, fill: true },
+      }).setOrigin(0.5).setDepth(50).setAlpha(0).setScale(3);
+      this.actObjects.push(title);
+
+      // Impact zoom: large -> normal
+      this.tweens.add({
+        targets: title,
+        alpha: 1, scaleX: 1, scaleY: 1,
+        duration: 300,
+        ease: 'Back.easeOut',
+      });
+      // Subtle breathing pulse
+      this.tweens.add({
+        targets: title, scaleX: 1.04, scaleY: 1.04,
+        duration: 600, yoyo: true, repeat: -1,
+        ease: 'Sine.easeInOut', delay: 400,
+      });
+
+      // Red underline bar
+      const bar = this.add.rectangle(W / 2, H / 2 - 5, 0, 4, 0xff2200).setDepth(49);
+      this.actObjects.push(bar);
+      this.tweens.add({ targets: bar, width: 350, duration: 400, ease: 'Cubic.easeOut' });
+    });
+
+    // ── At 6.5s: Subtitle ──
+    this.time.delayedCall(6500, () => {
+      if (this.skipped) return;
+      const sub = this.add.text(W / 2, H / 2 + 30, 'ONE SOLDIER. SIX MISSIONS. ZERO MERCY.', {
+        fontFamily: 'monospace', fontSize: '16px', color: '#ffffff',
+        shadow: { offsetX: 0, offsetY: 0, color: '#ffffff', blur: 10, fill: true },
+      }).setOrigin(0.5).setDepth(50).setAlpha(0);
+      this.actObjects.push(sub);
+      this.tweens.add({ targets: sub, alpha: 1, duration: 500 });
+    });
+
+    // ── At 7s: Secondary screen shake + explosion sound (drop sync) ──
+    this.time.delayedCall(7000, () => {
+      if (this.skipped) return;
+      this.cameras.main.shake(200, 0.015);
+      SoundManager.get().playExplosion();
+    });
+
+    // ── At 8s: Final gold flash on hero ──
+    this.time.delayedCall(8000, () => {
+      if (this.skipped) return;
+      const goldFlash = this.add.circle(hero.x, heroY + 20, 50, 0xffd700, 0)
+        .setDepth(28);
+      this.actObjects.push(goldFlash);
+      this.tweens.add({
+        targets: goldFlash, alpha: 0.6, scale: 3,
+        duration: 500, yoyo: true,
+      });
+    });
+
+    // ── Fade to black -> MenuScene at 25s total (9s into act 3) ──
+    this.time.delayedCall(8200, () => {
+      if (this.skipped) return;
+      this.cameras.main.fadeOut(700, 0, 0, 0);
+    });
+    this.time.delayedCall(9000, () => {
+      if (this.skipped) return;
+      if (this._introMusic) this._introMusic.stop();
       MusicManager.get().stop(0.3);
       this.scene.start('MenuScene');
     });
   }
 
-  _drawHeroSilhouette(gfx, cx, cy) {
-    gfx.fillStyle(0x0a0804, 1);
-    // Head
-    gfx.fillCircle(cx, cy - 40, 12);
-    // Kippah
-    gfx.fillStyle(0x080604, 1);
-    gfx.fillRect(cx - 10, cy - 52, 20, 6);
-    // Body
-    gfx.fillStyle(0x0a0804, 1);
-    gfx.fillRect(cx - 12, cy - 26, 24, 34);
-    // Arms
-    gfx.fillRect(cx - 22, cy - 24, 10, 26);
-    gfx.fillRect(cx + 12, cy - 24, 10, 26);
-    // Legs
-    gfx.fillRect(cx - 10, cy + 8, 9, 36);
-    gfx.fillRect(cx + 1, cy + 8, 9, 36);
-    // Boots
-    gfx.fillRect(cx - 12, cy + 42, 12, 6);
-    gfx.fillRect(cx, cy + 42, 12, 6);
+  // ═════════════════════════════════════════════════════════════
+  // VISUAL EFFECT HELPERS
+  // ═════════════════════════════════════════════════════════════
+
+  /** Boss appears with a flash, real parade sprite, and per-boss attack animation */
+  _bossFlashEntry(x, y, spriteKey, label, attackFn) {
+    // Flash circle
+    const flash = this.add.circle(x, y, 10, 0xffffff, 0.8).setDepth(40);
+    this.actObjects.push(flash);
+    this.tweens.add({
+      targets: flash, alpha: 0, scale: 8,
+      duration: 300, ease: 'Cubic.easeOut',
+    });
+
+    // Real boss sprite instead of colored rectangle
+    const boss = this.add.sprite(x, y - 20, spriteKey).setDepth(15).setScale(0.7).setAlpha(0);
+    this.actObjects.push(boss);
+    this.tweens.add({ targets: boss, alpha: 1, duration: 400 });
+
+    // Color aura pulse (red, since we have real sprites now)
+    const aura = this.add.circle(x, y - 20, 40, 0xff4444, 0).setDepth(14);
+    this.actObjects.push(aura);
+    this.tweens.add({
+      targets: aura, alpha: 0.15, scale: 2,
+      duration: 400, yoyo: true, repeat: 2,
+    });
+
+    // Per-boss "super attack" animation
+    if (attackFn) attackFn.call(this, boss, x, y);
+
+    // Label
+    const txt = this.add.text(x, y + 50, label, {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
+      shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 10, fill: true },
+    }).setOrigin(0.5).setDepth(55).setAlpha(0);
+    this.actObjects.push(txt);
+    this.tweens.add({ targets: txt, alpha: 1, duration: 300 });
+    this.tweens.add({ targets: txt, alpha: 0, duration: 300, delay: 1200 });
   }
+
+  /** Spawn a missile flying across the screen */
+  _spawnMissile() {
+    const fromLeft = Math.random() > 0.5;
+    const startX = fromLeft ? -20 : W + 20;
+    const endX = fromLeft ? W + 20 : -20;
+    const y = 60 + Math.random() * (H - 180);
+    const angle = fromLeft ? 0 : 180;
+
+    // Missile body
+    const missile = this.add.graphics().setDepth(12);
+    this.actObjects.push(missile);
+    missile.fillStyle(0x888888, 1);
+    missile.fillRect(0, -2, 18, 4);
+    // Nose cone
+    missile.fillStyle(0xcc2200, 1);
+    missile.beginPath();
+    missile.moveTo(18, -3);
+    missile.lineTo(24, 0);
+    missile.lineTo(18, 3);
+    missile.closePath();
+    missile.fill();
+    // Tail fins
+    missile.fillStyle(0x666666, 1);
+    missile.fillTriangle(-2, -5, 4, -2, -2, -2);
+    missile.fillTriangle(-2, 5, 4, 2, -2, 2);
+    // Exhaust flame
+    missile.fillStyle(0xff6600, 0.6);
+    missile.fillCircle(-6, 0, 4);
+    missile.fillStyle(0xffaa00, 0.4);
+    missile.fillCircle(-10, 0, 3);
+
+    missile.setPosition(startX, y);
+    missile.setAngle(angle);
+
+    this.tweens.add({
+      targets: missile,
+      x: endX,
+      duration: 800 + Math.random() * 600,
+      ease: 'Linear',
+      onComplete: () => {
+        if (missile && missile.destroy) missile.destroy();
+      },
+    });
+  }
+
+  /** Spawn an explosion effect at position */
+  _spawnExplosion(x, y) {
+    const expGfx = this.add.graphics().setDepth(18).setAlpha(0.8);
+    this.actObjects.push(expGfx);
+
+    // Outer fireball
+    expGfx.fillStyle(0xff4400, 0.6);
+    expGfx.fillCircle(x, y, 20 + Math.random() * 15);
+    // Inner bright core
+    expGfx.fillStyle(0xffcc00, 0.8);
+    expGfx.fillCircle(x, y, 8 + Math.random() * 6);
+    // White hot center
+    expGfx.fillStyle(0xffffff, 0.5);
+    expGfx.fillCircle(x, y, 3);
+
+    this.tweens.add({
+      targets: expGfx,
+      alpha: 0, scale: 1.8,
+      duration: 400 + Math.random() * 200,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        if (expGfx && expGfx.destroy) expGfx.destroy();
+      },
+    });
+  }
+
+  /** Spawn a jet streaking across firing a missile */
+  _spawnJetStrike(startY, endY, firesProjectile) {
+    // Jet body (triangle shape)
+    const jet = this.add.graphics().setDepth(15);
+    this.actObjects.push(jet);
+    jet.fillStyle(0x556688, 1);
+    // Fuselage
+    jet.fillRect(0, -3, 40, 6);
+    // Wings
+    jet.fillTriangle(10, -3, 25, -16, 30, -3);
+    jet.fillTriangle(10, 3, 25, 16, 30, 3);
+    // Tail
+    jet.fillTriangle(0, -3, -5, -10, 5, -3);
+    jet.fillTriangle(0, 3, -5, 10, 5, 3);
+    // Cockpit
+    jet.fillStyle(0x88aaff, 0.8);
+    jet.fillCircle(35, 0, 3);
+
+    // Engine trail
+    const trail = this.add.graphics().setDepth(14);
+    this.actObjects.push(trail);
+    trail.fillStyle(0xffaa00, 0.3);
+    trail.fillRect(-40, -1, 40, 2);
+    trail.fillStyle(0xff6600, 0.2);
+    trail.fillRect(-70, -1, 30, 2);
+
+    jet.setPosition(-60, startY);
+    trail.setPosition(-60, startY);
+
+    // Streak across
+    this.tweens.add({
+      targets: [jet, trail],
+      x: W + 80,
+      duration: 1200,
+      ease: 'Cubic.easeIn',
+    });
+
+    // Fire projectile midway
+    if (firesProjectile) {
+      this.time.delayedCall(400, () => {
+        if (this.skipped) return;
+        const projX = W * 0.35;
+        this._spawnProjectile(projX, startY, projX + 200, endY + 100);
+      });
+    }
+  }
+
+  /** Spawn a bomber dropping bombs */
+  _spawnBomber(x, y) {
+    const bomber = this.add.graphics().setDepth(15);
+    this.actObjects.push(bomber);
+    // Larger body
+    bomber.fillStyle(0x445566, 1);
+    bomber.fillRect(-25, -4, 50, 8);
+    bomber.fillTriangle(-25, -4, -35, -12, -15, -4);
+    bomber.fillTriangle(-25, 4, -35, 12, -15, 4);
+    bomber.fillStyle(0x88aaff, 0.6);
+    bomber.fillCircle(20, 0, 3);
+
+    bomber.setPosition(-60, y);
+
+    this.tweens.add({
+      targets: bomber,
+      x: W + 80,
+      duration: 2000,
+      ease: 'Linear',
+    });
+
+    // Drop bombs at intervals
+    for (let i = 0; i < 3; i++) {
+      this.time.delayedCall(400 + i * 350, () => {
+        if (this.skipped) return;
+        const bx = x - 100 + i * 120;
+        this._spawnFallingBomb(bx, y + 10);
+      });
+    }
+  }
+
+  /** Spawn a falling bomb that explodes on ground */
+  _spawnFallingBomb(x, y) {
+    const bomb = this.add.circle(x, y, 4, 0x333333).setDepth(16);
+    this.actObjects.push(bomb);
+
+    this.tweens.add({
+      targets: bomb,
+      y: H - 80,
+      duration: 500,
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        if (bomb && bomb.destroy) bomb.destroy();
+        this._spawnExplosion(x, H - 85);
+        this.cameras.main.shake(100, 0.008);
+      },
+    });
+  }
+
+  /** Spawn a projectile from A to B with explosion */
+  _spawnProjectile(x1, y1, x2, y2) {
+    const proj = this.add.circle(x1, y1, 3, 0xffaa00).setDepth(17);
+    this.actObjects.push(proj);
+
+    // Trail
+    const trail = this.add.graphics().setDepth(16);
+    this.actObjects.push(trail);
+    trail.lineStyle(2, 0xffaa00, 0.4);
+    trail.lineBetween(x1, y1, x1, y1);
+
+    this.tweens.add({
+      targets: proj,
+      x: x2, y: y2,
+      duration: 300,
+      ease: 'Linear',
+      onUpdate: () => {
+        trail.clear();
+        trail.lineStyle(2, 0xffaa00, 0.3);
+        trail.lineBetween(x1, y1, proj.x, proj.y);
+      },
+      onComplete: () => {
+        this._spawnExplosion(x2, y2);
+        if (proj && proj.destroy) proj.destroy();
+        if (trail && trail.destroy) trail.destroy();
+      },
+    });
+  }
+
+  /** Iron Dome interception sequence */
+  _spawnIronDomeSequence() {
+    // Iron Dome launchers on ground
+    const domeGfx = this.add.graphics().setDepth(10);
+    this.actObjects.push(domeGfx);
+    for (const dx of [300, 420]) {
+      // Launcher base
+      domeGfx.fillStyle(0x556644, 1);
+      domeGfx.fillRect(dx - 15, H - 80, 30, 12);
+      // Launcher tubes
+      domeGfx.fillStyle(0x667755, 1);
+      domeGfx.fillRect(dx - 8, H - 95, 5, 18);
+      domeGfx.fillRect(dx + 3, H - 95, 5, 18);
+    }
+
+    // Incoming missiles from top
+    for (let i = 0; i < 4; i++) {
+      const mx = 200 + i * 150;
+      const my = -10 - i * 20;
+
+      // Incoming threat
+      const threat = this.add.circle(mx, my, 3, 0xff2200).setDepth(16);
+      this.actObjects.push(threat);
+
+      const targetY = 100 + Math.random() * 100;
+      const targetX = mx + (Math.random() - 0.5) * 100;
+
+      this.tweens.add({
+        targets: threat,
+        x: targetX, y: targetY + 80,
+        duration: 800 + i * 100,
+        ease: 'Linear',
+      });
+
+      // Interceptor launches up
+      this.time.delayedCall(200 + i * 150, () => {
+        if (this.skipped) return;
+        const intX = 300 + (i % 2) * 120;
+        const interceptor = this.add.circle(intX, H - 90, 2, 0x44aaff).setDepth(17);
+        this.actObjects.push(interceptor);
+
+        // Trail going up
+        const intTrail = this.add.graphics().setDepth(16);
+        this.actObjects.push(intTrail);
+
+        this.tweens.add({
+          targets: interceptor,
+          x: targetX, y: targetY,
+          duration: 600,
+          ease: 'Quad.easeOut',
+          onUpdate: () => {
+            intTrail.clear();
+            intTrail.lineStyle(1.5, 0x44aaff, 0.5);
+            intTrail.lineBetween(intX, H - 90, interceptor.x, interceptor.y);
+          },
+          onComplete: () => {
+            // Sky explosion — interception
+            this._spawnExplosion(targetX, targetY);
+            if (interceptor && interceptor.destroy) interceptor.destroy();
+            if (intTrail && intTrail.destroy) intTrail.destroy();
+            if (threat && threat.destroy) threat.destroy();
+          },
+        });
+      });
+    }
+  }
+
+  /** Spawn a tank that fires */
+  _spawnTankFiring(x, y) {
+    const tank = this.add.graphics().setDepth(10);
+    this.actObjects.push(tank);
+    // Hull
+    tank.fillStyle(0x556633, 1);
+    tank.fillRect(x - 25, y, 50, 16);
+    // Turret
+    tank.fillStyle(0x667744, 1);
+    tank.fillRect(x - 10, y - 8, 22, 12);
+    // Barrel
+    tank.fillStyle(0x444433, 1);
+    tank.fillRect(x + 12, y - 5, 28, 4);
+    // Tracks
+    tank.fillStyle(0x333322, 1);
+    tank.fillRect(x - 28, y + 14, 56, 5);
+
+    // Muzzle flash
+    this.time.delayedCall(300, () => {
+      if (this.skipped) return;
+      const muzzle = this.add.circle(x + 42, y - 3, 12, 0xffff00, 0.9).setDepth(15);
+      this.actObjects.push(muzzle);
+      this.tweens.add({ targets: muzzle, alpha: 0, scale: 2.5, duration: 150 });
+
+      // Projectile
+      this._spawnProjectile(x + 42, y - 3, x + 300, y - 30);
+    });
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // UPDATE — Skip + Mute
+  // ═════════════════════════════════════════════════════════════
 
   update() {
     this._handleMuteToggle();
     if (!this.skipped && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
       this.skipped = true;
+      if (this._introMusic) this._introMusic.stop();
       MusicManager.get().stop(0.3);
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.time.delayedCall(350, () => this.scene.start('MenuScene'));
