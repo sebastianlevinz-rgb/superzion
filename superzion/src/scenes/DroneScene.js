@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
 // DroneScene — Level 4: Operation Underground
-// Front-facing perspective: drone hovers outside destroyed house,
-// looking INTO the room. Boss hides behind couch, throws objects.
+// Front-facing perspective: drone hovers outside destroyed building,
+// looking INTO the daytime room. Boss hides behind armchair,
+// peeks out to throw objects, then hides again.
 // Boss: THE WARDEN — fought from drone POV with depth effects
 // + Victory/Results overlay
 // ═══════════════════════════════════════════════════════════════
@@ -55,16 +56,13 @@ const BOSS_PHASE3_CHARGE_DMG = 4;  // heavy melee damage
 // Room perspective constants
 const ROOM_BACK_Y = 120;      // Y position of the "back" of the room
 const ROOM_FRONT_Y = H - 30;  // Y position of the "front" (near drone)
-const COUCH_Y = 310;          // couch position in room
 
-// Cover positions (boss can hide behind any of these)
-const COVER_POSITIONS = [
-  { x: W / 2, y: COUCH_Y, type: 'couch' },
-  { x: 250, y: 280, type: 'rubble' },
-  { x: 710, y: 250, type: 'column' },
-];
+// Single armchair cover — center of room
+const ARMCHAIR_X = W / 2;
+const ARMCHAIR_Y = 320;       // slightly forward in room
+
 const BOSS_AREA_TOP = ROOM_BACK_Y + 30;
-const BOSS_AREA_BOTTOM = COUCH_Y - 40; // boss walks above couch
+const BOSS_AREA_BOTTOM = ARMCHAIR_Y - 40; // boss area above armchair
 const BOSS_AREA_LEFT = 180;
 const BOSS_AREA_RIGHT = W - 180;
 
@@ -716,156 +714,7 @@ function _generateDroneMissileTexture(scene) {
   scene.textures.addCanvas('drone_missile', c);
 }
 
-function _generateCouchTexture(scene) {
-  if (scene.textures.exists('boss_couch')) return;
-  const cw = 160, ch = 100;
-  const c = document.createElement('canvas');
-  c.width = cw; c.height = ch;
-  const ctx = c.getContext('2d');
-
-  // Single armchair (sillon) — burgundy/bordeaux tones, well-used, slightly damaged
-
-  const burgundy = '#6a1a2a';
-  const burgundyLight = '#8a2a3a';
-  const burgundyDark = '#4a1018';
-  const burgundyMid = '#7a2030';
-
-  // ── Backrest (taller, rising above seat) ──
-  ctx.fillStyle = burgundyDark;
-  ctx.beginPath();
-  ctx.moveTo(12, 0);
-  ctx.lineTo(cw - 12, 0);
-  ctx.quadraticCurveTo(cw - 10, 12, cw - 12, 24);
-  ctx.lineTo(12, 24);
-  ctx.quadraticCurveTo(10, 12, 12, 0);
-  ctx.closePath();
-  ctx.fill();
-  // Backrest padding highlight
-  ctx.fillStyle = burgundy;
-  ctx.beginPath();
-  ctx.moveTo(16, 3);
-  ctx.lineTo(cw - 16, 3);
-  ctx.quadraticCurveTo(cw - 14, 14, cw - 16, 22);
-  ctx.lineTo(16, 22);
-  ctx.quadraticCurveTo(14, 14, 16, 3);
-  ctx.closePath();
-  ctx.fill();
-  // Backrest seam lines (fabric detail)
-  ctx.strokeStyle = burgundyDark;
-  ctx.lineWidth = 0.5;
-  ctx.beginPath(); ctx.moveTo(cw / 2, 4); ctx.lineTo(cw / 2, 21); ctx.stroke();
-  // Subtle wrinkle lines on backrest
-  ctx.strokeStyle = 'rgba(30, 8, 12, 0.25)';
-  ctx.lineWidth = 0.4;
-  ctx.beginPath(); ctx.moveTo(22, 8); ctx.quadraticCurveTo(28, 12, 24, 18); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cw - 22, 10); ctx.quadraticCurveTo(cw - 28, 14, cw - 24, 19); ctx.stroke();
-
-  // ── Seat cushion (with indentation) ──
-  ctx.fillStyle = burgundyMid;
-  ctx.fillRect(12, 24, cw - 24, 16);
-  // Cushion indentation (darker center)
-  ctx.fillStyle = burgundyDark;
-  ctx.beginPath();
-  ctx.ellipse(cw / 2, 32, 18, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Cushion highlight on edges
-  ctx.fillStyle = burgundyLight;
-  ctx.beginPath();
-  ctx.ellipse(cw / 2, 26, 20, 3, 0, Math.PI, 0);
-  ctx.fill();
-  // Seam line across seat front
-  ctx.strokeStyle = burgundyDark;
-  ctx.lineWidth = 0.5;
-  ctx.beginPath(); ctx.moveTo(14, 38); ctx.lineTo(cw - 14, 38); ctx.stroke();
-
-  // ── Left armrest ──
-  ctx.fillStyle = burgundy;
-  ctx.beginPath();
-  ctx.moveTo(0, 4);
-  ctx.quadraticCurveTo(2, 0, 12, 2);
-  ctx.lineTo(12, 42);
-  ctx.lineTo(4, 44);
-  ctx.quadraticCurveTo(0, 44, 0, 40);
-  ctx.closePath();
-  ctx.fill();
-  // Armrest top highlight
-  ctx.fillStyle = burgundyLight;
-  ctx.beginPath();
-  ctx.moveTo(2, 6); ctx.lineTo(10, 4); ctx.lineTo(10, 8); ctx.lineTo(2, 10); ctx.closePath();
-  ctx.fill();
-  // Armrest side shadow
-  ctx.fillStyle = burgundyDark;
-  ctx.fillRect(0, 36, 10, 6);
-
-  // ── Right armrest ──
-  ctx.fillStyle = burgundy;
-  ctx.beginPath();
-  ctx.moveTo(cw, 4);
-  ctx.quadraticCurveTo(cw - 2, 0, cw - 12, 2);
-  ctx.lineTo(cw - 12, 42);
-  ctx.lineTo(cw - 4, 44);
-  ctx.quadraticCurveTo(cw, 44, cw, 40);
-  ctx.closePath();
-  ctx.fill();
-  // Right armrest top highlight
-  ctx.fillStyle = burgundyLight;
-  ctx.beginPath();
-  ctx.moveTo(cw - 2, 6); ctx.lineTo(cw - 10, 4); ctx.lineTo(cw - 10, 8); ctx.lineTo(cw - 2, 10); ctx.closePath();
-  ctx.fill();
-  // Armrest side shadow
-  ctx.fillStyle = burgundyDark;
-  ctx.fillRect(cw - 10, 36, 10, 6);
-
-  // ── Front skirt / base ──
-  ctx.fillStyle = burgundyDark;
-  ctx.fillRect(6, 40, cw - 12, 8);
-
-  // ── Short legs ──
-  ctx.fillStyle = '#2a0a0e';
-  ctx.fillRect(8, 48, 6, 10);
-  ctx.fillRect(cw - 14, 48, 6, 10);
-
-  // ── Wear and tear details ──
-  // Small tear on left side of seat
-  ctx.strokeStyle = '#2a0808';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(18, 30); ctx.lineTo(22, 34); ctx.lineTo(19, 37);
-  ctx.stroke();
-  // Lighter thread showing through tear
-  ctx.strokeStyle = '#c0a080';
-  ctx.lineWidth = 0.3;
-  ctx.beginPath();
-  ctx.moveTo(19, 31); ctx.lineTo(21, 33); ctx.stroke();
-
-  // Stain mark (circular darker patch)
-  ctx.fillStyle = 'rgba(30, 8, 12, 0.25)';
-  ctx.beginPath();
-  ctx.ellipse(52, 33, 6, 4, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Dust marks (lighter spots)
-  ctx.fillStyle = 'rgba(140, 120, 100, 0.12)';
-  ctx.fillRect(30, 5, 4, 3);
-  ctx.fillRect(55, 26, 3, 2);
-  ctx.fillRect(15, 42, 5, 2);
-
-  // Fabric texture (subtle dots)
-  ctx.fillStyle = 'rgba(40, 10, 18, 0.1)';
-  for (let i = 0; i < 30; i++) {
-    ctx.fillRect(
-      8 + Math.random() * (cw - 16),
-      2 + Math.random() * (ch - 14),
-      1, 1
-    );
-  }
-
-  // Shadow under armchair
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-  ctx.fillRect(6, ch - 4, cw - 12, 4);
-
-  scene.textures.addCanvas('boss_couch', c);
-}
+// _generateCouchTexture REMOVED - using createArmchairTexture from DroneTextures.js
 
 function _generateCrosshairTexture(scene) {
   if (scene.textures.exists('drone_crosshair')) return;
@@ -924,128 +773,10 @@ function _generateCrosshairTexture(scene) {
   scene.textures.addCanvas('drone_crosshair', c);
 }
 
-function _generateRubbleTexture(scene) {
-  if (scene.textures.exists('cover_rubble')) return;
-  const cw = 60, ch = 50;
-  const c = document.createElement('canvas');
-  c.width = cw; c.height = ch;
-  const ctx = c.getContext('2d');
 
-  // Pile of broken bricks / rubble
-  const brickColors = ['#8a5a3a', '#9a6a4a', '#7a4a2a', '#6a4020'];
-  // Base rubble pile shape
-  ctx.fillStyle = '#5a3a1a';
-  ctx.beginPath();
-  ctx.moveTo(5, ch);
-  ctx.lineTo(10, ch - 25);
-  ctx.lineTo(20, ch - 40);
-  ctx.lineTo(35, ch - 45);
-  ctx.lineTo(50, ch - 38);
-  ctx.lineTo(55, ch - 20);
-  ctx.lineTo(cw - 2, ch);
-  ctx.closePath();
-  ctx.fill();
+// _generateRubbleTexture REMOVED - single armchair, no rubble cover
+// _generateColumnTexture REMOVED - single armchair, no column cover
 
-  // Individual bricks scattered on pile
-  for (let i = 0; i < 10; i++) {
-    const bx = 8 + Math.random() * (cw - 24);
-    const by = ch - 10 - Math.random() * 35;
-    const bw = 8 + Math.random() * 10;
-    const bh = 5 + Math.random() * 6;
-    const rot = (Math.random() - 0.5) * 0.6;
-    ctx.save();
-    ctx.translate(bx + bw / 2, by + bh / 2);
-    ctx.rotate(rot);
-    ctx.fillStyle = brickColors[Math.floor(Math.random() * brickColors.length)];
-    ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
-    // Mortar line
-    ctx.strokeStyle = '#c0a880';
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(-bw / 2, -bh / 2, bw, bh);
-    ctx.restore();
-  }
-
-  // Dust / texture
-  ctx.fillStyle = 'rgba(100, 80, 60, 0.15)';
-  for (let i = 0; i < 20; i++) {
-    ctx.fillRect(5 + Math.random() * (cw - 10), ch - 5 - Math.random() * 40, 1, 1);
-  }
-
-  // Shadow at base
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-  ctx.fillRect(3, ch - 4, cw - 6, 4);
-
-  scene.textures.addCanvas('cover_rubble', c);
-}
-
-function _generateColumnTexture(scene) {
-  if (scene.textures.exists('cover_column')) return;
-  const cw = 40, ch = 70;
-  const c = document.createElement('canvas');
-  c.width = cw; c.height = ch;
-  const ctx = c.getContext('2d');
-
-  // Gray concrete column (cylinder-ish)
-  // Main body
-  const grad = ctx.createLinearGradient(0, 0, cw, 0);
-  grad.addColorStop(0, '#606060');
-  grad.addColorStop(0.3, '#909090');
-  grad.addColorStop(0.5, '#a0a0a0');
-  grad.addColorStop(0.7, '#909090');
-  grad.addColorStop(1, '#606060');
-  ctx.fillStyle = grad;
-  ctx.fillRect(6, 5, cw - 12, ch - 10);
-
-  // Top cap
-  ctx.fillStyle = '#888888';
-  ctx.beginPath();
-  ctx.ellipse(cw / 2, 6, (cw - 12) / 2, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#555555';
-  ctx.lineWidth = 0.5;
-  ctx.stroke();
-
-  // Bottom base (wider)
-  ctx.fillStyle = '#707070';
-  ctx.fillRect(3, ch - 10, cw - 6, 8);
-  ctx.strokeStyle = '#555555';
-  ctx.lineWidth = 0.5;
-  ctx.strokeRect(3, ch - 10, cw - 6, 8);
-
-  // Cracks and damage
-  ctx.strokeStyle = '#484848';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(12, 15);
-  ctx.lineTo(16, 30);
-  ctx.lineTo(14, 42);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(cw - 14, 25);
-  ctx.lineTo(cw - 18, 38);
-  ctx.stroke();
-
-  // Rebar sticking out (damaged concrete)
-  ctx.strokeStyle = '#8a5a30';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(cw - 10, 10);
-  ctx.lineTo(cw - 4, 5);
-  ctx.stroke();
-
-  // Dust/texture
-  ctx.fillStyle = 'rgba(80, 80, 80, 0.1)';
-  for (let i = 0; i < 15; i++) {
-    ctx.fillRect(8 + Math.random() * (cw - 16), 8 + Math.random() * (ch - 18), 1, 1);
-  }
-
-  // Shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-  ctx.fillRect(5, ch - 3, cw - 10, 3);
-
-  scene.textures.addCanvas('cover_column', c);
-}
 
 function _generatePipeWeaponTexture(scene) {
   if (scene.textures.exists('boss_pipe_weapon')) return;
@@ -1122,10 +853,7 @@ export default class DroneScene extends Phaser.Scene {
     _generateBossProjectileTextures(this);
     _generateDroneBulletTexture(this);
     _generateDroneMissileTexture(this);
-    _generateCouchTexture(this);
     _generateCrosshairTexture(this);
-    _generateRubbleTexture(this);
-    _generateColumnTexture(this);
     _generatePipeWeaponTexture(this);
 
     // ── Game state ──
@@ -1996,7 +1724,7 @@ export default class DroneScene extends Phaser.Scene {
     this.droneHP = this.dm.isHard() ? 4 : 6;
     this.droneMaxHP = this.droneHP;
 
-    // Command room background (front-view destroyed interior)
+    // Command room background (front-view destroyed daytime interior)
     this.commandBg = this.add.image(W / 2, H / 2, 'command_room').setDepth(0);
 
     // Drone/crosshair setup — since we look FROM the drone's POV, show a crosshair reticle
@@ -2019,8 +1747,8 @@ export default class DroneScene extends Phaser.Scene {
     this.bossMaxHP = Math.ceil(BOSS_BASE_HP * this.dm.bossHPMult());
     this.bossHP = this.bossMaxHP;
     this.bossDefeated = false;
-    this.bossX = W / 2;
-    this.bossY = -100; // starts above screen for entrance
+    this.bossX = ARMCHAIR_X;
+    this.bossY = ARMCHAIR_Y - 60; // starts behind armchair
     this.bossVx = 0;
     this.bossFury = false;
     this.bossExpression = 'normal';
@@ -2035,43 +1763,27 @@ export default class DroneScene extends Phaser.Scene {
     // Boss projectiles (thrown objects that fly toward camera)
     this.bossProjectiles = [];
 
-    // Boss sprite — placed in the upper/center of room (inside the room)
+    // Boss sprite — placed behind armchair initially
     this.bossSprite = this.add.image(this.bossX, this.bossY, 'ts_boss4_normal').setDepth(10);
     this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
 
     // Boss HP bar (full width, top of screen, scrollFactor 0)
     this._createBossHPBar();
 
-    // Couch (front-view, destructible cover object, middle of room — BIGGER)
-    this.couchX = W / 2;
-    this.couchY = COUCH_Y;
-    this.couchHP = 8;
-    this.couchMaxHP = 8;
-    this.couchAlive = true;
-    this.couchSprite = this.add.image(this.couchX, this.couchY, 'boss_couch').setDepth(12);
-    this.couchSprite.setDisplaySize(160, 100);
+    // Single armchair (individual seat, not sofa) — the ONLY cover in the room
+    this.armchairSprite = this.add.image(ARMCHAIR_X, ARMCHAIR_Y, 'armchair').setDepth(12);
+    this.armchairSprite.setDisplaySize(100, 100);
 
-    // Additional cover positions (rubble pile + column)
-    this.coverSprites = [];
-    for (const cp of COVER_POSITIONS) {
-      if (cp.type === 'couch') continue; // couch handled above
-      const texKey = cp.type === 'rubble' ? 'cover_rubble' : 'cover_column';
-      const spr = this.add.image(cp.x, cp.y, texKey).setDepth(12);
-      spr.setDisplaySize(cp.type === 'rubble' ? 60 : 40, cp.type === 'rubble' ? 50 : 70);
-      this.coverSprites.push({ sprite: spr, type: cp.type, x: cp.x, y: cp.y, alive: true });
-    }
-
-    // Boss cover state machine
-    this.bossCoverState = 'exposed';   // 'exposed' | 'moving_to_cover' | 'behind_cover' | 'peeking'
-    this.bossCoverTimer = 3 + Math.random() * 2;  // first cover attempt in 3-5s (aggressive)
+    // Boss cover state machine — 3-state cycle around the single armchair
+    // States: 'behind_cover' -> 'peeking' -> 'throwing' -> 'behind_cover'
+    this.bossCoverState = 'behind_cover';  // boss starts hidden behind armchair
+    this.bossCoverTimer = 1.5 + Math.random() * 1.5; // first peek in 1.5-3s
     this.bossPeekTimer = 0;
-    this.bossCoverDuration = 0;
-    this.bossBehindCouchY = COUCH_Y - 50; // Y position when behind couch (taller couch)
-    this.currentCoverIndex = 0; // index into COVER_POSITIONS for current cover spot
+    this.bossPeekSide = 1; // 1 = right side, -1 = left side (alternates)
 
     // Phase 2 / Phase 3 state flags
-    this.bossPhase2 = false; // 50% HP — running & throwing
-    this.bossPhase3 = false; // 20% HP — melee charge
+    this.bossPhase2 = false; // 50% HP — faster pace, 2 throws per peek
+    this.bossPhase3 = false; // 20% HP — very fast, 3 throws, melee charges
     this.bossChargeTimer = 0;    // phase 3: time left in current charge burst
     this.bossPauseTimer = 0;     // phase 3: time left in pause between charges
     this.bossCharging = false;   // phase 3: currently charging?
@@ -2084,6 +1796,10 @@ export default class DroneScene extends Phaser.Scene {
     // Ambient dust particles (semi-transparent, slowly drifting in the room)
     this.ambientDustParticles = [];
     this._spawnAmbientDust();
+
+    // Falling rubble particles from ceiling (small rectangles dropping slowly)
+    this.fallingRubble = [];
+    this._spawnFallingRubble();
 
     // Instructions
     this.instrText.setText('ARROWS aim — Z shoot — X missile — SHIFT dodge — Eliminate the target!');
@@ -2143,12 +1859,12 @@ export default class DroneScene extends Phaser.Scene {
   _bossEntrance() {
     this.bossActive = false;
 
-    // Boss emerges from behind couch (stands up from cover)
+    // Boss emerges from behind armchair (stands up from cover)
     SoundManager.get().playBossEntrance();
 
-    // Start behind couch, then stand up
-    this.bossX = W / 2;
-    const startY = COUCH_Y;
+    // Start behind armchair, then stand up
+    this.bossX = ARMCHAIR_X;
+    const startY = ARMCHAIR_Y;
     const targetY = BOSS_AREA_TOP + (BOSS_AREA_BOTTOM - BOSS_AREA_TOP) * 0.4;
 
     if (this.bossSprite) {
@@ -2201,44 +1917,20 @@ export default class DroneScene extends Phaser.Scene {
   }
 
 
-  _pickBossMoveDirection() {
-    let speed = this.bossFury ? BOSS_SPEED_FURY : BOSS_SPEED_NORMAL;
-    if (this.bossPhase2 && !this.bossPhase3) speed = Math.max(speed, BOSS_SPEED_PHASE2);
 
-    // If moving to cover, head toward the chosen cover position
-    if (this.bossCoverState === 'moving_to_cover') {
-      const coverPos = COVER_POSITIONS[this.currentCoverIndex];
-      if (coverPos) {
-        const dx = coverPos.x - this.bossX;
-        this.bossVx = Math.sign(dx) * speed * 1.5;
-        this.bossMoveDirTimer = 1;
-        return;
-      }
-    }
 
-    // Normal: walk left/right in the room, occasionally changing direction
-    const dir = Math.random() > 0.5 ? 1 : -1;
-    this.bossVx = dir * speed;
-    // Phase 2: change direction more often
-    if (this.bossPhase2) {
-      this.bossMoveDirTimer = 0.8 + Math.random() * 0.7;
-    } else {
-      this.bossMoveDirTimer = 1.5 + Math.random() * 2.5;
-    }
-  }
-
+  // ── Boss state machine: hide-peek-throw cycle behind single armchair ──
   _updateBoss(dt) {
     if (!this.bossActive || this.bossDefeated) return;
 
     // ── Phase transitions ──
     const hpRatio = this.bossHP / this.bossMaxHP;
 
-    // Phase 2 activation at 50% HP
+    // Phase 2 activation at 50% HP (angry — faster pace, 2 throws)
     if (!this.bossPhase2 && hpRatio <= BOSS_PHASE2_THRESHOLD) {
       this.bossPhase2 = true;
       SoundManager.get().playBossRoar();
       this.cameras.main.shake(250, 0.018);
-      this._pickBossMoveDirection(); // update to faster speed
 
       // Flash boss
       if (this.bossSprite) {
@@ -2246,21 +1938,9 @@ export default class DroneScene extends Phaser.Scene {
           targets: this.bossSprite, alpha: 0.3, duration: 80, yoyo: true, repeat: 4,
         });
       }
-      // Force boss out of cover for phase 2 — chaotic running
-      if (this.bossCoverState !== 'exposed') {
-        this.bossCoverState = 'exposed';
-        this.bossY = BOSS_AREA_TOP + (BOSS_AREA_BOTTOM - BOSS_AREA_TOP) * 0.4;
-        if (this.bossSprite) {
-          this.bossSprite.setAlpha(1);
-          this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
-        }
-        if (this.coverIndicator) { this.coverIndicator.destroy(); this.coverIndicator = null; }
-      }
-      // Move boss to a different cover position for next hide
-      this._pickNewCoverPosition();
     }
 
-    // Phase 3 activation at 20% HP
+    // Phase 3 activation at 20% HP (furious — very fast, 3 throws, melee charges)
     if (!this.bossPhase3 && hpRatio <= BOSS_PHASE3_THRESHOLD) {
       this.bossPhase3 = true;
       this.bossCharging = false;
@@ -2268,21 +1948,13 @@ export default class DroneScene extends Phaser.Scene {
       SoundManager.get().playBossRoar();
       this.cameras.main.shake(400, 0.03);
 
-      // Force out of cover
-      if (this.bossCoverState !== 'exposed') {
-        this.bossCoverState = 'exposed';
-        this.bossY = BOSS_AREA_TOP + (BOSS_AREA_BOTTOM - BOSS_AREA_TOP) * 0.4;
-        if (this.coverIndicator) { this.coverIndicator.destroy(); this.coverIndicator = null; }
-      }
-      this.bossCoverTimer = 999; // no more cover in phase 3
-
       // Equip pipe weapon
       if (!this.bossWeaponSprite && this.bossSprite) {
         this.bossWeaponSprite = this.add.image(this.bossX + 30, this.bossY + 15, 'boss_pipe_weapon').setDepth(11);
         this.bossWeaponSprite.setDisplaySize(32, 8);
       }
 
-      // Flash boss red aggressively
+      // Flash boss red
       if (this.bossSprite) {
         this.tweens.add({
           targets: this.bossSprite, alpha: 0.2, duration: 60, yoyo: true, repeat: 8,
@@ -2290,50 +1962,15 @@ export default class DroneScene extends Phaser.Scene {
       }
     }
 
-    // ── Phase 3: Melee charge behavior ──
+    // ── Phase 3: Melee charge behavior (boss rushes from behind armchair) ──
     if (this.bossPhase3) {
       this._updateBossPhase3(dt);
     }
 
-    // ── Boss movement (horizontal, left/right in room) ──
-    if (!this.bossPhase3 || !this.bossCharging) {
-      // Normal / Phase 2 movement
-      if (this.bossCoverState === 'exposed' || this.bossCoverState === 'moving_to_cover') {
-        this.bossMoveDirTimer -= dt;
-        if (this.bossMoveDirTimer <= 0) {
-          this._pickBossMoveDirection();
-        }
-
-        this.bossX += this.bossVx * dt;
-        this.bossX = Phaser.Math.Clamp(this.bossX, BOSS_AREA_LEFT, BOSS_AREA_RIGHT);
-        if (this.bossX <= BOSS_AREA_LEFT || this.bossX >= BOSS_AREA_RIGHT) {
-          this.bossVx *= -1;
-        }
-      }
-    }
-
-    // Update boss sprite position (only if not behind cover)
-    if (this.bossCoverState !== 'behind_cover' && this.bossCoverState !== 'peeking') {
-      if (this.bossSprite) this.bossSprite.setPosition(this.bossX, this.bossY);
-    }
-
-    // Update pipe weapon position (phase 3)
-    if (this.bossWeaponSprite) {
-      const weapDir = this.bossVx >= 0 ? 1 : -1;
-      this.bossWeaponSprite.setPosition(this.bossX + weapDir * 30, this.bossY + 15);
-      this.bossWeaponSprite.setFlipX(weapDir < 0);
-      // Rotate weapon during charge
-      if (this.bossCharging) {
-        this.bossWeaponSprite.rotation += dt * 8 * weapDir;
-      } else {
-        this.bossWeaponSprite.rotation = weapDir > 0 ? 0.3 : -0.3;
-      }
-    }
-
     // ── Expression changes ──
     let newExpr;
-    if (hpRatio > 0.6) newExpr = 'normal';
-    else if (hpRatio > BOSS_FURY_THRESHOLD) newExpr = 'angry';
+    if (hpRatio > 0.5) newExpr = 'normal';
+    else if (hpRatio > BOSS_PHASE3_THRESHOLD) newExpr = 'angry';
     else newExpr = 'furious';
 
     if (newExpr !== this.bossExpression) {
@@ -2342,51 +1979,28 @@ export default class DroneScene extends Phaser.Scene {
       if (this.bossSprite && this.textures.exists(texKey)) {
         this.bossSprite.setTexture(texKey);
       }
-      // Fury mode activation
       if (newExpr === 'furious' && !this.bossFury) {
         this.bossFury = true;
         SoundManager.get().playBossRoar();
         this.cameras.main.shake(300, 0.02);
-        this._pickBossMoveDirection();
-
-        if (this.bossSprite) {
-          this.tweens.add({
-            targets: this.bossSprite, alpha: 0.3, duration: 100, yoyo: true, repeat: 5,
-          });
-        }
       }
     }
 
-    // ── Attack: THROW OBJECTS ──
-    // Phase 2: throws while running (always active, not just when stationary)
-    if (this.bossFury) {
-      // Fury mode: rapid throwing
-      this.bossThrowTimer -= dt;
-      if (this.bossThrowTimer <= 0) {
-        this._bossThrowObject();
-        this.bossThrowTimer = 0.25 + Math.random() * 0.25;
-      }
-    } else if (this.bossThrowBurstCount > 0) {
-      // In middle of a burst
-      this.bossThrowBurstTimer -= dt;
-      if (this.bossThrowBurstTimer <= 0) {
-        this._bossThrowObject();
-        this.bossThrowBurstCount--;
-        this.bossThrowBurstTimer = 0.30;
-      }
-    } else {
-      this.bossThrowTimer -= dt;
-      if (this.bossThrowTimer <= 0) {
-        // Start a burst of 2-4 objects (was 1-3)
-        this.bossThrowBurstCount = 2 + Math.floor(Math.random() * 3);
-        this.bossThrowBurstTimer = 0;
-        this.bossThrowTimer = BOSS_THROW_INTERVAL_MIN + Math.random() * (BOSS_THROW_INTERVAL_MAX - BOSS_THROW_INTERVAL_MIN);
-      }
+    // ── Cover behavior: hide-peek-throw cycle (only when NOT in phase 3 charge) ──
+    if (!this.bossPhase3 || !this.bossCharging) {
+      this._updateBossArmchairCover(dt);
     }
 
-    // ── Cover behavior (multi-position) ──
-    if (!this.bossPhase3) {
-      this._updateBossCover(dt);
+    // ── Update pipe weapon position (phase 3) ──
+    if (this.bossWeaponSprite) {
+      const weapDir = this.bossVx >= 0 ? 1 : -1;
+      this.bossWeaponSprite.setPosition(this.bossX + weapDir * 30, this.bossY + 15);
+      this.bossWeaponSprite.setFlipX(weapDir < 0);
+      if (this.bossCharging) {
+        this.bossWeaponSprite.rotation += dt * 8 * weapDir;
+      } else {
+        this.bossWeaponSprite.rotation = weapDir > 0 ? 0.3 : -0.3;
+      }
     }
 
     // ── Update projectiles (thrown objects flying toward camera) ──
@@ -2398,17 +2012,119 @@ export default class DroneScene extends Phaser.Scene {
     // ── Ambient dust ──
     this._updateAmbientDust(dt);
 
+    // ── Falling rubble ──
+    this._updateFallingRubble(dt);
+
     // ── Update HP bar ──
     this._updateBossHPBar();
   }
 
-  // ── Phase 3: Melee charge logic ──
+  // ── Armchair cover state machine: behind_cover -> peeking -> throwing -> behind_cover ──
+  _updateBossArmchairCover(dt) {
+    const behindY = ARMCHAIR_Y - 60;  // boss hidden behind armchair
+    const peekY = ARMCHAIR_Y - 90;    // boss head visible above armchair
+
+    switch (this.bossCoverState) {
+      case 'behind_cover':
+        this.bossCoverTimer -= dt;
+
+        // Boss hidden behind armchair — only show keffiyeh/hat peeking slightly
+        this.bossX = ARMCHAIR_X;
+        this.bossY = behindY;
+        if (this.bossSprite) {
+          this.bossSprite.setPosition(this.bossX, this.bossY);
+          this.bossSprite.setAlpha(0.2); // barely visible behind chair
+          this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
+        }
+
+        // Timer expires: peek out
+        if (this.bossCoverTimer <= 0) {
+          this.bossCoverState = 'peeking';
+          // Peek duration: player can shoot during this window
+          this.bossPeekTimer = 0.5;
+          // Alternate peek side
+          this.bossPeekSide = -this.bossPeekSide;
+          this.bossY = peekY;
+          if (this.bossSprite) {
+            this.bossSprite.setAlpha(1);
+            this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+            // Offset slightly to the peek side
+            this.bossX = ARMCHAIR_X + this.bossPeekSide * 30;
+            this.bossSprite.setPosition(this.bossX, this.bossY);
+          }
+          // "SHOOT NOW!" hint
+          const hint = this.add.text(ARMCHAIR_X, ARMCHAIR_Y - 110, 'SHOOT NOW!', {
+            fontFamily: 'monospace', fontSize: '11px', color: '#00ff66',
+          }).setOrigin(0.5).setDepth(20);
+          this.tweens.add({ targets: hint, alpha: 0, duration: 800, onComplete: () => hint.destroy() });
+        }
+        break;
+
+      case 'peeking':
+        this.bossPeekTimer -= dt;
+        if (this.bossSprite) {
+          this.bossSprite.setPosition(this.bossX, this.bossY);
+        }
+
+        // After peek delay: transition to throwing
+        if (this.bossPeekTimer <= 0) {
+          this.bossCoverState = 'throwing';
+          // Determine throw count based on phase
+          let throwCount = 1;
+          if (this.bossPhase3) throwCount = 3;
+          else if (this.bossPhase2) throwCount = 2;
+
+          // Throw objects with staggered timing
+          this._bossThrowObject();
+          for (let t = 1; t < throwCount; t++) {
+            this.time.delayedCall(t * 150, () => {
+              if (this.bossActive && !this.bossDefeated) this._bossThrowObject();
+            });
+          }
+
+          // Brief throwing animation time before retreating
+          this.bossCoverTimer = 0.3 + throwCount * 0.15;
+        }
+        break;
+
+      case 'throwing':
+        this.bossCoverTimer -= dt;
+        if (this.bossSprite) {
+          this.bossSprite.setPosition(this.bossX, this.bossY);
+        }
+
+        // After throw animation: retreat behind armchair
+        if (this.bossCoverTimer <= 0) {
+          this.bossCoverState = 'behind_cover';
+          this.bossY = behindY;
+          this.bossX = ARMCHAIR_X;
+
+          // Set hide duration based on phase
+          if (this.bossPhase3) {
+            this.bossCoverTimer = 0.5 + Math.random() * 0.5; // very fast (0.5-1s)
+          } else if (this.bossPhase2) {
+            this.bossCoverTimer = 1.0 + Math.random() * 0.5; // faster (1-1.5s)
+          } else {
+            this.bossCoverTimer = 2.0 + Math.random() * 1.0; // normal (2-3s)
+          }
+
+          // Boss becomes invulnerable again once behind armchair
+          if (this.bossSprite) {
+            this.bossSprite.setAlpha(0.2);
+            this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
+            this.bossSprite.setPosition(this.bossX, this.bossY);
+          }
+        }
+        break;
+    }
+  }
+
+  // ── Phase 3: Melee charge logic (boss rushes from armchair toward drone) ──
   _updateBossPhase3(dt) {
     if (this.bossCharging) {
       // Charging toward drone position
       this.bossChargeTimer -= dt;
 
-      // Move toward drone
       const dxToDrone = this.droneX - this.bossX;
       const dyToDrone = this.droneY - this.bossY;
       const distToDrone = Math.sqrt(dxToDrone * dxToDrone + dyToDrone * dyToDrone);
@@ -2435,46 +2151,47 @@ export default class DroneScene extends Phaser.Scene {
 
       // Update sprite
       if (this.bossSprite) {
+        this.bossSprite.setAlpha(1);
         this.bossSprite.setPosition(this.bossX, this.bossY);
-        this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.1, BOSS_DISPLAY * 1.1); // slightly bigger during charge
+        this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.1, BOSS_DISPLAY * 1.1);
       }
 
-      // Charge finished — pause
+      // Charge finished — run back behind armchair
       if (this.bossChargeTimer <= 0) {
         this.bossCharging = false;
         this.bossPauseTimer = 1.0; // 1s pause between charges
+        this.bossCoverState = 'behind_cover';
+        this.bossCoverTimer = 0.5 + Math.random() * 0.5;
         if (this.bossSprite) {
           this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
         }
       }
     } else {
-      // Pause between charges — still throws objects
+      // Pause between charges — retreating behind armchair
       this.bossPauseTimer -= dt;
 
-      // Retreat slightly during pause
-      const retreatY = BOSS_AREA_TOP + (BOSS_AREA_BOTTOM - BOSS_AREA_TOP) * 0.4;
-      if (this.bossY > retreatY) {
-        this.bossY -= 40 * dt;
+      // Move back toward armchair
+      const retreatX = ARMCHAIR_X;
+      const retreatY = ARMCHAIR_Y - 60;
+      const dx = retreatX - this.bossX;
+      const dy = retreatY - this.bossY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 5) {
+        this.bossX += (dx / dist) * 80 * dt;
+        this.bossY += (dy / dist) * 80 * dt;
       }
 
       if (this.bossPauseTimer <= 0) {
         // Start a new charge
         this.bossCharging = true;
-        this.bossChargeTimer = 2.0; // charge for 2s
+        this.bossChargeTimer = 2.0;
         SoundManager.get().playBossRoar();
+        // Boss becomes fully visible during charge
+        if (this.bossSprite) {
+          this.bossSprite.setAlpha(1);
+          this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.1, BOSS_DISPLAY * 1.1);
+        }
       }
-    }
-  }
-
-  // Pick a new cover position (different from current one, for variety)
-  _pickNewCoverPosition() {
-    const available = [];
-    for (let i = 0; i < COVER_POSITIONS.length; i++) {
-      if (i === 0 && !this.couchAlive) continue; // skip destroyed couch
-      if (i !== this.currentCoverIndex) available.push(i);
-    }
-    if (available.length > 0) {
-      this.currentCoverIndex = available[Math.floor(Math.random() * available.length)];
     }
   }
 
@@ -2482,7 +2199,7 @@ export default class DroneScene extends Phaser.Scene {
     if (!this.bossSprite) return;
     SoundManager.get().playBossLaser();
 
-    // ── Show throwing arm animation ──
+    // Show throwing arm animation
     const armStartX = this.bossX;
     const armStartY = this.bossY + 15;
     const armTargetX = this.droneX;
@@ -2490,18 +2207,15 @@ export default class DroneScene extends Phaser.Scene {
     const armAngle = Math.atan2(armTargetY - armStartY, armTargetX - armStartX);
     const armLen = 28;
 
-    // Create arm graphic (a short rectangle/line extending from boss body toward throw direction)
     const armGfx = this.add.graphics().setDepth(11);
     armGfx.lineStyle(5, 0x7a5030, 1);
     armGfx.beginPath();
     armGfx.moveTo(armStartX, armStartY);
     armGfx.lineTo(armStartX + Math.cos(armAngle) * armLen, armStartY + Math.sin(armAngle) * armLen);
     armGfx.strokePath();
-    // Hand (small circle at end of arm)
     armGfx.fillStyle(0x906040, 1);
     armGfx.fillCircle(armStartX + Math.cos(armAngle) * armLen, armStartY + Math.sin(armAngle) * armLen, 4);
 
-    // Retract arm after 0.3 seconds
     this.tweens.add({
       targets: armGfx,
       alpha: 0,
@@ -2510,21 +2224,19 @@ export default class DroneScene extends Phaser.Scene {
       onComplete: () => armGfx.destroy(),
     });
 
-    // ── Create projectile with random texture variant ──
+    // Create projectile
     const startX = this.bossX;
     const startY = this.bossY + 30;
-    // Aim toward the drone's current position with spread
-    const spread = this.bossCoverState === 'peeking' ? 50 : 80; // more accurate when peeking
+    const spread = this.bossCoverState === 'peeking' || this.bossCoverState === 'throwing' ? 50 : 80;
     const targetX = this.droneX + (Math.random() - 0.5) * spread;
     const targetY = this.droneY + (Math.random() - 0.5) * 30;
 
-    // Randomly pick one of the 4 projectile textures
     const projIdx = Math.floor(Math.random() * 4);
     const projTex = 'boss_projectile_' + projIdx;
     const texKey = this.textures.exists(projTex) ? projTex : 'boss_projectile';
 
     const proj = this.add.image(startX, startY, texKey).setDepth(18);
-    proj.setDisplaySize(8, 8); // starts small (far away)
+    proj.setDisplaySize(8, 8);
 
     const dx = targetX - startX;
     const dy = targetY - startY;
@@ -2589,7 +2301,6 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   _projectileBreakEffect(x, y) {
-    // Particle burst at impact point
     for (let i = 0; i < 6; i++) {
       const px = x + (Math.random() - 0.5) * 10;
       const py = y + (Math.random() - 0.5) * 10;
@@ -2609,154 +2320,11 @@ export default class DroneScene extends Phaser.Scene {
     }
   }
 
-  _updateBossCover(dt) {
-    // Determine if any cover is available
-    const coverAvailable = this._isCoverAvailable();
-    if (!coverAvailable || this.bossFury) {
-      // No cover behavior if all cover destroyed or in fury mode
-      if (this.bossCoverState !== 'exposed') {
-        this.bossCoverState = 'exposed';
-        this.bossY = BOSS_AREA_TOP + (BOSS_AREA_BOTTOM - BOSS_AREA_TOP) * 0.4;
-        if (this.bossSprite) {
-          this.bossSprite.setAlpha(1);
-          this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
-          this.bossSprite.setPosition(this.bossX, this.bossY);
-        }
-      }
-      return;
-    }
-
-    const coverPos = COVER_POSITIONS[this.currentCoverIndex];
-    const coverY = coverPos ? coverPos.y : COUCH_Y;
-    const behindCoverY = coverY - 50; // Y position when hiding behind cover
-    const reachDist = coverPos && coverPos.type === 'couch' ? 80 : 40; // bigger reach for bigger couch
-
-    switch (this.bossCoverState) {
-      case 'exposed':
-        this.bossCoverTimer -= dt;
-        if (this.bossCoverTimer <= 0) {
-          // Pick a cover position (different when HP drops)
-          if (this.bossPhase2) this._pickNewCoverPosition();
-          this.bossCoverState = 'moving_to_cover';
-          this._pickBossMoveDirection();
-        }
-        break;
-
-      case 'moving_to_cover': {
-        const distX = Math.abs(this.bossX - coverPos.x);
-        if (distX < reachDist) {
-          // Duck behind cover
-          this.bossCoverState = 'behind_cover';
-          this.bossCoverDuration = 3 + Math.random() * 2; // 3-5s total cover time (was 5-9s)
-          this.bossPeekTimer = 0.8 + Math.random() * 0.4; // peek sooner (was 1.2-2.0s)
-          this.bossVx = 0;
-          this.bossY = behindCoverY;
-          if (this.bossSprite) {
-            this.bossSprite.setPosition(this.bossX, this.bossY);
-            this.bossSprite.setAlpha(0.25);
-            this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.5, BOSS_DISPLAY * 0.5);
-          }
-          const coverLabel = coverPos.type === 'couch' ? 'BEHIND COVER' : `BEHIND ${coverPos.type.toUpperCase()}`;
-          if (!this.coverIndicator) {
-            this.coverIndicator = this.add.text(coverPos.x, coverY - 55, coverLabel, {
-              fontFamily: 'monospace', fontSize: '11px', color: '#ff6666',
-            }).setOrigin(0.5).setDepth(20).setAlpha(0.7);
-          }
-        }
-        break;
-      }
-
-      case 'behind_cover':
-        this.bossCoverDuration -= dt;
-        this.bossPeekTimer -= dt;
-
-        if (this.bossSprite) {
-          this.bossSprite.setPosition(this.bossX, this.bossY);
-        }
-
-        // Peek out to throw objects periodically
-        if (this.bossPeekTimer <= 0) {
-          this.bossCoverState = 'peeking';
-          this.bossPeekTimer = 1.0; // peek duration — vulnerable window
-          this.bossY = behindCoverY - 50; // MORE visible above cover
-          if (this.bossSprite) {
-            this.bossSprite.setAlpha(1);
-            this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.0, BOSS_DISPLAY * 1.0); // full size when peeking
-            this.bossSprite.setPosition(this.bossX, this.bossY);
-          }
-          if (this.coverIndicator) { this.coverIndicator.destroy(); this.coverIndicator = null; }
-          const hint = this.add.text(coverPos.x, coverY - 55, 'SHOOT NOW!', {
-            fontFamily: 'monospace', fontSize: '11px', color: '#00ff66',
-          }).setOrigin(0.5).setDepth(20);
-          this.tweens.add({ targets: hint, alpha: 0, duration: 800, onComplete: () => hint.destroy() });
-        }
-
-        // Done hiding — emerge and fight exposed briefly, then seek cover again
-        if (this.bossCoverDuration <= 0) {
-          this.bossCoverState = 'exposed';
-          this.bossCoverTimer = 3 + Math.random() * 3; // 3-6s exposed (was 7-12s)
-          this.bossY = BOSS_AREA_TOP + (BOSS_AREA_BOTTOM - BOSS_AREA_TOP) * 0.4;
-          if (this.bossSprite) {
-            this.bossSprite.setAlpha(1);
-            this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
-            this.bossSprite.setPosition(this.bossX, this.bossY);
-          }
-          if (this.coverIndicator) { this.coverIndicator.destroy(); this.coverIndicator = null; }
-          this._pickNewCoverPosition(); // pick different cover for next time
-          this._pickBossMoveDirection();
-        }
-        break;
-
-      case 'peeking':
-        this.bossPeekTimer -= dt;
-        if (this.bossSprite) {
-          this.bossSprite.setPosition(this.bossX, this.bossY);
-        }
-        if (this.bossPeekTimer <= 0) {
-          // Rapid throw burst while peeking (3-5 objects), then duck back quickly
-          this._bossThrowObject();
-          const burstCount = 2 + Math.floor(Math.random() * 3); // 2-4 additional throws
-          for (let t = 1; t <= burstCount; t++) {
-            this.time.delayedCall(t * 150, () => {
-              if (this.bossActive && !this.bossDefeated) this._bossThrowObject();
-            });
-          }
-          this.bossCoverState = 'behind_cover';
-          this.bossPeekTimer = 0.7 + Math.random() * 0.5; // faster re-peek (was 1.2-2.2s)
-          this.bossY = behindCoverY;
-          if (this.bossSprite) {
-            this.bossSprite.setAlpha(0.25);
-            this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.5, BOSS_DISPLAY * 0.5);
-            this.bossSprite.setPosition(this.bossX, this.bossY);
-          }
-          const coverLabel = coverPos.type === 'couch' ? 'BEHIND COVER' : `BEHIND ${coverPos.type.toUpperCase()}`;
-          if (!this.coverIndicator) {
-            this.coverIndicator = this.add.text(coverPos.x, coverY - 55, coverLabel, {
-              fontFamily: 'monospace', fontSize: '11px', color: '#ff6666',
-            }).setOrigin(0.5).setDepth(20).setAlpha(0.7);
-          }
-        }
-        break;
-    }
-  }
-
-  // Check if any cover position is still available (couch alive or other covers exist)
-  _isCoverAvailable() {
-    // Couch cover depends on couchAlive
-    if (this.currentCoverIndex === 0 && !this.couchAlive) {
-      // Try to switch to another cover
-      this._pickNewCoverPosition();
-    }
-    if (this.currentCoverIndex === 0) return this.couchAlive;
-    // Non-couch covers are always available (they don't get destroyed)
-    return true;
-  }
-
-  // ── Ambient dust particles (semi-transparent, slowly drifting in room) ──
+  // ── Ambient dust particles ──
   _spawnAmbientDust() {
     for (let i = 0; i < 12; i++) {
       const px = 150 + Math.random() * (W - 300);
-      const py = ROOM_BACK_Y + 20 + Math.random() * (COUCH_Y - ROOM_BACK_Y - 20);
+      const py = ROOM_BACK_Y + 20 + Math.random() * (ARMCHAIR_Y - ROOM_BACK_Y - 20);
       const size = 1.5 + Math.random() * 3;
       const alpha = 0.06 + Math.random() * 0.12;
       const particle = this.add.circle(px, py, size, 0xaaa898, alpha).setDepth(8);
@@ -2770,9 +2338,8 @@ export default class DroneScene extends Phaser.Scene {
     for (const d of this.ambientDustParticles) {
       d.x += d.vx * dt;
       d.y += d.vy * dt;
-      // Wrap around when out of room area
       if (d.y < ROOM_BACK_Y) {
-        d.y = COUCH_Y - 10;
+        d.y = ARMCHAIR_Y - 10;
         d.x = 150 + Math.random() * (W - 300);
       }
       if (d.x < 140) d.x = W - 160;
@@ -2781,7 +2348,38 @@ export default class DroneScene extends Phaser.Scene {
     }
   }
 
-  // ── Fury red particles (small red dots floating up around boss) ──
+  // ── Falling rubble particles from ceiling ──
+  _spawnFallingRubble() {
+    this.fallingRubble = [];
+    for (let i = 0; i < 6; i++) {
+      const px = 160 + Math.random() * (W - 320);
+      const py = ROOM_BACK_Y + Math.random() * 20;
+      const size = 2 + Math.random() * 4;
+      const particle = this.add.rectangle(px, py, size, size * 0.6, 0x8a7a60, 0.3).setDepth(8);
+      this.fallingRubble.push({
+        sprite: particle, x: px, y: py,
+        vy: 8 + Math.random() * 12,
+        vx: (Math.random() - 0.5) * 4,
+        rotation: Math.random() * 0.1,
+      });
+    }
+  }
+
+  _updateFallingRubble(dt) {
+    for (const r of this.fallingRubble) {
+      r.x += r.vx * dt;
+      r.y += r.vy * dt;
+      r.sprite.rotation += r.rotation * dt;
+      r.sprite.setPosition(r.x, r.y);
+      // Reset when below visible area
+      if (r.y > H - 20) {
+        r.y = ROOM_BACK_Y + Math.random() * 10;
+        r.x = 160 + Math.random() * (W - 320);
+      }
+    }
+  }
+
+  // ── Fury red particles ──
   _updateFuryParticles(dt) {
     if (!this.bossFury || this.bossDefeated) return;
 
@@ -2804,13 +2402,11 @@ export default class DroneScene extends Phaser.Scene {
     }
   }
 
-  // ── Boss damage visual effects (screen flash + debris around hit) ──
+  // ── Boss damage visual effects ──
   _bossDamageEffects() {
-    // Brief white screen flash
     const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.12).setDepth(45).setScrollFactor(0);
     this.tweens.add({ targets: flash, alpha: 0, duration: 150, onComplete: () => flash.destroy() });
 
-    // Debris particles around boss hit point
     for (let i = 0; i < 8; i++) {
       const px = this.bossX + (Math.random() - 0.5) * 50;
       const py = this.bossY + (Math.random() - 0.5) * 50;
@@ -2831,41 +2427,6 @@ export default class DroneScene extends Phaser.Scene {
     }
   }
 
-  _damageCouch(amount) {
-    if (!this.couchAlive) return;
-    this.couchHP -= amount;
-    if (this.couchHP <= 0) {
-      this.couchAlive = false;
-      // Armchair destruction effect
-      if (this.couchSprite) {
-        // Debris particles
-        for (let i = 0; i < 8; i++) {
-          const px = this.couchX + (Math.random() - 0.5) * 50;
-          const py = this.couchY + (Math.random() - 0.5) * 30;
-          const particle = this.add.circle(px, py, 3 + Math.random() * 4, 0x6a5a3a, 0.8).setDepth(22);
-          this.tweens.add({
-            targets: particle,
-            x: px + (Math.random() - 0.5) * 60,
-            y: py + (Math.random() - 0.5) * 60,
-            alpha: 0,
-            duration: 500 + Math.random() * 300,
-            onComplete: () => particle.destroy(),
-          });
-        }
-        this.couchSprite.destroy();
-        this.couchSprite = null;
-      }
-      // Force boss out of cover
-      this.bossCoverState = 'exposed';
-      this.bossCoverTimer = 999; // no more cover attempts
-      if (this.bossSprite) this.bossSprite.setAlpha(1);
-    } else {
-      // Visual damage feedback on couch
-      if (this.couchSprite) {
-        this.couchSprite.setAlpha(0.4 + 0.6 * (this.couchHP / this.couchMaxHP));
-      }
-    }
-  }
 
   // ── Drone combat (Z = shoot, X = missile) — front-facing perspective ──
   // Bullets go INTO the room (start big, shrink as they travel toward boss)
