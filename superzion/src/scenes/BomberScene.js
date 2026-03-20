@@ -46,13 +46,13 @@ const CHAFF_TOTAL = 5;
 const FLAK_INTERVAL = 1.8;    // seconds between flak bursts
 
 // Jet physics constants
-const JET_GRAVITY = 180;        // gravity on jet px/s²
+const JET_GRAVITY = 240;        // gravity on jet px/s² (increased from 180 — plane falls noticeably)
 const STALL_SPEED = 100;        // below this horizontal speed, jet stalls
 const STALL_GRAVITY = 350;      // extra gravity when stalling
-const CLIMB_ACCEL = 400;        // upward accel when pressing UP
-const DIVE_ACCEL = 250;         // downward accel when pressing DOWN
-const MAX_CLIMB_VY = -300;      // max upward speed (negative = up)
-const MAX_FALL_VY = 400;        // max downward speed
+const CLIMB_ACCEL = 350;        // upward accel when pressing UP (reduced from 400 — climbing requires sustained input)
+const DIVE_ACCEL = 200;         // downward accel when pressing DOWN (reduced from 250 — gravity does the work)
+const MAX_CLIMB_VY = -260;      // max upward speed (negative = up) (reduced from -300 — can't climb as fast)
+const MAX_FALL_VY = 500;        // max downward speed (increased from 400 — higher terminal velocity)
 
 export default class BomberScene extends Phaser.Scene {
   constructor() { super('BomberScene'); }
@@ -426,7 +426,7 @@ export default class BomberScene extends Phaser.Scene {
     // Jet climbs up and right
     this.jetX += this.jetVX * dt;
     this.jetY += this.jetVY * dt;
-    this.jetVY += 30 * dt; // slight gravity reduction (climbing)
+    this.jetVY += JET_GRAVITY * 0.4 * dt; // reduced gravity during climb-out (afterburner thrust)
     this.jetSprite.setPosition(this.jetX, this.jetY);
 
     // Carrier scrolls left
@@ -1574,13 +1574,13 @@ export default class BomberScene extends Phaser.Scene {
     if (this.keys.right.isDown) this.jetX = Math.min(W - 48, this.jetX + hSpeed * dt);
 
     // Gravity always pulls down
-    this.jetVY += JET_GRAVITY * 0.6 * dt;
+    this.jetVY += JET_GRAVITY * dt;
 
     // UP reduces descent, DOWN increases it
-    if (this.keys.up.isDown) this.jetVY -= CLIMB_ACCEL * 0.5 * dt;
-    if (this.keys.down.isDown) this.jetVY += DIVE_ACCEL * 0.5 * dt;
+    if (this.keys.up.isDown) this.jetVY -= CLIMB_ACCEL * 0.7 * dt;
+    if (this.keys.down.isDown) this.jetVY += DIVE_ACCEL * 0.7 * dt;
 
-    this.jetVY = Phaser.Math.Clamp(this.jetVY, -150, 250);
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, -180, 350);
     this.jetY += this.jetVY * dt;
 
     // Approach drift

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// BeirutRadarScene — Level 2: Operation Signal Storm
+// BeirutRadarScene — Level 2: Operation Explosive Interception
 // Signal interception radar game: place jammers, activate, intercept
 // ═══════════════════════════════════════════════════════════════
 
@@ -312,7 +312,7 @@ export default class BeirutRadarScene extends Phaser.Scene {
     this.add.rectangle(W / 2, 16, W, 32, 0x000000, 0.5).setDepth(100);
 
     // Title
-    this.titleText = this.add.text(W / 2, 16, 'OPERATION SIGNAL STORM', {
+    this.titleText = this.add.text(W / 2, 16, 'OPERATION EXPLOSIVE INTERCEPTION', {
       fontFamily: 'monospace', fontSize: '13px', color: '#00ffaa',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(101);
@@ -963,7 +963,7 @@ export default class BeirutRadarScene extends Phaser.Scene {
 
     const lines = [
       { text: 'MISSION COMPLETE', size: '24px', color: '#00ffcc', y: 80 },
-      { text: 'OPERATION SIGNAL STORM', size: '14px', color: '#448866', y: 110 },
+      { text: 'OPERATION EXPLOSIVE INTERCEPTION', size: '14px', color: '#448866', y: 110 },
       { text: `Signals Intercepted: ${this.totalIntercepted}/${this.totalSignals}`, size: '14px', color: '#00ddaa', y: 160 },
       { text: `Best Round: ${this.bestRoundIntercepted} intercepted`, size: '12px', color: '#00aa88', y: 190 },
       { text: `Best Combo: ${this.bestCombo || 'NONE'}`, size: '12px', color: '#00aa88', y: 215 },

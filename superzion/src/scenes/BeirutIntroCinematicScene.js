@@ -65,7 +65,7 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
             this._addPageVisual(hero);
             this.tweens.add({ targets: hero, alpha: 1, duration: 600 });
           }
-          const opName = this.add.text(W / 2, 40, 'OPERATION SIGNAL STORM', {
+          const opName = this.add.text(W / 2, 40, 'OPERATION EXPLOSIVE INTERCEPTION', {
             fontFamily: 'monospace', fontSize: '20px', color: '#FFD700', fontStyle: 'bold',
             shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 10, fill: true },
           }).setOrigin(0.5).setDepth(20);

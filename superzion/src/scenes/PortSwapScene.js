@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// PortSwapScene — Level 2: Operation Port Swap
+// PortSwapScene — Level 2: Operation Explosive Interception
 // Top-down stealth: infiltrate Beirut port, find container, swap, escape
 // ═══════════════════════════════════════════════════════════════
 
@@ -499,7 +499,7 @@ export default class PortSwapScene extends Phaser.Scene {
       .setDepth(100).setScrollFactor(0);
 
     // Title
-    this.hudTitle = this.add.text(W / 2, 8, 'OPERATION PORT SWAP', {
+    this.hudTitle = this.add.text(W / 2, 8, 'OPERATION EXPLOSIVE INTERCEPTION', {
       fontFamily: 'monospace', fontSize: '12px', color: '#FFD700', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setDepth(101).setScrollFactor(0);
 
@@ -1557,7 +1557,7 @@ export default class PortSwapScene extends Phaser.Scene {
       this._endScreen = showVictoryScreen(this, {
         title: 'MISSION COMPLETE',
         stats: [
-          { label: 'OPERATION', value: 'PORT SWAP' },
+          { label: 'OPERATION', value: 'EXPLOSIVE INTERCEPTION' },
           { label: 'CONTAINERS SCANNED', value: String(this.containersScanned) },
           { label: 'TIMES DETECTED', value: String(this.timesDetected) },
           { label: 'DISTRACTIONS USED', value: `${this.distractionsUsed}/${MAX_DISTRACTIONS}` },

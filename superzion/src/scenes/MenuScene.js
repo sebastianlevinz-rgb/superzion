@@ -11,7 +11,7 @@ import DifficultyManager from '../systems/DifficultyManager.js';
 
 const LEVELS = [
   { label: 'LEVEL 1: OPERATION TEHRAN', scene: 'IntroCinematicScene' },
-  { label: 'LEVEL 2: OPERATION PORT SWAP', scene: 'BeirutIntroCinematicScene' },
+  { label: 'LEVEL 2: OPERATION EXPLOSIVE INTERCEPTION', scene: 'BeirutIntroCinematicScene' },
   { label: 'LEVEL 3: OPERATION DEEP STRIKE', scene: 'DeepStrikeIntroCinematicScene' },
   { label: 'LEVEL 4: OPERATION UNDERGROUND', scene: 'UndergroundIntroCinematicScene' },
   { label: 'LEVEL 5: OPERATION MOUNTAIN BREAKER', scene: 'MountainBreakerIntroCinematicScene' },
@@ -335,7 +335,7 @@ export default class MenuScene extends Phaser.Scene {
   _updateDescription() {
     const descs = [
       'Infiltrate the Tehran rooftops.\nReach the target. Plant the device. Escape alive.',
-      'Intercept enemy communications in Beirut.\nMark signals on the radar. Time your intercept.',
+      'Sabotage enemy port operations in Beirut.\nSwap cargo manifests. Escape before detection.',
       'Precision aerial bombardment over Lebanon.\nDestroy the underground bunker. Return to carrier.',
       'Drone reconnaissance and tunnel infiltration in Gaza.\nMap tunnels. Navigate underground. Destroy command center.',
       'B-2 Stealth Bomber night mission over Iran.\nPenetrate defenses. Destroy Natanz nuclear facility.',

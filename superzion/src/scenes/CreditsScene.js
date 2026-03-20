@@ -36,7 +36,7 @@ export default class CreditsScene extends BaseCinematicScene {
       '',
       'Op. Tehran — Infiltration',
       '',
-      'Op. Signal Storm — Intelligence',
+      'Op. Explosive Interception — Intelligence',
       '',
       'Op. Deep Strike — Aerial Assault',
       '',
