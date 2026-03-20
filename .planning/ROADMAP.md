@@ -103,10 +103,11 @@ Plans:
   3. Up arrow provides thrust (plane rises), left/right arrows tilt the plane
   4. Plane explodes on hard landing (high vertical speed), water contact, or failed takeoff (falls into water)
   5. Successful landing requires slow, controlled, aligned descent onto the carrier
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 33-01: TBD
+- [ ] 33-01-PLAN.md -- Rename Level 2 operation name from Signal Storm/Port Swap to Explosive Interception across all files
+- [ ] 33-02-PLAN.md -- Rework Level 3 plane physics for weight, gravity, tilt, and strict crash/landing rules
 
 ### Phase 34: Level 4 Complete Redesign
 **Goal**: Level 4 is a daytime drone flight RIGHT through detailed ruins followed by a boss fight in a destroyed room
@@ -192,8 +193,8 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 15-20. Narrative & Audio | v1.3 | 6/6 | Complete | 2026-03-19 |
 | 21-30. Final Polish | v1.4 | 10/10 | Complete | 2026-03-19 |
 | 31. Intro Audio Fix | v1.5 | 1/1 | Complete | 2026-03-19 |
-| 32. Level 1 Platformer Redesign | 3/3 | Complete    | 2026-03-20 | - |
-| 33. Level 2 Rename + Level 3 Physics | v1.5 | 0/TBD | Not started | - |
+| 32. Level 1 Platformer Redesign | v1.5 | 3/3 | Complete | 2026-03-20 |
+| 33. Level 2 Rename + Level 3 Physics | v1.5 | 0/2 | Not started | - |
 | 34. Level 4 Complete Redesign | v1.5 | 0/TBD | Not started | - |
 | 35. Level 5 B-2 + Explosion | v1.5 | 0/TBD | Not started | - |
 | 36. Supreme Turban Cinematic | v1.5 | 0/TBD | Not started | - |
