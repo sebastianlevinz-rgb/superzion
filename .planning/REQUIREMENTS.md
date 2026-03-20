@@ -27,7 +27,7 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Level 2 Rename
 
-- [ ] **LVL2-01**: "Operation Signal Storm" renamed to "Operation Explosive Interception" in all locations (cinematic, HUD, menu, victory)
+- [x] **LVL2-01**: "Operation Signal Storm" renamed to "Operation Explosive Interception" in all locations (cinematic, HUD, menu, victory)
 
 ### Level 3 Physics
 
@@ -112,7 +112,7 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | LVL1-07 | Phase 32 | Complete |
 | LVL1-08 | Phase 32 | Complete |
 | LVL1-09 | Phase 32 | Complete |
-| LVL2-01 | Phase 33 | Pending |
+| LVL2-01 | Phase 33 | Complete |
 | LVL3-01 | Phase 33 | Pending |
 | LVL3-02 | Phase 33 | Pending |
 | LVL3-03 | Phase 33 | Pending |
