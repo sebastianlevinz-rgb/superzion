@@ -31,14 +31,14 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Level 3 Physics
 
-- [ ] **LVL3-01**: Constant gravity -- plane always falls if no input
-- [ ] **LVL3-02**: Up arrow = thrust -- plane rises while held
-- [ ] **LVL3-03**: Left/right arrows = plane tilt/inclination
-- [ ] **LVL3-04**: Crash (explosion) on high vertical speed landing on carrier
-- [ ] **LVL3-05**: Crash (explosion) on water contact
-- [ ] **LVL3-06**: Crash (explosion) on insufficient takeoff thrust (falls into water)
-- [ ] **LVL3-07**: Landing requires precision -- slow descent, aligned, controlled speed
-- [ ] **LVL3-08**: Plane feels like it has weight and momentum (not a floating cursor)
+- [x] **LVL3-01**: Constant gravity -- plane always falls if no input
+- [x] **LVL3-02**: Up arrow = thrust -- plane rises while held
+- [x] **LVL3-03**: Left/right arrows = plane tilt/inclination
+- [x] **LVL3-04**: Crash (explosion) on high vertical speed landing on carrier
+- [x] **LVL3-05**: Crash (explosion) on water contact
+- [x] **LVL3-06**: Crash (explosion) on insufficient takeoff thrust (falls into water)
+- [x] **LVL3-07**: Landing requires precision -- slow descent, aligned, controlled speed
+- [x] **LVL3-08**: Plane feels like it has weight and momentum (not a floating cursor)
 
 ### Level 4 Redesign
 
@@ -113,14 +113,14 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | LVL1-08 | Phase 32 | Complete |
 | LVL1-09 | Phase 32 | Complete |
 | LVL2-01 | Phase 33 | Complete |
-| LVL3-01 | Phase 33 | Pending |
-| LVL3-02 | Phase 33 | Pending |
-| LVL3-03 | Phase 33 | Pending |
-| LVL3-04 | Phase 33 | Pending |
-| LVL3-05 | Phase 33 | Pending |
-| LVL3-06 | Phase 33 | Pending |
-| LVL3-07 | Phase 33 | Pending |
-| LVL3-08 | Phase 33 | Pending |
+| LVL3-01 | Phase 33 | Complete |
+| LVL3-02 | Phase 33 | Complete |
+| LVL3-03 | Phase 33 | Complete |
+| LVL3-04 | Phase 33 | Complete |
+| LVL3-05 | Phase 33 | Complete |
+| LVL3-06 | Phase 33 | Complete |
+| LVL3-07 | Phase 33 | Complete |
+| LVL3-08 | Phase 33 | Complete |
 | LVL4-01 | Phase 34 | Pending |
 | LVL4-02 | Phase 34 | Pending |
 | LVL4-03 | Phase 34 | Pending |

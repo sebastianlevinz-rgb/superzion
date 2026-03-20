@@ -54,7 +54,7 @@ See `.planning/milestones/` for archived phase details.
 
 - [x] **Phase 31: Intro Audio Fix** - Replace intro music with menu music, silence loud title screen sounds (completed 2026-03-19)
 - [x] **Phase 32: Level 1 Platformer Redesign** - Two-phase level: Tehran rooftop platformer then Bomberman (completed 2026-03-20)
-- [ ] **Phase 33: Level 2 Rename + Level 3 Physics** - Rename Level 2 and add lunar lander physics to Level 3
+- [x] **Phase 33: Level 2 Rename + Level 3 Physics** - Rename Level 2 and add lunar lander physics to Level 3 (completed 2026-03-20)
 - [ ] **Phase 34: Level 4 Complete Redesign** - Daytime drone city scrolling RIGHT plus detailed boss room
 - [ ] **Phase 35: Level 5 B-2 + Explosion** - Flying wing B-2 shape and spectacular mountain explosion
 - [ ] **Phase 36: Supreme Turban Cinematic** - Imposing villain cinematic with war background and dramatic music
@@ -194,7 +194,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 21-30. Final Polish | v1.4 | 10/10 | Complete | 2026-03-19 |
 | 31. Intro Audio Fix | v1.5 | 1/1 | Complete | 2026-03-19 |
 | 32. Level 1 Platformer Redesign | v1.5 | 3/3 | Complete | 2026-03-20 |
-| 33. Level 2 Rename + Level 3 Physics | 1/2 | In Progress|  | - |
+| 33. Level 2 Rename + Level 3 Physics | 2/2 | Complete   | 2026-03-20 | - |
 | 34. Level 4 Complete Redesign | v1.5 | 0/TBD | Not started | - |
 | 35. Level 5 B-2 + Explosion | v1.5 | 0/TBD | Not started | - |
 | 36. Supreme Turban Cinematic | v1.5 | 0/TBD | Not started | - |
