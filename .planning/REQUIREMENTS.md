@@ -15,12 +15,12 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Level 1 Redesign
 
-- [ ] **LVL1-01**: Phase 1 platformer -- SuperZion runs across Tehran rooftops at night (side-scrolling, Super Mario style)
+- [x] **LVL1-01**: Phase 1 platformer -- SuperZion runs across Tehran rooftops at night (side-scrolling, Super Mario style)
 - [x] **LVL1-02**: Tehran night skyline background with Azadi Tower, Milad Tower, Alborz mountains, moon, stars (detailed)
 - [x] **LVL1-03**: Platforms are Iranian building rooftops, balconies, cornices, mosque domes
 - [x] **LVL1-04**: Obstacles: rotating security cameras with vision cones, patrolling guards on rooftops, searchlights, electric wire
-- [ ] **LVL1-05**: Guards walk ON the floor -- feet touch ground, never float (verify with console.log)
-- [ ] **LVL1-06**: End of platformer phase: reach target building, enter through window, visual transition to top-down
+- [x] **LVL1-05**: Guards walk ON the floor -- feet touch ground, never float (verify with console.log)
+- [x] **LVL1-06**: End of platformer phase: reach target building, enter through window, visual transition to top-down
 - [x] **LVL1-07**: Phase 2 Bomberman gameplay preserved intact from current implementation
 - [x] **LVL1-08**: Key is visible, pickable, and functional in Bomberman phase (fix if bugged)
 - [x] **LVL1-09**: Star of David lowered to center of chest on top-down sprite (currently at neck level)
@@ -103,12 +103,12 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | INTRO-01 | Phase 31 | Complete |
 | INTRO-02 | Phase 31 | Complete |
 | INTRO-03 | Phase 31 | Complete |
-| LVL1-01 | Phase 32 | Pending |
+| LVL1-01 | Phase 32 | Complete |
 | LVL1-02 | Phase 32 | Complete |
 | LVL1-03 | Phase 32 | Complete |
 | LVL1-04 | Phase 32 | Complete |
-| LVL1-05 | Phase 32 | Pending |
-| LVL1-06 | Phase 32 | Pending |
+| LVL1-05 | Phase 32 | Complete |
+| LVL1-06 | Phase 32 | Complete |
 | LVL1-07 | Phase 32 | Complete |
 | LVL1-08 | Phase 32 | Complete |
 | LVL1-09 | Phase 32 | Complete |

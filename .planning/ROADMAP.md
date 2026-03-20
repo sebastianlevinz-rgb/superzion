@@ -53,7 +53,7 @@ See `.planning/milestones/` for archived phase details.
 ### v1.5 Megafix v3
 
 - [x] **Phase 31: Intro Audio Fix** - Replace intro music with menu music, silence loud title screen sounds (completed 2026-03-19)
-- [ ] **Phase 32: Level 1 Platformer Redesign** - Two-phase level: Tehran rooftop platformer then Bomberman
+- [x] **Phase 32: Level 1 Platformer Redesign** - Two-phase level: Tehran rooftop platformer then Bomberman (completed 2026-03-20)
 - [ ] **Phase 33: Level 2 Rename + Level 3 Physics** - Rename Level 2 and add lunar lander physics to Level 3
 - [ ] **Phase 34: Level 4 Complete Redesign** - Daytime drone city scrolling RIGHT plus detailed boss room
 - [ ] **Phase 35: Level 5 B-2 + Explosion** - Flying wing B-2 shape and spectacular mountain explosion
@@ -192,7 +192,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 15-20. Narrative & Audio | v1.3 | 6/6 | Complete | 2026-03-19 |
 | 21-30. Final Polish | v1.4 | 10/10 | Complete | 2026-03-19 |
 | 31. Intro Audio Fix | v1.5 | 1/1 | Complete | 2026-03-19 |
-| 32. Level 1 Platformer Redesign | 2/3 | In Progress|  | - |
+| 32. Level 1 Platformer Redesign | 3/3 | Complete   | 2026-03-20 | - |
 | 33. Level 2 Rename + Level 3 Physics | v1.5 | 0/TBD | Not started | - |
 | 34. Level 4 Complete Redesign | v1.5 | 0/TBD | Not started | - |
 | 35. Level 5 B-2 + Explosion | v1.5 | 0/TBD | Not started | - |
