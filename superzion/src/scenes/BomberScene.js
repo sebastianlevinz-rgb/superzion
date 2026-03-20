@@ -416,8 +416,10 @@ export default class BomberScene extends Phaser.Scene {
       }
     }
 
-    // Visual tilt
-    const tilt = this.takeoffAirborne ? Phaser.Math.Clamp(this.jetVY / 300, -0.3, 0.5) : 0;
+    // Visual tilt + left/right bank
+    const baseTilt = this.takeoffAirborne ? Phaser.Math.Clamp(this.jetVY / 300, -0.3, 0.5) : 0;
+    const bankAngle = (this.keys.left.isDown ? -0.12 : 0) + (this.keys.right.isDown ? 0.12 : 0);
+    const tilt = baseTilt + bankAngle;
     this.jetSprite.setRotation(tilt);
     this.jetSprite.setPosition(this.jetX, this.jetY);
   }
@@ -507,10 +509,15 @@ export default class BomberScene extends Phaser.Scene {
     this.jetY += this.jetVY * dt;
 
     if (this.jetY < 40) { this.jetY = 40; this.jetVY = Math.max(0, this.jetVY); }
-    if (this.jetY >= GROUND_Y - 10) { this._crashJet('ground'); return; }
+    if (this.jetY >= GROUND_Y - 10) {
+      this._crashJet(this.flightTerrainStage <= 1 ? 'water' : 'ground');
+      return;
+    }
 
-    // Tilt based on vertical velocity
-    const targetAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    // Tilt based on vertical velocity + left/right bank
+    const pitchAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    const bankAngle = (this.keys.left.isDown ? -0.12 : 0) + (this.keys.right.isDown ? 0.12 : 0);
+    const targetAngle = pitchAngle + bankAngle;
     const currentAngle = this.jetSprite.rotation || 0;
     this.jetSprite.setRotation(currentAngle + (targetAngle - currentAngle) * 6 * dt);
 
@@ -1110,8 +1117,10 @@ export default class BomberScene extends Phaser.Scene {
     this.jetX = Phaser.Math.Clamp(this.jetX, 60, W - 60);
     this.jetSprite.setFlipX(!this.facingRight);
 
-    // Tilt based on vertical velocity
-    const targetAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    // Tilt based on vertical velocity + left/right bank
+    const pitchAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    const bankAngle = (this.keys.left.isDown ? -0.12 : 0) + (this.keys.right.isDown ? 0.12 : 0);
+    const targetAngle = pitchAngle + bankAngle;
     const currentAngle = this.jetSprite.rotation || 0;
     this.jetSprite.setRotation(currentAngle + (targetAngle - currentAngle) * 6 * dt);
 
@@ -1495,10 +1504,15 @@ export default class BomberScene extends Phaser.Scene {
     this.jetVY = Phaser.Math.Clamp(this.jetVY, MAX_CLIMB_VY, MAX_FALL_VY);
     this.jetY += this.jetVY * dt;
     if (this.jetY < 60) { this.jetY = 60; this.jetVY = Math.max(0, this.jetVY); }
-    if (this.jetY >= GROUND_Y - 10) { this._crashJet('ground'); return; }
+    if (this.jetY >= GROUND_Y - 10) {
+      this._crashJet(this.returnTerrainStage >= 2 ? 'water' : 'ground');
+      return;
+    }
 
-    // Tilt based on vertical velocity
-    const targetAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    // Tilt based on vertical velocity + left/right bank
+    const pitchAngle = Phaser.Math.Clamp(this.jetVY / 400, -0.35, 0.35);
+    const bankAngle = (this.keys.left.isDown ? -0.12 : 0) + (this.keys.right.isDown ? 0.12 : 0);
+    const targetAngle = pitchAngle + bankAngle;
     const currentAngle = this.jetSprite.rotation || 0;
     this.jetSprite.setRotation(currentAngle + (targetAngle - currentAngle) * 6 * dt);
 
@@ -1586,9 +1600,12 @@ export default class BomberScene extends Phaser.Scene {
     // Approach drift
     this.jetX -= 30 * dt;
 
-    // Visual tilt
-    const tilt = Phaser.Math.Clamp(this.jetVY / 300, -0.2, 0.3);
-    this.jetSprite.setRotation(tilt);
+    // Visual tilt + left/right bank (with smooth interpolation)
+    const pitchAngle = Phaser.Math.Clamp(this.jetVY / 300, -0.2, 0.3);
+    const bankAngle = (this.keys.left.isDown ? -0.12 : 0) + (this.keys.right.isDown ? 0.12 : 0);
+    const tilt = pitchAngle + bankAngle;
+    const currentAngle = this.jetSprite.rotation || 0;
+    this.jetSprite.setRotation(currentAngle + (tilt - currentAngle) * 6 * dt);
     this.jetSprite.setPosition(this.jetX, this.jetY);
 
     // Check landing on carrier deck
@@ -1598,7 +1615,7 @@ export default class BomberScene extends Phaser.Scene {
 
       if (this.jetX >= carrierLeft && this.jetX <= carrierRight) {
         // Check descent rate — too fast = crash on deck
-        if (this.jetVY > 200) {
+        if (this.jetVY > 150) {
           this._crashJet('ground');
           return;
         }
@@ -1643,14 +1660,8 @@ export default class BomberScene extends Phaser.Scene {
             }
           });
         } else {
-          this.landingQuality = 'rough';
-          this.instrText.setText('ROUGH LANDING');
-          this.instrText.setColor('#ff8800');
-          SoundManager.get().playLandingGear();
-          this.jetY = DECK_Y;
-          this.jetVY = 0;
-          this.phase = 'landed';
-          this.time.delayedCall(2000, () => this._showVictory());
+          // Missed carrier twice — crash into water
+          this._crashJet('water');
         }
       }
     }
