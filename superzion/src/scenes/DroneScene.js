@@ -2490,19 +2490,21 @@ export default class DroneScene extends Phaser.Scene {
         if (dist < hitRadius) {
           b.alive = false;
           if (this.bossCoverState === 'behind_cover') {
-            // Bullet hits couch instead
-            this._damageCouch(b.damage);
+            // Bullet hits armchair — visual spark, no damage to boss
+            const spark = this.add.circle(b.x, b.y, 4, 0xffcc00, 0.9).setDepth(25);
+            this.tweens.add({ targets: spark, alpha: 0, scaleX: 2, scaleY: 2, duration: 200, onComplete: () => spark.destroy() });
           } else {
             this._damageBoss(b.damage);
           }
         }
       }
 
-      // Hit armchair (destructible — bigger couch: ±80 X, extended Y)
-      if (b.alive && this.couchAlive) {
-        if (b.y > COUCH_Y - 45 && b.y < COUCH_Y + 50 && Math.abs(b.x - this.couchX) < 80) {
+      // Hit armchair (indestructible — absorbs shots with spark effect)
+      if (b.alive && this.armchairSprite) {
+        if (b.y > ARMCHAIR_Y - 45 && b.y < ARMCHAIR_Y + 50 && Math.abs(b.x - ARMCHAIR_X) < 80) {
           b.alive = false;
-          this._damageCouch(b.damage);
+          const spark = this.add.circle(b.x, b.y, 4, 0xffcc00, 0.9).setDepth(25);
+          this.tweens.add({ targets: spark, alpha: 0, scaleX: 2, scaleY: 2, duration: 200, onComplete: () => spark.destroy() });
         }
       }
     }
@@ -2567,11 +2569,10 @@ export default class DroneScene extends Phaser.Scene {
         }
       }
 
-      // Missiles hit armchair (bigger couch)
-      if (m.alive && this.couchAlive) {
-        if (m.y > COUCH_Y - 48 && m.y < COUCH_Y + 55 && Math.abs(m.x - this.couchX) < 85) {
+      // Missiles hit armchair (indestructible — absorbs with explosion)
+      if (m.alive && this.armchairSprite) {
+        if (m.y > ARMCHAIR_Y - 48 && m.y < ARMCHAIR_Y + 55 && Math.abs(m.x - ARMCHAIR_X) < 85) {
           m.alive = false;
-          this._damageCouch(m.damage);
           SoundManager.get().playExplosion();
           const blast = this.add.circle(m.x, m.y, 10, 0xff4400, 0.8).setDepth(22);
           this.tweens.add({
@@ -2915,14 +2916,8 @@ export default class DroneScene extends Phaser.Scene {
     // Cover indicator
     if (this.coverIndicator) { this.coverIndicator.destroy(); this.coverIndicator = null; }
 
-    // Couch
-    if (this.couchSprite) { this.couchSprite.destroy(); this.couchSprite = null; }
-
-    // Cover sprites (rubble, column)
-    if (this.coverSprites) {
-      for (const cs of this.coverSprites) { if (cs.sprite) cs.sprite.destroy(); }
-      this.coverSprites = [];
-    }
+    // Armchair
+    if (this.armchairSprite) { this.armchairSprite.destroy(); this.armchairSprite = null; }
 
     // Phase 3 weapon
     if (this.bossWeaponSprite) { this.bossWeaponSprite.destroy(); this.bossWeaponSprite = null; }
