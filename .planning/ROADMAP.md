@@ -119,10 +119,11 @@ Plans:
   3. Enemy drones patrol the city and shoot on detection
   4. Boss room is a destroyed building interior with daytime light through holes, detailed debris (broken lamps, cracked mirrors, overturned furniture, rubble, cables)
   5. The Warden sits in an individual armchair (not sofa), hides behind it, peeks to throw, hides again; SHIFT dodge/dash works
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 34-01: TBD
+- [ ] 34-01-PLAN.md -- Daytime ruined city textures and horizontal RIGHT-scrolling city phase with enemy drones and target building entry
+- [ ] 34-02-PLAN.md -- Boss room daytime interior, armchair cover mechanics, peek-throw-hide AI, SHIFT dodge verification
 
 ### Phase 35: Level 5 B-2 + Explosion
 **Goal**: B-2 looks like a real flying wing and the mountain explosion is spectacular
@@ -194,8 +195,8 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 21-30. Final Polish | v1.4 | 10/10 | Complete | 2026-03-19 |
 | 31. Intro Audio Fix | v1.5 | 1/1 | Complete | 2026-03-19 |
 | 32. Level 1 Platformer Redesign | v1.5 | 3/3 | Complete | 2026-03-20 |
-| 33. Level 2 Rename + Level 3 Physics | 2/2 | Complete    | 2026-03-20 | - |
-| 34. Level 4 Complete Redesign | v1.5 | 0/TBD | Not started | - |
+| 33. Level 2 Rename + Level 3 Physics | v1.5 | 2/2 | Complete | 2026-03-20 |
+| 34. Level 4 Complete Redesign | v1.5 | 0/2 | Not started | - |
 | 35. Level 5 B-2 + Explosion | v1.5 | 0/TBD | Not started | - |
 | 36. Supreme Turban Cinematic | v1.5 | 0/TBD | Not started | - |
 | 37. Victory Scene Redesign | v1.5 | 0/TBD | Not started | - |
