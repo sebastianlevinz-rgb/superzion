@@ -21,9 +21,9 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 - [ ] **LVL1-04**: Obstacles: rotating security cameras with vision cones, patrolling guards on rooftops, searchlights, electric wire
 - [ ] **LVL1-05**: Guards walk ON the floor -- feet touch ground, never float (verify with console.log)
 - [ ] **LVL1-06**: End of platformer phase: reach target building, enter through window, visual transition to top-down
-- [ ] **LVL1-07**: Phase 2 Bomberman gameplay preserved intact from current implementation
-- [ ] **LVL1-08**: Key is visible, pickable, and functional in Bomberman phase (fix if bugged)
-- [ ] **LVL1-09**: Star of David lowered to center of chest on top-down sprite (currently at neck level)
+- [x] **LVL1-07**: Phase 2 Bomberman gameplay preserved intact from current implementation
+- [x] **LVL1-08**: Key is visible, pickable, and functional in Bomberman phase (fix if bugged)
+- [x] **LVL1-09**: Star of David lowered to center of chest on top-down sprite (currently at neck level)
 
 ### Level 2 Rename
 
@@ -109,9 +109,9 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | LVL1-04 | Phase 32 | Pending |
 | LVL1-05 | Phase 32 | Pending |
 | LVL1-06 | Phase 32 | Pending |
-| LVL1-07 | Phase 32 | Pending |
-| LVL1-08 | Phase 32 | Pending |
-| LVL1-09 | Phase 32 | Pending |
+| LVL1-07 | Phase 32 | Complete |
+| LVL1-08 | Phase 32 | Complete |
+| LVL1-09 | Phase 32 | Complete |
 | LVL2-01 | Phase 33 | Pending |
 | LVL3-01 | Phase 33 | Pending |
 | LVL3-02 | Phase 33 | Pending |
