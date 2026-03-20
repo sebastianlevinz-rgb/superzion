@@ -586,7 +586,7 @@ export function createMountainNight(scene) {
   scene.textures.addCanvas('mountain_night', c);
 }
 
-// ── Natanz Mountain cross-section (480×350) ──────────────────
+// ── Natanz Mountain (480×350) — realistic surface with dimmed internal layers ─
 export function createNatanzMountain(scene) {
   if (scene.textures.exists('natanz_mountain')) return;
 
@@ -594,70 +594,254 @@ export function createNatanzMountain(scene) {
   const c = document.createElement('canvas');
   c.width = mw; c.height = mh;
   const ctx = c.getContext('2d');
-
   const cx = mw / 2;
 
-  // Mountain outer silhouette
-  ctx.fillStyle = '#1a1818';
+  // Helper: check if point is inside mountain silhouette
+  // Asymmetric peak: left slope steeper, right slope gentler
+  // Peak near x=220, y=40
+  const peakX = 220, peakY = 40;
+  function mountainTopY(x) {
+    if (x <= 0 || x >= mw) return mh;
+    if (x <= peakX) {
+      // Left slope (steeper): from base (x=20,y=mh) to peak
+      const t = (x - 20) / (peakX - 20);
+      if (t < 0) return mh;
+      return mh - t * (mh - peakY);
+    } else {
+      // Right slope (gentler): from peak to base (x=470,y=mh)
+      const t = (x - peakX) / (470 - peakX);
+      if (t > 1) return mh;
+      return peakY + t * (mh - peakY);
+    }
+  }
+
+  // ── Mountain silhouette fill — rugged ridge with overlapping shapes ──
+  // Base gradient: brown-gray mountain body
+  const mtnGrad = ctx.createLinearGradient(0, peakY, 0, mh);
+  mtnGrad.addColorStop(0, '#3a3428');
+  mtnGrad.addColorStop(0.4, '#2a2820');
+  mtnGrad.addColorStop(0.7, '#1a1a18');
+  mtnGrad.addColorStop(1, '#121210');
+  ctx.fillStyle = mtnGrad;
+
+  // Main silhouette — asymmetric with rugged sub-peaks
   ctx.beginPath();
   ctx.moveTo(0, mh);
-  ctx.lineTo(30, mh - 40);
-  ctx.lineTo(80, mh - 100);
-  ctx.lineTo(140, mh - 200);
-  ctx.lineTo(200, mh - 280);
-  ctx.lineTo(cx, mh - 310);     // peak
-  ctx.lineTo(280, mh - 280);
-  ctx.lineTo(340, mh - 200);
-  ctx.lineTo(400, mh - 100);
-  ctx.lineTo(450, mh - 40);
+  ctx.lineTo(20, mh - 10);
+  ctx.lineTo(50, mh - 50);
+  ctx.lineTo(70, mh - 45);       // small dip
+  ctx.lineTo(90, mh - 90);
+  ctx.lineTo(110, mh - 85);      // small shoulder
+  ctx.lineTo(130, mh - 150);
+  ctx.lineTo(150, mh - 190);
+  ctx.lineTo(170, mh - 230);
+  ctx.lineTo(185, mh - 260);
+  ctx.lineTo(200, mh - 290);
+  ctx.lineTo(peakX, peakY);      // main peak
+  ctx.lineTo(240, mh - 295);     // slight sub-peak
+  ctx.lineTo(255, mh - 280);
+  ctx.lineTo(270, mh - 260);
+  ctx.lineTo(290, mh - 230);
+  ctx.lineTo(310, mh - 200);
+  ctx.lineTo(330, mh - 170);
+  ctx.lineTo(345, mh - 165);     // shoulder
+  ctx.lineTo(360, mh - 130);
+  ctx.lineTo(380, mh - 100);
+  ctx.lineTo(400, mh - 70);
+  ctx.lineTo(415, mh - 65);      // small dip
+  ctx.lineTo(430, mh - 45);
+  ctx.lineTo(450, mh - 25);
+  ctx.lineTo(470, mh - 10);
   ctx.lineTo(mw, mh);
   ctx.closePath();
   ctx.fill();
 
-  // Mountain texture (rocky surface)
-  for (let i = 0; i < 100; i++) {
-    const rx = 60 + Math.random() * 360;
-    const ry = 80 + Math.random() * 240;
-    // Only draw if inside mountain silhouette
-    const distFromCenter = Math.abs(rx - cx);
-    const heightAtX = 310 - (distFromCenter / (mw / 2 - 30)) * 270;
-    if (mh - ry < heightAtX) {
-      ctx.fillStyle = `rgba(${20 + Math.random() * 15},${18 + Math.random() * 12},${15 + Math.random() * 10},0.5)`;
-      ctx.fillRect(rx, ry, 3 + Math.random() * 8, 2 + Math.random() * 4);
+  // ── Moonlight gradient overlay (brighter right-facing slopes) ──
+  ctx.save();
+  // Re-clip to mountain
+  ctx.beginPath();
+  ctx.moveTo(0, mh);
+  ctx.lineTo(20, mh - 10); ctx.lineTo(50, mh - 50); ctx.lineTo(70, mh - 45);
+  ctx.lineTo(90, mh - 90); ctx.lineTo(110, mh - 85); ctx.lineTo(130, mh - 150);
+  ctx.lineTo(150, mh - 190); ctx.lineTo(170, mh - 230); ctx.lineTo(185, mh - 260);
+  ctx.lineTo(200, mh - 290); ctx.lineTo(peakX, peakY); ctx.lineTo(240, mh - 295);
+  ctx.lineTo(255, mh - 280); ctx.lineTo(270, mh - 260); ctx.lineTo(290, mh - 230);
+  ctx.lineTo(310, mh - 200); ctx.lineTo(330, mh - 170); ctx.lineTo(345, mh - 165);
+  ctx.lineTo(360, mh - 130); ctx.lineTo(380, mh - 100); ctx.lineTo(400, mh - 70);
+  ctx.lineTo(415, mh - 65); ctx.lineTo(430, mh - 45); ctx.lineTo(450, mh - 25);
+  ctx.lineTo(470, mh - 10); ctx.lineTo(mw, mh);
+  ctx.closePath();
+  ctx.clip();
+
+  // Moonlight from upper-right: brighter on right half, darker on left
+  const moonGrad = ctx.createLinearGradient(0, 0, mw, 0);
+  moonGrad.addColorStop(0, 'rgba(0,0,0,0.15)');   // left face darker
+  moonGrad.addColorStop(0.45, 'rgba(0,0,0,0)');
+  moonGrad.addColorStop(0.7, 'rgba(180,190,210,0.06)'); // right face slightly brighter
+  moonGrad.addColorStop(1, 'rgba(180,190,210,0.10)');
+  ctx.fillStyle = moonGrad;
+  ctx.fillRect(0, 0, mw, mh);
+
+  // ── Rock texture — random rocky patches across surface ──
+  for (let i = 0; i < 180; i++) {
+    const rx = 30 + Math.random() * 420;
+    const ry = 50 + Math.random() * 280;
+    if (ry > mountainTopY(rx) + 3) {
+      const shade = 20 + Math.random() * 20;
+      const alpha = 0.3 + Math.random() * 0.2;
+      ctx.fillStyle = `rgba(${shade + 15},${shade + 10},${shade},${alpha})`;
+      ctx.fillRect(rx, ry, 3 + Math.random() * 10, 2 + Math.random() * 5);
     }
   }
 
-  // Internal layers (cross-section view — visible in center)
+  // ── Horizontal stratification lines (geological layers on cliff face) ──
+  ctx.strokeStyle = 'rgba(80,70,50,0.2)';
+  ctx.lineWidth = 0.5;
+  for (let sy = 100; sy < mh - 30; sy += 18 + Math.random() * 12) {
+    ctx.beginPath();
+    const startX = 30 + Math.random() * 30;
+    const endX = mw - 30 - Math.random() * 30;
+    for (let sx = startX; sx < endX; sx += 8) {
+      const topAtX = mountainTopY(sx);
+      if (sy > topAtX + 5) {
+        if (sx === startX || sy <= mountainTopY(sx - 8) + 5) {
+          ctx.moveTo(sx, sy + (Math.random() - 0.5) * 2);
+        } else {
+          ctx.lineTo(sx, sy + (Math.random() - 0.5) * 2);
+        }
+      }
+    }
+    ctx.stroke();
+  }
+
+  // ── Exposed rock faces (above tree line, below snow) — lighter gray patches ──
+  for (let i = 0; i < 30; i++) {
+    const rx = 100 + Math.random() * 280;
+    const ry = 60 + Math.random() * 140; // upper portion
+    if (ry > mountainTopY(rx) + 8 && ry < mh * 0.55) {
+      ctx.fillStyle = `rgba(74,72,64,${0.3 + Math.random() * 0.25})`;
+      // Sharp-edged rock faces
+      ctx.beginPath();
+      const rw = 4 + Math.random() * 12;
+      const rh = 3 + Math.random() * 8;
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx + rw, ry + Math.random() * 3);
+      ctx.lineTo(rx + rw - 2, ry + rh);
+      ctx.lineTo(rx + 1, ry + rh - 1);
+      ctx.closePath();
+      ctx.fill();
+
+      // Small shadow crevice
+      if (Math.random() < 0.5) {
+        ctx.strokeStyle = '#0a0a08';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(rx + 1, ry + rh);
+        ctx.lineTo(rx + rw - 1, ry + rh + 1);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // ── Snow/ice on peak (top ~15%) ──
+  const snowLineY = peakY + (mh - peakY) * 0.15; // ~86
+  // Snow gradient clipped to mountain
+  const snowGrad = ctx.createLinearGradient(0, peakY, 0, snowLineY + 20);
+  snowGrad.addColorStop(0, 'rgba(220,230,240,0.35)');
+  snowGrad.addColorStop(0.5, 'rgba(220,230,240,0.28)');
+  snowGrad.addColorStop(0.8, 'rgba(200,210,220,0.15)');
+  snowGrad.addColorStop(1, 'rgba(200,210,220,0)');
+  ctx.fillStyle = snowGrad;
+  ctx.fillRect(0, peakY - 5, mw, snowLineY - peakY + 25);
+
+  // Bright white edge along peak ridge
+  ctx.strokeStyle = 'rgba(240,245,255,0.6)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(185, mh - 260);
+  ctx.lineTo(200, mh - 290);
+  ctx.lineTo(peakX, peakY);
+  ctx.lineTo(240, mh - 295);
+  ctx.lineTo(255, mh - 280);
+  ctx.stroke();
+
+  // Snow patches (irregular bright areas near peak)
+  for (let i = 0; i < 15; i++) {
+    const sx = 160 + Math.random() * 130;
+    const sy = peakY + Math.random() * 50;
+    if (sy > mountainTopY(sx) + 2) {
+      ctx.fillStyle = `rgba(230,235,245,${0.15 + Math.random() * 0.15})`;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 3 + Math.random() * 8, 2 + Math.random() * 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ── Vegetation — trees on lower slopes (bottom 40%) ──
+  const treeLineY = mh - (mh - peakY) * 0.4; // tree line at ~164
+  for (let i = 0; i < 22; i++) {
+    const tx = 40 + Math.random() * 400;
+    const ty = treeLineY + Math.random() * (mh - treeLineY - 25);
+    if (ty > mountainTopY(tx) + 5 && ty < mh - 10) {
+      // Small triangular tree (dark green)
+      const treeH = 4 + Math.random() * 5;
+      const treeW = 3 + Math.random() * 5;
+      // Denser at base, sparser higher: skip some higher trees
+      if (ty < treeLineY + 40 && Math.random() < 0.4) continue;
+      ctx.fillStyle = `rgba(${22 + Math.random() * 8},${42 + Math.random() * 12},${16 + Math.random() * 6},${0.7 + Math.random() * 0.3})`;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty - treeH);
+      ctx.lineTo(tx - treeW / 2, ty);
+      ctx.lineTo(tx + treeW / 2, ty);
+      ctx.closePath();
+      ctx.fill();
+      // Trunk
+      ctx.fillStyle = 'rgba(40,30,20,0.5)';
+      ctx.fillRect(tx - 0.5, ty, 1, 2);
+    }
+  }
+
+  // Scrub/bush patches between trees
+  for (let i = 0; i < 18; i++) {
+    const bx = 50 + Math.random() * 380;
+    const by = treeLineY + 10 + Math.random() * (mh - treeLineY - 40);
+    if (by > mountainTopY(bx) + 5 && by < mh - 8) {
+      ctx.fillStyle = `rgba(${18 + Math.random() * 10},${35 + Math.random() * 15},${14 + Math.random() * 8},${0.4 + Math.random() * 0.3})`;
+      ctx.beginPath();
+      ctx.ellipse(bx, by, 2 + Math.random() * 4, 1.5 + Math.random() * 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore(); // end mountain clip
+
+  // ── Internal layers (cross-section: dimmed, same coordinates as scene) ──
   const layerX = cx - 60;
   const layerW = 120;
   const layerStartY = mh - 240;
   const layerH = 35;
+  const DIM = 0.35; // dimmer than before so surface detail dominates
 
   // Layer 1: Surface rock/earth (brown)
-  ctx.fillStyle = '#4a3a28';
+  ctx.fillStyle = `rgba(74,58,40,${DIM})`;
   ctx.fillRect(layerX, layerStartY, layerW, layerH);
-  ctx.strokeStyle = '#5a4a38';
+  ctx.strokeStyle = `rgba(90,74,56,${DIM * 0.8})`;
   ctx.lineWidth = 0.5;
   ctx.strokeRect(layerX, layerStartY, layerW, layerH);
-  // Rock texture
-  for (let i = 0; i < 8; i++) {
-    ctx.fillStyle = 'rgba(80,60,40,0.4)';
-    ctx.fillRect(layerX + Math.random() * layerW, layerStartY + Math.random() * layerH, 4, 2);
-  }
 
   // Layer 2: Solid rock (dark gray)
-  ctx.fillStyle = '#3a3a3a';
+  ctx.fillStyle = `rgba(58,58,58,${DIM})`;
   ctx.fillRect(layerX, layerStartY + layerH, layerW, layerH);
-  ctx.strokeStyle = '#4a4a4a';
+  ctx.strokeStyle = `rgba(74,74,74,${DIM * 0.8})`;
   ctx.strokeRect(layerX, layerStartY + layerH, layerW, layerH);
 
   // Layer 3: Reinforced concrete (gray with grid)
-  ctx.fillStyle = '#5a5a5a';
+  ctx.fillStyle = `rgba(90,90,90,${DIM})`;
   ctx.fillRect(layerX, layerStartY + layerH * 2, layerW, layerH);
-  ctx.strokeStyle = '#6a6a6a';
+  ctx.strokeStyle = `rgba(106,106,106,${DIM * 0.8})`;
   ctx.strokeRect(layerX, layerStartY + layerH * 2, layerW, layerH);
-  // Rebar grid pattern
-  ctx.strokeStyle = 'rgba(100,100,100,0.3)';
+  // Rebar grid
+  ctx.strokeStyle = `rgba(100,100,100,${DIM * 0.5})`;
   ctx.lineWidth = 0.5;
   for (let gx = layerX + 8; gx < layerX + layerW; gx += 12) {
     ctx.beginPath();
@@ -672,13 +856,12 @@ export function createNatanzMountain(scene) {
     ctx.stroke();
   }
 
-  // Layer 4: More concrete (slightly darker)
-  ctx.fillStyle = '#4a4a4a';
+  // Layer 4: More concrete
+  ctx.fillStyle = `rgba(74,74,74,${DIM})`;
   ctx.fillRect(layerX, layerStartY + layerH * 3, layerW, layerH);
-  ctx.strokeStyle = '#5a5a5a';
+  ctx.strokeStyle = `rgba(90,90,90,${DIM * 0.8})`;
   ctx.strokeRect(layerX, layerStartY + layerH * 3, layerW, layerH);
-  // Rebar
-  ctx.strokeStyle = 'rgba(80,80,80,0.3)';
+  ctx.strokeStyle = `rgba(80,80,80,${DIM * 0.5})`;
   for (let gx = layerX + 10; gx < layerX + layerW; gx += 15) {
     ctx.beginPath();
     ctx.moveTo(gx, layerStartY + layerH * 3);
@@ -687,34 +870,32 @@ export function createNatanzMountain(scene) {
   }
 
   // Layer 5: Nuclear plant chamber (dark with green/cyan glow)
-  ctx.fillStyle = '#1a1a20';
+  ctx.fillStyle = `rgba(26,26,32,${DIM + 0.1})`;
   ctx.fillRect(layerX, layerStartY + layerH * 4, layerW, layerH + 10);
-  ctx.strokeStyle = '#2a2a30';
+  ctx.strokeStyle = `rgba(42,42,48,${DIM * 0.8})`;
   ctx.lineWidth = 1;
   ctx.strokeRect(layerX, layerStartY + layerH * 4, layerW, layerH + 10);
 
-  // Nuclear glow
+  // Nuclear glow (dimmed)
   const nucGlow = ctx.createRadialGradient(cx, layerStartY + layerH * 4.5, 5, cx, layerStartY + layerH * 4.5, 50);
-  nucGlow.addColorStop(0, 'rgba(0,255,200,0.15)');
-  nucGlow.addColorStop(0.5, 'rgba(0,200,180,0.06)');
+  nucGlow.addColorStop(0, `rgba(0,255,200,${0.15 * DIM * 2})`);
+  nucGlow.addColorStop(0.5, `rgba(0,200,180,${0.06 * DIM * 2})`);
   nucGlow.addColorStop(1, 'rgba(0,150,130,0)');
   ctx.fillStyle = nucGlow;
   ctx.fillRect(layerX, layerStartY + layerH * 4, layerW, layerH + 10);
 
-  // Centrifuge rows (small cylinders)
-  ctx.fillStyle = 'rgba(0,220,180,0.4)';
+  // Centrifuge rows (dimmed)
   const centY = layerStartY + layerH * 4 + 10;
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 8; col++) {
       const centX = layerX + 15 + col * 12;
       const centYr = centY + row * 10;
+      ctx.fillStyle = `rgba(0,220,180,${0.4 * DIM})`;
       ctx.fillRect(centX, centYr, 3, 6);
-      // Cyan glow dot
-      ctx.fillStyle = 'rgba(0,255,220,0.3)';
+      ctx.fillStyle = `rgba(0,255,220,${0.3 * DIM})`;
       ctx.beginPath();
       ctx.arc(centX + 1.5, centYr + 3, 2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = 'rgba(0,220,180,0.4)';
     }
   }
 
