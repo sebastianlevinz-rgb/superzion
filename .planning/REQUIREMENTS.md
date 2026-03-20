@@ -56,9 +56,9 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Level 5 Redesign
 
-- [ ] **LVL5-01**: B-2 redesigned as flying wing -- boomerang/bat shape, wide and flat (NOT triangle with line)
-- [ ] **LVL5-02**: B-2 dark gray with panel lines, moonlight highlights on upper edges, subtle outline
-- [ ] **LVL5-03**: Mountain clearly looks like a mountain (texture, vegetation, rock detail)
+- [x] **LVL5-01**: B-2 redesigned as flying wing -- boomerang/bat shape, wide and flat (NOT triangle with line)
+- [x] **LVL5-02**: B-2 dark gray with panel lines, moonlight highlights on upper edges, subtle outline
+- [x] **LVL5-03**: Mountain clearly looks like a mountain (texture, vegetation, rock detail)
 - [x] **LVL5-04**: Spectacular explosion: white flash, fireball, mountain cracks, fire columns through cracks, partial collapse, mushroom cloud, falling debris, secondary fires
 - [x] **LVL5-05**: Strong prolonged screen shake during mountain explosion
 
@@ -132,9 +132,9 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | LVL4-09 | Phase 34 | Pending |
 | LVL4-10 | Phase 34 | Pending |
 | LVL4-11 | Phase 34 | Pending |
-| LVL5-01 | Phase 35 | Pending |
-| LVL5-02 | Phase 35 | Pending |
-| LVL5-03 | Phase 35 | Pending |
+| LVL5-01 | Phase 35 | Complete |
+| LVL5-02 | Phase 35 | Complete |
+| LVL5-03 | Phase 35 | Complete |
 | LVL5-04 | Phase 35 | Complete |
 | LVL5-05 | Phase 35 | Complete |
 | CINE-01 | Phase 36 | Pending |

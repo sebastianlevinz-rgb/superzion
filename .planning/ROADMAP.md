@@ -56,7 +56,7 @@ See `.planning/milestones/` for archived phase details.
 - [x] **Phase 32: Level 1 Platformer Redesign** - Two-phase level: Tehran rooftop platformer then Bomberman (completed 2026-03-20)
 - [x] **Phase 33: Level 2 Rename + Level 3 Physics** - Rename Level 2 and add lunar lander physics to Level 3 (completed 2026-03-20)
 - [x] **Phase 34: Level 4 Complete Redesign** - Daytime drone city scrolling RIGHT plus detailed boss room (completed 2026-03-20)
-- [ ] **Phase 35: Level 5 B-2 + Explosion** - Flying wing B-2 shape and spectacular mountain explosion
+- [x] **Phase 35: Level 5 B-2 + Explosion** - Flying wing B-2 shape and spectacular mountain explosion (completed 2026-03-20)
 - [ ] **Phase 36: Supreme Turban Cinematic** - Imposing villain cinematic with war background and dramatic music
 - [ ] **Phase 37: Victory Scene Redesign** - SuperZion facing forward with celebrating people and epic music
 - [ ] **Phase 38: Final Verification** - Full playthrough verifying all areas work correctly
@@ -198,7 +198,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 32. Level 1 Platformer Redesign | v1.5 | 3/3 | Complete | 2026-03-20 |
 | 33. Level 2 Rename + Level 3 Physics | v1.5 | 2/2 | Complete | 2026-03-20 |
 | 34. Level 4 Complete Redesign | 2/2 | Complete    | 2026-03-20 | - |
-| 35. Level 5 B-2 + Explosion | 1/2 | In Progress|  | - |
+| 35. Level 5 B-2 + Explosion | 2/2 | Complete   | 2026-03-20 | - |
 | 36. Supreme Turban Cinematic | v1.5 | 0/TBD | Not started | - |
 | 37. Victory Scene Redesign | v1.5 | 0/TBD | Not started | - |
 | 38. Final Verification | v1.5 | 0/TBD | Not started | - |
