@@ -1178,55 +1178,53 @@ export default class B2BomberScene extends Phaser.Scene {
     this.instrText.setText('');
     this._cleanupMissiles();
 
-    // Chain explosion inside mountain
-    // 1. Green centrifuge flash
-    this.time.delayedCall(0, () => {
-      const flash = this.add.circle(MTN_X, LAYER_START_Y + LAYER_H * 4.5, 30, 0x00ffcc, 0.8).setDepth(16);
-      this.tweens.add({
-        targets: flash, scaleX: 3, scaleY: 3, alpha: 0, duration: 800,
-        onComplete: () => flash.destroy(),
-      });
+    // Track spawned objects for final cleanup
+    const explosionObjects = [];
+
+    // ── Stage 1 (0ms) — White Flash ──
+    this.cameras.main.flash(800, 255, 255, 255);
+    const whiteFlash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.9).setDepth(50);
+    explosionObjects.push(whiteFlash);
+    this.tweens.add({
+      targets: whiteFlash, alpha: 0, duration: 800,
+      onComplete: () => whiteFlash.destroy(),
     });
+    // Strong prolonged screen shake — 6 seconds continuous
+    this.cameras.main.shake(6000, 0.04);
 
-    // 2. Orange/red secondary explosions
-    for (let i = 0; i < 12; i++) {
-      this.time.delayedCall(200 + i * 100, () => {
-        const ex = MTN_X + (Math.random() - 0.5) * 150;
-        const ey = LAYER_START_Y + Math.random() * LAYER_H * 5;
-        this._addExplosion(ex, ey, 20 + Math.random() * 25, 0xff4400);
+    // ── Stage 2 (400ms) — Initial Fireball ──
+    this.time.delayedCall(400, () => {
+      // Core fireball
+      const fireballCore = this.add.circle(MTN_X, LAYER_START_Y + 90, 30, 0xff4400, 0.9).setDepth(17);
+      explosionObjects.push(fireballCore);
+      this.tweens.add({
+        targets: fireballCore, scaleX: 4, scaleY: 4, alpha: 0.3, duration: 1500,
+        onComplete: () => fireballCore.destroy(),
       });
-    }
+      // Outer halo
+      const fireballHalo = this.add.circle(MTN_X, LAYER_START_Y + 90, 45, 0xff8800, 0.5).setDepth(16);
+      explosionObjects.push(fireballHalo);
+      this.tweens.add({
+        targets: fireballHalo, scaleX: 4.5, scaleY: 4.5, alpha: 0.15, duration: 1800,
+        onComplete: () => fireballHalo.destroy(),
+      });
 
-    // 3. Nuclear fireball (contained)
-    this.time.delayedCall(800, () => {
       SoundManager.get().playNuclearExplosion();
-      this.cameras.main.shake(2000, 0.06);
-
-      const fireball = this.add.circle(MTN_X, LAYER_START_Y + 90, 20, 0xff6600, 0.9).setDepth(17);
-      this.tweens.add({
-        targets: fireball, scaleX: 5, scaleY: 5, alpha: 0.4,
-        duration: 2000, ease: 'Quad.easeOut',
-        onComplete: () => fireball.destroy(),
-      });
-
-      // Nuclear glow
-      const nucGlow = this.add.circle(MTN_X, LAYER_START_Y + 90, 60, 0x00ff88, 0.3).setDepth(16);
-      this.tweens.add({
-        targets: nucGlow, scaleX: 3, scaleY: 3, alpha: 0,
-        duration: 1500,
-        onComplete: () => nucGlow.destroy(),
-      });
+      // Overlapping stronger shake for compounding intensity
+      this.cameras.main.shake(4000, 0.06);
     });
 
-    // 4. Mountain cracks
-    this.time.delayedCall(1200, () => {
+    // ── Stage 3 (800ms) — Mountain Cracks ──
+    this.time.delayedCall(800, () => {
       const crackGfx = this.add.graphics().setDepth(18);
+      explosionObjects.push(crackGfx);
       crackGfx.lineStyle(2, 0xff4400, 0.6);
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
+      const crackCount = 8 + Math.floor(Math.random() * 3); // 8-10 cracks
+      for (let i = 0; i < crackCount; i++) {
+        const angle = (i / crackCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
         crackGfx.beginPath();
         crackGfx.moveTo(MTN_X, LAYER_START_Y + 90);
-        const len = 60 + Math.random() * 80;
+        const len = 80 + Math.random() * 40; // 80-120px reach
         let px = MTN_X, py = LAYER_START_Y + 90;
         for (let s = 0; s < 5; s++) {
           px += Math.cos(angle) * len / 5 + (Math.random() - 0.5) * 10;
@@ -1235,33 +1233,199 @@ export default class B2BomberScene extends Phaser.Scene {
         }
         crackGfx.strokePath();
       }
-      // Fire columns from cracks
-      for (let i = 0; i < 5; i++) {
-        this.time.delayedCall(i * 150, () => {
-          const fx = MTN_X + (Math.random() - 0.5) * 100;
-          const col = this.add.rectangle(fx, LAYER_START_Y, 4 + Math.random() * 6, 40 + Math.random() * 60, 0xff6600, 0.7).setDepth(17);
-          this.tweens.add({
-            targets: col, y: LAYER_START_Y - 80, alpha: 0, scaleY: 2,
-            duration: 1500, onComplete: () => col.destroy(),
-          });
+      // Fade cracks over 1 second after persisting for 2 seconds
+      this.time.delayedCall(2000, () => {
+        this.tweens.add({
+          targets: crackGfx, alpha: 0, duration: 1000,
+          onComplete: () => crackGfx.destroy(),
         });
-      }
-
-      // Smoke column
-      const smoke = this.add.ellipse(MTN_X, LAYER_START_Y - 20, 50, 120, 0x333333, 0.5).setDepth(15);
-      this.tweens.add({
-        targets: smoke, scaleX: 3, scaleY: 4, y: LAYER_START_Y - 120, alpha: 0.2,
-        duration: 3000,
-      });
-
-      this.time.delayedCall(500, () => {
-        crackGfx.destroy();
       });
     });
 
-    // 5. Text
+    // ── Stage 4 (1200ms) — Fire Columns Through Cracks ──
+    this.time.delayedCall(1200, () => {
+      const columnCount = 6 + Math.floor(Math.random() * 3); // 6-8 columns
+      for (let i = 0; i < columnCount; i++) {
+        this.time.delayedCall(i * 150, () => {
+          const fx = MTN_X + (Math.random() - 0.5) * 120;
+          const colW = 4 + Math.random() * 4; // 4-8px wide
+          const colH = 50 + Math.random() * 30; // 50-80px tall
+          const col = this.add.rectangle(fx, LAYER_START_Y + 40, colW, colH, 0xff6600, 0.7).setDepth(17);
+          explosionObjects.push(col);
+          const riseAmount = 80 + Math.random() * 40; // 80-120px upward
+          this.tweens.add({
+            targets: col, y: col.y - riseAmount, alpha: 0, scaleY: 2, duration: 1500,
+            onComplete: () => col.destroy(),
+          });
+          // First column triggers explosion sound
+          if (i === 0) SoundManager.get().playExplosion();
+        });
+      }
+    });
+
+    // ── Stage 5 (2000ms) — Partial Mountain Collapse ──
     this.time.delayedCall(2000, () => {
-      const txt = this.add.text(W / 2, 50, 'NATANZ FACILITY — DESTROYED', {
+      // Mountain sinks and tilts
+      if (this.mountainSprite) {
+        this.tweens.add({
+          targets: this.mountainSprite, y: this.mountainSprite.y + 20, rotation: 0.02, duration: 2000,
+        });
+      }
+      // Collapse shake
+      this.cameras.main.shake(2000, 0.03);
+
+      // Falling debris chunks
+      const debrisCount = 10 + Math.floor(Math.random() * 6); // 10-15
+      for (let i = 0; i < debrisCount; i++) {
+        const dx = MTN_X + (Math.random() - 0.5) * 100;
+        const dy = MTN_TOP_Y + Math.random() * 60;
+        const size = 4 + Math.random() * 8; // 4-12px
+        const colors = [0x3a3428, 0x4a4a4a, 0x2a2820, 0x555544, 0x3a3a3a];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const debris = this.add.rectangle(dx, dy, size, size * 0.7, color, 0.8).setDepth(19);
+        explosionObjects.push(debris);
+        const fallDist = 200 + Math.random() * 100; // 200-300px fall
+        const drift = (Math.random() - 0.5) * 80;
+        const fallDur = 1500 + Math.random() * 1000; // 1500-2500ms
+        this.tweens.add({
+          targets: debris,
+          x: dx + drift,
+          y: dy + fallDist,
+          rotation: (Math.random() - 0.5) * 4,
+          alpha: 0,
+          duration: fallDur,
+          ease: 'Quad.easeIn',
+          onComplete: () => debris.destroy(),
+        });
+      }
+    });
+
+    // ── Stage 6 (3000ms) — Mushroom Cloud ──
+    this.time.delayedCall(3000, () => {
+      // Stem: tall narrow ellipse rising from mountain
+      const stem = this.add.ellipse(MTN_X, LAYER_START_Y, 30, 100, 0x666666, 0.5).setDepth(15);
+      explosionObjects.push(stem);
+      this.tweens.add({
+        targets: stem, y: LAYER_START_Y - 100, scaleX: 1.5, duration: 3000,
+      });
+      // Fade stem after rising
+      this.time.delayedCall(3000, () => {
+        this.tweens.add({
+          targets: stem, alpha: 0.1, duration: 1500,
+          onComplete: () => stem.destroy(),
+        });
+      });
+
+      // Cap: wide ellipse at top of stem
+      const cap = this.add.ellipse(MTN_X, LAYER_START_Y - 60, 120, 50, 0x555555, 0.4).setDepth(15);
+      explosionObjects.push(cap);
+      this.tweens.add({
+        targets: cap, y: LAYER_START_Y - 160, scaleX: 1.8, scaleY: 1.8, duration: 3000,
+      });
+      this.time.delayedCall(3000, () => {
+        this.tweens.add({
+          targets: cap, alpha: 0.1, duration: 1500,
+          onComplete: () => cap.destroy(),
+        });
+      });
+
+      // Inner glow: orange tint inside cap, pulsing
+      const innerGlow = this.add.ellipse(MTN_X, LAYER_START_Y - 60, 60, 25, 0xff6600, 0.2).setDepth(16);
+      explosionObjects.push(innerGlow);
+      this.tweens.add({
+        targets: innerGlow, y: LAYER_START_Y - 160, scaleX: 1.5, scaleY: 1.5,
+        alpha: 0.35, duration: 1500, yoyo: true, repeat: 1,
+        onComplete: () => {
+          this.tweens.add({
+            targets: innerGlow, alpha: 0, duration: 1000,
+            onComplete: () => innerGlow.destroy(),
+          });
+        },
+      });
+    });
+
+    // ── Stage 7 (3500ms) — Falling Debris Wave ──
+    this.time.delayedCall(3500, () => {
+      const particleCount = 20 + Math.floor(Math.random() * 6); // 20-25
+      for (let i = 0; i < particleCount; i++) {
+        const type = Math.random();
+        let particle;
+        const px = MTN_X + (Math.random() - 0.5) * 100;
+        const py = LAYER_START_Y + (Math.random() - 0.5) * 60;
+
+        if (type < 0.4) {
+          // Rock chunk (gray/brown, 2-6px)
+          const rockSize = 2 + Math.random() * 4;
+          const rockColors = [0x555555, 0x3a3428, 0x4a4a4a, 0x666666];
+          particle = this.add.rectangle(px, py, rockSize, rockSize * 0.8,
+            rockColors[Math.floor(Math.random() * rockColors.length)], 0.7).setDepth(19);
+        } else if (type < 0.75) {
+          // Burning ember (orange, 1-3px)
+          const emberSize = 1 + Math.random() * 2;
+          particle = this.add.circle(px, py, emberSize, 0xff4400, 0.8).setDepth(19);
+        } else {
+          // Dust particle (gray, 1-2px)
+          const dustSize = 1 + Math.random();
+          particle = this.add.circle(px, py, dustSize, 0x888888, 0.5).setDepth(19);
+        }
+
+        explosionObjects.push(particle);
+
+        // Arc outward then fall with gravity
+        const spreadX = (Math.random() - 0.5) * 200;
+        const peakY = py - 30 - Math.random() * 50; // rise a bit first
+        const fallDur = 2000 + Math.random() * 1500; // 2000-3500ms
+
+        // Rise briefly then fall
+        this.tweens.add({
+          targets: particle,
+          x: px + spreadX * 0.3,
+          y: peakY,
+          duration: fallDur * 0.2,
+          onComplete: () => {
+            this.tweens.add({
+              targets: particle,
+              x: px + spreadX,
+              y: GROUND_Y - Math.random() * 20,
+              alpha: 0,
+              duration: fallDur * 0.8,
+              ease: 'Quad.easeIn',
+              onComplete: () => particle.destroy(),
+            });
+          },
+        });
+      }
+    });
+
+    // ── Stage 8 (4500ms) — Secondary Fires ──
+    this.time.delayedCall(4500, () => {
+      SoundManager.get().playBunkerBusterImpact();
+
+      const fireCount = 4 + Math.floor(Math.random() * 3); // 4-6
+      for (let i = 0; i < fireCount; i++) {
+        const fx = MTN_X + (Math.random() - 0.5) * 160; // spread +/- 80
+        const fire = this.add.circle(fx, GROUND_Y - 5, 6 + Math.random() * 4, 0xff6600, 0.5).setDepth(16);
+        explosionObjects.push(fire);
+
+        // Flicker: alpha oscillates 0.3-0.7
+        this.tweens.add({
+          targets: fire, alpha: 0.7, duration: 200 + Math.random() * 200,
+          yoyo: true, repeat: 7, // ~3 seconds of flickering
+          onComplete: () => {
+            // Fade out after flickering
+            this.tweens.add({
+              targets: fire, alpha: 0, duration: 500,
+              onComplete: () => fire.destroy(),
+            });
+          },
+        });
+        fire.setAlpha(0.3);
+      }
+    });
+
+    // ── Stage 9 (6000ms) — Aftermath Text + Cleanup ──
+    this.time.delayedCall(6000, () => {
+      const txt = this.add.text(W / 2, 50, 'NATANZ FACILITY -- DESTROYED', {
         fontFamily: 'monospace', fontSize: '24px', color: '#00ff00',
         shadow: { offsetX: 0, offsetY: 0, color: '#00ff00', blur: 16, fill: true },
       }).setOrigin(0.5).setDepth(25);
@@ -1269,13 +1433,19 @@ export default class B2BomberScene extends Phaser.Scene {
         targets: txt, alpha: 0.4, duration: 500, yoyo: true, repeat: 3,
         onComplete: () => {
           txt.destroy();
-          // Cleanup mountain
+          // Final cleanup — destroy mountain and any lingering explosion objects
           if (this.mountainSprite) { this.mountainSprite.destroy(); this.mountainSprite = null; }
           for (const l of this.mountainLayerSprites) {
             if (l.rect) l.rect.destroy();
             if (l.edge) l.edge.destroy();
           }
           this.mountainLayerSprites = [];
+          // Destroy any remaining explosion objects
+          for (const obj of explosionObjects) {
+            if (obj && obj.scene) {
+              try { obj.destroy(); } catch (e) { /* already destroyed */ }
+            }
+          }
           this._startEscape();
         },
       });
