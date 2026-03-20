@@ -134,10 +134,11 @@ Plans:
   2. Mountain has visible texture, vegetation, and rock detail (clearly looks like a mountain)
   3. Explosion sequence plays out in stages: white flash, fireball, mountain cracks, fire columns, partial collapse, mushroom cloud, falling debris, secondary fires
   4. Strong prolonged screen shake accompanies the explosion
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 35-01: TBD
+- [ ] 35-01-PLAN.md -- Refine B-2 flying wing sprite and redraw Natanz mountain with realistic detail
+- [ ] 35-02-PLAN.md -- Spectacular multi-stage mountain explosion with prolonged screen shake
 
 ### Phase 36: Supreme Turban Cinematic
 **Goal**: Supreme Turban appears as a terrifying final villain with dramatic war backdrop
@@ -197,7 +198,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 32. Level 1 Platformer Redesign | v1.5 | 3/3 | Complete | 2026-03-20 |
 | 33. Level 2 Rename + Level 3 Physics | v1.5 | 2/2 | Complete | 2026-03-20 |
 | 34. Level 4 Complete Redesign | 2/2 | Complete    | 2026-03-20 | - |
-| 35. Level 5 B-2 + Explosion | v1.5 | 0/TBD | Not started | - |
+| 35. Level 5 B-2 + Explosion | v1.5 | 0/2 | Not started | - |
 | 36. Supreme Turban Cinematic | v1.5 | 0/TBD | Not started | - |
 | 37. Victory Scene Redesign | v1.5 | 0/TBD | Not started | - |
 | 38. Final Verification | v1.5 | 0/TBD | Not started | - |
