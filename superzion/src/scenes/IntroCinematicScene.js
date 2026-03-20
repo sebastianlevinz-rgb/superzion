@@ -85,7 +85,7 @@ export default class IntroCinematicScene extends BaseCinematicScene {
           this._addPageVisual(opName);
         },
       },
-    ], 'FlightRouteScene', { level: 1, nextScene: 'GameScene' });
+    ], 'FlightRouteScene', { level: 1, nextScene: 'PlatformerScene' });
   }
 
   // -- Visual helpers --

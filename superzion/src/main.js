@@ -16,6 +16,7 @@ import B2BomberScene from './scenes/B2BomberScene.js';
 import LastStandCinematicScene from './scenes/LastStandCinematicScene.js';
 import BossScene from './scenes/BossScene.js';
 import FlightRouteScene from './scenes/FlightRouteScene.js';
+import PlatformerScene from './scenes/PlatformerScene.js';
 import VictoryScene from './scenes/VictoryScene.js';
 import CreditsScene from './scenes/CreditsScene.js';
 
@@ -36,7 +37,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, GameIntroScene, MenuScene, IntroCinematicScene, FlightRouteScene, GameScene, ExplosionCinematicScene, BeirutIntroCinematicScene, BeirutRadarScene, DeepStrikeIntroCinematicScene, BomberScene, UndergroundIntroCinematicScene, DroneScene, MountainBreakerIntroCinematicScene, B2BomberScene, LastStandCinematicScene, BossScene, VictoryScene, CreditsScene],
+  scene: [BootScene, GameIntroScene, MenuScene, IntroCinematicScene, FlightRouteScene, PlatformerScene, GameScene, ExplosionCinematicScene, BeirutIntroCinematicScene, BeirutRadarScene, DeepStrikeIntroCinematicScene, BomberScene, UndergroundIntroCinematicScene, DroneScene, MountainBreakerIntroCinematicScene, B2BomberScene, LastStandCinematicScene, BossScene, VictoryScene, CreditsScene],
   pixelArt: false,
   antialias: true,
 };
