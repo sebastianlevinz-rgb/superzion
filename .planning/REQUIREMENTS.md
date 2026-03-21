@@ -74,10 +74,10 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 - [x] **VICT-02**: Complete new narrative text (ashes/peace, 3000 years, belongs to every soul, those who came before/beside/after)
 - [x] **VICT-03**: SuperZion facing forward, illuminated, detailed, SMILING (not silhouette from behind)
 - [x] **VICT-04**: Maguen David on chest or as giant golden background (not on back)
-- [ ] **VICT-05**: SuperZion surrounded by celebrating people: soldiers, civilians, children, dogs, cats
-- [ ] **VICT-06**: People with Israel flags, hugging, jumping, clapping
-- [ ] **VICT-07**: Gold, blue, and white confetti falling
-- [ ] **VICT-08**: Animated fireworks in sky (explode and fade)
+- [x] **VICT-05**: SuperZion surrounded by celebrating people: soldiers, civilians, children, dogs, cats
+- [x] **VICT-06**: People with Israel flags, hugging, jumping, clapping
+- [x] **VICT-07**: Gold, blue, and white confetti falling
+- [x] **VICT-08**: Animated fireworks in sky (explode and fade)
 - [x] **VICT-09**: Animated sunrise (sun slowly rises)
 - [x] **VICT-10**: Moving clouds
 - [x] **VICT-11**: Emotional epic music with memorable melody (most emotional moment in the game)
@@ -144,10 +144,10 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | VICT-02 | Phase 37 | Complete |
 | VICT-03 | Phase 37 | Complete |
 | VICT-04 | Phase 37 | Complete |
-| VICT-05 | Phase 37 | Pending |
-| VICT-06 | Phase 37 | Pending |
-| VICT-07 | Phase 37 | Pending |
-| VICT-08 | Phase 37 | Pending |
+| VICT-05 | Phase 37 | Complete |
+| VICT-06 | Phase 37 | Complete |
+| VICT-07 | Phase 37 | Complete |
+| VICT-08 | Phase 37 | Complete |
 | VICT-09 | Phase 37 | Complete |
 | VICT-10 | Phase 37 | Complete |
 | VICT-11 | Phase 37 | Complete |
