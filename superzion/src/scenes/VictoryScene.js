@@ -524,7 +524,319 @@ export default class VictoryScene extends BaseCinematicScene {
   // PLAN 03 STUBS — Crowd, confetti, fireworks
   // ═════════════════════════════════════════════════════════════
 
-  _drawCelebrators() { /* Plan 03 */ }
+  /**
+   * Celebrating crowd: soldiers, civilians, women, children, dogs, cats with Israel flags.
+   * 22-26 figures surrounding the hero at the bottom of the screen.
+   */
+  _drawCelebrators() {
+    const crowd = [];
+    const flagHolders = [];
+
+    // Helper: draw a single figure at (x, baseY) on a graphics object
+    const drawFigure = (type, x, baseY) => {
+      const gfx = this.add.graphics().setDepth(15);
+      this._addPageVisual(gfx);
+
+      if (type === 'soldier') {
+        // Olive drab body, 18-20px tall
+        const h = 18 + Phaser.Math.Between(0, 2);
+        gfx.fillStyle(0x556b2f, 1);
+        gfx.fillRect(x - 3, baseY - h, 6, h - 4);       // torso
+        gfx.fillRect(x - 4, baseY - 4, 4, 4);            // left leg
+        gfx.fillRect(x, baseY - 4, 4, 4);                // right leg
+        // Helmet
+        gfx.fillStyle(0x3a4a20, 1);
+        gfx.fillEllipse(x, baseY - h - 2, 8, 5);
+        // Head (skin)
+        gfx.fillStyle(0xd2a679, 1);
+        gfx.fillCircle(x, baseY - h + 1, 3);
+        // Arms raised with rifle
+        gfx.fillStyle(0x556b2f, 1);
+        gfx.fillRect(x - 6, baseY - h + 2, 3, 8);        // left arm
+        gfx.fillRect(x + 3, baseY - h + 2, 3, 8);        // right arm
+        // Rifle (small vertical line above)
+        gfx.lineStyle(1, 0x333333, 0.9);
+        gfx.beginPath();
+        gfx.moveTo(x + 4, baseY - h - 4);
+        gfx.lineTo(x + 4, baseY - h + 5);
+        gfx.strokePath();
+        return { gfx, h };
+      }
+
+      if (type === 'civilian') {
+        const h = 14 + Phaser.Math.Between(0, 2);
+        const shirtColors = [0x3355aa, 0xaa3333, 0xcccccc, 0x888888];
+        const skinTones = [0xd2a679, 0xc49668, 0xb08657];
+        gfx.fillStyle(Phaser.Utils.Array.GetRandom(shirtColors), 1);
+        gfx.fillRect(x - 3, baseY - h, 6, h - 5);        // torso
+        gfx.fillStyle(0x333333, 1);
+        gfx.fillRect(x - 3, baseY - 5, 3, 5);            // left leg
+        gfx.fillRect(x, baseY - 5, 3, 5);                 // right leg
+        // Head
+        gfx.fillStyle(Phaser.Utils.Array.GetRandom(skinTones), 1);
+        gfx.fillCircle(x, baseY - h - 1, 3.5);
+        // Arms (some up, some down)
+        const armsUp = Math.random() < 0.5;
+        gfx.fillStyle(Phaser.Utils.Array.GetRandom(shirtColors), 1);
+        if (armsUp) {
+          gfx.fillRect(x - 6, baseY - h - 4, 3, 6);      // left arm up
+          gfx.fillRect(x + 3, baseY - h - 4, 3, 6);      // right arm up
+        } else {
+          gfx.fillRect(x - 6, baseY - h + 2, 3, 8);      // left arm down
+          gfx.fillRect(x + 3, baseY - h + 2, 3, 8);      // right arm down
+        }
+        return { gfx, h, armsUp };
+      }
+
+      if (type === 'woman') {
+        const h = 14 + Phaser.Math.Between(0, 2);
+        const dressColors = [0x3355aa, 0xffffff, 0x6644aa];
+        const skinTones = [0xd2a679, 0xc49668, 0xb08657];
+        const dressColor = Phaser.Utils.Array.GetRandom(dressColors);
+        // Torso
+        gfx.fillStyle(dressColor, 1);
+        gfx.fillRect(x - 3, baseY - h, 6, h * 0.5);
+        // Skirt (triangular lower body)
+        gfx.fillTriangle(x - 5, baseY, x + 5, baseY, x, baseY - h * 0.5);
+        // Head (slightly larger for hair)
+        gfx.fillStyle(Phaser.Utils.Array.GetRandom(skinTones), 1);
+        gfx.fillCircle(x, baseY - h - 1, 3.5);
+        // Hair
+        gfx.fillStyle(0x1a0a00, 0.8);
+        gfx.fillEllipse(x, baseY - h - 3, 8, 4);
+        // Arms
+        gfx.fillStyle(dressColor, 1);
+        gfx.fillRect(x - 5, baseY - h + 2, 2, 6);
+        gfx.fillRect(x + 3, baseY - h + 2, 2, 6);
+        return { gfx, h };
+      }
+
+      if (type === 'child') {
+        const h = 8 + Phaser.Math.Between(0, 4);
+        const shirtColors = [0xffdd44, 0xaa3333, 0x3355aa];
+        const skinTones = [0xd2a679, 0xc49668, 0xb08657];
+        gfx.fillStyle(Phaser.Utils.Array.GetRandom(shirtColors), 1);
+        gfx.fillRect(x - 2, baseY - h, 4, h - 3);
+        gfx.fillStyle(0x333333, 1);
+        gfx.fillRect(x - 2, baseY - 3, 2, 3);
+        gfx.fillRect(x, baseY - 3, 2, 3);
+        gfx.fillStyle(Phaser.Utils.Array.GetRandom(skinTones), 1);
+        gfx.fillCircle(x, baseY - h - 1, 2.5);
+        // Arms up
+        gfx.fillStyle(Phaser.Utils.Array.GetRandom(shirtColors), 1);
+        gfx.fillRect(x - 4, baseY - h - 2, 2, 5);
+        gfx.fillRect(x + 2, baseY - h - 2, 2, 5);
+        return { gfx, h, alwaysJump: true };
+      }
+
+      if (type === 'dog') {
+        // Brown horizontal oval body
+        gfx.fillStyle(0x8B4513, 1);
+        gfx.fillEllipse(x, baseY - 4, 8, 4);
+        // Head
+        gfx.fillCircle(x + 5, baseY - 5, 2);
+        // Legs (4 tiny lines)
+        gfx.lineStyle(1, 0x6b3410, 1);
+        gfx.beginPath();
+        gfx.moveTo(x - 3, baseY - 2); gfx.lineTo(x - 3, baseY);
+        gfx.moveTo(x - 1, baseY - 2); gfx.lineTo(x - 1, baseY);
+        gfx.moveTo(x + 1, baseY - 2); gfx.lineTo(x + 1, baseY);
+        gfx.moveTo(x + 3, baseY - 2); gfx.lineTo(x + 3, baseY);
+        gfx.strokePath();
+        // Tail (short upward line)
+        gfx.lineStyle(1, 0x8B4513, 1);
+        gfx.beginPath();
+        gfx.moveTo(x - 4, baseY - 4);
+        gfx.lineTo(x - 5, baseY - 7);
+        gfx.strokePath();
+        return { gfx, h: 8 };
+      }
+
+      if (type === 'cat') {
+        const catColor = Math.random() < 0.5 ? 0x666666 : 0xcc7722;
+        // Small oval body
+        gfx.fillStyle(catColor, 1);
+        gfx.fillEllipse(x, baseY - 3, 6, 3);
+        // Head
+        gfx.fillCircle(x + 4, baseY - 4, 1.8);
+        // Triangle ears
+        gfx.fillTriangle(x + 3, baseY - 6, x + 2.5, baseY - 4.5, x + 3.5, baseY - 4.5);
+        gfx.fillTriangle(x + 5, baseY - 6, x + 4.5, baseY - 4.5, x + 5.5, baseY - 4.5);
+        // Legs
+        gfx.lineStyle(1, catColor, 1);
+        gfx.beginPath();
+        gfx.moveTo(x - 2, baseY - 1.5); gfx.lineTo(x - 2, baseY);
+        gfx.moveTo(x + 2, baseY - 1.5); gfx.lineTo(x + 2, baseY);
+        gfx.strokePath();
+        // Curved tail
+        gfx.lineStyle(1, catColor, 0.8);
+        gfx.beginPath();
+        gfx.arc(x - 5, baseY - 5, 3, Phaser.Math.DegToRad(-60), Phaser.Math.DegToRad(60), false);
+        gfx.strokePath();
+        return { gfx, h: 6 };
+      }
+
+      return { gfx, h: 14 };
+    };
+
+    // Helper: draw small Israel flag above (fx, fy)
+    const drawFlag = (fx, fy) => {
+      const flagGfx = this.add.graphics().setDepth(16);
+      this._addPageVisual(flagGfx);
+      // Pole
+      flagGfx.lineStyle(1, 0x888888, 1);
+      flagGfx.beginPath();
+      flagGfx.moveTo(fx, fy);
+      flagGfx.lineTo(fx, fy - 12);
+      flagGfx.strokePath();
+      // White rectangle
+      flagGfx.fillStyle(0xffffff, 1);
+      flagGfx.fillRect(fx, fy - 19, 10, 7);
+      // Blue stripes (top and bottom)
+      flagGfx.fillStyle(0x0038b8, 1);
+      flagGfx.fillRect(fx, fy - 19, 10, 1.5);
+      flagGfx.fillRect(fx, fy - 13.5, 10, 1.5);
+      // Tiny blue Star of David hint in center (two small lines forming an X-like shape)
+      flagGfx.lineStyle(0.8, 0x0038b8, 0.8);
+      flagGfx.beginPath();
+      const scx = fx + 5, scy = fy - 15.5;
+      gfx_drawTinyStarLines(flagGfx, scx, scy);
+      flagGfx.strokePath();
+
+      // Flag sway tween
+      flagGfx.setOrigin && flagGfx.setOrigin(0, 1);
+      this.tweens.add({
+        targets: flagGfx,
+        angle: { from: -8, to: 8 },
+        duration: 600 + Phaser.Math.Between(0, 300),
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      });
+      this._celebratorTweens.push(flagGfx);
+      return flagGfx;
+    };
+
+    // Tiny Star of David on flag (just two overlapping triangle outlines)
+    const gfx_drawTinyStarLines = (g, cx, cy) => {
+      const r = 1.8;
+      // Upward triangle
+      g.moveTo(cx, cy - r);
+      g.lineTo(cx - r * 0.866, cy + r * 0.5);
+      g.lineTo(cx + r * 0.866, cy + r * 0.5);
+      g.lineTo(cx, cy - r);
+      // Downward triangle
+      g.moveTo(cx, cy + r);
+      g.lineTo(cx - r * 0.866, cy - r * 0.5);
+      g.lineTo(cx + r * 0.866, cy - r * 0.5);
+      g.lineTo(cx, cy + r);
+    };
+
+    // --- CROWD LAYOUT ---
+    // Distribute 24 figures across the bottom of the screen
+    const figureTypes = [];
+    // Soldiers: 5
+    for (let i = 0; i < 5; i++) figureTypes.push('soldier');
+    // Civilians: 7
+    for (let i = 0; i < 7; i++) figureTypes.push('civilian');
+    // Women: 4
+    for (let i = 0; i < 4; i++) figureTypes.push('woman');
+    // Children: 4
+    for (let i = 0; i < 4; i++) figureTypes.push('child');
+    // Dogs: 2
+    for (let i = 0; i < 2; i++) figureTypes.push('dog');
+    // Cats: 2
+    for (let i = 0; i < 2; i++) figureTypes.push('cat');
+    // Total: 24
+
+    // Distribute positions, leaving center for hero
+    const positions = [];
+    const totalFigures = figureTypes.length;
+    const startX = 40;
+    const endX = W - 40;
+    const spacing = (endX - startX) / (totalFigures + 1);
+    for (let i = 0; i < totalFigures; i++) {
+      positions.push(startX + spacing * (i + 1));
+    }
+
+    // Shuffle figure types for mixed layout (seeded for consistency)
+    // Simple shuffle using Phaser.Math.Between
+    for (let i = figureTypes.length - 1; i > 0; i--) {
+      const j = Phaser.Math.Between(0, i);
+      [figureTypes[i], figureTypes[j]] = [figureTypes[j], figureTypes[i]];
+    }
+
+    // Track hugging pairs indices (first two pairs of adjacent civilians/women)
+    let hugPairsPlaced = 0;
+    const hugIndices = [];
+
+    for (let i = 0; i < totalFigures; i++) {
+      const type = figureTypes[i];
+      const fx = positions[i];
+      // Skip center area where hero stands (W/2 +/- 50)
+      const adjustedX = (fx > W / 2 - 50 && fx < W / 2 + 50)
+        ? (fx < W / 2 ? fx - 40 : fx + 40)
+        : fx;
+
+      const baseY = H - Phaser.Math.Between(10, 30);
+      const result = drawFigure(type, adjustedX, baseY);
+
+      // Flag: every 4th person holds one (indices 0, 4, 8, 12, 16, 20)
+      if (i % 4 === 0 && type !== 'dog' && type !== 'cat') {
+        const flagY = baseY - (result.h || 14);
+        drawFlag(adjustedX - 2, flagY);
+      }
+
+      // Hugging pairs: first two pairs of adjacent non-animal figures
+      if (hugPairsPlaced < 2 && i > 0 && type !== 'dog' && type !== 'cat'
+          && figureTypes[i - 1] !== 'dog' && figureTypes[i - 1] !== 'cat') {
+        if (!hugIndices.includes(i - 1)) {
+          hugIndices.push(i - 1, i);
+          hugPairsPlaced++;
+          // Draw reaching arms toward each other (overlap slightly)
+          const hugGfx = this.add.graphics().setDepth(15);
+          this._addPageVisual(hugGfx);
+          hugGfx.fillStyle(0xd2a679, 0.7);
+          const prevX = positions[i - 1] > W / 2 - 50 && positions[i - 1] < W / 2 + 50
+            ? (positions[i - 1] < W / 2 ? positions[i - 1] - 40 : positions[i - 1] + 40)
+            : positions[i - 1];
+          const midX = (prevX + adjustedX) / 2;
+          hugGfx.fillRect(prevX + 3, baseY - 10, midX - prevX - 3, 2);
+          hugGfx.fillRect(midX, baseY - 10, adjustedX - midX - 3, 2);
+        }
+      }
+
+      // ANIMATIONS
+      // Jump tween: children always, ~40% of others
+      const shouldJump = result.alwaysJump || Math.random() < 0.4;
+      if (shouldJump) {
+        const jumpAmount = Phaser.Math.Between(4, 8);
+        this.tweens.add({
+          targets: result.gfx,
+          y: -jumpAmount,
+          duration: Phaser.Math.Between(300, 550),
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          repeat: -1,
+          delay: Phaser.Math.Between(0, 500),
+        });
+      }
+
+      // Arm wave / rotation tween: ~50% of figures with arms up
+      if (result.armsUp || Math.random() < 0.3) {
+        this.tweens.add({
+          targets: result.gfx,
+          angle: { from: -5, to: 5 },
+          duration: Phaser.Math.Between(250, 400),
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+
+      crowd.push(result);
+    }
+  }
   _spawnConfetti() { /* Plan 03 */ }
   _stopConfetti() { /* Plan 03 */ }
   _launchFirework() { /* Plan 03 */ }
