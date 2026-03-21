@@ -652,8 +652,15 @@ export function createSupremeTurbanParade(scene) {
     ctx.moveTo(cx + 32, by - 130);
     ctx.lineTo(cx + 28, by - 10);
     ctx.stroke();
-    // Crescent moon on staff top
-    ctx.fillStyle = '#8a7020';
+    // Pulsing light dots along the staff
+    ctx.fillStyle = 'rgba(255, 200, 50, 0.4)';
+    for (const sy of [by - 50, by - 80, by - 110]) {
+      ctx.beginPath();
+      ctx.arc(cx + 30, sy, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Crescent moon on staff top — bright gold
+    ctx.fillStyle = '#ffaa00';
     ctx.beginPath();
     ctx.arc(cx + 33, by - 136, 8, Math.PI * 0.7, Math.PI * 2.3);
     ctx.fill();
@@ -661,10 +668,15 @@ export function createSupremeTurbanParade(scene) {
     ctx.beginPath();
     ctx.arc(cx + 37, by - 138, 6, 0, Math.PI * 2);
     ctx.fill();
-    // Staff glow
-    ctx.fillStyle = 'rgba(255, 80, 0, 0.3)';
+    // Staff glow — outer ring
+    ctx.fillStyle = 'rgba(255, 120, 0, 0.2)';
     ctx.beginPath();
-    ctx.arc(cx + 33, by - 136, 16, 0, Math.PI * 2);
+    ctx.arc(cx + 33, by - 136, 30, 0, Math.PI * 2);
+    ctx.fill();
+    // Staff glow — inner ring
+    ctx.fillStyle = 'rgba(255, 160, 0, 0.5)';
+    ctx.beginPath();
+    ctx.arc(cx + 33, by - 136, 22, 0, Math.PI * 2);
     ctx.fill();
     // Arms — ellipses
     ctx.fillStyle = '#1a1812';
@@ -682,6 +694,33 @@ export function createSupremeTurbanParade(scene) {
     ctx.beginPath();
     ctx.ellipse(cx + 28, by - 39.5, 4, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Claw-like fingers — 3 thin strokes per hand
+    ctx.strokeStyle = '#3a1a08';
+    ctx.lineWidth = 0.8;
+    for (let f = 0; f < 3; f++) {
+      // Left hand claws
+      ctx.beginPath();
+      ctx.moveTo(cx - 33 + f * 3, by - 39);
+      ctx.lineTo(cx - 35 + f * 3, by - 34);
+      ctx.stroke();
+      // Right hand claws
+      ctx.beginPath();
+      ctx.moveTo(cx + 25 + f * 3, by - 39);
+      ctx.lineTo(cx + 23 + f * 3, by - 34);
+      ctx.stroke();
+    }
+    // Dark smoke/aura at base of robes
+    ctx.fillStyle = 'rgba(30, 0, 0, 0.15)';
+    const smokePositions = [
+      [cx - 20, by - 18, 12], [cx + 15, by - 14, 14],
+      [cx - 8, by - 10, 10], [cx + 25, by - 16, 11],
+      [cx + 2, by - 12, 13],
+    ];
+    for (const [sx, sy, sr] of smokePositions) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      ctx.fill();
+    }
     // Neck — ellipse
     ctx.fillStyle = '#6a4020';
     ctx.beginPath();
@@ -711,13 +750,17 @@ export function createSupremeTurbanParade(scene) {
     ctx.fillStyle = 'rgba(20,10,5,0.6)';
     ctx.beginPath(); ctx.ellipse(cx - 8, by - 88, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(cx + 8, by - 88, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ff2200';
-    ctx.beginPath(); ctx.arc(cx - 8, by - 88, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 8, by - 88, 2, 0, Math.PI * 2); ctx.fill();
-    // Eye glow
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-    ctx.beginPath(); ctx.arc(cx - 8, by - 88, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 8, by - 88, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff4400';
+    ctx.beginPath(); ctx.arc(cx - 8, by - 88, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 8, by - 88, 3, 0, Math.PI * 2); ctx.fill();
+    // Eye glow — outer ring
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    ctx.beginPath(); ctx.arc(cx - 8, by - 88, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 8, by - 88, 14, 0, Math.PI * 2); ctx.fill();
+    // Eye glow — inner ring
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+    ctx.beginPath(); ctx.arc(cx - 8, by - 88, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 8, by - 88, 10, 0, Math.PI * 2); ctx.fill();
     // Hooked nose
     ctx.fillStyle = '#4a2a14';
     ctx.beginPath();

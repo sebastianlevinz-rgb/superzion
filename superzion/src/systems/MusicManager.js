@@ -1134,4 +1134,81 @@ export default class MusicManager {
     sub.start(t); sub.stop(t + 8);
     this._nodes.push(sub, sGain);
   }
+
+  // ═════════════════════════════════════════════════════════════
+  // VILLAIN MUSIC — Dark dramatic: grave drums, ominous brass,
+  // tension arpeggio in D phrygian, 55 BPM
+  // ═════════════════════════════════════════════════════════════
+
+  playVillainMusic() {
+    const bpm = 55;
+    const beat = 60 / bpm;     // ~1.09s per beat
+    const barLen = beat * 4;   // ~4.36s per bar
+    const loopLen = barLen * 4; // 4 bars, ~17.45s
+
+    this._startLoop('villain', loopLen, (startT) => {
+      const t = startT;
+
+      // D2 and F2 frequencies (below NOTE range)
+      const D2 = NOTE.D3 / 2;   // ~73.4 Hz
+      const F2 = NOTE.F3 / 2;   // ~87.3 Hz
+      const Bb3 = NOTE.Bb3;     // 233.08 Hz
+
+      // 1. GRAVE DRUMS — heavy slow kicks on beats 1 and 3
+      for (let bar = 0; bar < 4; bar++) {
+        const barStart = t + bar * barLen;
+        // Beat 1 — heavy kick
+        this._kick(barStart, 0.4);
+        // Beat 3 — heavy kick
+        this._kick(barStart + beat * 2, 0.4);
+
+        // Sub-boom: ultra-low 60Hz sine with slow decay on beats 1 and 3
+        for (const offset of [0, beat * 2]) {
+          const boom = this.ctx.createOscillator();
+          const boomGain = this.ctx.createGain();
+          boom.type = 'sine';
+          boom.frequency.value = 60;
+          const bt = barStart + offset;
+          boomGain.gain.setValueAtTime(0.12, bt);
+          boomGain.gain.exponentialRampToValueAtTime(0.001, bt + beat * 1.5);
+          boom.connect(boomGain); boomGain.connect(this.musicGain);
+          boom.start(bt); boom.stop(bt + beat * 1.5);
+          this._nodes.push(boom, boomGain);
+        }
+
+        // Military snare on beat 4 of every other bar
+        if (bar % 2 === 1) {
+          this._snare(barStart + beat * 3, 0.08);
+        }
+      }
+
+      // 2. OMINOUS BRASS — D minor triad drone at very low register
+      // D2, F2, A2 sustained for full loop
+      this._pad(t, D2, loopLen, 0.08);
+      this._pad(t, F2, loopLen, 0.08);
+      this._pad(t, NOTE.A2, loopLen, 0.08);
+
+      // 3. TENSION ARPEGGIO — descending D4, C4, Bb3, A3 every 2 bars
+      const arpNotes = [NOTE.D4, NOTE.C4, Bb3, NOTE.A3];
+      for (let rep = 0; rep < 2; rep++) {
+        const arpStart = t + rep * barLen * 2;
+        for (let i = 0; i < 4; i++) {
+          this._arp(arpStart + i * beat, arpNotes[i], beat * 0.9, 0.035, 'sawtooth');
+        }
+      }
+
+      // 4. SUB BASS DRONE — D2 sine held for full loop with fade in/out
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.value = D2;
+      subGain.gain.setValueAtTime(0, t);
+      subGain.gain.linearRampToValueAtTime(0.06, t + loopLen * 0.15);
+      subGain.gain.setValueAtTime(0.06, t + loopLen * 0.85);
+      subGain.gain.linearRampToValueAtTime(0, t + loopLen);
+      sub.connect(subGain); subGain.connect(this.musicGain);
+      sub.start(t); sub.stop(t + loopLen);
+      this._nodes.push(sub, subGain);
+    }, 0.5);
+  }
 }
