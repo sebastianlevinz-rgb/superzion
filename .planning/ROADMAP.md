@@ -148,10 +148,10 @@ Plans:
   1. Dark dramatic music plays -- slow grave drums, ominous brass, minor key, conveying final danger
   2. Background shows detailed war scene with fire, smoke, army silhouettes, missile trucks, soldiers loading weapons, stacked armaments
   3. Supreme Turban is larger and more imposing -- brighter red eyes, glowing crescent moon staff, more detail than before
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 36-01: TBD
+- [ ] 36-01-PLAN.md -- Dark villain music, enhanced Supreme Turban sprite, detailed war background scene
 
 ### Phase 37: Victory Scene Redesign
 **Goal**: Victory scene shows SuperZion facing forward among celebrating people with epic emotional payoff
@@ -199,6 +199,6 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 33. Level 2 Rename + Level 3 Physics | v1.5 | 2/2 | Complete | 2026-03-20 |
 | 34. Level 4 Complete Redesign | 2/2 | Complete    | 2026-03-20 | - |
 | 35. Level 5 B-2 + Explosion | 2/2 | Complete    | 2026-03-20 | - |
-| 36. Supreme Turban Cinematic | v1.5 | 0/TBD | Not started | - |
+| 36. Supreme Turban Cinematic | v1.5 | 1/1 | Not started | - |
 | 37. Victory Scene Redesign | v1.5 | 0/TBD | Not started | - |
 | 38. Final Verification | v1.5 | 0/TBD | Not started | - |
