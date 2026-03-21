@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Megafix v3
 status: completed
-stopped_at: Completed 35-01-PLAN.md
-last_updated: "2026-03-20T15:09:44.199Z"
-last_activity: 2026-03-20 -- Phase 35 Plan 01 complete (B-2 sprite + Natanz mountain redesign)
+stopped_at: Completed 36-01-PLAN.md
+last_updated: "2026-03-21T17:06:38.262Z"
+last_activity: 2026-03-21 -- Phase 36 Plan 01 complete (villain music + war background + imposing Supreme Turban)
 progress:
   total_phases: 8
-  completed_phases: 5
-  total_plans: 10
-  completed_plans: 10
-  percent: 94
+  completed_phases: 7
+  total_plans: 12
+  completed_plans: 12
+  percent: 97
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Every visible element must look intentional and polished -- no placeholder cubes, no missing audio, no broken levels.
-**Current focus:** Phase 35 complete (B-2 sprite + mountain + explosion)
+**Current focus:** Phase 36 complete (villain music + war background + imposing Supreme Turban)
 
 ## Current Position
 
-Phase: 35 (5 of 8 in v1.5)
-Plan: 02 of 2 (complete)
-Status: Phase 35 complete
-Last activity: 2026-03-20 -- Phase 35 Plan 01 complete (B-2 sprite + Natanz mountain redesign)
+Phase: 36 (7 of 8 in v1.5)
+Plan: 01 of 1 (complete)
+Status: Phase 36 complete
+Last activity: 2026-03-21 -- Phase 36 Plan 01 complete (villain music + war background + imposing Supreme Turban)
 
-Progress: [█████████░] 94%
+Progress: [█████████░] 97%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [█████████░] 94%
 | Phase 33 P02 | 7min | 2 tasks | 1 files |
 | Phase 35 P01 | 6min | 2 tasks | 1 files |
 | Phase 35 P02 | 2min | 1 tasks | 1 files |
+| Phase 36 P01 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Progress: [█████████░] 94%
 - [Phase 35]: Asymmetric mountain peak at x=220 (not centered) for natural look
 - [Phase 35]: Used explosionObjects tracking array for reliable final cleanup of all spawned VFX
 - [Phase 35]: Overlapping camera.shake calls at stages 1, 2, and 5 for compounding shake intensity
+- [Phase 36]: D2/F2 frequencies calculated as NOTE.D3/2 and NOTE.F3/2 (below NOTE constant range)
+- [Phase 36]: Used fillEllipse for fire columns for cleaner Phaser graphics API usage
+- [Phase 36]: Soldier silhouettes use 3-level depth scale (0.7/1.0/1.4) for visual depth
 
 ### Pending Todos
 
@@ -88,6 +92,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T14:47:00Z
-Stopped at: Completed 35-01-PLAN.md
+Last session: 2026-03-21T17:06:38.257Z
+Stopped at: Completed 36-01-PLAN.md
 Resume file: None

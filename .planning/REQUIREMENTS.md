@@ -64,9 +64,9 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Supreme Turban Cinematic
 
-- [ ] **CINE-01**: Dark dramatic music -- slow grave drums, ominous brass, minor key, sense of final danger
-- [ ] **CINE-02**: Background: fire, smoke, army silhouettes, missile trucks, soldiers loading weapons, stacked armaments (detailed war scene)
-- [ ] **CINE-03**: Supreme Turban more imposing -- larger, more detailed, brighter red eyes, crescent moon staff glowing
+- [x] **CINE-01**: Dark dramatic music -- slow grave drums, ominous brass, minor key, sense of final danger
+- [x] **CINE-02**: Background: fire, smoke, army silhouettes, missile trucks, soldiers loading weapons, stacked armaments (detailed war scene)
+- [x] **CINE-03**: Supreme Turban more imposing -- larger, more detailed, brighter red eyes, crescent moon staff glowing
 
 ### Victory Scene
 
@@ -137,9 +137,9 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | LVL5-03 | Phase 35 | Complete |
 | LVL5-04 | Phase 35 | Complete |
 | LVL5-05 | Phase 35 | Complete |
-| CINE-01 | Phase 36 | Pending |
-| CINE-02 | Phase 36 | Pending |
-| CINE-03 | Phase 36 | Pending |
+| CINE-01 | Phase 36 | Complete |
+| CINE-02 | Phase 36 | Complete |
+| CINE-03 | Phase 36 | Complete |
 | VICT-01 | Phase 37 | Pending |
 | VICT-02 | Phase 37 | Pending |
 | VICT-03 | Phase 37 | Pending |
