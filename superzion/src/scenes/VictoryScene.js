@@ -87,10 +87,15 @@ export default class VictoryScene extends BaseCinematicScene {
           this._drawClouds(1.0);
           this._drawGiantStar();
           this._drawForwardHero();
-          // [Plan 03: _drawCelebrators]
           this._drawCelebrators();
-          // [Plan 03: _spawnConfetti]
           this._spawnConfetti();
+
+          // Launch 4 fireworks
+          for (let fw = 0; fw < 4; fw++) {
+            this.time.delayedCall(fw * 300, () => { if (!this.skipped) this._launchFirework(); });
+          }
+          SoundManager.get().playExplosion();
+          this.cameras.main.shake(400, 0.02);
         },
         cleanup: () => this._stopConfetti(),
       },
@@ -102,10 +107,12 @@ export default class VictoryScene extends BaseCinematicScene {
           this._drawClouds(1.0);
           this._drawGiantStar();
           this._drawForwardHero();
-          // [Plan 03: _drawCelebrators]
           this._drawCelebrators();
-          // [Plan 03: _spawnConfetti]
           this._spawnConfetti();
+
+          // Flanking Israel flags
+          this._drawFlag(120, H * 0.55);
+          this._drawFlag(W - 120, H * 0.55);
 
           // Title: S U P E R Z I O N
           const titleFont = '"Impact", "Arial Black", "Trebuchet MS", sans-serif';
@@ -128,8 +135,10 @@ export default class VictoryScene extends BaseCinematicScene {
           this._addPageVisual(sub);
           this.tweens.add({ targets: sub, alpha: 1, duration: 600, delay: 400 });
 
-          // [Plan 03: _launchFirework]
-          this._launchFirework();
+          // Launch 10 staggered fireworks
+          for (let fw = 0; fw < 10; fw++) {
+            this.time.delayedCall(fw * 400, () => { if (!this.skipped) this._launchFirework(); });
+          }
 
           SoundManager.get().playExplosion();
           this.cameras.main.shake(400, 0.02);
@@ -837,9 +846,246 @@ export default class VictoryScene extends BaseCinematicScene {
       crowd.push(result);
     }
   }
-  _spawnConfetti() { /* Plan 03 */ }
-  _stopConfetti() { /* Plan 03 */ }
-  _launchFirework() { /* Plan 03 */ }
+  /**
+   * Continuous gold/blue/white confetti falling. Gold-weighted for Israel colors.
+   * Capped at ~50 particles on screen.
+   */
+  _spawnConfetti() {
+    let particleCount = 0;
+    const colors = [0xFFD700, 0xFFD700, 0xFFD700, 0x0055ff, 0x0055ff, 0xffffff, 0xffffff];
+
+    this._confettiTimer = this.time.addEvent({
+      delay: 70,
+      loop: true,
+      callback: () => {
+        if (this.skipped || particleCount >= 50) return;
+        particleCount++;
+
+        const px = Phaser.Math.Between(20, W - 20);
+        const pw = Phaser.Math.Between(2, 3);
+        const ph = Phaser.Math.Between(4, 5);
+        const color = Phaser.Utils.Array.GetRandom(colors);
+        const piece = this.add.rectangle(px, -5, pw, ph, color, 1).setDepth(20);
+        this._addPageVisual(piece);
+        this._confettiParticles.push(piece);
+
+        const fallDuration = Phaser.Math.Between(2500, 4000);
+
+        // Fall tween
+        this.tweens.add({
+          targets: piece,
+          y: H + 10,
+          alpha: 0.3,
+          duration: fallDuration,
+          ease: 'Linear',
+          onComplete: () => {
+            piece.destroy();
+            particleCount--;
+            const idx = this._confettiParticles.indexOf(piece);
+            if (idx !== -1) this._confettiParticles.splice(idx, 1);
+          },
+        });
+
+        // Horizontal drift (sine wave)
+        const driftAmount = Phaser.Math.Between(15, 40) * (Math.random() < 0.5 ? -1 : 1);
+        this.tweens.add({
+          targets: piece,
+          x: px + driftAmount,
+          duration: Phaser.Math.Between(400, 800),
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          repeat: -1,
+        });
+
+        // Rotation
+        this.tweens.add({
+          targets: piece,
+          angle: Phaser.Math.Between(-180, 180),
+          duration: fallDuration,
+          ease: 'Linear',
+        });
+      },
+    });
+  }
+
+  /**
+   * Stop confetti timer and clean up.
+   */
+  _stopConfetti() {
+    if (this._confettiTimer) {
+      this._confettiTimer.remove(false);
+      this._confettiTimer = null;
+    }
+  }
+
+  /**
+   * Launch a single firework: rocket trail, radial burst, central flash.
+   */
+  _launchFirework() {
+    const rocketX = Phaser.Math.Between(80, W - 80);
+    const peakY = Phaser.Math.Between(60, 200);
+
+    // Rocket
+    const rocket = this.add.circle(rocketX, H + 10, 3, 0xffffff, 1).setDepth(25);
+    this._addPageVisual(rocket);
+
+    // Trail timer: spawn fading dots behind rocket
+    const trailTimer = this.time.addEvent({
+      delay: 40,
+      loop: true,
+      callback: () => {
+        if (!rocket.active) return;
+        const dot = this.add.circle(rocket.x, rocket.y, 1.5, 0xffddaa, 0.6).setDepth(24);
+        this._addPageVisual(dot);
+        this.tweens.add({
+          targets: dot,
+          alpha: 0,
+          scaleX: 0.3,
+          scaleY: 0.3,
+          duration: 300,
+          onComplete: () => dot.destroy(),
+        });
+      },
+    });
+
+    // Rocket rise tween
+    this.tweens.add({
+      targets: rocket,
+      y: peakY,
+      duration: 600,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        // Stop trail, destroy rocket
+        trailTimer.remove(false);
+        const burstX = rocket.x;
+        const burstY = rocket.y;
+        rocket.destroy();
+
+        // Burst phase
+        const burstColors = [0xFFD700, 0x0055ff, 0xffffff, 0xff3333, 0x33ff55, 0xff66cc];
+        const c1 = Phaser.Utils.Array.GetRandom(burstColors);
+        const c2 = Phaser.Utils.Array.GetRandom(burstColors);
+        const numParticles = 24;
+
+        for (let i = 0; i < numParticles; i++) {
+          const angle = (Math.PI * 2 * i) / numParticles;
+          const spread = 50 + Phaser.Math.Between(0, 30);
+          const color = i % 2 === 0 ? c1 : c2;
+          const particle = this.add.circle(burstX, burstY, 2.5, color, 1).setDepth(25);
+          this._addPageVisual(particle);
+
+          const targetX = burstX + Math.cos(angle) * spread;
+          const targetY = burstY + Math.sin(angle) * spread;
+          const pDuration = Phaser.Math.Between(700, 900);
+
+          this.tweens.add({
+            targets: particle,
+            x: targetX,
+            y: targetY,
+            alpha: 0,
+            duration: pDuration,
+            ease: 'Cubic.easeOut',
+            onComplete: () => particle.destroy(),
+          });
+
+          // Trail effect: 60% chance each 80ms to spawn tiny fading dot
+          if (Math.random() < 0.6) {
+            const ptTimer = this.time.addEvent({
+              delay: 80,
+              repeat: Math.floor(pDuration / 80) - 1,
+              callback: () => {
+                if (!particle.active) return;
+                const tdot = this.add.circle(particle.x, particle.y, 1, color, 0.4).setDepth(24);
+                this._addPageVisual(tdot);
+                this.tweens.add({
+                  targets: tdot,
+                  alpha: 0,
+                  duration: 200,
+                  onComplete: () => tdot.destroy(),
+                });
+              },
+            });
+          }
+        }
+
+        // Central flash
+        const flash = this.add.circle(burstX, burstY, 8, 0xffffff, 0.9).setDepth(26);
+        this._addPageVisual(flash);
+        this.tweens.add({
+          targets: flash,
+          scaleX: 3,
+          scaleY: 3,
+          alpha: 0,
+          duration: 300,
+          onComplete: () => flash.destroy(),
+        });
+      },
+    });
+  }
+
+  /**
+   * Draw a large Israel flag at (cx, cy) with pole, stripes, Star of David, sway animation.
+   * Used on page 8 for flanking flags.
+   */
+  _drawFlag(cx, cy) {
+    const flagGfx = this.add.graphics().setDepth(18);
+    this._addPageVisual(flagGfx);
+
+    const fh = 80;  // Flag height
+    const fw = 80;  // Flag width
+
+    // Pole: 3px wide, fh+30 tall, gray
+    flagGfx.fillStyle(0x888888, 1);
+    flagGfx.fillRect(cx - 1.5, cy - fh - 30, 3, fh + 30);
+
+    // White flag background
+    flagGfx.fillStyle(0xffffff, 1);
+    flagGfx.fillRect(cx + 2, cy - fh - 25, fw, fh * 0.7);
+
+    // Two blue stripes
+    const stripeH = fh * 0.7 * 0.15;
+    flagGfx.fillStyle(0x0038b8, 1);
+    flagGfx.fillRect(cx + 2, cy - fh - 25, fw, stripeH);                            // top stripe
+    flagGfx.fillRect(cx + 2, cy - fh - 25 + fh * 0.7 - stripeH, fw, stripeH);      // bottom stripe
+
+    // Star of David in center
+    const scx = cx + 2 + fw / 2;
+    const scy = cy - fh - 25 + fh * 0.7 / 2;
+    const sr = fh * 0.15;
+    flagGfx.lineStyle(2, 0x0038b8, 0.9);
+    // Upward triangle
+    flagGfx.beginPath();
+    flagGfx.moveTo(scx, scy - sr);
+    flagGfx.lineTo(scx - sr * 0.866, scy + sr * 0.5);
+    flagGfx.lineTo(scx + sr * 0.866, scy + sr * 0.5);
+    flagGfx.closePath();
+    flagGfx.strokePath();
+    // Downward triangle
+    flagGfx.beginPath();
+    flagGfx.moveTo(scx, scy + sr);
+    flagGfx.lineTo(scx - sr * 0.866, scy - sr * 0.5);
+    flagGfx.lineTo(scx + sr * 0.866, scy - sr * 0.5);
+    flagGfx.closePath();
+    flagGfx.strokePath();
+
+    // Fade-in tween
+    flagGfx.setAlpha(0);
+    this.tweens.add({
+      targets: flagGfx,
+      alpha: 1,
+      duration: 800,
+    });
+
+    // Gentle sway tween (scaleX oscillation for waving effect)
+    this.tweens.add({
+      targets: flagGfx,
+      scaleX: 0.96,
+      duration: 1200,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
+  }
 
   update() { this._handlePageInput(); }
 }
