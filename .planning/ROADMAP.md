@@ -199,6 +199,6 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 33. Level 2 Rename + Level 3 Physics | v1.5 | 2/2 | Complete | 2026-03-20 |
 | 34. Level 4 Complete Redesign | 2/2 | Complete    | 2026-03-20 | - |
 | 35. Level 5 B-2 + Explosion | 2/2 | Complete    | 2026-03-20 | - |
-| 36. Supreme Turban Cinematic | 1/1 | Complete   | 2026-03-21 | - |
+| 36. Supreme Turban Cinematic | 1/1 | Complete    | 2026-03-21 | - |
 | 37. Victory Scene Redesign | v1.5 | 0/TBD | Not started | - |
 | 38. Final Verification | v1.5 | 0/TBD | Not started | - |
