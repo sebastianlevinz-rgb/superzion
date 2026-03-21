@@ -85,7 +85,7 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 ### Verification
 
-- [ ] **VRFY-01**: Full game playthrough verifying all 9 areas work correctly, fixing any issues found
+- [x] **VRFY-01**: Full game playthrough verifying all 9 areas work correctly, fixing any issues found
 
 ## Out of Scope
 
@@ -152,7 +152,7 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | VICT-10 | Phase 37 | Complete |
 | VICT-11 | Phase 37 | Complete |
 | VICT-12 | Phase 37 | Complete |
-| VRFY-01 | Phase 38 | Pending |
+| VRFY-01 | Phase 38 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 53 total
