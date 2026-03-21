@@ -1088,51 +1088,208 @@ export default class MusicManager {
     this._nodes.push(src, lp, nGain);
   }
 
-  // Victory music: pads in major key + ascending arpeggio
+  // ═════════════════════════════════════════════════════════════
+  // VICTORY MUSIC — Epic emotional score, D major, 90 BPM
+  // Builds from quiet contemplation to triumphant climax
+  // ═════════════════════════════════════════════════════════════
+
   playVictoryMusic() {
-    this._init();
-    if (!this.ctx || !this.musicGain) return;
-    this.stop(0.1);
-    // Increment loopId so stop's cleanup won't kill our nodes
-    this._loopId++;
-    this.currentTrack = 'victory';
+    const bpm = 90;
+    const beat = 60 / bpm;       // ~0.667s per beat
+    const barLen = beat * 4;     // ~2.667s per bar
+    const loopLen = barLen * 8;  // 8 bars, ~21.33s
 
-    const myId = this._loopId;
-    setTimeout(() => {
-      if (this._loopId !== myId) return;
-      this._cleanupNodes();
-      this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
-      this.musicGain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-      this._generateVictoryMusic();
-    }, 150);
-  }
+    // D major key: D, Gb (F#), A — brightest key in the game
+    // Gb5 = Gb4 * 2 (not in NOTE constants)
+    const Gb5 = NOTE.Gb4 * 2;   // ~739.98 Hz
+    const D6 = NOTE.D5 * 2;     // ~1174.66 Hz
 
-  _generateVictoryMusic() {
-    // 2 second silence then music
-    const t = this.ctx.currentTime + 2;
+    this._startLoop('victory', loopLen, (startT) => {
+      const t = startT;
 
-    // D major pad: D F# A
-    this._pad(t, NOTE.D4, 8, 0.06);
-    this._pad(t, NOTE.Gb4, 8, 0.04);
-    this._pad(t, NOTE.A4, 8, 0.035);
+      // ── Bars 1-2: Quiet contemplation ──────────────────────
+      // Gentle D major pad at low volume
+      this._pad(t, NOTE.D4, barLen * 2, 0.04);
+      this._pad(t, NOTE.Gb4, barLen * 2, 0.03);
+      this._pad(t, NOTE.A4, barLen * 2, 0.025);
 
-    // Ascending arpeggio
-    const victArp = [NOTE.D4, NOTE.Gb4, NOTE.A4, NOTE.D5, NOTE.Gb4 * 2, NOTE.A5, NOTE.D5 * 2];
-    for (let i = 0; i < victArp.length; i++) {
-      this._arp(t + 1 + i * 0.4, victArp[i], 0.6, 0.06, 'triangle');
-    }
+      // Soft sub bass (D3 sine) with slow swell
+      const sub1 = this.ctx.createOscillator();
+      const sub1Gain = this.ctx.createGain();
+      sub1.type = 'sine';
+      sub1.frequency.value = NOTE.D3;
+      sub1Gain.gain.setValueAtTime(0.01, t);
+      sub1Gain.gain.linearRampToValueAtTime(0.06, t + barLen * 2);
+      sub1.connect(sub1Gain); sub1Gain.connect(this.musicGain);
+      sub1.start(t); sub1.stop(t + barLen * 2);
+      this._nodes.push(sub1, sub1Gain);
 
-    // Sub
-    const sub = this.ctx.createOscillator();
-    const sGain = this.ctx.createGain();
-    sub.type = 'sine'; sub.frequency.value = NOTE.D3;
-    sGain.gain.setValueAtTime(0, t);
-    sGain.gain.linearRampToValueAtTime(0.08, t + 1);
-    sGain.gain.setValueAtTime(0.08, t + 6);
-    sGain.gain.linearRampToValueAtTime(0, t + 8);
-    sub.connect(sGain); sGain.connect(this.musicGain);
-    sub.start(t); sub.stop(t + 8);
-    this._nodes.push(sub, sGain);
+      // Single slow arpeggio: D4 -> Gb4 -> A4 -> D5 (triangle, quiet)
+      const introArp = [NOTE.D4, NOTE.Gb4, NOTE.A4, NOTE.D5];
+      for (let i = 0; i < introArp.length; i++) {
+        this._arp(t + i * beat * 2, introArp[i], beat * 2.5, 0.03, 'triangle');
+      }
+
+      // ── Bars 3-4: Building hope ───────────────────────────
+      const bar3 = t + barLen * 2;
+
+      // Pad volume increases — richer D major voicing
+      this._pad(bar3, NOTE.D4, barLen * 2, 0.055);
+      this._pad(bar3, NOTE.Gb4, barLen * 2, 0.04);
+      this._pad(bar3, NOTE.A4, barLen * 2, 0.035);
+      // Second pad voice (A3, D4, Gb4) for harmonic richness
+      this._pad(bar3, NOTE.A3, barLen * 2, 0.03);
+
+      // Sub bass continues
+      const sub2 = this.ctx.createOscillator();
+      const sub2Gain = this.ctx.createGain();
+      sub2.type = 'sine';
+      sub2.frequency.value = NOTE.D3;
+      sub2Gain.gain.setValueAtTime(0.06, bar3);
+      sub2Gain.gain.setValueAtTime(0.06, bar3 + barLen * 2 - 0.05);
+      sub2Gain.gain.linearRampToValueAtTime(0.04, bar3 + barLen * 2);
+      sub2.connect(sub2Gain); sub2Gain.connect(this.musicGain);
+      sub2.start(bar3); sub2.stop(bar3 + barLen * 2);
+      this._nodes.push(sub2, sub2Gain);
+
+      // Memorable 8-note melody: D5, E5, Gb5, A5, Gb5, E5, D5, A4
+      const melody = [NOTE.D5, NOTE.E5, Gb5, NOTE.A5, Gb5, NOTE.E5, NOTE.D5, NOTE.A4];
+      for (let i = 0; i < 8; i++) {
+        this._lead(bar3 + i * beat, melody[i], beat * 0.85, 0.05);
+      }
+
+      // Soft kick enters every 2 beats
+      for (let i = 0; i < 4; i++) {
+        this._kick(bar3 + i * beat * 2, 0.08);
+      }
+
+      // Light hi-hats at eighth notes
+      for (let i = 0; i < 16; i++) {
+        this._hihat(bar3 + i * beat / 2, 0.02);
+      }
+
+      // ── Bars 5-6: Triumphant rise ─────────────────────────
+      const bar5 = t + barLen * 4;
+
+      // Full pads
+      this._pad(bar5, NOTE.D4, barLen * 2, 0.07);
+      this._pad(bar5, NOTE.Gb4, barLen * 2, 0.05);
+      this._pad(bar5, NOTE.A4, barLen * 2, 0.04);
+      this._pad(bar5, NOTE.A3, barLen * 2, 0.035);
+
+      // Full kick on every beat
+      for (let i = 0; i < 8; i++) {
+        this._kick(bar5 + i * beat, 0.18);
+      }
+
+      // Acid bass enters: D3 -> A3 -> Gb3 -> D3 progression
+      const bassNotes = [NOTE.D3, NOTE.A3, NOTE.Gb3, NOTE.D3];
+      for (let i = 0; i < 4; i++) {
+        this._acidBass(bar5 + i * beat * 2, bassNotes[i], beat * 1.8, 0.1);
+      }
+
+      // Lead melody repeats with octave-shifted peak notes
+      // D5, E5, Gb5, A5*upper, Gb5*upper, E5, D5, A4
+      const melodyRise = [NOTE.D5, NOTE.E5, Gb5, NOTE.A5, NOTE.A5, NOTE.E5, NOTE.D5, NOTE.A4];
+      for (let i = 0; i < 8; i++) {
+        this._lead(bar5 + i * beat, melodyRise[i], beat * 0.85, 0.06);
+      }
+
+      // Claps on beats 2 and 4
+      for (let bar = 0; bar < 2; bar++) {
+        this._clap(bar5 + bar * barLen + beat, 0.05);
+        this._clap(bar5 + bar * barLen + beat * 3, 0.05);
+      }
+
+      // Open hats on offbeats
+      for (let i = 0; i < 8; i++) {
+        this._openHat(bar5 + beat / 2 + i * beat, 0.025);
+      }
+
+      // Ascending arp run: D4 Gb4 A4 D5 Gb5 A5 (sixteenth notes, fast)
+      const riseArp = [NOTE.D4, NOTE.Gb4, NOTE.A4, NOTE.D5, Gb5, NOTE.A5];
+      for (let rep = 0; rep < 2; rep++) {
+        for (let i = 0; i < riseArp.length; i++) {
+          this._arp(bar5 + rep * barLen + barLen * 0.5 + i * beat / 4,
+            riseArp[i], beat / 4 * 0.8, 0.04, 'triangle');
+        }
+      }
+
+      // Sub bass continues
+      const sub3 = this.ctx.createOscillator();
+      const sub3Gain = this.ctx.createGain();
+      sub3.type = 'sine';
+      sub3.frequency.value = NOTE.D3;
+      sub3Gain.gain.setValueAtTime(0.07, bar5);
+      sub3Gain.gain.setValueAtTime(0.07, bar5 + barLen * 2 - 0.05);
+      sub3Gain.gain.linearRampToValueAtTime(0.05, bar5 + barLen * 2);
+      sub3.connect(sub3Gain); sub3Gain.connect(this.musicGain);
+      sub3.start(bar5); sub3.stop(bar5 + barLen * 2);
+      this._nodes.push(sub3, sub3Gain);
+
+      // ── Bars 7-8: Climax and resolve ───────────────────────
+      const bar7 = t + barLen * 6;
+
+      // Everything at full volume — richest pads
+      this._pad(bar7, NOTE.D4, barLen * 2, 0.08);
+      this._pad(bar7, NOTE.Gb4, barLen * 2, 0.06);
+      this._pad(bar7, NOTE.A4, barLen * 2, 0.05);
+      this._pad(bar7, NOTE.A3, barLen * 2, 0.04);
+      // High A5 pad shimmer
+      this._pad(bar7, NOTE.A5, barLen * 1.5, 0.02);
+
+      // Full drums
+      for (let i = 0; i < 8; i++) {
+        this._kick(bar7 + i * beat, 0.2);
+      }
+
+      // Claps on 2 and 4
+      for (let bar = 0; bar < 2; bar++) {
+        this._clap(bar7 + bar * barLen + beat, 0.06);
+        this._clap(bar7 + bar * barLen + beat * 3, 0.06);
+      }
+
+      // Open hats on offbeats
+      for (let i = 0; i < 8; i++) {
+        this._openHat(bar7 + beat / 2 + i * beat, 0.03);
+      }
+
+      // Climax melody variation: A5, Gb5, D5, A5, D6, D6, A5, Gb5
+      // Peaks at D6 — most emotional moment
+      const climaxMelody = [NOTE.A5, Gb5, NOTE.D5, NOTE.A5, D6, D6, NOTE.A5, Gb5];
+      for (let i = 0; i < 8; i++) {
+        this._lead(bar7 + i * beat, climaxMelody[i], beat * 0.85, 0.07);
+      }
+
+      // Acid bass continues with resolution
+      const climaxBass = [NOTE.D3, NOTE.A3, NOTE.Gb3, NOTE.A3];
+      for (let i = 0; i < 4; i++) {
+        this._acidBass(bar7 + i * beat * 2, climaxBass[i], beat * 1.8, 0.11);
+      }
+
+      // Snare fills on bar 8 (building tension for loop restart)
+      for (let i = 0; i < 8; i++) {
+        this._snare(bar7 + barLen + i * beat / 2, 0.06 + i * 0.005);
+      }
+
+      // Sub bass with fade out on last beat for breathing room
+      const sub4 = this.ctx.createOscillator();
+      const sub4Gain = this.ctx.createGain();
+      sub4.type = 'sine';
+      sub4.frequency.value = NOTE.D3;
+      sub4Gain.gain.setValueAtTime(0.08, bar7);
+      sub4Gain.gain.setValueAtTime(0.08, bar7 + barLen * 1.5);
+      sub4Gain.gain.linearRampToValueAtTime(0.01, bar7 + barLen * 2 - beat * 0.5);
+      sub4Gain.gain.linearRampToValueAtTime(0, bar7 + barLen * 2);
+      sub4.connect(sub4Gain); sub4Gain.connect(this.musicGain);
+      sub4.start(bar7); sub4.stop(bar7 + barLen * 2);
+      this._nodes.push(sub4, sub4Gain);
+
+      // Bar 8 last beat: brief silence/drop (no kick/hat on last beat)
+      // Already handled — the kick loop only covers 8 beats (bars 7-8)
+      // and snare fills create the transition feel
+
+    }, 0.55);
   }
 
   // ═════════════════════════════════════════════════════════════
