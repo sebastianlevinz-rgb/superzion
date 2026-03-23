@@ -87,6 +87,37 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 
 - [x] **VRFY-01**: Full game playthrough verifying all 9 areas work correctly, fixing any issues found
 
+## v1.6 Requirements
+
+Requirements for Angry Eyebrows Boss Redesign.
+
+### Boss Sprite Design
+
+- [ ] **BOSS-01**: Angry Eyebrows has cabezón proportions (~40% head, ~60% body)
+- [ ] **BOSS-02**: Elongated oval head shape (taller than wide, using ellipse)
+- [ ] **BOSS-03**: Short gray military-cut hair with receding hairline
+- [ ] **BOSS-04**: THICK prominent eyebrows as signature feature (>4px high, >15px wide at 128px scale)
+- [ ] **BOSS-05**: Eyebrows inclined inward (V-shape), almost touching, with hair texture
+- [ ] **BOSS-06**: Small squinting intense eyes below heavy eyebrow shadows
+- [ ] **BOSS-07**: Large prominent nose (trapezoidal)
+- [ ] **BOSS-08**: Thin frowning mouth, never smiles, slight asymmetric rictus
+- [ ] **BOSS-09**: Short compact gray beard following jawline (not long wizard beard)
+- [ ] **BOSS-10**: Kefia with checkered pattern on SHOULDERS (not on head)
+- [ ] **BOSS-11**: Dark suit/saco beneath kefia with lapels and buttons
+- [ ] **BOSS-12**: Olive/middle-eastern skin tone (#C4956A)
+
+### Boss Mechanics
+
+- [ ] **MECH-01**: When hiding behind armchair, ONLY eyebrows+eyes visible above armchair back
+- [ ] **MECH-02**: Thrown objects are large and visible (>20px): chairs, concrete, bricks
+- [ ] **MECH-03**: Armchair is individual (not sofa), textured, olive/brown
+
+### Design Audit
+
+- [ ] **AUDIT-01**: design-audit.html has "Boss Design" section covering all 4 bosses
+- [ ] **AUDIT-02**: Each boss evaluated with design checklist, organicity score, sprite size
+- [ ] **AUDIT-03**: Dashboard counters updated with boss audit data
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -153,12 +184,33 @@ Requirements for Megafix v3. Each maps to roadmap phases.
 | VICT-11 | Phase 37 | Complete |
 | VICT-12 | Phase 37 | Complete |
 | VRFY-01 | Phase 38 | Complete |
+| BOSS-01 | Phase 39 | Pending |
+| BOSS-02 | Phase 39 | Pending |
+| BOSS-03 | Phase 39 | Pending |
+| BOSS-04 | Phase 39 | Pending |
+| BOSS-05 | Phase 39 | Pending |
+| BOSS-06 | Phase 39 | Pending |
+| BOSS-07 | Phase 39 | Pending |
+| BOSS-08 | Phase 39 | Pending |
+| BOSS-09 | Phase 39 | Pending |
+| BOSS-10 | Phase 39 | Pending |
+| BOSS-11 | Phase 39 | Pending |
+| BOSS-12 | Phase 39 | Pending |
+| MECH-01 | Phase 39 | Pending |
+| MECH-02 | Phase 39 | Pending |
+| MECH-03 | Phase 39 | Pending |
+| AUDIT-01 | Phase 39 | Pending |
+| AUDIT-02 | Phase 39 | Pending |
+| AUDIT-03 | Phase 39 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 53 total
 - Mapped to phases: 53
 - Unmapped: 0
+- v1.6 requirements: 18 total
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after roadmap creation*
+*Last updated: 2026-03-23 after v1.6 milestone started*

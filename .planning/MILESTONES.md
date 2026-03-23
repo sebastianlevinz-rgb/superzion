@@ -1,5 +1,23 @@
 # Milestones
 
+## v1.5 Megafix v3 (Shipped: 2026-03-21)
+
+**Phases completed:** 8 phases (31-38), 16 plans
+
+**Key accomplishments:**
+- Intro audio fix (menu music reuse, silent title screen)
+- Level 1 two-phase redesign (Tehran platformer + Bomberman)
+- Level 2 rename to "Operation Explosive Interception"
+- Level 3 lunar lander physics
+- Level 4 complete redesign (daytime drone city + boss room)
+- Level 5 B-2 flying wing + spectacular mountain explosion
+- Supreme Turban cinematic with war background
+- Victory scene redesign with celebrating people
+
+**Last phase:** 38 (Final Verification)
+
+---
+
 ## v1.4 Final Polish (Shipped: 2026-03-19)
 
 **Phases completed:** 10 phases (21-30), 10 plans

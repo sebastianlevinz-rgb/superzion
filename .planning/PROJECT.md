@@ -115,19 +115,15 @@ Every visible element must look intentional and polished — no placeholder cube
 | Camera shake inside _spawnExplosion() | Single insertion point covers all callers automatically | ✓ Good — DRY pattern |
 
 ---
-## Current Milestone: v1.5 Megafix v3
+## Current Milestone: v1.6 Angry Eyebrows Boss Redesign
 
-**Goal:** Massive corrections pass — fix intro audio, redesign Level 1 with platformer phase, lunar lander physics for Level 3, complete Level 4 redesign with daytime ruins, proper B-2 flying wing + spectacular explosion, dramatic Supreme Turban cinematic, and epic victory scene with celebrating people.
+**Goal:** Complete redesign of Level 4 boss "Angry Eyebrows" sprite with cabezón proportions, signature thick eyebrows, and kefia-on-shoulders design, plus comprehensive boss design audit.
 
 **Target features:**
-- Intro uses menu music (delete horrible intro music), no loud title screen sounds
-- Level 1 two-phase: platformer across Tehran rooftops (night) → Bomberman indoors
-- Level 2 renamed to "Operation Explosive Interception"
-- Level 3 lunar lander physics (gravity, thrust, tilt, crash on bad landing/water)
-- Level 4 daytime drone through ruined city (scrolls RIGHT) + detailed boss room
-- Level 5 B-2 proper flying wing shape + spectacular Natanz mountain explosion
-- Supreme Turban cinematic with army/war background + ominous music
-- Victory scene: SuperZion facing forward, celebrating people, animated sunrise, fireworks
+- Angry Eyebrows cabezón sprite redesign (256px cinematic + 128px gameplay)
+- Signature peek mechanic: only eyebrows+eyes visible when hiding behind armchair
+- Large visible thrown objects (>20px)
+- Comprehensive design-audit.html boss section covering all 4 bosses
 
 ---
-*Last updated: 2026-03-19 after v1.5 Megafix v3 milestone started*
+*Last updated: 2026-03-23 after v1.6 Angry Eyebrows Boss Redesign milestone started*

@@ -7,7 +7,8 @@
 - ✅ **v1.2 Sprite & Polish v2** - Phases 9-14 (shipped 2026-03-19)
 - ✅ **v1.3 Narrative & Audio** - Phases 15-20 (shipped 2026-03-19)
 - ✅ **v1.4 Final Polish** - Phases 21-30 (shipped 2026-03-19)
-- **v1.5 Megafix v3** - Phases 31-38 (in progress)
+- ✅ **v1.5 Megafix v3** - Phases 31-38 (shipped 2026-03-21)
+- **v1.6 Angry Eyebrows Boss Redesign** - Phase 39 (in progress)
 
 ## Phases
 
@@ -50,16 +51,23 @@ See `.planning/milestones/` for archived phase details.
 
 </details>
 
-### v1.5 Megafix v3
+<details>
+<summary>v1.5 Megafix v3 (Phases 31-38) -- SHIPPED 2026-03-21</summary>
 
-- [x] **Phase 31: Intro Audio Fix** - Replace intro music with menu music, silence loud title screen sounds (completed 2026-03-19)
-- [x] **Phase 32: Level 1 Platformer Redesign** - Two-phase level: Tehran rooftop platformer then Bomberman (completed 2026-03-20)
-- [x] **Phase 33: Level 2 Rename + Level 3 Physics** - Rename Level 2 and add lunar lander physics to Level 3 (completed 2026-03-20)
-- [x] **Phase 34: Level 4 Complete Redesign** - Daytime drone city scrolling RIGHT plus detailed boss room (completed 2026-03-20)
-- [x] **Phase 35: Level 5 B-2 + Explosion** - Flying wing B-2 shape and spectacular mountain explosion (completed 2026-03-20)
-- [x] **Phase 36: Supreme Turban Cinematic** - Imposing villain cinematic with war background and dramatic music (completed 2026-03-21)
-- [x] **Phase 37: Victory Scene Redesign** - SuperZion facing forward with celebrating people and epic music (completed 2026-03-21)
-- [x] **Phase 38: Final Verification** - Full playthrough verifying all areas work correctly (completed 2026-03-21)
+- [x] Phase 31: Intro Audio Fix (1/1 plan) -- completed 2026-03-19
+- [x] Phase 32: Level 1 Platformer Redesign (3/3 plans) -- completed 2026-03-20
+- [x] Phase 33: Level 2 Rename + Level 3 Physics (2/2 plans) -- completed 2026-03-20
+- [x] Phase 34: Level 4 Complete Redesign (2/2 plans) -- completed 2026-03-20
+- [x] Phase 35: Level 5 B-2 + Explosion (2/2 plans) -- completed 2026-03-20
+- [x] Phase 36: Supreme Turban Cinematic (1/1 plan) -- completed 2026-03-21
+- [x] Phase 37: Victory Scene Redesign (3/3 plans) -- completed 2026-03-21
+- [x] Phase 38: Final Verification (2/2 plans) -- completed 2026-03-21
+
+</details>
+
+### v1.6 Angry Eyebrows Boss Redesign
+
+- [ ] **Phase 39: Angry Eyebrows Boss Redesign** - Complete boss sprite redesign + design audit (in progress)
 
 ## Phase Details
 
@@ -184,10 +192,25 @@ Plans:
 - [ ] 38-01-PLAN.md -- Static code audit, build verification, scene chain validation, and fix any issues
 - [ ] 38-02-PLAN.md -- Human playthrough verification of all 9 game areas
 
+### Phase 39: Angry Eyebrows Boss Redesign
+**Goal**: Angry Eyebrows boss has a distinctive cabezón design with signature thick eyebrows, kefia on shoulders, and works correctly in all boss fight phases
+**Depends on**: Phase 38
+**Requirements**: BOSS-01 through BOSS-12, MECH-01 through MECH-03, AUDIT-01 through AUDIT-03
+**Success Criteria** (what must be TRUE):
+  1. Boss sprite is cabezón (~40% head) with elongated oval head, short gray hair, THICK prominent eyebrows, kefia on shoulders, dark suit
+  2. When hiding behind armchair, only thick eyebrows and squinting eyes are visible above the armchair back
+  3. Thrown objects are large (>20px) and clearly visible during boss fight
+  4. design-audit.html has complete Boss Design section evaluating all 4 bosses
+**Plans**: 2 plans
+
+Plans:
+- [ ] 39-01-PLAN.md -- Redesign Angry Eyebrows sprite (256px + 128px) and peek mechanic
+- [ ] 39-02-PLAN.md -- Update design-audit.html with comprehensive boss evaluation
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
+Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38 -> 39
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
@@ -204,4 +227,5 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38
 | 35. Level 5 B-2 + Explosion | v1.5 | 2/2 | Complete | 2026-03-20 |
 | 36. Supreme Turban Cinematic | v1.5 | 1/1 | Complete | 2026-03-21 |
 | 37. Victory Scene Redesign | v1.5 | 3/3 | Complete | 2026-03-21 |
-| 38. Final Verification | 2/2 | Complete    | 2026-03-21 | - |
+| 38. Final Verification | v1.5 | 2/2 | Complete | 2026-03-21 |
+| 39. Angry Eyebrows Boss Redesign | v1.6 | 0/2 | In Progress | - |
