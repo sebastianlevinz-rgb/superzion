@@ -365,11 +365,12 @@ export default class B2BomberScene extends Phaser.Scene {
   }
 
   _updateEngineTrail(dt) {
-    // Spawn engine trail particles behind the B-2 (downward = behind in top-down)
+    // Spawn engine trail particles behind the B-2
+    const isFlipped = this._escapeFlipped || (this.phase === 'bounce' && !this._bounceFlipped);
     if (Math.random() < 0.3) {
       const side = Math.random() < 0.5 ? -1 : 1;
       const px = this.jetX + side * 14 + (Math.random() - 0.5) * 4;
-      const py = this.jetY + 18;
+      const py = isFlipped ? this.jetY - 18 : this.jetY + 18;  // engines at top when flipped
       const pColor = Math.random() < 0.3 ? 0xff8800 : 0x554433;
       const p = this.add.circle(px, py, 1.5 + Math.random(), pColor, 0.3).setDepth(4);
       this.engineParticles.push({ sprite: p, life: 0.5 + Math.random() * 0.3 });
@@ -1378,13 +1379,67 @@ export default class B2BomberScene extends Phaser.Scene {
       }
     }
 
-    // Timeout safety: after 15 seconds, force escape if still bombing
-    if (t >= 15 && !this.bombingEnded && this.mountainHP > 0) {
-      this.bombingEnded = true;
-      this.instrText.setText('PASSING TARGET — RETREAT');
-      this.instrText.setColor('#ff4444');
-      this._stopAmbient();
-      this.time.delayedCall(1500, () => this._startEscape());
+    // When mountain passes below B-2 (scrolled past), BOUNCE for another pass
+    if (this._mtnTargetY > H + 60 && !this.bombingEnded && this.mountainHP > 0) {
+      if (this.busters > 0) {
+        // BOUNCE — U-turn for another pass
+        this._startBounce();
+      } else {
+        this.bombingEnded = true;
+        this.instrText.setText('OUT OF ORDNANCE — RETREAT');
+        this.instrText.setColor('#ff4444');
+        this._stopAmbient();
+        this.time.delayedCall(1500, () => this._startEscape());
+      }
+    }
+  }
+
+  // ── BOUNCE: U-turn for another bombing pass ──
+  _startBounce() {
+    this.phase = 'bounce';
+    this.bounceTimer = 0;
+    this.bounceDuration = 3;  // 3 seconds to turn around
+    this._bounceFlipped = false;
+    this.terrainSpeed = -200;  // terrain scrolls upward (flying back)
+    this.instrText.setText('TURNING AROUND — ANOTHER PASS');
+    this.instrText.setColor('#ffaa00');
+    SoundManager.get().playAfterburner();
+    this.cameras.main.shake(500, 0.008);
+  }
+
+  _updateBounce(dt) {
+    this.bounceTimer += dt;
+    this.terrainOffset += this.terrainSpeed * dt;
+
+    // Player can still dodge
+    if (this.keys.left.isDown) this.jetX -= B2_MOVE_SPEED * dt;
+    if (this.keys.right.isDown) this.jetX += B2_MOVE_SPEED * dt;
+    this.jetX = Phaser.Math.Clamp(this.jetX, B2_MARGIN, W - B2_MARGIN);
+
+    if (this.keys.left.isDown) this.jetBankAngle += (-1 - this.jetBankAngle) * 5 * dt;
+    else if (this.keys.right.isDown) this.jetBankAngle += (1 - this.jetBankAngle) * 5 * dt;
+    else this.jetBankAngle += (0 - this.jetBankAngle) * 5 * dt;
+
+    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaff();
+    this._updateMissiles(dt);
+
+    // Halfway through bounce, flip B-2 direction
+    if (this.bounceTimer > this.bounceDuration * 0.5 && !this._bounceFlipped) {
+      this._bounceFlipped = true;
+      this.terrainSpeed = 180;  // back to forward approach
+    }
+
+    // End bounce — restart bombing pass
+    if (this.bounceTimer >= this.bounceDuration) {
+      this._mtnTargetY = -250;  // mountain reappears from top
+      this.mountainApproachDist = 0;
+      this.bombingEnded = false;
+      this.bombCooldown = 0;
+      this.phase = 'bombing';
+      this.phaseTimer = 0;
+      this.terrainSpeed = 180;
+      this.instrText.setText('SECOND PASS — SPACE to drop bunker buster');
+      this.instrText.setColor('#ff8800');
     }
   }
 
@@ -2144,6 +2199,18 @@ export default class B2BomberScene extends Phaser.Scene {
         // Draw B-2
         this.b2Gfx.clear();
         this._drawB2(this.b2Gfx, this.jetX, this.jetY, 1, this.jetBankAngle);
+        break;
+      case 'bounce':
+        this._updateBounce(dt);
+        // Draw land terrain during bounce
+        this._drawBombingTerrain(this.terrainGfx, 0);
+        this.radarGfx.clear();
+        this.b2Gfx.clear();
+        if (this._bounceFlipped) {
+          this._drawB2(this.b2Gfx, this.jetX, this.jetY, 1, this.jetBankAngle);
+        } else {
+          this._drawB2Escape(this.b2Gfx, this.jetX, this.jetY, 1, this.jetBankAngle);
+        }
         break;
       case 'escape':
         this._updateEscape(dt);
