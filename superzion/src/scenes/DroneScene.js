@@ -2724,6 +2724,115 @@ export default class DroneScene extends Phaser.Scene {
       onComplete: () => throwGlow.destroy(),
     });
 
+    // ── THROWING ARM ANIMATION ──
+    const throwAngle = Math.atan2(this.droneY - this.bossY, this.droneX - this.bossX);
+    const windUpAngle = throwAngle + Math.PI; // opposite direction for wind-up
+    const armDepth = this.bossSprite.depth + 1;
+    const armGfx = this.add.graphics().setDepth(armDepth);
+    const bx = this.bossX;
+    const by = this.bossY;
+
+    // Phase 1 (0-150ms): Arm extends BACKWARD (wind-up)
+    this.tweens.addCounter({
+      from: 0, to: 1, duration: 150,
+      onUpdate: (tween) => {
+        const t = tween.getValue();
+        armGfx.clear();
+        const armLen = 25 * t;
+        const ax = bx + Math.cos(windUpAngle) * armLen;
+        const ay = by + Math.sin(windUpAngle) * armLen;
+        // Suit sleeve (dark outline)
+        armGfx.lineStyle(8, 0x2a2a2a);
+        armGfx.lineBetween(bx, by, ax, ay);
+        // Inner arm
+        armGfx.lineStyle(6, 0x3a3a3a);
+        armGfx.lineBetween(bx, by, ax, ay);
+        // Hand (skin-colored circle)
+        armGfx.fillStyle(0xc4956a);
+        armGfx.fillCircle(ax, ay, 4);
+        // Hand outline
+        armGfx.lineStyle(1, 0x8a6a4a);
+        armGfx.strokeCircle(ax, ay, 4);
+      },
+    });
+
+    // Phase 2 (150-250ms): Arm swings FORWARD rapidly toward throw direction
+    this.time.delayedCall(150, () => {
+      if (!armGfx.scene) return; // safety check
+      // Compute the shortest angular sweep from windUpAngle to throwAngle
+      let angleDelta = throwAngle - windUpAngle;
+      // Normalize to [-PI, PI] so we take the short arc
+      while (angleDelta > Math.PI) angleDelta -= 2 * Math.PI;
+      while (angleDelta < -Math.PI) angleDelta += 2 * Math.PI;
+
+      this.tweens.addCounter({
+        from: 0, to: 1, duration: 100, ease: 'Quad.easeIn',
+        onUpdate: (tween) => {
+          const t = tween.getValue();
+          armGfx.clear();
+          const currentAngle = windUpAngle + angleDelta * t;
+          const armLen = 25 + 5 * t; // arm extends slightly further
+          const ax = bx + Math.cos(currentAngle) * armLen;
+          const ay = by + Math.sin(currentAngle) * armLen;
+          // Suit sleeve (dark outline)
+          armGfx.lineStyle(8, 0x2a2a2a);
+          armGfx.lineBetween(bx, by, ax, ay);
+          // Inner arm
+          armGfx.lineStyle(6, 0x3a3a3a);
+          armGfx.lineBetween(bx, by, ax, ay);
+          // Hand grows at release (4 -> 6 radius)
+          const handR = 4 + 2 * t;
+          armGfx.fillStyle(0xc4956a);
+          armGfx.fillCircle(ax, ay, handR);
+          armGfx.lineStyle(1, 0x8a6a4a);
+          armGfx.strokeCircle(ax, ay, handR);
+        },
+      });
+    });
+
+    // Phase 3 (250-300ms): Arm holds at full extension toward target
+    this.time.delayedCall(250, () => {
+      if (!armGfx.scene) return;
+      armGfx.clear();
+      const armLen = 30;
+      const ax = bx + Math.cos(throwAngle) * armLen;
+      const ay = by + Math.sin(throwAngle) * armLen;
+      armGfx.lineStyle(8, 0x2a2a2a);
+      armGfx.lineBetween(bx, by, ax, ay);
+      armGfx.lineStyle(6, 0x3a3a3a);
+      armGfx.lineBetween(bx, by, ax, ay);
+      armGfx.fillStyle(0xc4956a);
+      armGfx.fillCircle(ax, ay, 6);
+      armGfx.lineStyle(1, 0x8a6a4a);
+      armGfx.strokeCircle(ax, ay, 6);
+    });
+
+    // Phase 4 (300-400ms): Arm retracts back to body and disappears
+    this.time.delayedCall(300, () => {
+      if (!armGfx.scene) return;
+      this.tweens.addCounter({
+        from: 1, to: 0, duration: 100,
+        onUpdate: (tween) => {
+          const t = tween.getValue();
+          armGfx.clear();
+          if (t > 0.05) {
+            const armLen = 30 * t;
+            const ax = bx + Math.cos(throwAngle) * armLen;
+            const ay = by + Math.sin(throwAngle) * armLen;
+            armGfx.lineStyle(8, 0x2a2a2a);
+            armGfx.lineBetween(bx, by, ax, ay);
+            armGfx.lineStyle(6, 0x3a3a3a);
+            armGfx.lineBetween(bx, by, ax, ay);
+            armGfx.fillStyle(0xc4956a);
+            armGfx.fillCircle(ax, ay, 4);
+            armGfx.lineStyle(1, 0x8a6a4a);
+            armGfx.strokeCircle(ax, ay, 4);
+          }
+        },
+        onComplete: () => { if (armGfx.scene) armGfx.destroy(); },
+      });
+    });
+
     // Actually throw after 0.3s wind-up delay
     this.time.delayedCall(300, () => {
       this._throwTelegraphing = false;

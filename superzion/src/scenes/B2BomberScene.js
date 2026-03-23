@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 // B2BomberScene — Level 5: Operation Mountain Breaker (Side-Scrolling Night)
-// 4-phase: Stealth Flight → Defense → Mountain Bombing → Escape
+// 5-phase: Takeoff Cinematic → Stealth Flight → Defense → Mountain Bombing → Escape
 // ═══════════════════════════════════════════════════════════════
 
 import Phaser from 'phaser';
@@ -68,7 +68,7 @@ export default class B2BomberScene extends Phaser.Scene {
 
     // ── Game state ──
     const dm = DifficultyManager.get();
-    this.phase = 'stealth';
+    this.phase = 'takeoff';
     this.armor = dm.isHard() ? 2 : 3;
     this.busters = BUSTER_TOTAL;
     this.bustersUsed = 0;
@@ -137,7 +137,6 @@ export default class B2BomberScene extends Phaser.Scene {
     this._setupLayers();
     this._setupHUD();
     this._setupInput();
-    this._startStealth();
 
     // Tutorial overlay (pauses gameplay until dismissed)
     showTutorialOverlay(this, [
@@ -149,6 +148,9 @@ export default class B2BomberScene extends Phaser.Scene {
       'C: Deploy chaff against SAMs',
       'Destroy the mountain fortress',
     ]);
+
+    // Start with cinematic takeoff sequence
+    this._startTakeoff();
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -586,6 +588,346 @@ export default class B2BomberScene extends Phaser.Scene {
         y: spark.y + (Math.random() - 0.5) * 30,
         onComplete: () => spark.destroy(),
       });
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // TAKEOFF CINEMATIC SEQUENCE
+  // ═════════════════════════════════════════════════════════════
+  _startTakeoff() {
+    this.phase = 'takeoff';
+    this.takeoffTimer = 0;
+    this.takeoffStage = 0;       // 0=runway, 1=engine-start, 2=roll, 3=liftoff
+    this.takeoffBomberY = 0;     // offset from center (positive = down screen)
+    this.takeoffSpeed = 0;       // current roll speed
+    this.takeoffScale = 1.5;     // camera zoom
+    this.takeoffShake = 0;       // screen-shake intensity
+    this.takeoffRunwayOffset = 0;// scrolling runway lights
+
+    // Hide the side-view jet and normal layers during takeoff
+    this.jetSprite.setVisible(false);
+    this.skyBg.setVisible(false);
+    this.cloudTile.setVisible(false);
+    this.farTerrain.setVisible(false);
+    this.groundTile.setVisible(false);
+
+    // Hide HUD during takeoff
+    this._setHUDVisible(false);
+
+    // Container for all takeoff visuals (destroyed on transition)
+    this.takeoffObjects = [];
+
+    // --- Graphics layer for runway + top-down B-2 ---
+    this.takeoffGfx = this.add.graphics().setDepth(20);
+    this.takeoffObjects.push(this.takeoffGfx);
+
+    // Engine glow circles (trailing edge of B-2)
+    const cx = W / 2;
+    const cy = H / 2 + 60;
+    this.takeoffEngineL = this.add.circle(cx - 14, cy + 18, 4, 0xff6600, 0.8).setDepth(22);
+    this.takeoffEngineR = this.add.circle(cx + 14, cy + 18, 4, 0xff6600, 0.8).setDepth(22);
+    this.takeoffObjects.push(this.takeoffEngineL, this.takeoffEngineR);
+
+    // Engine outer glow
+    this.takeoffEngineGlowL = this.add.circle(cx - 14, cy + 18, 8, 0xff4400, 0.3).setDepth(21);
+    this.takeoffEngineGlowR = this.add.circle(cx + 14, cy + 18, 8, 0xff4400, 0.3).setDepth(21);
+    this.takeoffObjects.push(this.takeoffEngineGlowL, this.takeoffEngineGlowR);
+
+    // Title text: "OPERATION MOUNTAIN BREAKER"
+    this.takeoffTitle = this.add.text(W / 2, 60, 'OPERATION MOUNTAIN BREAKER', {
+      fontFamily: 'monospace', fontSize: '22px', color: '#aaaacc',
+      shadow: { offsetX: 0, offsetY: 0, color: '#aaaacc', blur: 8, fill: true },
+    }).setOrigin(0.5).setDepth(30).setAlpha(0);
+    this.takeoffObjects.push(this.takeoffTitle);
+
+    // Fade in title
+    this.tweens.add({ targets: this.takeoffTitle, alpha: 1, duration: 1500 });
+
+    // Engine trail particles array
+    this.takeoffParticles = [];
+
+    // Play engine start sound after a short delay
+    this.time.delayedCall(500, () => {
+      if (this.phase !== 'takeoff') return;
+      this.takeoffEngineRef = SoundManager.get().playB2Engine();
+    });
+  }
+
+  _updateTakeoff(dt) {
+    this.takeoffTimer += dt;
+    const t = this.takeoffTimer;
+    const gfx = this.takeoffGfx;
+    if (!gfx || !gfx.scene) return;
+
+    const cx = W / 2;
+    const baseY = H / 2 + 60;
+
+    // Determine stage based on timer
+    if (t < 3) this.takeoffStage = 0;        // Stage 1: runway view
+    else if (t < 5) this.takeoffStage = 1;    // Stage 2: engine start + zoom out
+    else if (t < 7.5) this.takeoffStage = 2;  // Stage 3: takeoff roll
+    else this.takeoffStage = 3;                // Stage 4: liftoff + transition
+
+    // --- Stage 2: zoom out ---
+    if (this.takeoffStage >= 1 && this.takeoffStage < 3) {
+      const zoomProgress = Math.min(1, (t - 3) / 2);
+      this.takeoffScale = 1.5 - 0.5 * zoomProgress; // 1.5 -> 1.0
+    }
+
+    // --- Stage 2: engine intensifies ---
+    let engineColor = 0xff6600;
+    let engineAlpha = 0.8;
+    let glowAlpha = 0.3;
+    let glowRadius = 8;
+    if (this.takeoffStage >= 1) {
+      const pulse = Math.sin(t * 12) * 0.3 + 0.7;
+      const intensifyT = Math.min(1, (t - 3) / 2);
+      // Lerp orange -> white
+      const r = Math.floor(255);
+      const g = Math.floor(102 + (255 - 102) * intensifyT);
+      const b = Math.floor(0 + 255 * intensifyT);
+      engineColor = Phaser.Display.Color.GetColor(r, g, b);
+      engineAlpha = 0.8 + 0.2 * pulse;
+      glowAlpha = 0.3 + 0.4 * intensifyT * pulse;
+      glowRadius = 8 + 10 * intensifyT;
+    }
+
+    // --- Stage 2+: screen shake from engines ---
+    if (this.takeoffStage >= 1 && this.takeoffStage < 3) {
+      this.takeoffShake = Math.min(0.003, (t - 3) * 0.001);
+      if (this.takeoffShake > 0) {
+        this.cameras.main.shake(100, this.takeoffShake);
+      }
+    }
+
+    // --- Stage 3: afterburner sound ---
+    if (this.takeoffStage === 2 && !this._afterburnerPlayed) {
+      this._afterburnerPlayed = true;
+      SoundManager.get().playAfterburner();
+      // Intensify shake
+      this.cameras.main.shake(2500, 0.008);
+    }
+
+    // --- Stage 3: acceleration ---
+    if (this.takeoffStage >= 2) {
+      const rollT = t - 5;
+      // Quadratic acceleration
+      this.takeoffSpeed = Math.min(600, 20 * rollT * rollT + 30 * rollT);
+      this.takeoffBomberY -= this.takeoffSpeed * dt;
+      this.takeoffRunwayOffset += this.takeoffSpeed * dt;
+    }
+
+    // --- Stage 4: liftoff (scale shrinks = climbing away) ---
+    let liftScale = 1;
+    if (this.takeoffStage === 3) {
+      const liftT = t - 7.5;
+      liftScale = Math.max(0.4, 1 - liftT * 0.4);
+    }
+
+    // ===== DRAW EVERYTHING =====
+    gfx.clear();
+
+    const scale = this.takeoffScale;
+    const bomberScreenY = baseY + this.takeoffBomberY * 0.1; // slight visual offset
+
+    // --- Dark background ---
+    gfx.fillStyle(0x0a0a12, 1);
+    gfx.fillRect(0, 0, W, H);
+
+    // --- Runway (top-down, two gray lines with dashed center) ---
+    const rwLeft = cx - 50 * scale;
+    const rwRight = cx + 50 * scale;
+    const rwTop = -20;
+    const rwBottom = H + 20;
+
+    // Runway surface (dark asphalt)
+    gfx.fillStyle(0x1a1a1a, 1);
+    gfx.fillRect(rwLeft, rwTop, (rwRight - rwLeft), rwBottom - rwTop);
+
+    // Edge lines
+    gfx.lineStyle(2 * scale, 0x555555, 0.8);
+    gfx.lineBetween(rwLeft, rwTop, rwLeft, rwBottom);
+    gfx.lineBetween(rwRight, rwTop, rwRight, rwBottom);
+
+    // Dashed center line (yellow)
+    const dashLen = 30 * scale;
+    const gapLen = 20 * scale;
+    const dashOffset = (this.takeoffRunwayOffset * scale) % (dashLen + gapLen);
+    for (let y = rwTop - dashOffset; y < rwBottom; y += dashLen + gapLen) {
+      gfx.lineStyle(2 * scale, 0xffff00, 0.7);
+      gfx.lineBetween(cx, y, cx, Math.min(y + dashLen, rwBottom));
+    }
+
+    // Runway edge lights (white dots)
+    const lightSpacing = 60 * scale;
+    const lightOffset = (this.takeoffRunwayOffset * scale) % lightSpacing;
+    for (let y = rwTop - lightOffset; y < rwBottom; y += lightSpacing) {
+      const lightBrightness = 0.6 + Math.sin(t * 3 + y * 0.01) * 0.2;
+      gfx.fillStyle(0xffffff, lightBrightness);
+      gfx.fillCircle(rwLeft - 6 * scale, y, 2 * scale);
+      gfx.fillCircle(rwRight + 6 * scale, y, 2 * scale);
+    }
+
+    // Threshold markings at bottom of runway (piano keys)
+    if (this.takeoffStage < 2) {
+      const threshY = H - 80 + this.takeoffRunwayOffset * scale * 0.3;
+      if (threshY > 0 && threshY < H + 40) {
+        for (let i = -3; i <= 3; i++) {
+          if (i === 0) continue;
+          gfx.fillStyle(0xffffff, 0.5);
+          gfx.fillRect(cx + i * 12 * scale - 4 * scale, threshY, 8 * scale, 30 * scale);
+        }
+      }
+    }
+
+    // --- Top-down B-2 shape ---
+    const bx = cx;
+    const by = Math.max(80, Math.min(H - 40, baseY + this.takeoffBomberY * 0.05));
+    const bs = scale * liftScale; // combined scale
+
+    // Flying wing body (boomerang/bat shape)
+    gfx.fillStyle(0x3a3a3a, 1);
+    gfx.beginPath();
+    gfx.moveTo(bx, by - 20 * bs);                // nose
+    gfx.lineTo(bx + 60 * bs, by + 15 * bs);      // right wing tip
+    gfx.lineTo(bx + 40 * bs, by + 20 * bs);      // right trailing edge
+    gfx.lineTo(bx, by + 10 * bs);                 // center rear
+    gfx.lineTo(bx - 40 * bs, by + 20 * bs);      // left trailing edge
+    gfx.lineTo(bx - 60 * bs, by + 15 * bs);      // left wing tip
+    gfx.closePath();
+    gfx.fill();
+
+    // Darker wing surface gradient (inner portion)
+    gfx.fillStyle(0x2e2e2e, 0.6);
+    gfx.beginPath();
+    gfx.moveTo(bx, by - 15 * bs);
+    gfx.lineTo(bx + 35 * bs, by + 12 * bs);
+    gfx.lineTo(bx, by + 8 * bs);
+    gfx.lineTo(bx - 35 * bs, by + 12 * bs);
+    gfx.closePath();
+    gfx.fill();
+
+    // Panel lines
+    gfx.lineStyle(0.5 * bs, 0x555555, 0.5);
+    gfx.lineBetween(bx, by - 18 * bs, bx, by + 8 * bs);           // center seam
+    gfx.lineBetween(bx - 20 * bs, by + 5 * bs, bx + 20 * bs, by + 5 * bs); // cross seam
+
+    // Wing leading-edge highlight
+    gfx.lineStyle(1 * bs, 0x4a4a4a, 0.6);
+    gfx.beginPath();
+    gfx.moveTo(bx - 58 * bs, by + 14 * bs);
+    gfx.lineTo(bx, by - 19 * bs);
+    gfx.lineTo(bx + 58 * bs, by + 14 * bs);
+    gfx.strokePath();
+
+    // --- Engine glow (positioned at trailing edge) ---
+    const engLX = bx - 14 * bs;
+    const engRX = bx + 14 * bs;
+    const engY = by + 16 * bs;
+
+    this.takeoffEngineL.setPosition(engLX, engY).setScale(bs);
+    this.takeoffEngineR.setPosition(engRX, engY).setScale(bs);
+    this.takeoffEngineL.setFillStyle(engineColor, engineAlpha);
+    this.takeoffEngineR.setFillStyle(engineColor, engineAlpha);
+
+    this.takeoffEngineGlowL.setPosition(engLX, engY).setScale(bs * glowRadius / 8);
+    this.takeoffEngineGlowR.setPosition(engRX, engY).setScale(bs * glowRadius / 8);
+    this.takeoffEngineGlowL.setAlpha(glowAlpha);
+    this.takeoffEngineGlowR.setAlpha(glowAlpha);
+
+    // --- Engine trail particles (Stage 2+) ---
+    if (this.takeoffStage >= 2 && Math.random() < 0.6) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const px = bx + side * 14 * bs + (Math.random() - 0.5) * 4 * bs;
+      const py = engY + 4 * bs;
+      const pr = 1.5 + Math.random() * 2;
+      const pColor = Math.random() < 0.3 ? 0xffffff : (Math.random() < 0.5 ? 0xff8800 : 0xff6600);
+      const particle = this.add.circle(px, py, pr * bs, pColor, 0.7).setDepth(19);
+      this.takeoffParticles.push({ sprite: particle, life: 0.4 + Math.random() * 0.3, vy: this.takeoffSpeed * 0.3 });
+    }
+
+    // Update trail particles
+    for (let i = this.takeoffParticles.length - 1; i >= 0; i--) {
+      const p = this.takeoffParticles[i];
+      p.life -= dt;
+      p.sprite.y += p.vy * dt;
+      p.sprite.setAlpha(Math.max(0, p.life * 1.5));
+      p.sprite.setScale(1 + (0.4 - p.life));
+      if (p.life <= 0 || p.sprite.y > H + 10) {
+        p.sprite.destroy();
+        this.takeoffParticles.splice(i, 1);
+      }
+    }
+
+    // --- Stage 4: transition to stealth ---
+    if (this.takeoffStage === 3) {
+      const liftT = t - 7.5;
+      // Fade to black overlay
+      if (liftT > 0.8 && !this._takeoffFading) {
+        this._takeoffFading = true;
+        const fadeOverlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(50);
+        this.takeoffObjects.push(fadeOverlay);
+        this.tweens.add({
+          targets: fadeOverlay, alpha: 1, duration: 800,
+          onComplete: () => {
+            this._cleanupTakeoff();
+            this._startStealth();
+          },
+        });
+        // Fade title
+        this.tweens.add({ targets: this.takeoffTitle, alpha: 0, duration: 600 });
+      }
+    }
+  }
+
+  _cleanupTakeoff() {
+    // Destroy all takeoff visuals
+    for (const obj of (this.takeoffObjects || [])) {
+      if (obj && obj.scene) {
+        try { obj.destroy(); } catch (e) { /* already destroyed */ }
+      }
+    }
+    this.takeoffObjects = [];
+
+    // Destroy trail particles
+    for (const p of (this.takeoffParticles || [])) {
+      if (p.sprite && p.sprite.scene) p.sprite.destroy();
+    }
+    this.takeoffParticles = [];
+
+    // Stop takeoff engine sound
+    if (this.takeoffEngineRef) {
+      try {
+        this.takeoffEngineRef.source.stop();
+        if (this.takeoffEngineRef.osc) this.takeoffEngineRef.osc.stop();
+      } catch (e) { /* already stopped */ }
+      this.takeoffEngineRef = null;
+    }
+
+    // Restore normal layers
+    this.jetSprite.setVisible(true);
+    this.skyBg.setVisible(true);
+    this.cloudTile.setVisible(true);
+    this.groundTile.setVisible(true);
+    // farTerrain stays hidden — stealth phase controls it
+
+    // Show HUD
+    this._setHUDVisible(true);
+
+    // Reset takeoff flags
+    this._afterburnerPlayed = false;
+    this._takeoffFading = false;
+  }
+
+  _setHUDVisible(visible) {
+    const hudElements = [
+      this.hudTitle, this.hudArmor, this.hudBusters, this.hudChaff,
+      this.hudAlt, this.hudSpeed, this.hudDist,
+      this.detBarBg, this.detBarFill, this.hudDetect, this.hudStealth,
+      this.instrText, this.instrBg,
+    ];
+    for (const el of hudElements) {
+      if (el) el.setVisible(visible);
     }
   }
 
@@ -1951,6 +2293,7 @@ export default class B2BomberScene extends Phaser.Scene {
 
     // P key — skip to victory
     if (Phaser.Input.Keyboard.JustDown(this.keys.p) && this.phase !== 'victory' && this.phase !== 'explosion') {
+      if (this.phase === 'takeoff') this._cleanupTakeoff();
       this._stopAmbient();
       this.mountainHP = 0;
       this.bustersUsed = 4;
@@ -1961,6 +2304,9 @@ export default class B2BomberScene extends Phaser.Scene {
     }
 
     switch (this.phase) {
+      case 'takeoff':
+        this._updateTakeoff(dt);
+        break;
       case 'stealth':
         this._updateStealth(dt);
         this._drawRadarCones();
@@ -1978,8 +2324,8 @@ export default class B2BomberScene extends Phaser.Scene {
         break;
     }
 
-    // Shared updates
-    if (this.phase !== 'victory' && this.phase !== 'explosion') {
+    // Shared updates (skip during takeoff cinematic)
+    if (this.phase !== 'victory' && this.phase !== 'explosion' && this.phase !== 'takeoff') {
       this._updateExplosions(dt);
       this._updateHUD();
     }
@@ -2011,6 +2357,8 @@ export default class B2BomberScene extends Phaser.Scene {
   shutdown() {
     if (this._endScreen) this._endScreen.destroy();
     this._stopAmbient();
+    // Clean up takeoff visuals if still present
+    if (this.phase === 'takeoff') this._cleanupTakeoff();
     this.tweens.killAll();
     this.time.removeAllEvents();
     for (const m of this.missiles) {
