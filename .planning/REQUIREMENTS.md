@@ -93,30 +93,30 @@ Requirements for Angry Eyebrows Boss Redesign.
 
 ### Boss Sprite Design
 
-- [ ] **BOSS-01**: Angry Eyebrows has cabezón proportions (~40% head, ~60% body)
-- [ ] **BOSS-02**: Elongated oval head shape (taller than wide, using ellipse)
-- [ ] **BOSS-03**: Short gray military-cut hair with receding hairline
-- [ ] **BOSS-04**: THICK prominent eyebrows as signature feature (>4px high, >15px wide at 128px scale)
-- [ ] **BOSS-05**: Eyebrows inclined inward (V-shape), almost touching, with hair texture
-- [ ] **BOSS-06**: Small squinting intense eyes below heavy eyebrow shadows
-- [ ] **BOSS-07**: Large prominent nose (trapezoidal)
-- [ ] **BOSS-08**: Thin frowning mouth, never smiles, slight asymmetric rictus
-- [ ] **BOSS-09**: Short compact gray beard following jawline (not long wizard beard)
-- [ ] **BOSS-10**: Kefia with checkered pattern on SHOULDERS (not on head)
-- [ ] **BOSS-11**: Dark suit/saco beneath kefia with lapels and buttons
-- [ ] **BOSS-12**: Olive/middle-eastern skin tone (#C4956A)
+- [x] **BOSS-01**: Angry Eyebrows has cabezón proportions (~40% head, ~60% body)
+- [x] **BOSS-02**: Elongated oval head shape (taller than wide, using ellipse)
+- [x] **BOSS-03**: Short gray military-cut hair with receding hairline
+- [x] **BOSS-04**: THICK prominent eyebrows as signature feature (>4px high, >15px wide at 128px scale)
+- [x] **BOSS-05**: Eyebrows inclined inward (V-shape), almost touching, with hair texture
+- [x] **BOSS-06**: Small squinting intense eyes below heavy eyebrow shadows
+- [x] **BOSS-07**: Large prominent nose (trapezoidal)
+- [x] **BOSS-08**: Thin frowning mouth, never smiles, slight asymmetric rictus
+- [x] **BOSS-09**: Short compact gray beard following jawline (not long wizard beard)
+- [x] **BOSS-10**: Kefia with checkered pattern on SHOULDERS (not on head)
+- [x] **BOSS-11**: Dark suit/saco beneath kefia with lapels and buttons
+- [x] **BOSS-12**: Olive/middle-eastern skin tone (#C4956A)
 
 ### Boss Mechanics
 
-- [ ] **MECH-01**: When hiding behind armchair, ONLY eyebrows+eyes visible above armchair back
-- [ ] **MECH-02**: Thrown objects are large and visible (>20px): chairs, concrete, bricks
-- [ ] **MECH-03**: Armchair is individual (not sofa), textured, olive/brown
+- [x] **MECH-01**: When hiding behind armchair, ONLY eyebrows+eyes visible above armchair back
+- [x] **MECH-02**: Thrown objects are large and visible (>20px): chairs, concrete, bricks
+- [x] **MECH-03**: Armchair is individual (not sofa), textured, olive/brown
 
 ### Design Audit
 
-- [ ] **AUDIT-01**: design-audit.html has "Boss Design" section covering all 4 bosses
-- [ ] **AUDIT-02**: Each boss evaluated with design checklist, organicity score, sprite size
-- [ ] **AUDIT-03**: Dashboard counters updated with boss audit data
+- [x] **AUDIT-01**: design-audit.html has "Boss Design" section covering all 4 bosses
+- [x] **AUDIT-02**: Each boss evaluated with design checklist, organicity score, sprite size
+- [x] **AUDIT-03**: Dashboard counters updated with boss audit data
 
 ## Out of Scope
 
@@ -184,24 +184,24 @@ Requirements for Angry Eyebrows Boss Redesign.
 | VICT-11 | Phase 37 | Complete |
 | VICT-12 | Phase 37 | Complete |
 | VRFY-01 | Phase 38 | Complete |
-| BOSS-01 | Phase 39 | Pending |
-| BOSS-02 | Phase 39 | Pending |
-| BOSS-03 | Phase 39 | Pending |
-| BOSS-04 | Phase 39 | Pending |
-| BOSS-05 | Phase 39 | Pending |
-| BOSS-06 | Phase 39 | Pending |
-| BOSS-07 | Phase 39 | Pending |
-| BOSS-08 | Phase 39 | Pending |
-| BOSS-09 | Phase 39 | Pending |
-| BOSS-10 | Phase 39 | Pending |
-| BOSS-11 | Phase 39 | Pending |
-| BOSS-12 | Phase 39 | Pending |
-| MECH-01 | Phase 39 | Pending |
-| MECH-02 | Phase 39 | Pending |
-| MECH-03 | Phase 39 | Pending |
-| AUDIT-01 | Phase 39 | Pending |
-| AUDIT-02 | Phase 39 | Pending |
-| AUDIT-03 | Phase 39 | Pending |
+| BOSS-01 | Phase 39 | Complete |
+| BOSS-02 | Phase 39 | Complete |
+| BOSS-03 | Phase 39 | Complete |
+| BOSS-04 | Phase 39 | Complete |
+| BOSS-05 | Phase 39 | Complete |
+| BOSS-06 | Phase 39 | Complete |
+| BOSS-07 | Phase 39 | Complete |
+| BOSS-08 | Phase 39 | Complete |
+| BOSS-09 | Phase 39 | Complete |
+| BOSS-10 | Phase 39 | Complete |
+| BOSS-11 | Phase 39 | Complete |
+| BOSS-12 | Phase 39 | Complete |
+| MECH-01 | Phase 39 | Complete |
+| MECH-02 | Phase 39 | Complete |
+| MECH-03 | Phase 39 | Complete |
+| AUDIT-01 | Phase 39 | Complete |
+| AUDIT-02 | Phase 39 | Complete |
+| AUDIT-03 | Phase 39 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 53 total

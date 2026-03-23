@@ -67,7 +67,7 @@ See `.planning/milestones/` for archived phase details.
 
 ### v1.6 Angry Eyebrows Boss Redesign
 
-- [ ] **Phase 39: Angry Eyebrows Boss Redesign** - Complete boss sprite redesign + design audit (in progress)
+- [x] **Phase 39: Angry Eyebrows Boss Redesign** - Complete boss sprite redesign + design audit (completed 2026-03-23)
 
 ## Phase Details
 
@@ -228,4 +228,4 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38 ->
 | 36. Supreme Turban Cinematic | v1.5 | 1/1 | Complete | 2026-03-21 |
 | 37. Victory Scene Redesign | v1.5 | 3/3 | Complete | 2026-03-21 |
 | 38. Final Verification | v1.5 | 2/2 | Complete | 2026-03-21 |
-| 39. Angry Eyebrows Boss Redesign | v1.6 | 0/2 | In Progress | - |
+| 39. Angry Eyebrows Boss Redesign | v1.6 | 2/2 | Complete | 2026-03-23 |
