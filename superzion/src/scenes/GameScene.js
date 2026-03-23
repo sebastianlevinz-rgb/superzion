@@ -207,6 +207,15 @@ export default class GameScene extends Phaser.Scene {
       onComplete: () => {
         this.boss.entered = true;
         this.cameras.main.shake(200, 0.02);
+        // Breathing idle animation
+        this.tweens.add({
+          targets: sprite,
+          scaleY: 1.02,
+          duration: 1200,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
         // Title text
         const title = this.add.text(bx, by - 60, 'BOSS: FOAM BEARD', {
           fontFamily: 'monospace', fontSize: '12px', color: '#FFD700',
@@ -247,13 +256,24 @@ export default class GameScene extends Phaser.Scene {
   _damageBoss() {
     if (!this.boss || !this.boss.alive) return;
     this.boss.hp--;
-    this.cameras.main.shake(150, 0.015);
+    this.cameras.main.shake(100, 0.005);
     SoundManager.get().playDroneHit();
 
-    // Flash red
-    this.boss.sprite.setTint(0xff0000);
+    // White flash then red
+    this.boss.sprite.setTint(0xffffff);
+    this.time.delayedCall(50, () => {
+      if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.setTint(0xff0000);
+    });
     this.time.delayedCall(200, () => {
       if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.clearTint();
+    });
+
+    // Scale bump
+    this.tweens.add({
+      targets: this.boss.sprite,
+      scaleX: 1.05, scaleY: 1.05,
+      duration: 100, yoyo: true,
+      ease: 'Quad.easeOut',
     });
 
     // Change expression
@@ -291,16 +311,21 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.shake(500, 0.025);
 
     // Particles
-    for (let i = 0; i < 20; i++) {
-      const size = 2 + Math.random() * 4;
-      const color = [0xff6600, 0xffaa00, 0xff2200, 0xffdd00][Math.floor(Math.random() * 4)];
-      const p = this.add.rectangle(bx, by, size, size, color).setDepth(15);
+    const bossColors = [0xff6600, 0xffaa00, 0xff2200, 0xffdd00, 0xffffff];
+    for (let i = 0; i < 25; i++) {
+      const radius = 1.5 + Math.random() * 4;
+      const color = bossColors[Math.floor(Math.random() * bossColors.length)];
+      const p = this.add.circle(bx, by, radius, color, 0.9).setDepth(22);
       const angle = Math.random() * Math.PI * 2;
-      const dist = 30 + Math.random() * 60;
+      const speed = 50 + Math.random() * 120;
       this.tweens.add({
         targets: p,
-        x: bx + Math.cos(angle) * dist, y: by + Math.sin(angle) * dist,
-        alpha: 0, duration: 500 + Math.random() * 300,
+        x: bx + Math.cos(angle) * speed, y: by + Math.sin(angle) * speed,
+        scale: 0,
+        alpha: 0,
+        rotation: Math.random() * 6,
+        duration: 500 + Math.random() * 400,
+        ease: 'Quad.easeOut',
         onComplete: () => p.destroy(),
       });
     }
@@ -404,17 +429,24 @@ export default class GameScene extends Phaser.Scene {
   }
 
   _spawnExplosionParticles(x, y) {
-    for (let i = 0; i < 12; i++) {
-      const size = 2 + Math.random() * 3;
-      const color = [0xff6600, 0xff8800, 0xffaa00, 0xff4400][Math.floor(Math.random() * 4)];
-      const p = this.add.rectangle(x, y, size, size, color).setDepth(13);
+    const colors = [0xff6600, 0xff8800, 0xffaa00, 0xff4400, 0xff2200, 0xffdd00, 0xffffff];
+    for (let i = 0; i < 18; i++) {
+      const radius = 1 + Math.random() * 4;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const p = this.add.circle(x, y, radius, color, 0.9).setDepth(22);
       const angle = Math.random() * Math.PI * 2;
-      const dist = 30 + Math.random() * 50;
+      const speed = 40 + Math.random() * 120;
+      const vx = Math.cos(angle) * speed;
+      const vy = Math.sin(angle) * speed;
       this.tweens.add({
         targets: p,
-        x: x + Math.cos(angle) * dist,
-        y: y + Math.sin(angle) * dist,
-        alpha: 0, duration: 300 + Math.random() * 200,
+        x: x + vx,
+        y: y + vy,
+        scale: 0,
+        alpha: 0,
+        rotation: Math.random() * 6,
+        duration: 400 + Math.random() * 400,
+        ease: 'Quad.easeOut',
         onComplete: () => p.destroy(),
       });
     }
@@ -429,14 +461,21 @@ export default class GameScene extends Phaser.Scene {
     const bodies = this.breakGroup.getChildren();
     for (const body of bodies) {
       if (body.getData('col') === col && body.getData('row') === row) {
-        for (let i = 0; i < 6; i++) {
-          const s = 2 + Math.random() * 3;
-          const d = this.add.rectangle(x, y, s, s, 0x8B7355).setDepth(11);
+        const wallColors = [0x8B7355, 0x7A6245, 0x9A8365, 0x6B5335];
+        for (let i = 0; i < 10; i++) {
+          const radius = 1 + Math.random() * 3;
+          const color = wallColors[Math.floor(Math.random() * wallColors.length)];
+          const d = this.add.circle(x, y, radius, color, 0.9).setDepth(22);
           const ang = Math.random() * Math.PI * 2;
+          const speed = 20 + Math.random() * 60;
           this.tweens.add({
             targets: d,
-            x: x + Math.cos(ang) * 30, y: y + Math.sin(ang) * 30,
-            alpha: 0, duration: 400,
+            x: x + Math.cos(ang) * speed, y: y + Math.sin(ang) * speed,
+            scale: 0,
+            alpha: 0,
+            rotation: Math.random() * 4,
+            duration: 350 + Math.random() * 250,
+            ease: 'Quad.easeOut',
             onComplete: () => d.destroy(),
           });
         }
@@ -475,14 +514,22 @@ export default class GameScene extends Phaser.Scene {
       SoundManager.get().playDoorOpen();
 
       const x = this.goldDoorSprite.x, y = this.goldDoorSprite.y;
-      for (let i = 0; i < 8; i++) {
-        const s = 2 + Math.random() * 3;
-        const p = this.add.rectangle(x, y, s, s, 0xDAA520).setDepth(11);
+      const goldColors = [0xDAA520, 0xFFD700, 0xFFC000, 0xFFEE88];
+      for (let i = 0; i < 12; i++) {
+        const radius = 1.5 + Math.random() * 3;
+        const color = goldColors[Math.floor(Math.random() * goldColors.length)];
+        const p = this.add.circle(x, y, radius, color, 0.9).setDepth(22);
         const ang = Math.random() * Math.PI * 2;
+        const speed = 25 + Math.random() * 60;
         this.tweens.add({
           targets: p,
-          x: x + Math.cos(ang) * 25, y: y + Math.sin(ang) * 25,
-          alpha: 0, duration: 400, onComplete: () => p.destroy(),
+          x: x + Math.cos(ang) * speed, y: y + Math.sin(ang) * speed,
+          scale: 0,
+          alpha: 0,
+          rotation: Math.random() * 5,
+          duration: 400 + Math.random() * 300,
+          ease: 'Quad.easeOut',
+          onComplete: () => p.destroy(),
         });
       }
 
@@ -523,7 +570,7 @@ export default class GameScene extends Phaser.Scene {
         txt.setOrigin(0.5).setDepth(50);
         this.tweens.add({ targets: txt, y: txt.y - 25, alpha: 0, duration: 800, onComplete: () => txt.destroy() });
 
-        SoundManager.get().playMenuSelect();
+        SoundManager.get().playPickup();
         this.powerupSprites.splice(i, 1);
       }
     }
@@ -550,10 +597,19 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.flash(300, 255, 0, 0);
     SoundManager.get().playGameOver();
 
+    // If checkpoint exists, R restarts from bomberman (GameScene) directly
+    // If no checkpoint, R restarts from the platformer (PlatformerScene)
+    let retryScene = 'PlatformerScene';
+    try {
+      if (localStorage.getItem('superzion_checkpoint_l1') === 'bomberman') {
+        retryScene = 'GameScene';
+      }
+    } catch (e) { /* ignore */ }
+
     this.time.delayedCall(500, () => {
       this._endScreen = showDefeatScreen(this, {
         title: msg || 'MISSION FAILED',
-        currentScene: 'GameScene',
+        currentScene: retryScene,
         skipScene: 'ExplosionCinematicScene',
       });
     });

@@ -80,6 +80,94 @@ export function showControlsOverlay(scene, controlsText, opts = {}) {
 }
 
 /**
+ * Show a full-screen tutorial overlay that pauses gameplay until dismissed.
+ * Sets scene.tutorialActive = true; the scene's update() should check this flag
+ * and skip gameplay logic while it's true.
+ *
+ * @param {Phaser.Scene} scene
+ * @param {string[]} lines — array of text lines to display centered
+ * @param {object} [opts] — { depth, title }
+ * @returns {Promise<void>} resolves when the player dismisses the overlay
+ */
+export function showTutorialOverlay(scene, lines, opts = {}) {
+  const depth = opts.depth || 200;
+  scene.tutorialActive = true;
+
+  const elements = [];
+
+  // Full-screen dark overlay
+  const overlay = scene.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.8)
+    .setScrollFactor(0).setDepth(depth);
+  elements.push(overlay);
+
+  // Border rectangle
+  const border = scene.add.rectangle(W / 2, H / 2, W - 40, H - 40)
+    .setStrokeStyle(2, 0xffd700, 0.5).setFillStyle(0, 0)
+    .setScrollFactor(0).setDepth(depth + 1);
+  elements.push(border);
+
+  // Title bar line at top
+  const titleBar = scene.add.rectangle(W / 2, 40, W - 60, 2, 0xffd700, 0.3)
+    .setScrollFactor(0).setDepth(depth + 1);
+  elements.push(titleBar);
+
+  // Render text lines centered vertically
+  const lineHeight = 22;
+  const totalHeight = lines.length * lineHeight;
+  const startY = H / 2 - totalHeight / 2;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === '') continue; // skip empty spacer lines
+
+    // First line (title) gets larger font
+    const isTitle = i === 0;
+    const txt = scene.add.text(W / 2, startY + i * lineHeight, line, {
+      fontFamily: 'monospace',
+      fontSize: isTitle ? '20px' : '16px',
+      color: '#FFD700',
+      fontStyle: isTitle ? 'bold' : 'normal',
+      shadow: isTitle
+        ? { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 8, fill: true }
+        : undefined,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(depth + 2);
+    elements.push(txt);
+  }
+
+  // "PRESS ANY KEY TO START" blinking at bottom
+  const promptText = scene.add.text(W / 2, H - 60, 'PRESS ANY KEY TO START', {
+    fontFamily: 'monospace',
+    fontSize: '14px',
+    color: '#ffffff',
+    fontStyle: 'bold',
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(depth + 2);
+  elements.push(promptText);
+
+  // Blink animation
+  const blinkTween = scene.tweens.add({
+    targets: promptText,
+    alpha: 0.2,
+    duration: 600,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
+
+  // Dismiss on any key press (delayed 300ms to prevent instant dismiss)
+  scene.time.delayedCall(300, () => {
+    const dismissHandler = () => {
+      scene.tutorialActive = false;
+      blinkTween.stop();
+      for (const el of elements) {
+        if (el && el.active) el.destroy();
+      }
+      scene.input.keyboard.off('keydown', dismissHandler);
+    };
+    scene.input.keyboard.on('keydown', dismissHandler);
+  });
+}
+
+/**
  * Add a black semi-transparent background behind an existing instrText.
  * Call this after the instrText is created.
  * @param {Phaser.Scene} scene

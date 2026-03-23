@@ -15,7 +15,7 @@ import {
   createSAMMissile, createBullet, createBossBullet,
 } from '../utils/BossTextures.js';
 import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
-import { showControlsOverlay } from '../ui/ControlsOverlay.js';
+import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.js';
 
 const W = 960;
 const H = 540;
@@ -100,20 +100,42 @@ export default class BossScene extends Phaser.Scene {
     this.bunkerX = W + 150;
     this.bunkerY = 300;
     this.bunkerHP = this.BUNKER_HP;
-    // Boss phases: 1=normal(80-50), 2=shield(50-25), 3=enrage(25-0)
+    // Boss phases: 1=energy shield(100%-60%), 2=rotating shield+drones(60%-30%), 3=laser(30%-0%)
     this.bunkerPhase = 1;
     this.shieldActive = false;
-    this.shieldAngle = 0; // rotating shield angle
-    this.shieldHP = 0;
-    this.laserSweepActive = false;
-    this.laserSweepAngle = 0;
-    this.laserSweepDir = 1;
-    this.laserWarningTimer = 0;
-    this.laserFiring = false;
-    this.laserChargeTimer = 0; // 0.3s charge up visual
-    this.laserFireDuration = 0; // limited fire duration (2s)
+    this.shieldAngle = 0; // rotating shield angle (phase 2)
 
-    // Dodge/roll
+    // Phase 1: Energy shield — active most of the time, drops every 5s for 2s
+    this.energyShieldActive = true;
+    this.energyShieldTimer = 0; // counts up to 5s, then drops for 2s
+    this.energyShieldVulnerable = false; // true during 2s vulnerability window
+    this.energyShieldFlickerTimer = 0; // for flicker effect before dropping
+
+    // Laser sweep (Phase 3) — horizontal laser with gap
+    this.laserSweepActive = false;
+    this.laserSweepY = 0; // current Y position of the laser line
+    this.laserSweepDir = 1; // 1 = top→bottom, -1 = bottom→top
+    this.laserGapY = H / 2; // Y position of the 80px gap in the laser
+    this.laserGapVY = 0; // gap movement speed
+    this.laserFiring = false;
+    this.laserChargeTimer = 0; // 1.5s charge up visual
+    this.laserChargeWarningLine = 0; // 0.5s warning line after charge
+    this.laserFireDuration = 0;
+
+    // Boss attack telegraph — red flash timer on boss sprite before missiles
+    this.bossFlashTimer = 0;
+
+    // Barrel roll (all phases) — double-tap LEFT or RIGHT within 300ms
+    this.barrelRollCooldown = 0; // 3s cooldown
+    this.barrelRollActive = false;
+    this.barrelRollTimer = 0; // 1s duration
+    this.barrelRollAngle = 0; // rotation angle for visual
+    this.lastLeftTapTime = 0;
+    this.lastRightTapTime = 0;
+    this.prevLeftDown = false;
+    this.prevRightDown = false;
+
+    // Legacy dodge/roll (used by approach + air defense)
     this.dodgeCooldown = 0;
     this.dodgeTimer = 0;
     this.isDodging = false;
@@ -126,11 +148,24 @@ export default class BossScene extends Phaser.Scene {
     this.homingMissiles = [];
     this.flakBursts = [];
 
+    // Phase 2: Drones
+    this.drones = [];
+    this.droneSpawnTimer = 0;
+    this.droneSpawnPortals = []; // portal/warp effects before drones appear
+
+    // Phase 2: Area bombs
+    this.areaBombs = [];
+    this.areaBombTimer = 0;
+
+    // Phase 3: Rapid desperate shots between laser sweeps
+    this.rapidShotTimer = 0;
+
     // Smoke particles from damaged boss
     this.smokeParticles = [];
     this.smokeAccum = 0;
 
     // Attack timers
+    this.fanMissileTimer = 0; // Phase 1: fan missiles every 3s
     this.samTimer = 0;
     this.spreadTimer = 0;
     this.homingTimer = 0;
@@ -149,8 +184,8 @@ export default class BossScene extends Phaser.Scene {
     // One-time trigger flags
     this.musicPhase2Triggered = false;
     this.warningTextTriggered = false;
-    this.phase2Triggered = false;
-    this.phase3Triggered = false;
+    this.phase2Triggered = false; // triggers at 60% HP
+    this.phase3Triggered = false; // triggers at 30% HP
 
     // Boss expression tracking for texture updates
     this._lastBossExpression = 'normal';
@@ -169,6 +204,21 @@ export default class BossScene extends Phaser.Scene {
     this._startIntro();
 
     this.events.on('shutdown', this.shutdown, this);
+
+    // Tutorial overlay (pauses gameplay until dismissed)
+    showTutorialOverlay(this, [
+      'LEVEL 6: OPERATION LAST STAND',
+      '',
+      'ARROWS: Move your fighter',
+      'SPACE: Fire weapons',
+      'X: Heavy bombs (limited)',
+      'SHIFT: Barrel roll (invulnerability)',
+      'C: Anti-missile pulse',
+      'Defeat SUPREME TURBAN',
+      '',
+      'Attack when his shield drops!',
+      'Double-tap LEFT/RIGHT for barrel roll',
+    ]);
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -317,6 +367,9 @@ export default class BossScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
 
   update(time, delta) {
+    // Tutorial active: skip all gameplay
+    if (this.tutorialActive) return;
+
     const dt = delta / 1000;
 
     // Mute toggle
@@ -548,8 +601,16 @@ export default class BossScene extends Phaser.Scene {
       const dy = bomb.y - this.bunkerY;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // Shield check
-      if (this.shieldActive && dist < 90) {
+      // Phase 1: Energy shield blocks when active
+      if (this.bunkerPhase === 1 && this.energyShieldActive && !this.energyShieldVulnerable && dist < 90) {
+        bomb.active = false;
+        SoundManager.get().playTypewriterClick();
+        this.cameras.main.shake(100, 0.005);
+        continue;
+      }
+
+      // Phase 2: Rotating shield check
+      if (this.bunkerPhase === 2 && this.shieldActive && dist < 90) {
         const bulletAngle = Math.atan2(dy, dx);
         const shieldFacing = this.shieldAngle + Math.PI;
         let angleDiff = bulletAngle - shieldFacing;
@@ -557,15 +618,8 @@ export default class BossScene extends Phaser.Scene {
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         if (Math.abs(angleDiff) < Math.PI / 3) {
           bomb.active = false;
-          this.shieldHP -= HEAVY_BOMB_DAMAGE;
           SoundManager.get().playTypewriterClick();
           this.cameras.main.shake(150, 0.01);
-          if (this.shieldHP <= 0) {
-            this.shieldActive = false;
-            this.cameras.main.flash(200, 100, 200, 255);
-            this._showCenterMessage('SHIELD DOWN', '#00e5ff');
-            SoundManager.get().playExplosion();
-          }
           continue;
         }
       }
@@ -576,7 +630,6 @@ export default class BossScene extends Phaser.Scene {
         this.cameras.main.shake(250, 0.015);
         SoundManager.get().playBossHit();
 
-        // Apply HEAVY_BOMB_DAMAGE hits
         for (let i = 0; i < HEAVY_BOMB_DAMAGE; i++) {
           this.bunkerHP--;
           if (this.bunkerHP <= 0) break;
@@ -588,29 +641,36 @@ export default class BossScene extends Phaser.Scene {
         });
 
         // Phase transitions (same thresholds as normal bullets)
-        if (this.bunkerHP <= this.BUNKER_HP * 0.625 && !this.phase2Triggered) {
+        if (this.bunkerHP <= this.BUNKER_HP * 0.6 && !this.phase2Triggered) {
           this.phase2Triggered = true;
           this.bunkerPhase = 2;
+          this.energyShieldActive = false;
+          this.energyShieldVulnerable = false;
           this.shieldActive = true;
-          this.shieldHP = 12;
           this.shieldAngle = 0;
+          this.droneSpawnTimer = 0;
+          this.areaBombTimer = 0;
           this.cameras.main.flash(500, 100, 100, 255);
           SoundManager.get().playBossPhaseTransition();
           MusicManager.get().playLevel6Music(2);
-          this._showCenterMessage('SHIELD DEPLOYED', '#8888ff');
-          this.instrText.setText('SHIFT: Roll | Flank the shield! | X: Bomb | C: Pulse');
-          this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0;
+          this._showCenterMessage('ROTATING SHIELD — FLANK IT!', '#8888ff');
+          this.instrText.setText('Flank the rotating shield! | Dodge area bombs! | X: Bomb | Double-tap L/R: Roll');
+          this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0; this.fanMissileTimer = 0;
         }
-        if (this.bunkerHP <= this.BUNKER_HP * 0.3125 && !this.phase3Triggered) {
+        if (this.bunkerHP <= this.BUNKER_HP * 0.3 && !this.phase3Triggered) {
           this.phase3Triggered = true;
           this.bunkerPhase = 3;
           this.shieldActive = false;
+          this.drones = [];
+          this.droneSpawnPortals = [];
+          this.areaBombs = [];
           this.cameras.main.flash(500, 255, 50, 0);
           SoundManager.get().playBossPhaseTransition();
           MusicManager.get().playLevel6Music(3);
-          this._showCenterMessage('SUPREME FURY', '#ff2222');
-          this.instrText.setText('DODGE THE LASER! SHIFT: Roll | X: Bomb | C: Pulse');
-          this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0;
+          this._showCenterMessage('SUPREME FURY — NO SHIELD!', '#ff2222');
+          this.instrText.setText('DODGE THE LASER GAP! | Double-tap L/R: Barrel Roll | X: Bomb');
+          this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0; this.laserCooldown = 2;
+          this.rapidShotTimer = 0;
         }
 
         if (this.bunkerHP <= 0) {
@@ -1126,8 +1186,15 @@ export default class BossScene extends Phaser.Scene {
     // Clear heavy bombs
     this.heavyBombs = [];
 
+    // Phase 1 setup: Energy shield active
+    this.bunkerPhase = 1;
+    this.energyShieldActive = true;
+    this.energyShieldTimer = 0;
+    this.energyShieldVulnerable = false;
+    this.fanMissileTimer = 0;
+
     this._showCenterMessage('DESTROY THE SUPREME LEADER', '#ff2222');
-    this.instrText.setText('ARROWS: Move | SPACE: Shoot | X: Heavy Bomb | SHIFT: Roll | C: Pulse');
+    this.instrText.setText('ARROWS: Move | SPACE: Shoot when shield drops! | X: Bomb | Double-tap L/R: Barrel Roll');
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -1135,33 +1202,8 @@ export default class BossScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
 
   _updateAttack(dt) {
-    // Dodge/roll mechanic
-    this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt);
-    if (this.isDodging) {
-      this.dodgeTimer -= dt;
-      this.playerX += this.dodgeVX * dt;
-      this.playerY += this.dodgeVY * dt;
-      if (this.dodgeTimer <= 0) {
-        this.isDodging = false;
-        this.playerSprite.setAlpha(1);
-      }
-    }
-
-    // Trigger dodge
-    if (!this.isDodging && this.dodgeCooldown <= 0 && Phaser.Input.Keyboard.JustDown(this.keys.shift)) {
-      this.isDodging = true;
-      this.dodgeTimer = 0.2;
-      this.dodgeCooldown = 1.5;
-      this.invulnTimer = Math.max(this.invulnTimer, 0.25);
-      // Roll in movement direction
-      const dx = this.keys.right.isDown ? 1 : this.keys.left.isDown ? -1 : 0;
-      const dy = this.keys.down.isDown ? 1 : this.keys.up.isDown ? -1 : 0;
-      const mag = Math.sqrt(dx * dx + dy * dy) || 1;
-      this.dodgeVX = (dx / mag) * 600;
-      this.dodgeVY = (dy / mag) * 600;
-      this.playerSprite.setAlpha(0.4);
-      SoundManager.get().playTypewriterClick();
-    }
+    // ── Barrel Roll mechanic (all phases) ──
+    this._updateBarrelRoll(dt);
 
     // Anti-missile pulse
     if (Phaser.Input.Keyboard.JustDown(this.keys.c)) {
@@ -1175,8 +1217,8 @@ export default class BossScene extends Phaser.Scene {
     }
     this._updateHeavyBombs(dt);
 
-    // Player movement — full control (unless dodging)
-    if (!this.isDodging) {
+    // Player movement — full control (unless barrel rolling)
+    if (!this.barrelRollActive) {
       if (this.keys.up.isDown) this.playerY -= PLAYER_SPEED_Y * dt;
       if (this.keys.down.isDown) this.playerY += PLAYER_SPEED_Y * dt;
       if (this.keys.left.isDown) this.playerX -= PLAYER_SPEED_X_BOOST * 2.5 * dt;
@@ -1185,46 +1227,34 @@ export default class BossScene extends Phaser.Scene {
     this.playerX = Phaser.Math.Clamp(this.playerX, 60, 500);
     this.playerY = Phaser.Math.Clamp(this.playerY, 60, 480);
 
-    // Update shield rotation in phase 2
-    if (this.shieldActive) {
-      this.shieldAngle += dt * 1.2;
+    // ── Phase 1: Energy shield cycle (active 5s, drops 2s) ──
+    if (this.bunkerPhase === 1) {
+      this._updateEnergyShield(dt);
     }
 
-    // Update laser sweep in phase 3
-    if (this.laserSweepActive) {
-      if (this.laserWarningTimer > 0) {
-        this.laserWarningTimer -= dt;
-        if (this.laserWarningTimer <= 0) {
-          // Start charge-up phase (0.3s red glow before firing)
-          this.laserChargeTimer = 0.3;
-        }
+    // ── Phase 2: Rotating shield + drones + area bombs ──
+    if (this.bunkerPhase === 2) {
+      this.shieldAngle += dt * 1.2;
+      this._updateDrones(dt);
+      this._updateAreaBombs(dt);
+    }
+
+    // ── Phase 3: Laser sweep with gap + rapid shots ──
+    if (this.bunkerPhase === 3) {
+      this._updateLaserSweepV2(dt);
+    }
+
+    // Boss flash telegraph timer
+    if (this.bossFlashTimer > 0) {
+      this.bossFlashTimer -= dt;
+      // Red flash on boss sprite
+      if (Math.sin(this.bossFlashTimer * 20) > 0) {
+        this.bunkerSprite.setTint(0xff2222);
+      } else {
+        this.bunkerSprite.clearTint();
       }
-      if (this.laserChargeTimer > 0) {
-        this.laserChargeTimer -= dt;
-        if (this.laserChargeTimer <= 0) {
-          this.laserFiring = true;
-          this.laserFireDuration = 2.0; // laser fires for 2 seconds
-        }
-      }
-      if (this.laserFiring) {
-        this.laserFireDuration -= dt;
-        this.laserSweepAngle += this.laserSweepDir * 0.8 * dt;
-        if (this.laserSweepAngle > 0.8 || this.laserSweepAngle < -0.8) {
-          this.laserSweepDir *= -1;
-        }
-        // Stop laser after duration expires
-        if (this.laserFireDuration <= 0) {
-          this.laserSweepActive = false;
-          this.laserFiring = false;
-        }
-        // Check laser collision with player
-        if (this.invulnTimer <= 0) {
-          const laserY = this.bunkerY + Math.sin(this.laserSweepAngle) * 300;
-          const laserStartX = this.bunkerX - 60;
-          if (this.playerX < laserStartX && Math.abs(this.playerY - laserY) < 15) {
-            this._damagePlayer();
-          }
-        }
+      if (this.bossFlashTimer <= 0) {
+        this.bunkerSprite.clearTint();
       }
     }
 
@@ -1265,6 +1295,11 @@ export default class BossScene extends Phaser.Scene {
     this._checkBunkerCollisions();
     this._checkHeavyBombCollisionsBoss();
 
+    // Phase 2: Drone collisions with player bullets
+    if (this.bunkerPhase === 2) {
+      this._checkDroneCollisions();
+    }
+
     // Update boss expression based on HP
     this._updateBossExpression();
 
@@ -1275,14 +1310,360 @@ export default class BossScene extends Phaser.Scene {
     this._drawAttackEffects();
   }
 
+  // ═════════════════════════════════════════════════════════════
+  // BARREL ROLL — double-tap LEFT or RIGHT within 300ms
+  // ═════════════════════════════════════════════════════════════
+
+  _updateBarrelRoll(dt) {
+    this.barrelRollCooldown = Math.max(0, this.barrelRollCooldown - dt);
+
+    // Detect double-tap LEFT
+    const leftDown = this.keys.left.isDown;
+    const rightDown = this.keys.right.isDown;
+    const now = this.time.now;
+
+    if (leftDown && !this.prevLeftDown) {
+      // Fresh press of LEFT
+      if (now - this.lastLeftTapTime < 300 && !this.barrelRollActive && this.barrelRollCooldown <= 0) {
+        this._startBarrelRoll();
+      }
+      this.lastLeftTapTime = now;
+    }
+    if (rightDown && !this.prevRightDown) {
+      // Fresh press of RIGHT
+      if (now - this.lastRightTapTime < 300 && !this.barrelRollActive && this.barrelRollCooldown <= 0) {
+        this._startBarrelRoll();
+      }
+      this.lastRightTapTime = now;
+    }
+    this.prevLeftDown = leftDown;
+    this.prevRightDown = rightDown;
+
+    // Also allow SHIFT as an alternative barrel roll trigger
+    if (!this.barrelRollActive && this.barrelRollCooldown <= 0 && Phaser.Input.Keyboard.JustDown(this.keys.shift)) {
+      this._startBarrelRoll();
+    }
+
+    // Update active barrel roll
+    if (this.barrelRollActive) {
+      this.barrelRollTimer -= dt;
+      this.barrelRollAngle += dt * 360; // 360 degrees over ~1 second
+      this.playerSprite.setAngle(this.barrelRollAngle);
+      this.playerSprite.setAlpha(0.5 + Math.sin(this.barrelRollAngle * 0.1) * 0.3);
+      if (this.barrelRollTimer <= 0) {
+        this.barrelRollActive = false;
+        this.barrelRollCooldown = 3; // 3-second cooldown
+        this.barrelRollAngle = 0;
+        this.playerSprite.setAngle(0);
+        this.playerSprite.setAlpha(1);
+      }
+    }
+  }
+
+  _startBarrelRoll() {
+    this.barrelRollActive = true;
+    this.barrelRollTimer = 1.0; // 1 second of invulnerability
+    this.barrelRollAngle = 0;
+    this.invulnTimer = Math.max(this.invulnTimer, 1.0); // 1s invulnerability
+    SoundManager.get().playAfterburner();
+    this.cameras.main.shake(80, 0.003);
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // PHASE 1: ENERGY SHIELD (active 5s, drops 2s)
+  // ═════════════════════════════════════════════════════════════
+
+  _updateEnergyShield(dt) {
+    this.energyShieldTimer += dt;
+
+    if (!this.energyShieldVulnerable) {
+      // Shield is ACTIVE — count up to 5 seconds
+      // Flicker effect 0.5s before dropping
+      if (this.energyShieldTimer >= 4.5) {
+        this.energyShieldFlickerTimer += dt;
+      }
+      if (this.energyShieldTimer >= 5.0) {
+        // Shield drops — 2s vulnerability window
+        this.energyShieldVulnerable = true;
+        this.energyShieldActive = false;
+        this.energyShieldTimer = 0;
+        this.energyShieldFlickerTimer = 0;
+        SoundManager.get().playShieldDown();
+        this._showCenterMessage('SHIELD DOWN — FIRE!', '#00ff00');
+      }
+    } else {
+      // Shield is DOWN — 2 seconds of vulnerability
+      if (this.energyShieldTimer >= 2.0) {
+        // Shield comes back up
+        this.energyShieldVulnerable = false;
+        this.energyShieldActive = true;
+        this.energyShieldTimer = 0;
+        SoundManager.get().playShieldActive();
+      }
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // PHASE 2: DRONES
+  // ═════════════════════════════════════════════════════════════
+
+  _spawnDronePair() {
+    // Spawn portal effect first
+    const spawnY1 = 80 + Math.random() * 180;
+    const spawnY2 = 280 + Math.random() * 180;
+    const spawnX = W - 40;
+
+    // Portals appear 1s before drones
+    this.droneSpawnPortals.push(
+      { x: spawnX, y: spawnY1, timer: 1.0, maxTimer: 1.0 },
+      { x: spawnX, y: spawnY2, timer: 1.0, maxTimer: 1.0 },
+    );
+
+    this.time.delayedCall(1000, () => {
+      if (this.phase !== 'attack' || this.bunkerPhase !== 2) return;
+      // Spawn 2 drones
+      for (const sy of [spawnY1, spawnY2]) {
+        this.drones.push({
+          x: spawnX,
+          y: sy,
+          hp: 2,
+          active: true,
+          shootTimer: 1.5 + Math.random(),
+          vx: -80 - Math.random() * 40,
+          vy: (Math.random() - 0.5) * 60,
+        });
+      }
+      SoundManager.get().playDroneHum();
+    });
+  }
+
+  _updateDrones(dt) {
+    // Update portals
+    for (const p of this.droneSpawnPortals) {
+      p.timer -= dt;
+    }
+    this.droneSpawnPortals = this.droneSpawnPortals.filter(p => p.timer > 0);
+
+    // Update drones
+    for (const d of this.drones) {
+      if (!d.active) continue;
+
+      // Fly toward player
+      const dx = this.playerX - d.x;
+      const dy = this.playerY - d.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+      // Steer toward player but keep some distance
+      if (dist > 150) {
+        d.vx += (dx / dist) * 100 * dt;
+        d.vy += (dy / dist) * 100 * dt;
+      } else {
+        // Orbit at distance
+        d.vx += (-dy / dist) * 60 * dt;
+        d.vy += (dx / dist) * 60 * dt;
+      }
+
+      // Clamp speed
+      const spd = Math.sqrt(d.vx * d.vx + d.vy * d.vy);
+      if (spd > 160) {
+        d.vx = (d.vx / spd) * 160;
+        d.vy = (d.vy / spd) * 160;
+      }
+
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      d.x = Phaser.Math.Clamp(d.x, 80, W - 20);
+      d.y = Phaser.Math.Clamp(d.y, 40, H - 40);
+
+      // Shoot single bullets toward player
+      d.shootTimer -= dt;
+      if (d.shootTimer <= 0) {
+        d.shootTimer = 2 + Math.random();
+        const bDist = Math.sqrt(dx * dx + dy * dy) || 1;
+        this.bossBullets.push({
+          x: d.x,
+          y: d.y,
+          vx: (dx / bDist) * 200,
+          vy: (dy / bDist) * 200,
+          active: true,
+          sprite: this.add.image(d.x, d.y, 'boss_bullet').setDepth(12),
+        });
+      }
+
+      // Off-screen removal
+      if (d.x < -40 || d.x > W + 40) d.active = false;
+    }
+    this.drones = this.drones.filter(d => d.active);
+  }
+
+  _checkDroneCollisions() {
+    // Player bullets hit drones
+    for (const b of this.playerBullets) {
+      if (!b.active) continue;
+      for (const d of this.drones) {
+        if (!d.active) continue;
+        const dx = b.x - d.x;
+        const dy = b.y - d.y;
+        if (Math.sqrt(dx * dx + dy * dy) < 20) {
+          b.active = false;
+          if (b.sprite && b.sprite.active) b.sprite.destroy();
+          d.hp--;
+          this.shotsHit++;
+          SoundManager.get().playDroneHit();
+          if (d.hp <= 0) {
+            d.active = false;
+            SoundManager.get().playExplosion();
+          }
+          break;
+        }
+      }
+    }
+
+    // Drones collide with player
+    if (this.invulnTimer <= 0 && !this.barrelRollActive) {
+      for (const d of this.drones) {
+        if (!d.active) continue;
+        const dx = d.x - this.playerX;
+        const dy = d.y - this.playerY;
+        if (Math.sqrt(dx * dx + dy * dy) < 25) {
+          d.active = false;
+          this._damagePlayer();
+          return;
+        }
+      }
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // PHASE 2: AREA BOMBS
+  // ═════════════════════════════════════════════════════════════
+
+  _dropAreaBomb() {
+    // Target near player position with some spread
+    const targetX = this.playerX + (Math.random() - 0.5) * 200;
+    const targetY = this.playerY + (Math.random() - 0.5) * 200;
+    this.areaBombs.push({
+      x: Phaser.Math.Clamp(targetX, 60, 600),
+      y: Phaser.Math.Clamp(targetY, 60, 480),
+      warningTimer: 1.0, // 1 second warning before detonation
+      radius: 60, // explosion radius
+      active: true,
+      detonated: false,
+    });
+  }
+
+  _updateAreaBombs(dt) {
+    for (const bomb of this.areaBombs) {
+      if (!bomb.active) continue;
+
+      bomb.warningTimer -= dt;
+
+      if (bomb.warningTimer <= 0 && !bomb.detonated) {
+        bomb.detonated = true;
+        // Check if player is in the blast zone
+        if (this.invulnTimer <= 0 && !this.barrelRollActive) {
+          const dx = this.playerX - bomb.x;
+          const dy = this.playerY - bomb.y;
+          if (Math.sqrt(dx * dx + dy * dy) < bomb.radius) {
+            this._damagePlayer();
+          }
+        }
+        SoundManager.get().playExplosion();
+        this.cameras.main.shake(150, 0.008);
+        // Keep the bomb briefly for visual explosion effect
+        bomb.explosionTimer = 0.4;
+      }
+
+      if (bomb.detonated) {
+        bomb.explosionTimer -= dt;
+        if (bomb.explosionTimer <= 0) {
+          bomb.active = false;
+        }
+      }
+    }
+    this.areaBombs = this.areaBombs.filter(b => b.active);
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // PHASE 3: LASER SWEEP WITH GAP
+  // ═════════════════════════════════════════════════════════════
+
+  _updateLaserSweepV2(dt) {
+    if (!this.laserSweepActive) return;
+
+    // Stage 1: Boss charges with growing red glow (1.5s)
+    if (this.laserChargeTimer > 0) {
+      this.laserChargeTimer -= dt;
+      if (this.laserChargeTimer <= 0) {
+        // Move to warning line stage (0.5s)
+        this.laserChargeWarningLine = 0.5;
+      }
+      return;
+    }
+
+    // Stage 2: Beam warning line — thin red dashed line showing sweep path (0.5s)
+    if (this.laserChargeWarningLine > 0) {
+      this.laserChargeWarningLine -= dt;
+      if (this.laserChargeWarningLine <= 0) {
+        // Start firing
+        this.laserFiring = true;
+        this.laserFireDuration = 3.0; // 3 seconds of sweep
+        SoundManager.get().playBossLaser();
+      }
+      return;
+    }
+
+    // Stage 3: Active laser beam with gap
+    if (this.laserFiring) {
+      this.laserFireDuration -= dt;
+
+      // Sweep the laser Y position
+      const sweepSpeed = 200; // pixels per second
+      this.laserSweepY += this.laserSweepDir * sweepSpeed * dt;
+
+      // Bounce at screen edges
+      if (this.laserSweepY > H - 40) {
+        this.laserSweepY = H - 40;
+        this.laserSweepDir = -1;
+      } else if (this.laserSweepY < 40) {
+        this.laserSweepY = 40;
+        this.laserSweepDir = 1;
+      }
+
+      // Move the gap — sinusoidal movement for the gap position
+      this.laserGapY += this.laserGapVY * dt;
+      if (this.laserGapY < 60) { this.laserGapY = 60; this.laserGapVY = Math.abs(this.laserGapVY); }
+      if (this.laserGapY > H - 60) { this.laserGapY = H - 60; this.laserGapVY = -Math.abs(this.laserGapVY); }
+
+      // Check collision: laser hits player if not in the gap and not invulnerable
+      if (this.invulnTimer <= 0 && !this.barrelRollActive) {
+        // The laser is a horizontal line across the screen at laserSweepY
+        // It has an 80px gap centered at laserGapY
+        const gapTop = this.laserGapY - 40;
+        const gapBottom = this.laserGapY + 40;
+        const playerInGap = this.playerY >= gapTop && this.playerY <= gapBottom;
+        const playerNearLaser = Math.abs(this.playerY - this.laserSweepY) < 18;
+        if (playerNearLaser && !playerInGap) {
+          this._damagePlayer();
+        }
+      }
+
+      // End laser after duration
+      if (this.laserFireDuration <= 0) {
+        this.laserSweepActive = false;
+        this.laserFiring = false;
+      }
+    }
+  }
+
   _updateBossExpression() {
     const hpRatio = this.bunkerHP / this.BUNKER_HP;
     let targetExpression;
     if (hpRatio <= 0) {
       targetExpression = 'dead';
-    } else if (hpRatio <= 0.3125) {
+    } else if (hpRatio <= 0.3) {
       targetExpression = 'furious';
-    } else if (hpRatio <= 0.625) {
+    } else if (hpRatio <= 0.6) {
       targetExpression = 'angry';
     } else {
       targetExpression = 'normal';
@@ -1299,57 +1680,106 @@ export default class BossScene extends Phaser.Scene {
   }
 
   _spawnBunkerAttacks(dt) {
+    this.fanMissileTimer += dt;
     this.samTimer += dt;
     this.spreadTimer += dt;
     this.homingTimer += dt;
     this.flakTimer += dt;
     this.laserCooldown = Math.max(0, this.laserCooldown - dt);
 
-    // Phase-dependent parameters
-    let samInterval, spreadInterval, homingInterval, flakInterval, samSpeed, spreadCount;
-
     if (this.bunkerPhase === 1) {
-      // Phase 1: Standard assault — SAMs + spreads
-      samInterval = 2.2; spreadInterval = 2; homingInterval = 6; flakInterval = 3.5;
-      samSpeed = 250; spreadCount = 4;
+      // ── Phase 1: Fan missiles every 3s ──
+      if (this.fanMissileTimer >= 3) {
+        this.fanMissileTimer = 0;
+        // Telegraph: red flash 0.5s before firing
+        this.bossFlashTimer = 0.5;
+        this.time.delayedCall(500, () => {
+          if (this.phase !== 'attack' || this.bunkerPhase !== 1) return;
+          this._fireFanMissiles(5);
+        });
+      }
     } else if (this.bunkerPhase === 2) {
-      // Phase 2: Shield phase — less projectiles but shield blocks bullets
-      samInterval = 2.5; spreadInterval = 2.5; homingInterval = 4; flakInterval = 4;
-      samSpeed = 280; spreadCount = 3;
+      // ── Phase 2: Rotating shield + drones + area bombs + some SAMs ──
+      // Drone spawns — 2 at a time, every 8 seconds
+      this.droneSpawnTimer += dt;
+      if (this.droneSpawnTimer >= 8) {
+        this.droneSpawnTimer = 0;
+        this._spawnDronePair();
+      }
+
+      // Area bombs every 5 seconds
+      this.areaBombTimer += dt;
+      if (this.areaBombTimer >= 5) {
+        this.areaBombTimer = 0;
+        this._dropAreaBomb();
+        // Drop a second one offset
+        this.time.delayedCall(600, () => {
+          if (this.phase !== 'attack' || this.bunkerPhase !== 2) return;
+          this._dropAreaBomb();
+        });
+      }
+
+      // Light SAMs to keep pressure
+      if (this.samTimer >= 3) {
+        this.samTimer = 0;
+        this.bossFlashTimer = 0.5;
+        this.time.delayedCall(500, () => {
+          if (this.phase !== 'attack' || this.bunkerPhase !== 2) return;
+          this._spawnSAMFromBunker(250);
+        });
+      }
+
+      // Occasional spread
+      if (this.spreadTimer >= 4) {
+        this.spreadTimer = 0;
+        this._fireBunkerSpread(3);
+      }
     } else {
-      // Phase 3: Enrage — balanced but challenging
-      samInterval = 1.8; spreadInterval = 1.5; homingInterval = 4; flakInterval = 2.5;
-      samSpeed = 380; spreadCount = 5;
-    }
+      // ── Phase 3: Laser sweep + desperate rapid shots ──
 
-    if (this.samTimer >= samInterval) {
-      this.samTimer = 0;
-      this._spawnSAMFromBunker(samSpeed);
-    }
-    if (this.spreadTimer >= spreadInterval) {
-      this.spreadTimer = 0;
-      this._fireBunkerSpread(spreadCount);
-    }
-    if (this.homingTimer >= homingInterval) {
-      this.homingTimer = 0;
-      this._spawnHomingMissile();
-    }
-    if (this.flakTimer >= flakInterval) {
-      this.flakTimer = 0;
-      this._spawnFlakBurst();
-    }
+      // Laser sweep attack
+      if (!this.laserSweepActive && this.laserCooldown <= 0) {
+        this.laserCooldown = 8;
+        this.laserSweepActive = true;
+        this.laserSweepY = 40; // start at top
+        this.laserSweepDir = 1; // top→bottom first
+        this.laserGapY = H / 2; // gap starts centered
+        this.laserGapVY = 80 + Math.random() * 60; // gap moves
+        if (Math.random() > 0.5) this.laserGapVY *= -1;
+        this.laserChargeTimer = 1.5; // 1.5s charge-up
+        this.laserChargeWarningLine = 0;
+        this.laserFiring = false;
+        this.laserFireDuration = 0;
+        this._showCenterMessage('LASER INCOMING', '#ff4444');
+        SoundManager.get().playBossRoar();
+      }
 
-    // Phase 3: Laser sweep attack
-    if (this.bunkerPhase === 3 && !this.laserSweepActive && this.laserCooldown <= 0) {
-      this.laserCooldown = 8;
-      this.laserSweepActive = true;
-      this.laserSweepAngle = -0.5;
-      this.laserSweepDir = 1;
-      this.laserWarningTimer = 1.8; // 1.8s warning before firing
-      this.laserChargeTimer = 0;
-      this.laserFiring = false;
-      this.laserFireDuration = 0;
-      this._showCenterMessage('LASER WARNING', '#ff4444');
+      // Desperate rapid shots between laser sweeps
+      this.rapidShotTimer += dt;
+      if (!this.laserSweepActive && this.rapidShotTimer >= 0.6) {
+        this.rapidShotTimer = 0;
+        // Fire 2-3 fast bullets aimed at player
+        const count = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < count; i++) {
+          const dx = this.playerX - this.bunkerX;
+          const dy = this.playerY - this.bunkerY + (Math.random() - 0.5) * 60;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          this.bossBullets.push({
+            x: this.bunkerX - 50,
+            y: this.bunkerY + (Math.random() - 0.5) * 30,
+            vx: (dx / dist) * 280,
+            vy: (dy / dist) * 280,
+            active: true,
+            sprite: this.add.image(this.bunkerX - 50, this.bunkerY, 'boss_bullet').setDepth(12),
+          });
+        }
+      }
+
+      // Some homing missiles for extra pressure
+      if (this.homingTimer >= 5) {
+        this.homingTimer = 0;
+        this._spawnHomingMissile();
+      }
     }
 
     // Smoke from damaged boss
@@ -1359,7 +1789,6 @@ export default class BossScene extends Phaser.Scene {
       const interval = 1 / rate;
       while (this.smokeAccum >= interval) {
         this.smokeAccum -= interval;
-        // More dramatic smoke/fire at low HP
         const isFire = this.bunkerHP < this.BUNKER_HP * 0.15 && Math.random() > 0.5;
         this.smokeParticles.push({
           x: this.bunkerX + (Math.random() - 0.5) * 80,
@@ -1371,6 +1800,26 @@ export default class BossScene extends Phaser.Scene {
           isFire: isFire,
         });
       }
+    }
+  }
+
+  // Fire fan pattern missiles (Phase 1)
+  _fireFanMissiles(count) {
+    const angleStep = 0.8 / (count - 1 || 1);
+    const startAngle = Math.PI - 0.4; // spread arc
+    SoundManager.get().playHomingMissile();
+    for (let i = 0; i < count; i++) {
+      const angle = startAngle + angleStep * i;
+      const speed = 240;
+      this.samMissiles.push({
+        x: this.bunkerX - 60,
+        y: this.bunkerY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        speed: speed,
+        homing: false, // fan missiles are straight, dodgeable with UP/DOWN
+        active: true,
+      });
     }
   }
 
@@ -1588,7 +2037,7 @@ export default class BossScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
 
   _checkPlayerCollisions() {
-    if (this.invulnTimer > 0) return;
+    if (this.invulnTimer > 0 || this.barrelRollActive) return;
 
     // SAMs → player
     for (const m of this.samMissiles) {
@@ -1609,7 +2058,7 @@ export default class BossScene extends Phaser.Scene {
       const dy = b.y - this.playerY;
       if (Math.sqrt(dx * dx + dy * dy) < 22) {
         b.active = false;
-        b.sprite.destroy();
+        if (b.sprite && b.sprite.active) b.sprite.destroy();
         this._damagePlayer();
         return;
       }
@@ -1647,33 +2096,32 @@ export default class BossScene extends Phaser.Scene {
       const dy = b.y - this.bunkerY;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // Phase 2: Shield blocks bullets from the front
-      if (this.shieldActive && dist < 90) {
+      // Phase 1: Energy shield blocks ALL damage when active
+      if (this.bunkerPhase === 1 && this.energyShieldActive && !this.energyShieldVulnerable && dist < 90) {
+        b.active = false;
+        if (b.sprite && b.sprite.active) b.sprite.destroy();
+        SoundManager.get().playTypewriterClick();
+        continue;
+      }
+
+      // Phase 2: Rotating shield blocks bullets from the covered arc
+      if (this.bunkerPhase === 2 && this.shieldActive && dist < 90) {
         const bulletAngle = Math.atan2(dy, dx);
-        // Shield covers a 120-degree arc, rotating
-        const shieldFacing = this.shieldAngle + Math.PI; // faces left (toward player)
+        const shieldFacing = this.shieldAngle + Math.PI;
         let angleDiff = bulletAngle - shieldFacing;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         if (Math.abs(angleDiff) < Math.PI / 3) {
-          // Bullet blocked by shield
           b.active = false;
-          b.sprite.destroy();
-          this.shieldHP--;
+          if (b.sprite && b.sprite.active) b.sprite.destroy();
           SoundManager.get().playTypewriterClick();
-          if (this.shieldHP <= 0) {
-            this.shieldActive = false;
-            this.cameras.main.flash(200, 100, 200, 255);
-            this._showCenterMessage('SHIELD DOWN', '#00e5ff');
-            SoundManager.get().playExplosion();
-          }
           continue;
         }
       }
 
       if (dist < 70) {
         b.active = false;
-        b.sprite.destroy();
+        if (b.sprite && b.sprite.active) b.sprite.destroy();
         this.bunkerHP--;
         this.shotsHit++;
         SoundManager.get().playBossHit();
@@ -1683,39 +2131,50 @@ export default class BossScene extends Phaser.Scene {
           if (this.bunkerSprite && this.bunkerSprite.active) this.bunkerSprite.clearTint();
         });
 
-        // Phase 2 transition: HP <= 50 — Shield deploys
-        if (this.bunkerHP <= this.BUNKER_HP * 0.625 && !this.phase2Triggered) {
+        // Phase 2 transition: HP <= 60%
+        if (this.bunkerHP <= this.BUNKER_HP * 0.6 && !this.phase2Triggered) {
           this.phase2Triggered = true;
           this.bunkerPhase = 2;
+          this.energyShieldActive = false;
+          this.energyShieldVulnerable = false;
           this.shieldActive = true;
-          this.shieldHP = 12;
           this.shieldAngle = 0;
+          this.droneSpawnTimer = 0;
+          this.areaBombTimer = 0;
           this.cameras.main.flash(500, 100, 100, 255);
           SoundManager.get().playBossPhaseTransition();
           MusicManager.get().playLevel6Music(2);
-          this._showCenterMessage('SHIELD DEPLOYED', '#8888ff');
-          this.instrText.setText('SHIFT: Roll | Flank the shield! | X: Bomb | C: Pulse');
-          this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0;
+          this._showCenterMessage('ROTATING SHIELD — FLANK IT!', '#8888ff');
+          this.instrText.setText('Flank the rotating shield! | Dodge area bombs! | X: Bomb | Double-tap L/R: Roll');
+          this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0; this.fanMissileTimer = 0;
         }
 
-        // Phase 3 transition: HP <= 25 — Full enrage
-        if (this.bunkerHP <= this.BUNKER_HP * 0.3125 && !this.phase3Triggered) {
+        // Phase 3 transition: HP <= 30%
+        if (this.bunkerHP <= this.BUNKER_HP * 0.3 && !this.phase3Triggered) {
           this.phase3Triggered = true;
           this.bunkerPhase = 3;
           this.shieldActive = false;
+          // Clean up phase 2 entities
+          this.drones = [];
+          this.droneSpawnPortals = [];
+          this.areaBombs = [];
           this.cameras.main.flash(500, 255, 50, 0);
           SoundManager.get().playBossPhaseTransition();
           MusicManager.get().playLevel6Music(3);
-          this._showCenterMessage('SUPREME FURY', '#ff2222');
-          this.instrText.setText('DODGE THE LASER! SHIFT: Roll | X: Bomb | C: Pulse');
-          this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0;
+          this._showCenterMessage('SUPREME FURY — NO SHIELD!', '#ff2222');
+          this.instrText.setText('DODGE THE LASER GAP! | Double-tap L/R: Barrel Roll | X: Bomb');
+          this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0; this.laserCooldown = 2;
+          this.rapidShotTimer = 0;
         }
 
         if (this.bunkerHP <= 0) {
           this.bunkerHP = 0;
+          this._updateBossExpression();
           this._startDisintegration();
           return;
         }
+
+        this._updateBossExpression();
       }
     }
   }
@@ -1776,7 +2235,8 @@ export default class BossScene extends Phaser.Scene {
   }
 
   _updateAttackHUD() {
-    this.hudDistance.setText('DISTANCE: ENGAGED');
+    const phaseLabels = { 1: 'PHASE 1: ENERGY SHIELD', 2: 'PHASE 2: ROTATING SHIELD', 3: 'PHASE 3: SUPREME FURY' };
+    this.hudDistance.setText(phaseLabels[this.bunkerPhase] || 'ENGAGED');
     this.hudPlayerHP.setText(`HP: ${this.playerHP}/${this.PLAYER_MAX_HP}`);
     this.hudPlayerHP.setColor(this.playerHP <= 2 ? '#ff4444' : '#ffffff');
     this.hudAntiMissile.setText(`PULSE: ${this.antiMissileCharges}/${ANTI_MISSILE_MAX_CHARGES}`);
@@ -1787,6 +2247,15 @@ export default class BossScene extends Phaser.Scene {
     // Boss HP bar
     const hpRatio = this.bunkerHP / this.BUNKER_HP;
     this.hpBarFill.setScale(hpRatio, 1);
+
+    // Color the HP bar based on phase
+    if (this.bunkerPhase === 3) {
+      this.hpBarFill.setFillStyle(0xff2222);
+    } else if (this.bunkerPhase === 2) {
+      this.hpBarFill.setFillStyle(0xff8844);
+    } else {
+      this.hpBarFill.setFillStyle(0xff2222);
+    }
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -1933,7 +2402,6 @@ export default class BossScene extends Phaser.Scene {
     for (const p of this.smokeParticles) {
       const alpha = (p.life / p.maxLife) * 0.5;
       if (p.isFire) {
-        // Fire particles - orange/red
         this.effectsGfx.fillStyle(0xff4400, alpha);
         this.effectsGfx.fillCircle(p.x, p.y, p.size * 0.8);
         this.effectsGfx.fillStyle(0xff8800, alpha * 0.5);
@@ -1944,8 +2412,31 @@ export default class BossScene extends Phaser.Scene {
       }
     }
 
-    // Shield rendering (Phase 2)
-    if (this.shieldActive) {
+    // ── Phase 1: Energy Shield rendering ──
+    if (this.bunkerPhase === 1 && this.energyShieldActive && !this.energyShieldVulnerable) {
+      const sx = this.bunkerX, sy = this.bunkerY;
+      const shieldR = 90;
+      // Flicker effect in the last 0.5s before dropping
+      let shieldAlpha = 0.5;
+      let shieldColor = 0x44aaff;
+      if (this.energyShieldTimer >= 4.5) {
+        // Flickering: turns red, then drops
+        const flickerProg = (this.energyShieldTimer - 4.5) / 0.5; // 0 to 1
+        shieldColor = flickerProg > 0.5 ? 0xff2222 : 0xff8844;
+        shieldAlpha = Math.sin(this.energyShieldFlickerTimer * 30) > 0 ? 0.6 : 0.15;
+      }
+      // Full circle energy shield
+      this.effectsGfx.lineStyle(4, shieldColor, shieldAlpha);
+      this.effectsGfx.strokeCircle(sx, sy, shieldR);
+      this.effectsGfx.lineStyle(10, shieldColor, shieldAlpha * 0.3);
+      this.effectsGfx.strokeCircle(sx, sy, shieldR);
+      // Inner glow
+      this.effectsGfx.fillStyle(shieldColor, shieldAlpha * 0.08);
+      this.effectsGfx.fillCircle(sx, sy, shieldR);
+    }
+
+    // ── Phase 2: Rotating Shield rendering ──
+    if (this.bunkerPhase === 2 && this.shieldActive) {
       const sx = this.bunkerX, sy = this.bunkerY;
       const shieldR = 85;
       const facing = this.shieldAngle + Math.PI;
@@ -1960,46 +2451,169 @@ export default class BossScene extends Phaser.Scene {
       this.effectsGfx.strokePath();
     }
 
-    // Laser sweep rendering (Phase 3)
-    if (this.laserSweepActive) {
-      const lx = this.bunkerX - 60;
-      const ly = this.bunkerY + Math.sin(this.laserSweepAngle) * 300;
-      if (this.laserFiring) {
-        // Active laser beam
-        this.effectsGfx.lineStyle(6, 0xff0000, 0.8);
+    // ── Phase 2: Drone spawn portals ──
+    for (const p of this.droneSpawnPortals) {
+      const t = 1 - p.timer / p.maxTimer;
+      const portalR = 10 + t * 20;
+      const portalAlpha = 0.3 + t * 0.5;
+      // Swirling purple portal
+      this.effectsGfx.lineStyle(3, 0xaa44ff, portalAlpha);
+      this.effectsGfx.strokeCircle(p.x, p.y, portalR);
+      this.effectsGfx.lineStyle(6, 0x8822cc, portalAlpha * 0.4);
+      this.effectsGfx.strokeCircle(p.x, p.y, portalR * 0.7);
+      this.effectsGfx.fillStyle(0xcc66ff, portalAlpha * 0.2);
+      this.effectsGfx.fillCircle(p.x, p.y, portalR * 0.5);
+    }
+
+    // ── Phase 2: Drones ──
+    for (const d of this.drones) {
+      if (!d.active) continue;
+      // Small enemy jet body
+      this.effectsGfx.fillStyle(0x888888, 1);
+      this.effectsGfx.fillRect(d.x - 10, d.y - 4, 20, 8);
+      // Wings
+      this.effectsGfx.fillStyle(0x666666, 1);
+      this.effectsGfx.fillRect(d.x - 5, d.y - 8, 10, 3);
+      this.effectsGfx.fillRect(d.x - 5, d.y + 5, 10, 3);
+      // Red cockpit
+      this.effectsGfx.fillStyle(0xff2222, 1);
+      this.effectsGfx.fillCircle(d.x - 8, d.y, 3);
+      // Engine glow
+      this.effectsGfx.fillStyle(0xff6600, 0.6);
+      this.effectsGfx.fillCircle(d.x + 12, d.y, 3);
+      // HP indicator
+      if (d.hp > 0) {
+        this.effectsGfx.fillStyle(d.hp > 1 ? 0x00ff00 : 0xff4444, 0.7);
+        this.effectsGfx.fillRect(d.x - 8, d.y - 12, 16 * (d.hp / 2), 2);
+      }
+    }
+
+    // ── Phase 2: Area Bombs ──
+    for (const bomb of this.areaBombs) {
+      if (!bomb.active) continue;
+      if (!bomb.detonated) {
+        // Warning circle — pulsing red, growing to explosion radius
+        const t = 1 - bomb.warningTimer; // 0 to 1 over 1 second
+        const currentRadius = bomb.radius * (0.3 + t * 0.7);
+        const pulseAlpha = 0.2 + Math.sin(t * 20) * 0.15;
+        // Outer warning ring
+        this.effectsGfx.lineStyle(3, 0xff0000, pulseAlpha + 0.2);
+        this.effectsGfx.strokeCircle(bomb.x, bomb.y, currentRadius);
+        // Inner fill — growing red zone
+        this.effectsGfx.fillStyle(0xff0000, pulseAlpha * 0.4);
+        this.effectsGfx.fillCircle(bomb.x, bomb.y, currentRadius);
+        // Cross-hair at center
+        this.effectsGfx.lineStyle(1, 0xff4444, 0.6);
         this.effectsGfx.beginPath();
-        this.effectsGfx.moveTo(this.bunkerX - 60, this.bunkerY);
-        this.effectsGfx.lineTo(0, ly);
-        this.effectsGfx.strokePath();
-        // Glow
-        this.effectsGfx.lineStyle(16, 0xff0000, 0.15);
-        this.effectsGfx.beginPath();
-        this.effectsGfx.moveTo(this.bunkerX - 60, this.bunkerY);
-        this.effectsGfx.lineTo(0, ly);
-        this.effectsGfx.strokePath();
-      } else if (this.laserChargeTimer > 0) {
-        // Charge-up visual — red glow at boss position, growing
-        const chargeProgress = 1 - (this.laserChargeTimer / 0.3);
-        const glowRadius = 15 + chargeProgress * 25;
-        this.effectsGfx.fillStyle(0xff0000, 0.3 + chargeProgress * 0.4);
-        this.effectsGfx.fillCircle(this.bunkerX - 60, this.bunkerY, glowRadius);
-        this.effectsGfx.fillStyle(0xff4400, 0.5 + chargeProgress * 0.3);
-        this.effectsGfx.fillCircle(this.bunkerX - 60, this.bunkerY, glowRadius * 0.5);
-        // Thin pulsing warning line still visible during charge
-        const warningAlpha = Math.sin(Date.now() * 0.02) * 0.3 + 0.5;
-        this.effectsGfx.lineStyle(2, 0xff4444, warningAlpha);
-        this.effectsGfx.beginPath();
-        this.effectsGfx.moveTo(this.bunkerX - 60, this.bunkerY);
-        this.effectsGfx.lineTo(0, ly);
+        this.effectsGfx.moveTo(bomb.x - 10, bomb.y);
+        this.effectsGfx.lineTo(bomb.x + 10, bomb.y);
+        this.effectsGfx.moveTo(bomb.x, bomb.y - 10);
+        this.effectsGfx.lineTo(bomb.x, bomb.y + 10);
         this.effectsGfx.strokePath();
       } else {
-        // Warning line (pulsing thin red) during warning period
-        const warningAlpha = Math.sin(Date.now() * 0.015) * 0.3 + 0.3;
+        // Explosion visual
+        const t = bomb.explosionTimer / 0.4;
+        this.effectsGfx.fillStyle(0xff6600, t * 0.6);
+        this.effectsGfx.fillCircle(bomb.x, bomb.y, bomb.radius * (1.2 - t * 0.4));
+        this.effectsGfx.fillStyle(0xffcc00, t * 0.4);
+        this.effectsGfx.fillCircle(bomb.x, bomb.y, bomb.radius * 0.5 * t);
+      }
+    }
+
+    // ── Phase 3: Laser Sweep with Gap rendering ──
+    if (this.laserSweepActive) {
+      if (this.laserChargeTimer > 0) {
+        // Stage 1: Growing red glow at boss position (1.5s charge)
+        const chargeProgress = 1 - (this.laserChargeTimer / 1.5);
+        const glowRadius = 15 + chargeProgress * 40;
+        this.effectsGfx.fillStyle(0xff0000, 0.2 + chargeProgress * 0.5);
+        this.effectsGfx.fillCircle(this.bunkerX - 60, this.bunkerY, glowRadius);
+        this.effectsGfx.fillStyle(0xff4400, 0.3 + chargeProgress * 0.4);
+        this.effectsGfx.fillCircle(this.bunkerX - 60, this.bunkerY, glowRadius * 0.4);
+        // Pulsing indicator lines
+        const pAlpha = Math.sin(Date.now() * 0.02) * 0.2 + 0.3;
+        this.effectsGfx.lineStyle(1, 0xff2222, pAlpha * chargeProgress);
+        this.effectsGfx.beginPath();
+        this.effectsGfx.moveTo(this.bunkerX - 60, this.bunkerY);
+        this.effectsGfx.lineTo(0, this.bunkerY);
+        this.effectsGfx.strokePath();
+      } else if (this.laserChargeWarningLine > 0) {
+        // Stage 2: Thin red dashed warning line showing sweep path (0.5s)
+        const warningAlpha = Math.sin(Date.now() * 0.025) * 0.3 + 0.5;
+        // Draw the warning line across the screen
         this.effectsGfx.lineStyle(2, 0xff4444, warningAlpha);
         this.effectsGfx.beginPath();
         this.effectsGfx.moveTo(this.bunkerX - 60, this.bunkerY);
-        this.effectsGfx.lineTo(0, ly);
+        this.effectsGfx.lineTo(0, this.laserSweepY);
         this.effectsGfx.strokePath();
+        // Show where the gap will be
+        this.effectsGfx.fillStyle(0x00ff00, warningAlpha * 0.3);
+        this.effectsGfx.fillRect(0, this.laserGapY - 40, W, 80);
+        // Continue showing charge glow
+        this.effectsGfx.fillStyle(0xff0000, 0.5);
+        this.effectsGfx.fillCircle(this.bunkerX - 60, this.bunkerY, 30);
+      } else if (this.laserFiring) {
+        // Stage 3: Active laser beam with gap
+        const bx = this.bunkerX - 60;
+        const ly = this.laserSweepY;
+        const gapTop = this.laserGapY - 40;
+        const gapBottom = this.laserGapY + 40;
+
+        // Draw laser ABOVE the gap
+        if (ly >= 0 && ly < gapTop) {
+          // Laser is above gap — full beam at ly
+          this.effectsGfx.lineStyle(8, 0xff0000, 0.8);
+          this.effectsGfx.beginPath();
+          this.effectsGfx.moveTo(bx, ly);
+          this.effectsGfx.lineTo(0, ly);
+          this.effectsGfx.strokePath();
+          this.effectsGfx.lineStyle(20, 0xff0000, 0.15);
+          this.effectsGfx.beginPath();
+          this.effectsGfx.moveTo(bx, ly);
+          this.effectsGfx.lineTo(0, ly);
+          this.effectsGfx.strokePath();
+        } else if (ly >= gapTop && ly <= gapBottom) {
+          // Laser line is in gap zone — draw beam above and below gap
+          // Above gap
+          this.effectsGfx.lineStyle(8, 0xff0000, 0.8);
+          this.effectsGfx.beginPath();
+          this.effectsGfx.moveTo(bx, ly);
+          this.effectsGfx.lineTo(0, ly);
+          this.effectsGfx.strokePath();
+          this.effectsGfx.lineStyle(20, 0xff0000, 0.15);
+          this.effectsGfx.beginPath();
+          this.effectsGfx.moveTo(bx, ly);
+          this.effectsGfx.lineTo(0, ly);
+          this.effectsGfx.strokePath();
+        } else {
+          // Laser is below gap — full beam at ly
+          this.effectsGfx.lineStyle(8, 0xff0000, 0.8);
+          this.effectsGfx.beginPath();
+          this.effectsGfx.moveTo(bx, ly);
+          this.effectsGfx.lineTo(0, ly);
+          this.effectsGfx.strokePath();
+          this.effectsGfx.lineStyle(20, 0xff0000, 0.15);
+          this.effectsGfx.beginPath();
+          this.effectsGfx.moveTo(bx, ly);
+          this.effectsGfx.lineTo(0, ly);
+          this.effectsGfx.strokePath();
+        }
+
+        // Draw the gap indicator — safe zone highlighted in green
+        this.effectsGfx.fillStyle(0x00ff44, 0.08);
+        this.effectsGfx.fillRect(0, gapTop, bx, gapBottom - gapTop);
+        // Gap border lines
+        this.effectsGfx.lineStyle(1, 0x00ff44, 0.4);
+        this.effectsGfx.beginPath();
+        this.effectsGfx.moveTo(0, gapTop);
+        this.effectsGfx.lineTo(bx, gapTop);
+        this.effectsGfx.moveTo(0, gapBottom);
+        this.effectsGfx.lineTo(bx, gapBottom);
+        this.effectsGfx.strokePath();
+
+        // Charge glow at boss
+        this.effectsGfx.fillStyle(0xff0000, 0.4);
+        this.effectsGfx.fillCircle(bx, this.bunkerY, 25);
       }
     }
 
@@ -2009,13 +2623,26 @@ export default class BossScene extends Phaser.Scene {
     // Anti-missile pulse visual
     this._drawAntiMissilePulse();
 
-    // Dodge cooldown indicator
-    if (this.dodgeCooldown > 0) {
-      const pct = this.dodgeCooldown / 1.5;
+    // Barrel roll cooldown indicator (replaces dodge cooldown in attack)
+    if (this.barrelRollCooldown > 0) {
+      const pct = this.barrelRollCooldown / 3;
       this.effectsGfx.fillStyle(0x666666, 0.3);
       this.effectsGfx.fillRect(this.playerX - 12, this.playerY + 20, 24, 3);
-      this.effectsGfx.fillStyle(0x00e5ff, 0.6);
+      this.effectsGfx.fillStyle(0xff44ff, 0.6);
       this.effectsGfx.fillRect(this.playerX - 12, this.playerY + 20, 24 * (1 - pct), 3);
+    } else if (!this.barrelRollActive) {
+      // Ready indicator
+      this.effectsGfx.fillStyle(0xff44ff, 0.4);
+      this.effectsGfx.fillRect(this.playerX - 12, this.playerY + 20, 24, 3);
+    }
+
+    // Barrel roll active visual — spinning trail
+    if (this.barrelRollActive) {
+      const trailAlpha = 0.3 + Math.sin(this.barrelRollAngle * 0.15) * 0.2;
+      this.effectsGfx.fillStyle(0x44aaff, trailAlpha);
+      this.effectsGfx.fillCircle(this.playerX, this.playerY, 20);
+      this.effectsGfx.lineStyle(2, 0x88ccff, trailAlpha * 0.6);
+      this.effectsGfx.strokeCircle(this.playerX, this.playerY, 25);
     }
 
     // Heavy bomb cooldown indicator
@@ -2042,22 +2669,18 @@ export default class BossScene extends Phaser.Scene {
       this.effectsGfx.lineTo(bx + 10, by + 5);
       this.effectsGfx.lineTo(bx + 25, by + 30);
       this.effectsGfx.strokePath();
-      // Additional crack
       this.effectsGfx.beginPath();
       this.effectsGfx.moveTo(bx - 15, by + 20);
       this.effectsGfx.lineTo(bx + 5, by + 35);
       this.effectsGfx.strokePath();
     }
-    // Extra fire/smoke effects at very low HP
     if (this.bunkerHP < this.BUNKER_HP * 0.15) {
       const bx = this.bunkerX, by = this.bunkerY;
-      // Flickering fire overlay
       const fireAlpha = 0.15 + Math.sin(Date.now() * 0.01) * 0.1;
       this.effectsGfx.fillStyle(0xff2200, fireAlpha);
       this.effectsGfx.fillCircle(bx - 20, by - 10, 12);
       this.effectsGfx.fillCircle(bx + 15, by + 5, 10);
       this.effectsGfx.fillCircle(bx - 5, by + 20, 8);
-      // Additional cracks
       this.effectsGfx.lineStyle(2, 0xff8822, 0.6);
       this.effectsGfx.beginPath();
       this.effectsGfx.moveTo(bx - 40, by - 10);
@@ -2110,14 +2733,40 @@ export default class BossScene extends Phaser.Scene {
   _startDisintegration() {
     this.phase = 'disintegrating';
     this.disintTimer = 0;
-    MusicManager.get().playDisintegrationMusic();
-    SoundManager.get().playMegaExplosion();
 
     // Stop all attacks
     this._cleanupFight();
 
-    // Freeze frame + flash
-    this.cameras.main.flash(500, 255, 255, 255);
+    // ── ENHANCED DEATH SEQUENCE ──
+    // Step 1: Boss freezes — freeze frame
+    // Step 2: Screen flash white (0.5s)
+    this.cameras.main.flash(800, 255, 255, 255);
+    // Step 3: Camera shake for 2 seconds
+    this.cameras.main.shake(2000, 0.03);
+    // Step 4: Mega explosion sound
+    SoundManager.get().playMegaExplosion();
+
+    // Spawn mega explosion particles around boss
+    this._deathExplosionParticles = [];
+    for (let i = 0; i < 40; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 200;
+      this._deathExplosionParticles.push({
+        x: this.bunkerX + (Math.random() - 0.5) * 60,
+        y: this.bunkerY + (Math.random() - 0.5) * 40,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1.5 + Math.random(),
+        maxLife: 1.5 + Math.random(),
+        size: 5 + Math.random() * 15,
+        color: [0xff2200, 0xff6600, 0xffcc00, 0xffffff][Math.floor(Math.random() * 4)],
+      });
+    }
+
+    // Play disintegration music after a brief delay
+    this.time.delayedCall(300, () => {
+      MusicManager.get().playDisintegrationMusic();
+    });
 
     // Create offscreen canvas for batched particle rendering
     this.disintCanvas = document.createElement('canvas');
@@ -2128,8 +2777,8 @@ export default class BossScene extends Phaser.Scene {
     this.textures.addCanvas(this.disintTexKey, this.disintCanvas);
     this.disintImage = this.add.image(W / 2, H / 2, this.disintTexKey).setDepth(15);
 
-    // Extract pixels from boss texture after 0.5s freeze
-    this.time.delayedCall(500, () => {
+    // Extract pixels from boss texture after 1s freeze (longer than before for dramatic effect)
+    this.time.delayedCall(1000, () => {
       this._extractBunkerPixels();
       this.bunkerSprite.setVisible(false);
       SoundManager.get().playDisintegrate();
@@ -2190,10 +2839,29 @@ export default class BossScene extends Phaser.Scene {
   _updateDisintegration(dt) {
     this.disintTimer += dt;
 
-    // 0-0.5s: freeze frame (handled by delayedCall)
-    if (this.disintTimer < 0.5) return;
+    // Update and draw mega explosion particles on the effects layer
+    if (this._deathExplosionParticles && this._deathExplosionParticles.length > 0) {
+      this.effectsGfx.clear();
+      for (const p of this._deathExplosionParticles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        p.size *= 0.98;
+        if (p.life > 0) {
+          const alpha = (p.life / p.maxLife) * 0.8;
+          this.effectsGfx.fillStyle(p.color, alpha);
+          this.effectsGfx.fillCircle(p.x, p.y, p.size);
+          this.effectsGfx.fillStyle(p.color, alpha * 0.3);
+          this.effectsGfx.fillCircle(p.x, p.y, p.size * 1.5);
+        }
+      }
+      this._deathExplosionParticles = this._deathExplosionParticles.filter(p => p.life > 0);
+    }
 
-    const elapsed = this.disintTimer - 0.5;
+    // 0-1.0s: freeze frame (longer for dramatic effect)
+    if (this.disintTimer < 1.0) return;
+
+    const elapsed = this.disintTimer - 1.0;
 
     // Clear offscreen canvas and write pixels via ImageData
     const ctx = this.disintCtx;
@@ -2329,6 +2997,9 @@ export default class BossScene extends Phaser.Scene {
     this.smokeParticles = [];
     this.airDefenseSites = [];
     this.heavyBombs = [];
+    this.drones = [];
+    this.droneSpawnPortals = [];
+    this.areaBombs = [];
     this.effectsGfx.clear();
   }
 
@@ -2357,6 +3028,7 @@ export default class BossScene extends Phaser.Scene {
     this.time.removeAllEvents();
     this._cleanupFight();
     this.disintPixels = [];
+    this._deathExplosionParticles = [];
     if (this.disintImage) { this.disintImage.destroy(); this.disintImage = null; }
     if (this.disintTexKey && this.textures.exists(this.disintTexKey)) {
       this.textures.remove(this.disintTexKey);

@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import DifficultyManager from '../systems/DifficultyManager.js';
+import { showTutorialOverlay } from '../ui/ControlsOverlay.js';
 
 const W = 960;
 const H = 540;
@@ -124,6 +125,15 @@ export default class BeirutRadarScene extends Phaser.Scene {
 
     // Fade in
     this.cameras.main.fadeIn(600, 0, 0, 0);
+
+    // Tutorial overlay (pauses gameplay until dismissed)
+    showTutorialOverlay(this, [
+      'LEVEL 2: EXPLOSIVE INTERCEPTION',
+      '',
+      'Drag JAMMERS onto radar signals',
+      'Block all signals before they escape',
+      'Upgrade between rounds',
+    ]);
   }
 
   // ── BACKGROUND ─────────────────────────────────────────────
@@ -1096,6 +1106,9 @@ export default class BeirutRadarScene extends Phaser.Scene {
 
   // ── UPDATE LOOP ────────────────────────────────────────────
   update(time, delta) {
+    // Tutorial active: skip all gameplay
+    if (this.tutorialActive) return;
+
     // Skip prompt takes priority
     if (this.skipPromptShown) {
       this._handleSkipResponse();

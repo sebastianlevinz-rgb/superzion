@@ -13,7 +13,7 @@ import {
   createNatanzMountain,
 } from '../utils/B2Textures.js';
 import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
-import { showControlsOverlay } from '../ui/ControlsOverlay.js';
+import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.js';
 
 const W = 960;
 const H = 540;
@@ -110,6 +110,26 @@ export default class B2BomberScene extends Phaser.Scene {
     this.escapeTerrainStage = 0;
     this.defenseDistance = 0;
 
+    // Defense phase wave pattern (reduce RNG)
+    this.defenseWaveIndex = 0;
+    this.defenseWavePatterns = [
+      // Predictable sequence: alternating sides with consistent timing
+      { side: 'left', interval: 3.0 },
+      { side: 'right', interval: 2.5 },
+      { side: 'center', interval: 3.0 },
+      { side: 'left', interval: 2.0 },
+      { side: 'right', interval: 2.5 },
+      { side: 'center', interval: 2.0 },
+      { side: 'left', interval: 2.5 },
+      { side: 'right', interval: 3.0 },
+    ];
+
+    // Bombing phase wave pattern
+    this.bombingMissileIndex = 0;
+
+    // Escape phase wave pattern
+    this.escapeMissileIndex = 0;
+
     // Ambient
     this.ambientRef = null;
 
@@ -118,6 +138,17 @@ export default class B2BomberScene extends Phaser.Scene {
     this._setupHUD();
     this._setupInput();
     this._startStealth();
+
+    // Tutorial overlay (pauses gameplay until dismissed)
+    showTutorialOverlay(this, [
+      'LEVEL 5: MOUNTAIN BREAKER',
+      '',
+      'ARROWS: Fly the B-2 stealth bomber',
+      'Avoid radar detection zones',
+      'SPACE: Drop bunker busters',
+      'C: Deploy chaff against SAMs',
+      'Destroy the mountain fortress',
+    ]);
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -289,6 +320,10 @@ export default class B2BomberScene extends Phaser.Scene {
       if (m.trail) m.trail.destroy();
     }
     this.missiles = [];
+    // Clean up missile tracking line graphics
+    if (this._missileTrackGfx) {
+      this._missileTrackGfx.clear();
+    }
   }
 
   _takeDamage() {
@@ -310,6 +345,28 @@ export default class B2BomberScene extends Phaser.Scene {
     const exp = this.add.circle(x, y, radius, color || 0xff6600, 0.8).setDepth(15);
     this.explosions.push({ sprite: exp, life: 0.5 });
     if (radius > 20) this.cameras.main.shake(200, 0.01);
+
+    // Spawn circular explosion particles
+    const colors = [0xff6600, 0xff8800, 0xffaa00, 0xff2200, 0xffdd00, 0xffffff];
+    const count = Math.min(18, Math.max(8, Math.floor(radius / 2)));
+    for (let i = 0; i < count; i++) {
+      const pr = 1 + Math.random() * 3;
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      const p = this.add.circle(x, y, pr, c, 0.9).setDepth(22);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 30 + Math.random() * 80;
+      this.tweens.add({
+        targets: p,
+        x: x + Math.cos(angle) * speed,
+        y: y + Math.sin(angle) * speed,
+        scale: 0,
+        alpha: 0,
+        rotation: Math.random() * 6,
+        duration: 300 + Math.random() * 400,
+        ease: 'Quad.easeOut',
+        onComplete: () => p.destroy(),
+      });
+    }
   }
 
   _updateExplosions(dt) {
@@ -352,18 +409,38 @@ export default class B2BomberScene extends Phaser.Scene {
     const maxMissiles = this.phase === 'stealth' ? 2 : 3;
     if (this.missiles.length >= maxMissiles) return;
 
-    // Show warning 1 second before missile appears
-    const warnArrow = this.add.text(x, GROUND_Y - 10, '\u25B2 WARNING', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#ff4444',
-      shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 6, fill: true },
-    }).setOrigin(0.5).setDepth(25);
+    // 1-second telegraph: red arrow + pulsing glow at launch position
+    const arrowGfx = this.add.graphics().setDepth(25);
+    const drawMissileArrow = (alpha) => {
+      arrowGfx.clear();
+      arrowGfx.fillStyle(0xff2222, alpha);
+      arrowGfx.fillTriangle(x - 10, GROUND_Y - 5, x + 10, GROUND_Y - 5, x, GROUND_Y - 25);
+      arrowGfx.lineStyle(1.5, 0xff0000, alpha * 0.7);
+      arrowGfx.lineBetween(x, GROUND_Y - 25, x, GROUND_Y - 45);
+    };
+    drawMissileArrow(0.7);
+
+    const warnGlow = this.add.circle(x, GROUND_Y - 10, 14, 0xff0000, 0.3).setDepth(24);
     this.tweens.add({
-      targets: warnArrow, alpha: 0.3, duration: 200, yoyo: true, repeat: 3,
-      onComplete: () => warnArrow.destroy(),
+      targets: warnGlow, scale: 1.8, alpha: 0.6, duration: 200,
+      yoyo: true, repeat: 2,
+    });
+
+    // Pulse the arrow
+    let mPulse = 0;
+    const mPulseEvent = this.time.addEvent({
+      delay: 200, repeat: 4,
+      callback: () => {
+        mPulse++;
+        drawMissileArrow(mPulse % 2 === 0 ? 0.8 : 0.2);
+      },
     });
 
     // Delay actual missile spawn by 1 second
     this.time.delayedCall(1000, () => {
+      arrowGfx.destroy();
+      warnGlow.destroy();
+      if (mPulseEvent) mPulseEvent.remove();
       if (this.phase === 'dead' || this.phase === 'victory') return;
       const m = this.add.circle(x, y, 4, 0xff3333).setDepth(8);
       const glow = this.add.circle(x, y, 8, 0xff0000, 0.4).setDepth(7);
@@ -378,6 +455,10 @@ export default class B2BomberScene extends Phaser.Scene {
   }
 
   _updateMissiles(dt) {
+    // Clear missile tracking lines from previous frame
+    if (this._missileTrackGfx) this._missileTrackGfx.clear();
+    else this._missileTrackGfx = this.add.graphics().setDepth(6);
+
     for (let i = this.missiles.length - 1; i >= 0; i--) {
       const m = this.missiles[i];
       m.life -= dt;
@@ -393,6 +474,13 @@ export default class B2BomberScene extends Phaser.Scene {
         const turnRate = 100 * dt; // Limited turning — player can dodge with sharp moves
         m.vx += Math.sign(targetVX - m.vx) * Math.min(Math.abs(targetVX - m.vx), turnRate);
         m.vy += Math.sign(targetVY - m.vy) * Math.min(Math.abs(targetVY - m.vy), turnRate);
+
+        // Draw thin red predicted intercept line from missile toward player
+        const lineAlpha = Math.min(0.25, 0.4 * (1 - dist / 400)); // fades at distance
+        if (lineAlpha > 0.02) {
+          this._missileTrackGfx.lineStyle(1, 0xff2222, lineAlpha);
+          this._missileTrackGfx.lineBetween(m.x, m.y, this.jetX, this.jetY);
+        }
 
         // Check chaff decoys
         for (let j = this.chaffDecoys.length - 1; j >= 0; j--) {
@@ -552,12 +640,16 @@ export default class B2BomberScene extends Phaser.Scene {
 
   _spawnSAMSites(count) {
     for (let i = 0; i < count; i++) {
-      const sx = 150 + Math.random() * (W - 300);
+      // Distribute SAM sites evenly across screen width (predictable positions)
+      const existingCount = this.samSites.length;
+      const spacing = (W - 300) / (count + 1);
+      const sx = 150 + spacing * (i + 1);
       this.samSites.push({
         x: sx, baseY: GROUND_Y + 15,
-        cooldown: 5 + Math.random() * 3,
-        timer: 0,
+        cooldown: 6, // consistent cooldown (not random)
+        timer: i * 2, // staggered initial timers so they don't all fire at once
         active: true,
+        telegraphing: false,
       });
     }
   }
@@ -692,26 +784,44 @@ export default class B2BomberScene extends Phaser.Scene {
     }
 
     // SAM site behavior — fire missiles when detection is high
+    // Telegraphed: red flash on SAM site 1s before firing
     for (const sam of this.samSites) {
       sam.timer += dt;
-      if (sam.active && this.detectionLevel > 50 && sam.timer >= sam.cooldown) {
-        sam.timer = 0;
-        this._spawnTrackingMissile(sam.x, sam.baseY);
-        SoundManager.get().playRadarAlert();
+      if (sam.active && this.detectionLevel > 50 && sam.timer >= sam.cooldown && !sam.telegraphing) {
+        sam.telegraphing = true;
+        // Red flash telegraph on SAM position 1s before firing
+        const samFlash = this.add.circle(sam.x, sam.baseY, 15, 0xff0000, 0.5).setDepth(25);
+        this.tweens.add({
+          targets: samFlash, scale: 2.0, alpha: 0.8, duration: 200,
+          yoyo: true, repeat: 2,
+          onComplete: () => samFlash.destroy(),
+        });
+        this.time.delayedCall(1000, () => {
+          sam.timer = 0;
+          sam.telegraphing = false;
+          if (this.phase === 'dead' || this.phase === 'victory') return;
+          this._spawnTrackingMissile(sam.x, sam.baseY);
+          SoundManager.get().playRadarAlert();
+        });
       }
     }
 
     this.maxDetection = Math.max(this.maxDetection, this.detectionLevel);
 
-    // Detection overload
+    // Detection overload — missile from nearest SAM site (predictable source)
     if (this.detectionLevel >= 100) {
       SoundManager.get().playRadarAlert();
       this.detectionLevel = 40;
-      // Launch 1 missile (count limit enforced inside)
-      this._spawnTrackingMissile(
-        100 + Math.random() * (W - 200),
-        GROUND_Y + 20
-      );
+      // Launch missile from nearest active SAM site (predictable, not random)
+      let nearestSam = null;
+      let nearDist = Infinity;
+      for (const sam of this.samSites) {
+        if (!sam.active) continue;
+        const d = Math.abs(sam.x - this.jetX);
+        if (d < nearDist) { nearDist = d; nearestSam = sam; }
+      }
+      const launchX = nearestSam ? nearestSam.x : W / 2;
+      this._spawnTrackingMissile(launchX, GROUND_Y + 20);
       this._takeDamage();
     }
 
@@ -827,22 +937,26 @@ export default class B2BomberScene extends Phaser.Scene {
 
     // Draw SAM site markers
     for (const sam of this.samSites) {
-      const alertLevel = this.detectionLevel > 50 ? 0.6 : 0.3;
-      const samColor = this.detectionLevel > 50 ? 0xff4444 : 0x888888;
+      const isTelegraphing = sam.telegraphing;
+      const alertLevel = isTelegraphing ? 0.9 : (this.detectionLevel > 50 ? 0.6 : 0.3);
+      const samColor = isTelegraphing ? 0xff0000 : (this.detectionLevel > 50 ? 0xff4444 : 0x888888);
 
-      // SAM launcher (small triangle)
+      // SAM launcher (small triangle) — pulses red when about to fire
+      const pulseScale = isTelegraphing ? 1.5 + Math.sin(this.phaseTimer * 15) * 0.5 : 1;
       this.radarGfx.fillStyle(samColor, alertLevel);
       this.radarGfx.beginPath();
-      this.radarGfx.moveTo(sam.x, sam.baseY - 8);
-      this.radarGfx.lineTo(sam.x - 5, sam.baseY);
-      this.radarGfx.lineTo(sam.x + 5, sam.baseY);
+      this.radarGfx.moveTo(sam.x, sam.baseY - 8 * pulseScale);
+      this.radarGfx.lineTo(sam.x - 5 * pulseScale, sam.baseY);
+      this.radarGfx.lineTo(sam.x + 5 * pulseScale, sam.baseY);
       this.radarGfx.closePath();
       this.radarGfx.fillPath();
 
-      // Alert ring when active
-      if (this.detectionLevel > 50) {
-        const pr = 6 + Math.sin(this.phaseTimer * 6) * 2;
-        this.radarGfx.lineStyle(1, 0xff0000, 0.3);
+      // Alert ring when active — larger and faster when telegraphing
+      if (this.detectionLevel > 50 || isTelegraphing) {
+        const ringSpeed = isTelegraphing ? 12 : 6;
+        const ringAlpha = isTelegraphing ? 0.6 : 0.3;
+        const pr = (isTelegraphing ? 10 : 6) + Math.sin(this.phaseTimer * ringSpeed) * 3;
+        this.radarGfx.lineStyle(isTelegraphing ? 2 : 1, 0xff0000, ringAlpha);
         this.radarGfx.strokeCircle(sam.x, sam.baseY - 4, pr);
       }
     }
@@ -927,35 +1041,51 @@ export default class B2BomberScene extends Phaser.Scene {
     this._scrollLayers(this.jetVX, dt);
     this.defenseDistance += this.jetVX * dt;
 
-    // Spawn tracking missiles (with count limit enforced in _spawnTrackingMissile)
+    // Spawn tracking missiles — predictable wave pattern
     this.missileSpawnTimer += dt;
-    const spawnRate = Math.max(2.0, 4.0 - this.phaseTimer * 0.05);
-    if (this.missileSpawnTimer >= spawnRate) {
+    const waveEntry = this.defenseWavePatterns[this.defenseWaveIndex % this.defenseWavePatterns.length];
+    if (this.missileSpawnTimer >= waveEntry.interval) {
       this.missileSpawnTimer = 0;
-      this._spawnTrackingMissile(
-        100 + Math.random() * (W - 200),
-        GROUND_Y + 10
-      );
+      // Predictable X based on wave side
+      let spawnX;
+      if (waveEntry.side === 'left') spawnX = 150 + (this.defenseWaveIndex % 3) * 50;
+      else if (waveEntry.side === 'right') spawnX = W - 150 - (this.defenseWaveIndex % 3) * 50;
+      else spawnX = W / 2 + ((this.defenseWaveIndex % 2) * 2 - 1) * 80;
+      this._spawnTrackingMissile(spawnX, GROUND_Y + 10);
+      this.defenseWaveIndex++;
     }
 
-    // Flak anti-aircraft bursts (small scattered puffs, not big orange balls)
+    // Flak anti-aircraft bursts — telegraphed with predictable positions
     this.flakTimer += dt;
     if (this.flakTimer >= 1.5) {
       this.flakTimer = 0;
-      // Spawn 3-4 small puffs near the jet's altitude
-      const baseX = this.jetX + (Math.random() - 0.5) * 200;
-      const baseY = this.jetY + (Math.random() - 0.5) * 120;
-      for (let f = 0; f < 3; f++) {
-        const fx = baseX + (Math.random() - 0.5) * 60;
-        const fy = Phaser.Math.Clamp(baseY + (Math.random() - 0.5) * 40, 60, GROUND_Y - 20);
-        this._addExplosion(fx, fy, 5 + Math.random() * 4, 0x666666);
-      }
-      SoundManager.get().playFlakExplosion();
-      // Flak damage check (only if very close)
-      const flakDist = Phaser.Math.Distance.Between(this.jetX, this.jetY, baseX, baseY);
-      if (flakDist < 30) {
-        this._takeDamage();
-      }
+      // Sine-wave pattern for flak Y, distributed X
+      const flakIdx = this.defenseWaveIndex + this.flakTimer;
+      const baseX = 100 + ((Math.floor(this.phaseTimer * 2) * 179 + 100) % (W - 200));
+      const baseY = 200 + Math.sin(this.phaseTimer * 1.2) * 100;
+
+      // Brief red flash warning at flak position
+      const flakWarn = this.add.circle(baseX, baseY, 20, 0xff0000, 0.3).setDepth(24);
+      this.tweens.add({
+        targets: flakWarn, scale: 1.5, alpha: 0.5, duration: 150,
+        yoyo: true,
+        onComplete: () => flakWarn.destroy(),
+      });
+
+      // Delayed flak detonation
+      this.time.delayedCall(500, () => {
+        for (let f = 0; f < 3; f++) {
+          const fx = baseX + (f - 1) * 25;
+          const fy = Phaser.Math.Clamp(baseY + (f - 1) * 15, 60, GROUND_Y - 20);
+          this._addExplosion(fx, fy, 5 + f * 1.5, 0x666666);
+        }
+        SoundManager.get().playFlakExplosion();
+        // Flak damage check (only if very close)
+        const flakDist = Phaser.Math.Distance.Between(this.jetX, this.jetY, baseX, baseY);
+        if (flakDist < 30) {
+          this._takeDamage();
+        }
+      });
     }
 
     // S-300 launcher visuals on ground (scrolling)
@@ -1058,14 +1188,15 @@ export default class B2BomberScene extends Phaser.Scene {
 
     this._updateBusters(dt);
 
-    // Turret missiles
+    // Turret missiles — predictable alternating positions
     this.missileSpawnTimer += dt;
     if (this.missileSpawnTimer >= 3) {
       this.missileSpawnTimer = 0;
-      this._spawnTrackingMissile(
-        MTN_X + (Math.random() - 0.5) * 200,
-        GROUND_Y + 10
-      );
+      // Alternate between left and right of mountain
+      const bombSide = this.bombingMissileIndex % 2 === 0 ? -1 : 1;
+      const bombOffset = 60 + (this.bombingMissileIndex % 3) * 40;
+      this._spawnTrackingMissile(MTN_X + bombSide * bombOffset, GROUND_Y + 10);
+      this.bombingMissileIndex++;
     }
     this._updateMissiles(dt);
 
@@ -1178,253 +1309,394 @@ export default class B2BomberScene extends Phaser.Scene {
     this.instrText.setText('');
     this._cleanupMissiles();
 
-    // Track spawned objects for final cleanup
+    // Track all spawned objects for final cleanup
     const explosionObjects = [];
+    // Center of the mountain layers (bomb impact zone)
+    const impactCX = MTN_X;
+    const impactCY = LAYER_START_Y + (MOUNTAIN_LAYERS * LAYER_H) / 2;
 
-    // ── Stage 1 (0ms) — White Flash ──
-    this.cameras.main.flash(800, 255, 255, 255);
-    const whiteFlash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.9).setDepth(50);
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 1 — WHITE SCREEN FLASH (0-300ms)
+    // Blinding flash + heavy screen shake
+    // ═══════════════════════════════════════════════════════════
+    this.cameras.main.flash(300, 255, 255, 255);
+    const whiteFlash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 1.0).setDepth(50);
     explosionObjects.push(whiteFlash);
     this.tweens.add({
-      targets: whiteFlash, alpha: 0, duration: 800,
+      targets: whiteFlash, alpha: 0, duration: 300,
       onComplete: () => whiteFlash.destroy(),
     });
-    // Strong prolonged screen shake — 6 seconds continuous
-    this.cameras.main.shake(6000, 0.04);
+    // Intense screen shake for the entire sequence
+    this.cameras.main.shake(12000, 0.05);
+    SoundManager.get().playNuclearExplosion();
 
-    // ── Stage 2 (400ms) — Initial Fireball ──
-    this.time.delayedCall(400, () => {
-      // Core fireball
-      const fireballCore = this.add.circle(MTN_X, LAYER_START_Y + 90, 30, 0xff4400, 0.9).setDepth(17);
-      explosionObjects.push(fireballCore);
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 2 — INTERNAL FIREBALL (300ms-2300ms, ~2 seconds)
+    // Orange/red fire erupting from INSIDE the mountain through
+    // the layer holes. Glowing circles expanding from bomb impact points.
+    // ═══════════════════════════════════════════════════════════
+    this.time.delayedCall(300, () => {
+      // Erupting fireballs from each destroyed layer position
+      for (let i = 0; i < MOUNTAIN_LAYERS; i++) {
+        const layerCY = LAYER_START_Y + i * LAYER_H + LAYER_H / 2;
+        this.time.delayedCall(i * 200, () => {
+          // Core fireball — white-hot center expanding outward
+          const coreHot = this.add.circle(impactCX, layerCY, 8, 0xffffcc, 0.95).setDepth(18);
+          explosionObjects.push(coreHot);
+          this.tweens.add({
+            targets: coreHot, scaleX: 5, scaleY: 5, alpha: 0, duration: 1200,
+            onComplete: () => coreHot.destroy(),
+          });
+
+          // Orange fireball ring expanding
+          const fireRing = this.add.circle(impactCX, layerCY, 15, 0xff4400, 0.8).setDepth(17);
+          explosionObjects.push(fireRing);
+          this.tweens.add({
+            targets: fireRing, scaleX: 4, scaleY: 4, alpha: 0.15, duration: 1600,
+            onComplete: () => fireRing.destroy(),
+          });
+
+          // Red outer halo
+          const redHalo = this.add.circle(impactCX, layerCY, 25, 0xcc0000, 0.4).setDepth(16);
+          explosionObjects.push(redHalo);
+          this.tweens.add({
+            targets: redHalo, scaleX: 3.5, scaleY: 3.5, alpha: 0, duration: 1800,
+            onComplete: () => redHalo.destroy(),
+          });
+        });
+      }
+
+      // Central massive fireball erupting upward through all layers
+      const centralFire = this.add.circle(impactCX, impactCY, 40, 0xff6600, 0.9).setDepth(17);
+      explosionObjects.push(centralFire);
       this.tweens.add({
-        targets: fireballCore, scaleX: 4, scaleY: 4, alpha: 0.3, duration: 1500,
-        onComplete: () => fireballCore.destroy(),
-      });
-      // Outer halo
-      const fireballHalo = this.add.circle(MTN_X, LAYER_START_Y + 90, 45, 0xff8800, 0.5).setDepth(16);
-      explosionObjects.push(fireballHalo);
-      this.tweens.add({
-        targets: fireballHalo, scaleX: 4.5, scaleY: 4.5, alpha: 0.15, duration: 1800,
-        onComplete: () => fireballHalo.destroy(),
+        targets: centralFire,
+        scaleX: 3.5, scaleY: 5, y: impactCY - 60,
+        alpha: 0.2, duration: 2000,
+        onComplete: () => centralFire.destroy(),
       });
 
-      SoundManager.get().playNuclearExplosion();
-      // Overlapping stronger shake for compounding intensity
-      this.cameras.main.shake(4000, 0.06);
+      // Fire tongues erupting upward from the top of the mountain
+      for (let t = 0; t < 8; t++) {
+        const tongueX = impactCX + (Math.random() - 0.5) * LAYER_W;
+        const tongueW = 3 + Math.random() * 5;
+        const tongueH = 30 + Math.random() * 50;
+        const tongueColor = Math.random() < 0.5 ? 0xff4400 : 0xff8800;
+        const tongue = this.add.rectangle(tongueX, LAYER_START_Y - 10, tongueW, tongueH, tongueColor, 0.7).setDepth(17);
+        explosionObjects.push(tongue);
+        this.tweens.add({
+          targets: tongue,
+          y: LAYER_START_Y - 60 - Math.random() * 40,
+          scaleY: 2 + Math.random(),
+          alpha: 0,
+          duration: 1200 + Math.random() * 800,
+          delay: t * 100,
+          onComplete: () => tongue.destroy(),
+        });
+      }
+
+      SoundManager.get().playExplosion();
     });
 
-    // ── Stage 3 (800ms) — Mountain Cracks ──
-    this.time.delayedCall(800, () => {
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 3 — CRACKS WITH FIRE (2300ms-4300ms, ~2 seconds)
+    // Jagged crack lines appearing on the mountain surface with
+    // orange light bleeding through the cracks
+    // ═══════════════════════════════════════════════════════════
+    this.time.delayedCall(2300, () => {
       const crackGfx = this.add.graphics().setDepth(18);
       explosionObjects.push(crackGfx);
-      crackGfx.lineStyle(2, 0xff4400, 0.6);
-      const crackCount = 8 + Math.floor(Math.random() * 3); // 8-10 cracks
+
+      const crackCount = 12;
+      const crackData = []; // store for glow pass
+
+      // Draw cracks radiating from impact center across mountain surface
       for (let i = 0; i < crackCount; i++) {
-        const angle = (i / crackCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+        const angle = (i / crackCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+        const len = 60 + Math.random() * 80;
+        const segments = [];
+        let px = impactCX, py = impactCY;
+        segments.push({ x: px, y: py });
+
+        for (let s = 0; s < 6; s++) {
+          px += Math.cos(angle) * len / 6 + (Math.random() - 0.5) * 14;
+          py += Math.sin(angle) * len / 6 + (Math.random() - 0.5) * 14;
+          segments.push({ x: px, y: py });
+        }
+        crackData.push(segments);
+      }
+
+      // First pass: wide orange glow (light bleeding through cracks)
+      crackGfx.lineStyle(5, 0xff6600, 0.35);
+      for (const segs of crackData) {
         crackGfx.beginPath();
-        crackGfx.moveTo(MTN_X, LAYER_START_Y + 90);
-        const len = 80 + Math.random() * 40; // 80-120px reach
-        let px = MTN_X, py = LAYER_START_Y + 90;
-        for (let s = 0; s < 5; s++) {
-          px += Math.cos(angle) * len / 5 + (Math.random() - 0.5) * 10;
-          py += Math.sin(angle) * len / 5 + (Math.random() - 0.5) * 10;
-          crackGfx.lineTo(px, py);
+        crackGfx.moveTo(segs[0].x, segs[0].y);
+        for (let s = 1; s < segs.length; s++) {
+          crackGfx.lineTo(segs[s].x, segs[s].y);
         }
         crackGfx.strokePath();
       }
-      // Fade cracks over 1 second after persisting for 2 seconds
+
+      // Second pass: bright core crack line
+      crackGfx.lineStyle(2, 0xffaa44, 0.7);
+      for (const segs of crackData) {
+        crackGfx.beginPath();
+        crackGfx.moveTo(segs[0].x, segs[0].y);
+        for (let s = 1; s < segs.length; s++) {
+          crackGfx.lineTo(segs[s].x, segs[s].y);
+        }
+        crackGfx.strokePath();
+      }
+
+      // Third pass: white-hot inner line
+      crackGfx.lineStyle(0.8, 0xffeecc, 0.6);
+      for (const segs of crackData) {
+        crackGfx.beginPath();
+        crackGfx.moveTo(segs[0].x, segs[0].y);
+        for (let s = 1; s < segs.length; s++) {
+          crackGfx.lineTo(segs[s].x, segs[s].y);
+        }
+        crackGfx.strokePath();
+      }
+
+      // Pulsing glow circles at crack endpoints (fire bleeding through)
+      for (const segs of crackData) {
+        const endPt = segs[segs.length - 1];
+        const glowCirc = this.add.circle(endPt.x, endPt.y, 6, 0xff4400, 0.5).setDepth(17);
+        explosionObjects.push(glowCirc);
+        this.tweens.add({
+          targets: glowCirc,
+          scaleX: 2, scaleY: 2,
+          alpha: 0.15,
+          duration: 800 + Math.random() * 400,
+          yoyo: true, repeat: 1,
+          onComplete: () => glowCirc.destroy(),
+        });
+      }
+
+      // Cracks persist for 2 seconds then fade
       this.time.delayedCall(2000, () => {
         this.tweens.add({
-          targets: crackGfx, alpha: 0, duration: 1000,
+          targets: crackGfx, alpha: 0, duration: 800,
           onComplete: () => crackGfx.destroy(),
         });
       });
+
+      SoundManager.get().playBunkerBusterImpact();
+      // Additional shake pulse for crack phase
+      this.cameras.main.shake(2000, 0.04);
     });
 
-    // ── Stage 4 (1200ms) — Fire Columns Through Cracks ──
-    this.time.delayedCall(1200, () => {
-      const columnCount = 6 + Math.floor(Math.random() * 3); // 6-8 columns
-      for (let i = 0; i < columnCount; i++) {
-        this.time.delayedCall(i * 150, () => {
-          const fx = MTN_X + (Math.random() - 0.5) * 120;
-          const colW = 4 + Math.random() * 4; // 4-8px wide
-          const colH = 50 + Math.random() * 30; // 50-80px tall
-          const col = this.add.rectangle(fx, LAYER_START_Y + 40, colW, colH, 0xff6600, 0.7).setDepth(17);
-          explosionObjects.push(col);
-          const riseAmount = 80 + Math.random() * 40; // 80-120px upward
-          this.tweens.add({
-            targets: col, y: col.y - riseAmount, alpha: 0, scaleY: 2, duration: 1500,
-            onComplete: () => col.destroy(),
-          });
-          // First column triggers explosion sound
-          if (i === 0) SoundManager.get().playExplosion();
-        });
-      }
-    });
-
-    // ── Stage 5 (2000ms) — Partial Mountain Collapse ──
-    this.time.delayedCall(2000, () => {
-      // Mountain sinks and tilts
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 4 — PARTIAL COLLAPSE (4300ms-6300ms, ~2 seconds)
+    // Upper portion of the mountain shifts/falls down 25px with
+    // slight rotation; heavy debris particles falling
+    // ═══════════════════════════════════════════════════════════
+    this.time.delayedCall(4300, () => {
+      // Mountain top half collapses — shift down 25px and tilt 3 degrees
       if (this.mountainSprite) {
+        // Shift origin to simulate top collapsing: move down + rotate
         this.tweens.add({
-          targets: this.mountainSprite, y: this.mountainSprite.y + 20, rotation: 0.02, duration: 2000,
+          targets: this.mountainSprite,
+          y: this.mountainSprite.y + 25,
+          rotation: 0.05, // ~3 degrees tilt
+          duration: 2000,
+          ease: 'Bounce.easeOut',
         });
       }
-      // Collapse shake
-      this.cameras.main.shake(2000, 0.03);
 
-      // Falling debris chunks
-      const debrisCount = 10 + Math.floor(Math.random() * 6); // 10-15
+      // Also collapse all remaining layer overlays
+      for (const ls of this.mountainLayerSprites) {
+        if (ls.rect && ls.rect.scene) {
+          this.tweens.add({
+            targets: [ls.rect, ls.edge],
+            y: '+=' + 25,
+            alpha: 0.05,
+            duration: 1500,
+          });
+        }
+      }
+
+      // Heavy collapse shake
+      this.cameras.main.shake(2500, 0.06);
+      SoundManager.get().playExplosion();
+
+      // Massive debris rain — 25+ chunks falling from the mountain
+      const debrisCount = 25 + Math.floor(Math.random() * 10);
       for (let i = 0; i < debrisCount; i++) {
-        const dx = MTN_X + (Math.random() - 0.5) * 100;
-        const dy = MTN_TOP_Y + Math.random() * 60;
-        const size = 4 + Math.random() * 8; // 4-12px
-        const colors = [0x3a3428, 0x4a4a4a, 0x2a2820, 0x555544, 0x3a3a3a];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const debris = this.add.rectangle(dx, dy, size, size * 0.7, color, 0.8).setDepth(19);
-        explosionObjects.push(debris);
-        const fallDist = 200 + Math.random() * 100; // 200-300px fall
-        const drift = (Math.random() - 0.5) * 80;
-        const fallDur = 1500 + Math.random() * 1000; // 1500-2500ms
+        this.time.delayedCall(i * 60, () => {
+          const dx = MTN_X + (Math.random() - 0.5) * 160;
+          const dy = MTN_TOP_Y + Math.random() * 80;
+          const size = 3 + Math.random() * 10;
+          const colors = [0x3a3428, 0x4a4a4a, 0x2a2820, 0x555544, 0x3a3a3a, 0x666655];
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          const debris = this.add.rectangle(dx, dy, size, size * 0.6, color, 0.85).setDepth(19);
+          explosionObjects.push(debris);
+
+          const fallDist = 180 + Math.random() * 150;
+          const drift = (Math.random() - 0.5) * 120;
+          const fallDur = 1200 + Math.random() * 1200;
+
+          this.tweens.add({
+            targets: debris,
+            x: dx + drift,
+            y: dy + fallDist,
+            rotation: (Math.random() - 0.5) * 6,
+            alpha: 0,
+            duration: fallDur,
+            ease: 'Quad.easeIn',
+            onComplete: () => debris.destroy(),
+          });
+        });
+      }
+
+      // Dust clouds billow outward from base on both sides
+      for (let side = -1; side <= 1; side += 2) {
+        const dustCloud = this.add.ellipse(
+          MTN_X + side * 30, GROUND_Y - 30,
+          40, 25, 0x888877, 0.4
+        ).setDepth(15);
+        explosionObjects.push(dustCloud);
         this.tweens.add({
-          targets: debris,
-          x: dx + drift,
-          y: dy + fallDist,
-          rotation: (Math.random() - 0.5) * 4,
+          targets: dustCloud,
+          x: MTN_X + side * 180,
+          scaleX: 4, scaleY: 3,
           alpha: 0,
-          duration: fallDur,
-          ease: 'Quad.easeIn',
-          onComplete: () => debris.destroy(),
+          duration: 2500,
+          ease: 'Quad.easeOut',
+          onComplete: () => dustCloud.destroy(),
         });
       }
     });
 
-    // ── Stage 6 (3000ms) — Mushroom Cloud ──
-    this.time.delayedCall(3000, () => {
-      // Stem: tall narrow ellipse rising from mountain
-      const stem = this.add.ellipse(MTN_X, LAYER_START_Y, 30, 100, 0x666666, 0.5).setDepth(15);
-      explosionObjects.push(stem);
-      this.tweens.add({
-        targets: stem, y: LAYER_START_Y - 100, scaleX: 1.5, duration: 3000,
-      });
-      // Fade stem after rising
-      this.time.delayedCall(3000, () => {
-        this.tweens.add({
-          targets: stem, alpha: 0.1, duration: 1500,
-          onComplete: () => stem.destroy(),
-        });
-      });
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 5 — MASSIVE SMOKE COLUMN (6300ms-9500ms, ~3+ seconds)
+    // Huge column of dark gray smoke rising from the mountain,
+    // mushroom-cloud-like expansion at the top (layered rising circles)
+    // ═══════════════════════════════════════════════════════════
+    this.time.delayedCall(6300, () => {
+      // ── Smoke column stem — series of overlapping dark circles rising ──
+      const stemCircles = 12;
+      for (let i = 0; i < stemCircles; i++) {
+        const stemY = LAYER_START_Y + 60 - i * 8;
+        const stemR = 18 - i * 0.5;
+        const stemAlpha = 0.55 - i * 0.03;
+        const stemGray = 0x50 + i * 5;
+        const stemColor = Phaser.Display.Color.GetColor(stemGray, stemGray - 5, stemGray - 10);
+        const stemCirc = this.add.circle(
+          impactCX + (Math.random() - 0.5) * 8,
+          stemY, stemR, stemColor, stemAlpha
+        ).setDepth(14);
+        explosionObjects.push(stemCirc);
 
-      // Cap: wide ellipse at top of stem
-      const cap = this.add.ellipse(MTN_X, LAYER_START_Y - 60, 120, 50, 0x555555, 0.4).setDepth(15);
-      explosionObjects.push(cap);
-      this.tweens.add({
-        targets: cap, y: LAYER_START_Y - 160, scaleX: 1.8, scaleY: 1.8, duration: 3000,
-      });
-      this.time.delayedCall(3000, () => {
+        // Rise upward over 3 seconds
         this.tweens.add({
-          targets: cap, alpha: 0.1, duration: 1500,
-          onComplete: () => cap.destroy(),
+          targets: stemCirc,
+          y: stemY - 120 - i * 10,
+          scaleX: 1.3 + i * 0.08,
+          scaleY: 1.2,
+          alpha: stemAlpha * 0.3,
+          duration: 3000 + i * 100,
+          onComplete: () => stemCirc.destroy(),
         });
-      });
+      }
 
-      // Inner glow: orange tint inside cap, pulsing
-      const innerGlow = this.add.ellipse(MTN_X, LAYER_START_Y - 60, 60, 25, 0xff6600, 0.2).setDepth(16);
+      // ── Mushroom cap — expanding circles at the top ──
+      // Multiple overlapping ellipses that spread outward as they rise
+      const capLayers = 6;
+      for (let i = 0; i < capLayers; i++) {
+        this.time.delayedCall(i * 200, () => {
+          const capY = LAYER_START_Y - 40 - i * 5;
+          const capW = 60 + i * 15;
+          const capH = 25 + i * 5;
+          const capGray = 0x55 + i * 8;
+          const capColor = Phaser.Display.Color.GetColor(capGray, capGray - 3, capGray - 8);
+          const capEllipse = this.add.ellipse(
+            impactCX, capY, capW, capH, capColor, 0.45 - i * 0.05
+          ).setDepth(14);
+          explosionObjects.push(capEllipse);
+
+          this.tweens.add({
+            targets: capEllipse,
+            y: capY - 80 - i * 15,
+            scaleX: 2.2 + i * 0.3,
+            scaleY: 1.8 + i * 0.2,
+            alpha: 0.08,
+            duration: 3000,
+            onComplete: () => capEllipse.destroy(),
+          });
+        });
+      }
+
+      // ── Inner orange glow inside the mushroom cap ──
+      const innerGlow = this.add.ellipse(impactCX, LAYER_START_Y - 50, 50, 20, 0xff6600, 0.25).setDepth(15);
       explosionObjects.push(innerGlow);
       this.tweens.add({
-        targets: innerGlow, y: LAYER_START_Y - 160, scaleX: 1.5, scaleY: 1.5,
-        alpha: 0.35, duration: 1500, yoyo: true, repeat: 1,
+        targets: innerGlow,
+        y: LAYER_START_Y - 150,
+        scaleX: 2.5, scaleY: 2,
+        alpha: 0.4,
+        duration: 1500,
+        yoyo: true, repeat: 1,
         onComplete: () => {
           this.tweens.add({
-            targets: innerGlow, alpha: 0, duration: 1000,
+            targets: innerGlow, alpha: 0, duration: 800,
             onComplete: () => innerGlow.destroy(),
           });
         },
       });
-    });
 
-    // ── Stage 7 (3500ms) — Falling Debris Wave ──
-    this.time.delayedCall(3500, () => {
-      const particleCount = 20 + Math.floor(Math.random() * 6); // 20-25
-      for (let i = 0; i < particleCount; i++) {
-        const type = Math.random();
-        let particle;
-        const px = MTN_X + (Math.random() - 0.5) * 100;
-        const py = LAYER_START_Y + (Math.random() - 0.5) * 60;
+      // ── Embers and ash particles drifting upward in the column ──
+      for (let e = 0; e < 30; e++) {
+        this.time.delayedCall(e * 80, () => {
+          const ex = impactCX + (Math.random() - 0.5) * 60;
+          const ey = LAYER_START_Y + 40 + Math.random() * 40;
+          const isEmber = Math.random() < 0.4;
+          const particle = this.add.circle(
+            ex, ey,
+            isEmber ? 1.5 : 1,
+            isEmber ? 0xff4400 : 0x999988,
+            isEmber ? 0.7 : 0.4
+          ).setDepth(16);
+          explosionObjects.push(particle);
 
-        if (type < 0.4) {
-          // Rock chunk (gray/brown, 2-6px)
-          const rockSize = 2 + Math.random() * 4;
-          const rockColors = [0x555555, 0x3a3428, 0x4a4a4a, 0x666666];
-          particle = this.add.rectangle(px, py, rockSize, rockSize * 0.8,
-            rockColors[Math.floor(Math.random() * rockColors.length)], 0.7).setDepth(19);
-        } else if (type < 0.75) {
-          // Burning ember (orange, 1-3px)
-          const emberSize = 1 + Math.random() * 2;
-          particle = this.add.circle(px, py, emberSize, 0xff4400, 0.8).setDepth(19);
-        } else {
-          // Dust particle (gray, 1-2px)
-          const dustSize = 1 + Math.random();
-          particle = this.add.circle(px, py, dustSize, 0x888888, 0.5).setDepth(19);
-        }
-
-        explosionObjects.push(particle);
-
-        // Arc outward then fall with gravity
-        const spreadX = (Math.random() - 0.5) * 200;
-        const peakY = py - 30 - Math.random() * 50; // rise a bit first
-        const fallDur = 2000 + Math.random() * 1500; // 2000-3500ms
-
-        // Rise briefly then fall
-        this.tweens.add({
-          targets: particle,
-          x: px + spreadX * 0.3,
-          y: peakY,
-          duration: fallDur * 0.2,
-          onComplete: () => {
-            this.tweens.add({
-              targets: particle,
-              x: px + spreadX,
-              y: GROUND_Y - Math.random() * 20,
-              alpha: 0,
-              duration: fallDur * 0.8,
-              ease: 'Quad.easeIn',
-              onComplete: () => particle.destroy(),
-            });
-          },
+          this.tweens.add({
+            targets: particle,
+            x: ex + (Math.random() - 0.5) * 40,
+            y: ey - 150 - Math.random() * 100,
+            alpha: 0,
+            duration: 2000 + Math.random() * 1500,
+            onComplete: () => particle.destroy(),
+          });
         });
       }
-    });
 
-    // ── Stage 8 (4500ms) — Secondary Fires ──
-    this.time.delayedCall(4500, () => {
-      SoundManager.get().playBunkerBusterImpact();
-
-      const fireCount = 4 + Math.floor(Math.random() * 3); // 4-6
-      for (let i = 0; i < fireCount; i++) {
-        const fx = MTN_X + (Math.random() - 0.5) * 160; // spread +/- 80
-        const fire = this.add.circle(fx, GROUND_Y - 5, 6 + Math.random() * 4, 0xff6600, 0.5).setDepth(16);
+      // Secondary fire at mountain base (burning wreckage)
+      const fireCount = 6;
+      for (let f = 0; f < fireCount; f++) {
+        const fx = MTN_X + (Math.random() - 0.5) * 180;
+        const fire = this.add.circle(fx, GROUND_Y - 8, 5 + Math.random() * 5, 0xff6600, 0.5).setDepth(16);
         explosionObjects.push(fire);
-
-        // Flicker: alpha oscillates 0.3-0.7
+        fire.setAlpha(0.3);
         this.tweens.add({
           targets: fire, alpha: 0.7, duration: 200 + Math.random() * 200,
-          yoyo: true, repeat: 7, // ~3 seconds of flickering
+          yoyo: true, repeat: 8,
           onComplete: () => {
-            // Fade out after flickering
             this.tweens.add({
-              targets: fire, alpha: 0, duration: 500,
+              targets: fire, alpha: 0, duration: 600,
               onComplete: () => fire.destroy(),
             });
           },
         });
-        fire.setAlpha(0.3);
       }
+
+      SoundManager.get().playBunkerBusterImpact();
     });
 
-    // ── Stage 9 (6000ms) — Aftermath Text + Cleanup ──
-    this.time.delayedCall(6000, () => {
+    // ═══════════════════════════════════════════════════════════
+    // AFTERMATH (9500ms) — Text + Cleanup + Transition
+    // ═══════════════════════════════════════════════════════════
+    this.time.delayedCall(9500, () => {
       const txt = this.add.text(W / 2, 50, 'NATANZ FACILITY -- DESTROYED', {
         fontFamily: 'monospace', fontSize: '24px', color: '#00ff00',
         shadow: { offsetX: 0, offsetY: 0, color: '#00ff00', blur: 16, fill: true },
@@ -1433,14 +1705,13 @@ export default class B2BomberScene extends Phaser.Scene {
         targets: txt, alpha: 0.4, duration: 500, yoyo: true, repeat: 3,
         onComplete: () => {
           txt.destroy();
-          // Final cleanup — destroy mountain and any lingering explosion objects
+          // Final cleanup — destroy mountain and all lingering explosion objects
           if (this.mountainSprite) { this.mountainSprite.destroy(); this.mountainSprite = null; }
           for (const l of this.mountainLayerSprites) {
             if (l.rect) l.rect.destroy();
             if (l.edge) l.edge.destroy();
           }
           this.mountainLayerSprites = [];
-          // Destroy any remaining explosion objects
           for (const obj of explosionObjects) {
             if (obj && obj.scene) {
               try { obj.destroy(); } catch (e) { /* already destroyed */ }
@@ -1537,14 +1808,18 @@ export default class B2BomberScene extends Phaser.Scene {
       this.instrText.setText('Leaving Iranian airspace...');
     }
 
-    // Last missiles
+    // Last missiles — predictable alternating pattern
     this.missileSpawnTimer += dt;
     if (this.missileSpawnTimer >= 4 && this.escapeDistance < 3500) {
       this.missileSpawnTimer = 0;
-      this._spawnTrackingMissile(
-        200 + Math.random() * (W - 400),
-        GROUND_Y + 10
-      );
+      // Predictable spawn positions alternating across screen
+      const escSide = this.escapeMissileIndex % 3;
+      let escX;
+      if (escSide === 0) escX = 250;
+      else if (escSide === 1) escX = W / 2;
+      else escX = W - 250;
+      this._spawnTrackingMissile(escX, GROUND_Y + 10);
+      this.escapeMissileIndex++;
     }
     this._updateMissiles(dt);
 
@@ -1657,6 +1932,9 @@ export default class B2BomberScene extends Phaser.Scene {
   // MAIN UPDATE LOOP
   // ═════════════════════════════════════════════════════════════
   update(time, delta) {
+    // Tutorial active: skip all gameplay
+    if (this.tutorialActive) return;
+
     const dt = delta / 1000;
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.m)) {

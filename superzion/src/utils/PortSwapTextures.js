@@ -146,6 +146,24 @@ function drawContainerMarked(color) {
   return c;
 }
 
+// ── Helper: rounded capsule path ──
+function psCapsule(ctx, x, y, w, h, r) {
+  const rx = Math.min(r, w / 2);
+  const ry = Math.min(r, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rx, y);
+  ctx.lineTo(x + w - rx, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + ry);
+  ctx.lineTo(x + w, y + h - ry);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rx, y + h);
+  ctx.lineTo(x + rx, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - ry);
+  ctx.lineTo(x, y + ry);
+  ctx.quadraticCurveTo(x, y, x + rx, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
 // ── Character drawing 32×32 (top-down) ──
 function drawCharacter(dir, frame, opts = {}) {
   const c = mc(T, T);
@@ -166,74 +184,184 @@ function drawCharacter(dir, frame, opts = {}) {
 
   const walkOffset = frame === 1 ? 1 : 0;
 
-  // Body
+  // ── Dark outline silhouette (drawn first, 1px larger) ──
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  if (dir === 'down' || dir === 'up') {
+    // Torso outline
+    psCapsule(ctx, cx - 7, cy - 3, 14, 13, 3);
+    // Leg outlines
+    ctx.beginPath();
+    ctx.ellipse(cx - 3, cy + 10 + (6 + walkOffset) / 2, 3.5, (6 + walkOffset) / 2 + 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy + 10 + (6 - walkOffset) / 2, 3.5, (6 - walkOffset) / 2 + 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Arm outlines
+    ctx.beginPath();
+    ctx.ellipse(cx - 7.5, cy + 4, 2.5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 7.5, cy + 4, 2.5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    psCapsule(ctx, cx - 6, cy - 3, 12, 13, 3);
+    ctx.beginPath();
+    ctx.ellipse(cx - 1, cy + 10 + (6 + walkOffset) / 2, 3, (6 + walkOffset) / 2 + 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy + 10 + (6 - walkOffset) / 2, 3, (6 - walkOffset) / 2 + 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (dir === 'left') {
+      ctx.beginPath();
+      ctx.ellipse(cx - 5.5, cy + 4, 2.5, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.ellipse(cx + 5.5, cy + 4, 2.5, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // Head outline
+  ctx.beginPath();
+  ctx.arc(cx, cy - 6, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Body (rounded capsule torso) ──
   ctx.fillStyle = bodyColor;
   if (dir === 'down' || dir === 'up') {
-    ctx.fillRect(cx - 6, cy - 2, 12, 12);
+    psCapsule(ctx, cx - 6, cy - 2, 12, 12, 3);
+    // Legs — ellipse capsules
     ctx.fillStyle = '#3a3a4a';
-    ctx.fillRect(cx - 5, cy + 10, 4, 6 + walkOffset);
-    ctx.fillRect(cx + 1, cy + 10, 4, 6 - walkOffset);
+    ctx.beginPath();
+    ctx.ellipse(cx - 3, cy + 10 + (6 + walkOffset) / 2, 2.5, (6 + walkOffset) / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy + 10 + (6 - walkOffset) / 2, 2.5, (6 - walkOffset) / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Boots — small rounded caps
+    ctx.fillStyle = '#111111';
+    ctx.beginPath();
+    ctx.ellipse(cx - 3, cy + 14 + walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy + 14 - walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Arms — vertical ellipses on each side
     ctx.fillStyle = bodyColor;
-    ctx.fillRect(cx - 9, cy, 3, 8);
-    ctx.fillRect(cx + 6, cy, 3, 8);
+    ctx.beginPath();
+    ctx.ellipse(cx - 7.5, cy + 4, 2, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 7.5, cy + 4, 2, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else {
-    ctx.fillRect(cx - 5, cy - 2, 10, 12);
+    psCapsule(ctx, cx - 5, cy - 2, 10, 12, 3);
+    // Legs — ellipse capsules (side view)
     ctx.fillStyle = '#3a3a4a';
-    ctx.fillRect(cx - 3, cy + 10, 4, 6 + walkOffset);
-    ctx.fillRect(cx + 1, cy + 10, 4, 6 - walkOffset);
+    ctx.beginPath();
+    ctx.ellipse(cx - 1, cy + 10 + (6 + walkOffset) / 2, 2.5, (6 + walkOffset) / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy + 10 + (6 - walkOffset) / 2, 2.5, (6 - walkOffset) / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Boots (side)
+    ctx.fillStyle = '#111111';
+    ctx.beginPath();
+    ctx.ellipse(cx - 1, cy + 14 + walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy + 14 - walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Front arm — single vertical ellipse
     ctx.fillStyle = bodyColor;
-    if (dir === 'left') ctx.fillRect(cx - 7, cy, 3, 8);
-    else ctx.fillRect(cx + 5, cy, 3, 8);
+    if (dir === 'left') {
+      ctx.beginPath();
+      ctx.ellipse(cx - 5.5, cy + 4, 2, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.ellipse(cx + 5.5, cy + 4, 2, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
-  // Vest overlay
+  // ── Vest overlay (uses rounded shape) ──
   if (vest) {
     ctx.fillStyle = vestColor;
     if (dir === 'down' || dir === 'up') {
-      ctx.fillRect(cx - 6, cy - 1, 12, 8);
+      psCapsule(ctx, cx - 6, cy - 1, 12, 8, 2);
       // Reflective stripes
       ctx.fillStyle = '#ffff88';
       ctx.fillRect(cx - 5, cy + 1, 10, 1);
       ctx.fillRect(cx - 5, cy + 4, 10, 1);
     } else {
-      ctx.fillRect(cx - 5, cy - 1, 10, 8);
+      psCapsule(ctx, cx - 5, cy - 1, 10, 8, 2);
       ctx.fillStyle = '#ffff88';
       ctx.fillRect(cx - 4, cy + 1, 8, 1);
       ctx.fillRect(cx - 4, cy + 4, 8, 1);
     }
   }
 
-  // Hands
+  // ── Hands (skin color — small ellipses) ──
   ctx.fillStyle = headColor;
   if (dir === 'down' || dir === 'up') {
-    ctx.fillRect(cx - 9, cy + 7, 3, 2);
-    ctx.fillRect(cx + 6, cy + 7, 3, 2);
+    ctx.beginPath();
+    ctx.ellipse(cx - 7.5, cy + 8.5, 2, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 7.5, cy + 8.5, 2, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else if (dir === 'left') {
-    ctx.fillRect(cx - 7, cy + 7, 3, 2);
+    ctx.beginPath();
+    ctx.ellipse(cx - 5.5, cy + 8.5, 2, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else {
-    ctx.fillRect(cx + 5, cy + 7, 3, 2);
+    ctx.beginPath();
+    ctx.ellipse(cx + 5.5, cy + 8.5, 2, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  // Head
+  // ── Head ──
   ctx.fillStyle = headColor;
   ctx.beginPath();
   ctx.arc(cx, cy - 6, 7, 0, Math.PI * 2);
   ctx.fill();
 
-  // Face
+  // ── Face (eyes as ellipses, mouth as arc) ──
   if (dir === 'down') {
     ctx.fillStyle = '#222';
-    ctx.fillRect(cx - 4, cy - 7, 2, 2);
-    ctx.fillRect(cx + 2, cy - 7, 2, 2);
-    ctx.fillRect(cx - 1, cy - 3, 3, 1);
+    ctx.beginPath();
+    ctx.ellipse(cx - 3, cy - 7, 1.2, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy - 7, 1.2, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Mouth — subtle arc
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 3.5, 1.5, 0.1, Math.PI - 0.1);
+    ctx.stroke();
   } else if (dir === 'left') {
     ctx.fillStyle = '#222';
-    ctx.fillRect(cx - 5, cy - 7, 2, 2);
-    ctx.fillRect(cx - 2, cy - 3, 2, 1);
+    ctx.beginPath();
+    ctx.ellipse(cx - 4, cy - 7, 1.2, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(cx - 1.5, cy - 3.5, 1.2, 0.1, Math.PI - 0.1);
+    ctx.stroke();
   } else if (dir === 'right') {
     ctx.fillStyle = '#222';
-    ctx.fillRect(cx + 3, cy - 7, 2, 2);
-    ctx.fillRect(cx + 1, cy - 3, 2, 1);
+    ctx.beginPath();
+    ctx.ellipse(cx + 4, cy - 7, 1.2, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(cx + 1.5, cy - 3.5, 1.2, 0.1, Math.PI - 0.1);
+    ctx.stroke();
   }
 
   // Hardhat — larger, rounder, with visor and highlights
@@ -280,22 +408,32 @@ function drawCharacter(dir, frame, opts = {}) {
   // Uniform cap (security)
   if (uniformCap) {
     ctx.fillStyle = '#1a1a3a';
+    // Cap body — ellipse
     ctx.beginPath();
     ctx.ellipse(cx, cy - 10, 7, 3, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillRect(cx - 7, cy - 11, 14, 2);
-    // Badge
+    // Cap band — elliptical strip
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 11, 7, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Badge — small ellipse
     ctx.fillStyle = '#ccaa44';
-    ctx.fillRect(cx - 2, cy - 12, 4, 2);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 11.5, 2, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // Beret
   if (beret) {
     ctx.fillStyle = '#3a4a30';
+    // Beret body — ellipse
     ctx.beginPath();
     ctx.ellipse(cx, cy - 11, 7, 3, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillRect(cx - 7, cy - 12, 14, 2);
+    // Beret band — elliptical strip
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 12, 7, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // Rifle

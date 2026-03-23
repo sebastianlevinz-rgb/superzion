@@ -15,7 +15,8 @@ function mc(w, h) {
 
 // ── Helper: draw Star of David ──
 function starOfDavid(ctx, x, y, s, color) {
-  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = '#B8860B';
   ctx.lineWidth = 1.2;
   // Upward triangle
   ctx.beginPath();
@@ -23,6 +24,7 @@ function starOfDavid(ctx, x, y, s, color) {
   ctx.lineTo(x - s * 0.87, y + s * 0.5);
   ctx.lineTo(x + s * 0.87, y + s * 0.5);
   ctx.closePath();
+  ctx.fill();
   ctx.stroke();
   // Downward triangle
   ctx.beginPath();
@@ -30,6 +32,7 @@ function starOfDavid(ctx, x, y, s, color) {
   ctx.lineTo(x - s * 0.87, y - s * 0.5);
   ctx.lineTo(x + s * 0.87, y - s * 0.5);
   ctx.closePath();
+  ctx.fill();
   ctx.stroke();
 }
 
@@ -431,9 +434,9 @@ function drawCharacter(dir, frame, opts = {}) {
     ctx.fill();
   }
 
-  // ── Dark outline silhouette (drawn first, 1px larger) for player ──
-  if (isPlayer) {
-    ctx.fillStyle = '#0a0a0a';
+  // ── Dark outline silhouette (drawn first, 1px larger) ──
+  {
+    ctx.fillStyle = isPlayer ? '#0a0a0a' : 'rgba(0,0,0,0.3)';
     if (dir === 'down' || dir === 'up') {
       // Torso outline — rounded rect, 1px larger on each side
       capsule(cx - 7, cy - 3, 14, 13, 3);
@@ -498,16 +501,14 @@ function drawCharacter(dir, frame, opts = {}) {
     ctx.beginPath();
     ctx.ellipse(cx + 3, cy + 10 + (6 - walkOffset) / 2, 2.5, (6 - walkOffset) / 2, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Boots for player — small rounded caps at leg bottoms
-    if (isPlayer) {
-      ctx.fillStyle = '#0e0e0e';
-      ctx.beginPath();
-      ctx.ellipse(cx - 3, cy + 14 + walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx + 3, cy + 14 - walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Boots — small rounded caps at leg bottoms
+    ctx.fillStyle = isPlayer ? '#0e0e0e' : '#111111';
+    ctx.beginPath();
+    ctx.ellipse(cx - 3, cy + 14 + walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy + 14 - walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Arms — vertical ellipses on each side
     ctx.fillStyle = bodyColor;
     ctx.beginPath();
@@ -532,16 +533,14 @@ function drawCharacter(dir, frame, opts = {}) {
     ctx.beginPath();
     ctx.ellipse(cx + 3, cy + 10 + (6 - walkOffset) / 2, 2.5, (6 - walkOffset) / 2, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Boots for player (side)
-    if (isPlayer) {
-      ctx.fillStyle = '#0e0e0e';
-      ctx.beginPath();
-      ctx.ellipse(cx - 1, cy + 14 + walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx + 3, cy + 14 - walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Boots — small rounded caps (side)
+    ctx.fillStyle = isPlayer ? '#0e0e0e' : '#111111';
+    ctx.beginPath();
+    ctx.ellipse(cx - 1, cy + 14 + walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, cy + 14 - walkOffset + 1, 3, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Front arm — single vertical ellipse
     ctx.fillStyle = bodyColor;
     if (dir === 'left') {
@@ -564,14 +563,40 @@ function drawCharacter(dir, frame, opts = {}) {
     ctx.beginPath();
     ctx.ellipse(cx + 7.5, cy + 8.5, 2, 1.5, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Player pistol with silencer in right hand
+    if (isPlayer) {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.ellipse(cx + 7.5, cy + 11, 1.5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Silencer tip
+      ctx.fillStyle = '#222222';
+      ctx.beginPath();
+      ctx.ellipse(cx + 7.5, cy + 14.5, 1, 1, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else if (dir === 'left') {
     ctx.beginPath();
     ctx.ellipse(cx - 5.5, cy + 8.5, 2, 1.5, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Player pistol pointing left
+    if (isPlayer) {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.ellipse(cx - 8, cy + 8.5, 4, 1, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else {
     ctx.beginPath();
     ctx.ellipse(cx + 5.5, cy + 8.5, 2, 1.5, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Player pistol pointing right
+    if (isPlayer) {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.ellipse(cx + 8, cy + 8.5, 4, 1, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // ── Head ──
@@ -583,6 +608,17 @@ function drawCharacter(dir, frame, opts = {}) {
   // ── Face (eyes and mouth) — only visible from front and sides ──
   if (dir === 'down') {
     if (isPlayer) {
+      // Eyebrows — short arched curves, black, lineWidth 2
+      ctx.strokeStyle = '#1A1A1A';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, cy - 9);
+      ctx.quadraticCurveTo(cx - 3, cy - 10.5, cx - 1, cy - 9);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + 1, cy - 9);
+      ctx.quadraticCurveTo(cx + 3, cy - 10.5, cx + 5, cy - 9);
+      ctx.stroke();
       // Detailed player eyes — small ellipses with dark iris
       ctx.fillStyle = '#eeeee8';
       ctx.beginPath();
@@ -598,20 +634,13 @@ function drawCharacter(dir, frame, opts = {}) {
       ctx.beginPath();
       ctx.arc(cx + 3, cy - 7.5, 0.7, 0, Math.PI * 2);
       ctx.fill();
-      // Mouth — small arc
+      // Mouth — subtle horizontal line
       ctx.strokeStyle = '#6a4030';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.arc(cx, cy - 3.5, 2, 0.1, Math.PI - 0.1);
+      ctx.moveTo(cx - 2, cy - 3.5);
+      ctx.lineTo(cx + 2, cy - 3.5);
       ctx.stroke();
-      // Stubble — gradient overlay on lower face
-      const stubbleGrad = ctx.createRadialGradient(cx, cy - 2, 0, cx, cy - 2, 4);
-      stubbleGrad.addColorStop(0, 'rgba(40, 20, 10, 0.35)');
-      stubbleGrad.addColorStop(1, 'rgba(40, 20, 10, 0)');
-      ctx.fillStyle = stubbleGrad;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy - 2, 4, 3, 0, 0, Math.PI * 2);
-      ctx.fill();
     } else {
       // Guard eyes — small dark ellipses
       ctx.fillStyle = '#222';
@@ -651,16 +680,35 @@ function drawCharacter(dir, frame, opts = {}) {
   }
   // 'up' — no face visible
 
-  // ── Slicked-back hair (Mossad agent style) ──
+  // ── Slicked-back hair (Mossad agent style — NO kippah) ──
   if (kippah) {
-    ctx.fillStyle = '#0e0e0e';
-    // Hair swept backward — flat on top
+    ctx.fillStyle = '#1A1A1A';
+    // Hair swept backward — rounded cap using arcs
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 11, 7, 3, 0, Math.PI, 0);
+    ctx.ellipse(cx, cy - 11, 7.5, 4, 0, Math.PI, 0);
     ctx.fill();
-    // Side hair — small rounded rectangles
-    capsule(cx - 7, cy - 12, 2, 4, 1);
-    capsule(cx + 5, cy - 12, 2, 4, 1);
+    // Hair volume on top (higher in front for slight quiff)
+    ctx.beginPath();
+    ctx.ellipse(cx - 1, cy - 12.5, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#1A1A1A';
+    ctx.fill();
+    // Side hair — small arcs hugging the head
+    ctx.fillStyle = '#1A1A1A';
+    ctx.beginPath();
+    ctx.arc(cx - 7, cy - 9, 2, Math.PI * 0.7, Math.PI * 1.7);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 7, cy - 9, 2, Math.PI * 1.3, Math.PI * 0.3);
+    ctx.fill();
+    // Hair streaks for slicked-back look (bezier curves)
+    ctx.strokeStyle = '#111111';
+    ctx.lineWidth = 0.4;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + i * 2, cy - 14);
+      ctx.bezierCurveTo(cx + i * 2.2, cy - 12, cx + i * 2.8, cy - 10, cx + i * 3, cy - 9);
+      ctx.stroke();
+    }
   }
 
   // ── Beret ──
@@ -674,12 +722,12 @@ function drawCharacter(dir, frame, opts = {}) {
 
   // ── Star of David ──
   if (starOD) {
-    // Centered on chest (vest area cy-1 to cy+9, center = cy+4, optical center = cy+3)
-    starOfDavid(ctx, cx, cy + 3, 4, '#FFD700');
+    // Centered on mid-chest / torso middle (vest area cy-1 to cy+9, true center = cy+4)
+    starOfDavid(ctx, cx, cy + 5, 4, '#FFD700');
     // Fill inner area with semi-transparent gold
     ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
     ctx.beginPath();
-    ctx.arc(cx, cy + 3, 2, 0, Math.PI * 2);
+    ctx.arc(cx, cy + 5, 2, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -1435,7 +1483,7 @@ export function generateBombermanTextures(scene) {
   scene.textures.addCanvas('bm_pu_key', drawPowerup('key'));
 
   // ── Player character (4 dirs x 2 frames) ──
-  const playerOpts = { bodyColor: '#222222', headColor: '#d2a679', kippah: true, starOD: true };
+  const playerOpts = { bodyColor: '#222222', headColor: '#D2956A', kippah: true, starOD: true };
   for (const dir of ['up', 'down', 'left', 'right']) {
     for (const frame of [0, 1]) {
       scene.textures.addCanvas(

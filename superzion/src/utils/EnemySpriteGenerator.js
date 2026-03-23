@@ -110,6 +110,17 @@ export function generateGuardSprites(scene) {
     const cx = SIZE / 2;
     const legOffset = (frame === 1 || frame === 3) ? 3 : frame === 2 ? -3 : 0;
 
+    // ── DARK OUTLINE SILHOUETTE (drawn first, 1px larger) ──────
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    // Body outline
+    ctx.beginPath();
+    ctx.ellipse(cx, 33, 11, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Head outline
+    ctx.beginPath();
+    ctx.ellipse(cx, 18, 7, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
     // ── LEGS (rounded pill shapes) ──────────────────────────────
     const lx1 = cx - 6;
     const lx2 = cx + 2;

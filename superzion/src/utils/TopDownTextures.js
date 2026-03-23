@@ -60,38 +60,115 @@ function drawPlayer(ctx, dir, frame) {
 function drawGuard(ctx, dir, frame) {
   ctx.clearRect(0, 0, 16, 20);
 
-  // Body (olive green uniform)
-  ctx.fillStyle = '#2D4A1E';
-  ctx.fillRect(4, 6, 8, 10);
+  const offset = frame === 1 ? 2 : 0;
 
-  // Head with beret
-  ctx.fillStyle = '#3D5A2E';
+  // ── Dark outline silhouette (drawn first, 1px larger) ──
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  // Body outline
+  ctx.beginPath();
+  ctx.ellipse(8, 11, 5.5, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Head outline
+  ctx.beginPath();
+  ctx.arc(8, 5, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Legs (elliptical capsules) ──
+  ctx.fillStyle = '#1E3A10';
+  if (dir === 'down' || dir === 'up') {
+    ctx.beginPath();
+    ctx.ellipse(6 - offset * 0.5, 17.5, 1.8, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(10 + offset * 0.5, 17.5, 1.8, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(8, 17 - offset * 0.5, 2.2, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (frame === 1) {
+      ctx.beginPath();
+      ctx.ellipse(8, 18, 2.2, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ── Boots (small rounded caps) ──
+  ctx.fillStyle = '#111111';
+  if (dir === 'down' || dir === 'up') {
+    ctx.beginPath();
+    ctx.ellipse(6 - offset * 0.5, 19.5, 2, 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(10 + offset * 0.5, 19.5, 2, 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(8, 19.5, 2.5, 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── Body (olive green uniform — elliptical torso) ──
+  ctx.fillStyle = '#2D4A1E';
+  ctx.beginPath();
+  ctx.ellipse(8, 11, 4.5, 5.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Arms (small ellipses on sides) ──
+  ctx.fillStyle = '#2D4A1E';
+  if (dir === 'down' || dir === 'up') {
+    ctx.beginPath();
+    ctx.ellipse(3.5, 10, 1.5, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(12.5, 10, 1.5, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (dir === 'left') {
+    ctx.beginPath();
+    ctx.ellipse(4, 10, 1.5, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(12, 10, 1.5, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── Head (skin-colored circle) ──
+  ctx.fillStyle = '#8a7060';
   ctx.beginPath();
   ctx.arc(8, 5, 4, 0, Math.PI * 2);
   ctx.fill();
-  // Beret
-  ctx.fillStyle = '#1a3010';
-  ctx.fillRect(3, 1, 10, 3);
 
-  // Eyes
+  // ── Beret (elliptical dome) ──
+  ctx.fillStyle = '#1a3010';
+  ctx.beginPath();
+  ctx.ellipse(8, 2, 5, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Beret dome top
+  ctx.beginPath();
+  ctx.ellipse(7, 1.5, 4, 1.5, -0.15, Math.PI, 0);
+  ctx.fill();
+
+  // ── Eyes (small ellipses) ──
   ctx.fillStyle = '#000000';
   if (dir === 'down') {
-    ctx.fillRect(5, 4, 2, 1);
-    ctx.fillRect(9, 4, 2, 1);
+    ctx.beginPath();
+    ctx.ellipse(6, 4.5, 1, 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(10, 4.5, 1, 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (dir === 'left') {
+    ctx.beginPath();
+    ctx.ellipse(5.5, 4.5, 1, 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (dir === 'right') {
+    ctx.beginPath();
+    ctx.ellipse(10.5, 4.5, 1, 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  // Legs
-  ctx.fillStyle = '#1E3A10';
-  const offset = frame === 1 ? 2 : 0;
-  if (dir === 'down' || dir === 'up') {
-    ctx.fillRect(5 - offset, 16, 3, 4);
-    ctx.fillRect(8 + offset, 16, 3, 4);
-  } else {
-    ctx.fillRect(6, 16 - offset, 4, 4);
-    if (frame === 1) ctx.fillRect(6, 17, 4, 3);
-  }
-
-  // Rifle
+  // ── Rifle (kept rectangular — it's a weapon, not a body part) ──
   ctx.fillStyle = '#1a1a1a';
   if (dir === 'right') {
     ctx.fillRect(12, 8, 4, 2);

@@ -34,8 +34,8 @@ function wavingSheet(scene, key, drawFn, w = 140, h = 90) {
 
 // ── STAR OF DAVID HELPER ────────────────────────────────────
 function starOfDavid(ctx, cx, cy, r, color, fill = false) {
-  ctx.strokeStyle = color;
   ctx.fillStyle = color;
+  ctx.strokeStyle = '#B8860B';
   ctx.lineWidth = Math.max(1.5, r * 0.18);
   for (const rot of [-Math.PI / 2, Math.PI / 2]) {
     ctx.beginPath();
@@ -46,7 +46,7 @@ function starOfDavid(ctx, cx, cy, r, color, fill = false) {
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.closePath();
-    if (fill) ctx.fill();
+    ctx.fill();
     ctx.stroke();
   }
 }
@@ -436,21 +436,21 @@ export function createTurboTurbanParade(scene) {
     ctx.lineTo(cx + 10, by - 66);
     ctx.closePath();
     ctx.fill();
-    // Beard strands
+    // Beard strands (concave — bow outward/downward following jawline)
     ctx.strokeStyle = '#dddddd';
     ctx.lineWidth = 0.8;
     for (let i = 0; i < 8; i++) {
       const sx = cx - 7 + i * 2;
       ctx.beginPath();
       ctx.moveTo(sx, by - 66);
-      ctx.lineTo(sx + (Math.random() - 0.5) * 3, by - 44);
+      ctx.quadraticCurveTo(sx + (i - 4) * 1.5, by - 50, sx + (Math.random() - 0.5) * 3, by - 44);
       ctx.stroke();
     }
   }, 70, 120);
 }
 
-export function createWardenParade(scene) {
-  staticSprite(scene, 'parade_warden', (ctx, w, h) => {
+export function createAngryEyebrowsParade(scene) {
+  staticSprite(scene, 'parade_angryeyebrows', (ctx, w, h) => {
     const cx = w / 2, by = h - 4;
     // Legs (military pants) — tapered ellipses
     ctx.fillStyle = '#1a1a1a';
@@ -834,14 +834,14 @@ export function createSupremeTurbanParade(scene) {
     ctx.lineTo(cx + 14, by - 78);
     ctx.closePath();
     ctx.fill();
-    // Beard strands
+    // Beard strands (concave — bow outward/downward following jawline)
     ctx.strokeStyle = '#ccc8b8';
     ctx.lineWidth = 0.8;
     for (let i = 0; i < 12; i++) {
       const sx = cx - 10 + i * 2;
       ctx.beginPath();
       ctx.moveTo(sx, by - 78);
-      ctx.quadraticCurveTo(sx + (Math.random() - 0.5) * 4, by - 58, cx + (Math.random() - 0.5) * 4, by - 42);
+      ctx.quadraticCurveTo(sx + (i - 6) * 1.5, by - 54, cx + (Math.random() - 0.5) * 4, by - 42);
       ctx.stroke();
     }
     // Dark aura
@@ -860,6 +860,16 @@ export function createSupremeTurbanParade(scene) {
 export function createEnemySoldier(scene, key = 'parade_soldier', uniformColor = '#3a4a30') {
   staticSprite(scene, key, (ctx, w, h) => {
     const cx = w / 2, by = h - 1;
+    // ── Dark outline silhouette (drawn first) ──
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    // Body outline
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 18, 6, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Head outline
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 27, 4, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Legs — small ellipses
     ctx.fillStyle = uniformColor;
     ctx.beginPath();
@@ -1337,65 +1347,141 @@ export function createSuperZionParade(scene) {
   staticSprite(scene, 'parade_superzion', (ctx, w, h) => {
     const cx = w / 2, by = h - 6;
 
-    // ── LEGS ──
+    // ── LEGS — tapered with curves ──
     ctx.fillStyle = '#222222';
-    ctx.fillRect(cx - 10, by - 50, 8, 36);
-    ctx.fillRect(cx + 2, by - 46, 8, 32);
-    // Knee pads
+    // Left leg
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, by - 50);
+    ctx.quadraticCurveTo(cx - 11, by - 32, cx - 10, by - 14);
+    ctx.lineTo(cx - 2, by - 14);
+    ctx.quadraticCurveTo(cx - 1, by - 32, cx - 2, by - 50);
+    ctx.closePath();
+    ctx.fill();
+    // Right leg
+    ctx.beginPath();
+    ctx.moveTo(cx + 2, by - 46);
+    ctx.quadraticCurveTo(cx + 1, by - 28, cx + 2, by - 14);
+    ctx.lineTo(cx + 10, by - 14);
+    ctx.quadraticCurveTo(cx + 11, by - 28, cx + 10, by - 46);
+    ctx.closePath();
+    ctx.fill();
+    // Knee pads — rounded capsules
     ctx.fillStyle = '#7a7a80';
-    ctx.fillRect(cx - 11, by - 32, 10, 4);
-    ctx.fillRect(cx + 1, by - 28, 10, 4);
-    // Combat boots
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, by - 30, 5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, by - 26, 5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Combat boots — rounded shapes
     ctx.fillStyle = '#0e0e0e';
-    ctx.fillRect(cx - 12, by - 14, 11, 10);
-    ctx.fillRect(cx + 1, by - 14, 11, 10);
+    ctx.beginPath();
+    ctx.ellipse(cx - 6.5, by - 9, 6, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, by - 9, 6, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Boot soles — rounded bottom
     ctx.fillStyle = '#121212';
-    ctx.fillRect(cx - 13, by - 4, 13, 4);
-    ctx.fillRect(cx, by - 4, 13, 4);
+    ctx.beginPath();
+    ctx.arc(cx - 6.5, by - 4, 6.5, 0, Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 6, by - 4, 6.5, 0, Math.PI);
+    ctx.fill();
 
-    // ── TORSO ──
-    ctx.fillStyle = '#2a2a2a';
-    ctx.fillRect(cx - 16, by - 82, 32, 34);
-    // Tactical vest
-    ctx.fillStyle = '#6a6a70';
-    ctx.fillRect(cx - 14, by - 80, 28, 28);
-    // Vest straps
-    ctx.fillStyle = '#5a5a60';
-    ctx.fillRect(cx - 14, by - 78, 4, 24);
-    ctx.fillRect(cx + 10, by - 78, 4, 24);
-    // Pouches
+    // ── TORSO — organic trapezoid ──
+    const torsoGrad = ctx.createLinearGradient(cx, by - 82, cx, by - 48);
+    torsoGrad.addColorStop(0, '#333333');
+    torsoGrad.addColorStop(1, '#222222');
+    ctx.fillStyle = torsoGrad;
+    ctx.beginPath();
+    ctx.moveTo(cx - 16, by - 82);
+    ctx.quadraticCurveTo(cx - 17, by - 65, cx - 14, by - 48);
+    ctx.lineTo(cx + 14, by - 48);
+    ctx.quadraticCurveTo(cx + 17, by - 65, cx + 16, by - 82);
+    ctx.closePath();
+    ctx.fill();
+    // Tactical vest — curved overlay
+    const vestGrad = ctx.createLinearGradient(cx, by - 80, cx, by - 52);
+    vestGrad.addColorStop(0, '#6a6a70');
+    vestGrad.addColorStop(0.5, '#5a5a62');
+    vestGrad.addColorStop(1, '#4e4e54');
+    ctx.fillStyle = vestGrad;
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, by - 80);
+    ctx.quadraticCurveTo(cx - 15, by - 65, cx - 12, by - 52);
+    ctx.lineTo(cx + 12, by - 52);
+    ctx.quadraticCurveTo(cx + 15, by - 65, cx + 14, by - 80);
+    ctx.closePath();
+    ctx.fill();
+    // Vest straps — curved lines
+    ctx.strokeStyle = '#5a5a60';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 13, by - 78);
+    ctx.quadraticCurveTo(cx - 13.5, by - 65, cx - 11, by - 54);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 13, by - 78);
+    ctx.quadraticCurveTo(cx + 13.5, by - 65, cx + 11, by - 54);
+    ctx.stroke();
+    // Pouches — rounded capsules
     ctx.fillStyle = '#555560';
-    ctx.fillRect(cx - 12, by - 68, 7, 6);
-    ctx.fillRect(cx + 5, by - 68, 7, 6);
+    ctx.beginPath();
+    ctx.ellipse(cx - 8.5, by - 65, 4, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 8.5, by - 65, 4, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Pouch flap highlights
     ctx.fillStyle = '#7a7a80';
-    ctx.fillRect(cx - 12, by - 68, 7, 1);
-    ctx.fillRect(cx + 5, by - 68, 7, 1);
+    ctx.beginPath();
+    ctx.arc(cx - 8.5, by - 68, 3.5, Math.PI, 0);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 8.5, by - 68, 3.5, Math.PI, 0);
+    ctx.fill();
 
     // ★ STAR OF DAVID — GOLD, prominent, on CHEST ★
     starOfDavid(ctx, cx, by - 70, 7, '#FFD700', true);
 
-    // Utility belt
+    // Utility belt — rounded capsule
     ctx.fillStyle = '#2a2a2a';
-    ctx.fillRect(cx - 16, by - 52, 32, 4);
-    // Gold buckle
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 50, 16, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Gold buckle — rounded
     ctx.fillStyle = '#c49520';
-    ctx.fillRect(cx - 3, by - 52, 6, 4);
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 50, 3.5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // ── ARMS ──
+    // ── ARMS — organic ellipses ──
     // Left arm (down)
     ctx.fillStyle = '#2a2a2a';
-    ctx.fillRect(cx - 22, by - 80, 7, 26);
-    ctx.fillStyle = '#222222';
-    ctx.fillRect(cx - 22, by - 56, 7, 5);
+    ctx.beginPath();
+    ctx.ellipse(cx - 18.5, by - 67, 3.5, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Left hand — skin-colored #D2956A
+    ctx.fillStyle = '#D2956A';
+    ctx.beginPath();
+    ctx.ellipse(cx - 18.5, by - 53, 3.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Right arm (up, holding rifle on shoulder)
     ctx.save();
     ctx.translate(cx + 15, by - 80);
     ctx.rotate(-0.15);
     ctx.fillStyle = '#2a2a2a';
-    ctx.fillRect(0, 0, 7, 26);
-    ctx.fillStyle = '#222222';
-    ctx.fillRect(0, 24, 7, 5);
+    ctx.beginPath();
+    ctx.ellipse(3.5, 13, 3.5, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Right hand — skin-colored #D2956A
+    ctx.fillStyle = '#D2956A';
+    ctx.beginPath();
+    ctx.ellipse(3.5, 27, 3.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 
     // ── RIFLE on right shoulder ──
@@ -1403,93 +1489,180 @@ export function createSuperZionParade(scene) {
     ctx.save();
     ctx.translate(cx + 20, by - 110);
     ctx.rotate(0.15);
-    ctx.fillRect(0, 0, 4, 50);
-    // Stock
-    ctx.fillRect(-2, 46, 8, 6);
-    // Barrel tip
-    ctx.fillRect(-1, -4, 6, 5);
-    // Scope
+    // Barrel — rounded
+    ctx.beginPath();
+    ctx.ellipse(2, 25, 2, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Stock — rounded
+    ctx.beginPath();
+    ctx.ellipse(2, 49, 4, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Barrel tip — rounded
+    ctx.beginPath();
+    ctx.ellipse(2, -2, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Scope — rounded
     ctx.fillStyle = '#4a4a4a';
-    ctx.fillRect(1, 12, 4, 8);
+    ctx.beginPath();
+    ctx.ellipse(2, 16, 2.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 
-    // ── NECK ──
-    ctx.fillStyle = '#b08657';
-    ctx.fillRect(cx - 5, by - 88, 10, 7);
+    // ── NECK — short skin-colored cylinder ──
+    ctx.fillStyle = '#c4926a';
+    ctx.beginPath();
+    ctx.ellipse(cx, by - 84.5, 5, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // ── HEAD (detailed) ──
+    // ── HEAD (detailed, organic — oval taller than wide) ──
     const hx = cx, hy = by - 104;
-    // Face shape
-    ctx.fillStyle = '#c49668';
+    // Face shape — oval
+    ctx.fillStyle = '#D2956A';
     ctx.beginPath();
     ctx.ellipse(hx, hy, 14, 17, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Forehead highlight
+    ctx.fillStyle = '#e0b080';
+    ctx.beginPath();
+    ctx.ellipse(hx, hy - 8, 10, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Cheekbone shading
+    ctx.fillStyle = '#c4926a';
+    ctx.beginPath();
+    ctx.ellipse(hx - 11, hy, 3, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(hx + 11, hy, 3, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Jawline — curved
+    ctx.beginPath();
+    ctx.moveTo(hx - 12, hy + 6);
+    ctx.quadraticCurveTo(hx - 8, hy + 16, hx, hy + 17);
+    ctx.quadraticCurveTo(hx + 8, hy + 16, hx + 12, hy + 6);
+    ctx.fillStyle = '#c4926a';
+    ctx.fill();
+    // Chin
+    ctx.beginPath();
+    ctx.ellipse(hx, hy + 14, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#b08050';
+    ctx.fill();
 
-    // Hair (jet black, short sides)
-    ctx.fillStyle = '#0e0e0e';
-    ctx.fillRect(hx - 12, hy - 16, 24, 8);
-    ctx.fillRect(hx - 14, hy - 12, 4, 10);
-    ctx.fillRect(hx + 10, hy - 12, 4, 10);
-    ctx.fillRect(hx - 10, hy - 18, 20, 3);
+    // ── Slicked-back hair — black #1A1A1A, bezierCurveTo for volume ──
+    ctx.fillStyle = '#1A1A1A';
+    // Main hair cap
+    ctx.beginPath();
+    ctx.ellipse(hx, hy - 15, 14, 6, 0, Math.PI, 0);
+    ctx.fill();
+    // Hair volume on top — higher in front (slight quiff), tapering back
+    ctx.beginPath();
+    ctx.moveTo(hx - 12, hy - 14);
+    ctx.bezierCurveTo(hx - 10, hy - 22, hx + 6, hy - 23, hx + 12, hy - 16);
+    ctx.bezierCurveTo(hx + 13, hy - 14, hx - 13, hy - 13, hx - 12, hy - 14);
+    ctx.closePath();
+    ctx.fillStyle = '#1A1A1A';
+    ctx.fill();
+    // Side hair covering sides, face visible
+    ctx.fillStyle = '#1A1A1A';
+    ctx.beginPath();
+    ctx.arc(hx - 14, hy - 8, 3.5, Math.PI * 0.7, Math.PI * 1.7);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(hx + 14, hy - 8, 3.5, Math.PI * 1.3, Math.PI * 0.3);
+    ctx.fill();
+    // Hair streaks (bezierCurveTo for slick look)
+    ctx.strokeStyle = '#222222';
+    ctx.lineWidth = 0.8;
+    for (let i = -4; i <= 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(hx + i * 2.5, hy - 21);
+      ctx.bezierCurveTo(hx + i * 2.8, hy - 18, hx + i * 3.2, hy - 15, hx + i * 3.5, hy - 12);
+      ctx.stroke();
+    }
+    // Hairline arc
+    ctx.beginPath();
+    ctx.arc(hx, hy - 12, 12, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.strokeStyle = '#222222';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
-    // Slicked-back black hair (Mossad agent)
+    // ── Eyes — organic ovals with iris/pupil ──
+    const eyeY = hy - 2;
+    // Sclera
+    ctx.fillStyle = '#eeeee8';
+    ctx.beginPath();
+    ctx.ellipse(hx - 5, eyeY + 1, 4.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(hx + 5, eyeY + 1, 4.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Iris
+    ctx.fillStyle = '#3a2818';
+    ctx.beginPath();
+    ctx.arc(hx - 4.5, eyeY + 1, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(hx + 4.5, eyeY + 1, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Pupil
     ctx.fillStyle = '#0e0e0e';
     ctx.beginPath();
-    ctx.ellipse(hx, hy - 18, 12, 5, 0, Math.PI, 0);
+    ctx.arc(hx - 4.5, eyeY + 1, 1, 0, Math.PI * 2);
     ctx.fill();
-    // Hair swept backward
-    ctx.fillRect(hx - 10, hy - 18, 20, 3);
-    ctx.fillRect(hx - 12, hy - 16, 4, 6);
-    ctx.fillRect(hx + 8, hy - 16, 4, 6);
-
-    // Eyes (intense)
-    const eyeY = hy - 2;
-    ctx.fillStyle = '#eeeee8';
-    ctx.fillRect(hx - 8, eyeY, 6, 4);
-    ctx.fillRect(hx + 2, eyeY, 6, 4);
-    ctx.fillStyle = '#3a2818';
-    ctx.fillRect(hx - 6, eyeY + 1, 3, 3);
-    ctx.fillRect(hx + 4, eyeY + 1, 3, 3);
-    ctx.fillStyle = '#0e0e0e';
-    ctx.fillRect(hx - 5, eyeY + 1, 2, 2);
-    ctx.fillRect(hx + 4, eyeY + 1, 2, 2);
-    // Eye highlights
+    ctx.beginPath();
+    ctx.arc(hx + 4.5, eyeY + 1, 1, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye highlight
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(hx - 7, eyeY, 1, 1);
-    ctx.fillRect(hx + 6, eyeY, 1, 1);
-    // Eyebrows (strong)
-    ctx.fillStyle = '#0e0e0e';
-    ctx.fillRect(hx - 8, eyeY - 3, 6, 2);
-    ctx.fillRect(hx + 2, eyeY - 3, 6, 2);
+    ctx.beginPath();
+    ctx.arc(hx - 6, eyeY, 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(hx + 3.5, eyeY, 0.7, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Nose
-    ctx.fillStyle = '#b08657';
-    ctx.fillRect(hx - 1, hy + 1, 2, 4);
-    ctx.fillRect(hx - 2, hy + 4, 4, 2);
+    // Eyebrows — short quadraticCurveTo arched lines, black #1A1A1A, lineWidth 2
+    ctx.strokeStyle = '#1A1A1A';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(hx - 10, eyeY - 3);
+    ctx.quadraticCurveTo(hx - 5, eyeY - 6, hx - 1, eyeY - 3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hx + 1, eyeY - 3);
+    ctx.quadraticCurveTo(hx + 5, eyeY - 6, hx + 10, eyeY - 3);
+    ctx.stroke();
 
-    // Short beard / stubble
-    ctx.fillStyle = '#2a2018';
-    for (let dy = 0; dy < 6; dy++) {
-      for (let dx = -8; dx <= 8; dx++) {
-        if ((dx + dy) % 3 === 0) {
-          ctx.fillRect(hx + dx, hy + 5 + dy, 1, 1);
-        }
-      }
-    }
-    // Jawline beard (slightly thicker)
-    ctx.fillStyle = '#1c1610';
-    for (let dx = -10; dx <= 10; dx++) {
-      if (dx % 2 === 0) ctx.fillRect(hx + dx, hy + 10, 1, 2);
-    }
+    // Nose — organic curve
+    ctx.fillStyle = '#c4926a';
+    ctx.beginPath();
+    ctx.moveTo(hx - 1.5, hy - 1);
+    ctx.quadraticCurveTo(hx, hy + 5, hx + 1.5, hy - 1);
+    ctx.fill();
+    // Nostril hints
+    ctx.fillStyle = '#8a6040';
+    ctx.beginPath();
+    ctx.arc(hx - 2, hy + 4, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(hx + 2, hy + 4, 1, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Mouth (determined line)
-    ctx.fillStyle = '#6a4030';
-    ctx.fillRect(hx - 4, hy + 6, 8, 1);
+    // Mouth — thin curved line
+    ctx.strokeStyle = '#6a4030';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hx - 4, hy + 7);
+    ctx.quadraticCurveTo(hx, hy + 8, hx + 4, hy + 7);
+    ctx.stroke();
 
-    // Ears
-    ctx.fillStyle = '#b08657';
-    ctx.fillRect(hx - 14, hy - 3, 2, 6);
-    ctx.fillRect(hx + 12, hy - 3, 2, 6);
+    // Ears — small ellipses
+    ctx.fillStyle = '#c4926a';
+    ctx.beginPath();
+    ctx.ellipse(hx - 14.5, hy, 2, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(hx + 14.5, hy, 2, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
   }, 96, 160);
 }
 
@@ -1678,7 +1851,7 @@ export function generateAllParadeTextures(scene) {
   // Boss parade sprites
   createFoamBeardParade(scene);
   createTurboTurbanParade(scene);
-  createWardenParade(scene);
+  createAngryEyebrowsParade(scene);
   createSupremeTurbanParade(scene);
   // Soldiers
   createEnemySoldier(scene);

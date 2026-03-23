@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
 // DroneScene — Level 4: Operation Underground
 // Phase 1: City precision minigame (navigate to glowing window)
-// Phase 2: Boss fight — THE WARDEN (top-down destroyed room)
-//   The Warden hides behind armchair (phase 1), roams and throws
+// Phase 2: Boss fight — ANGRY EYEBROWS (top-down destroyed room)
+//   Angry Eyebrows hides behind armchair (phase 1), roams and throws
 //   objects (phase 2), then charges desperately (phase 3).
 //   Drone uses SPACE to shoot, X for missiles, SHIFT to dash.
 // + Victory/Results overlay
@@ -18,7 +18,7 @@ import {
   createCommandRoom, createArmchairTexture, createArmchairSideTexture,
 } from '../utils/DroneTextures.js';
 import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
-import { showControlsOverlay } from '../ui/ControlsOverlay.js';
+import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.js';
 
 const W = 960;
 const H = 540;
@@ -1131,8 +1131,35 @@ export default class DroneScene extends Phaser.Scene {
     // ── Setup ──
     this._setupHUD();
     this._setupInput();
-    // Start with city intro, then boss fight
-    this._startCityIntro();
+
+    // Check for checkpoint: if returning from boss death, skip to boss fight
+    let hasCheckpoint = false;
+    try {
+      if (localStorage.getItem('superzion_checkpoint_l4') === 'boss') {
+        hasCheckpoint = true;
+        localStorage.removeItem('superzion_checkpoint_l4');
+      }
+    } catch (e) { /* ignore */ }
+
+    if (hasCheckpoint) {
+      // Skip city phase, go directly to boss fight
+      this._startBossDirectly();
+    } else {
+      // Start with city intro, then boss fight
+      this._startCityIntro();
+    }
+
+    // Tutorial overlay (pauses gameplay until dismissed)
+    showTutorialOverlay(this, [
+      'LEVEL 4: OPERATION UNDERGROUND',
+      '',
+      'ARROWS: Steer the drone',
+      'Navigate through the ruined city',
+      'Enter through the target window',
+      'Then: SPACE to shoot, X for missiles',
+      'SHIFT: Dodge/dash',
+      'Defeat ANGRY EYEBROWS',
+    ]);
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -1174,7 +1201,7 @@ export default class DroneScene extends Phaser.Scene {
       this.hudTimer.setText('');
     } else if (this.phase === 'boss') {
       this.hudPhase.setText('HIDEOUT');
-      this.hudObjective.setText('ELIMINATE THE WARDEN');
+      this.hudObjective.setText('ELIMINATE ANGRY EYEBROWS');
       this.hudTimer.setText('');
     }
   }
@@ -1704,6 +1731,9 @@ export default class DroneScene extends Phaser.Scene {
     const city = this._city;
     if (!city || city.transitioning) return;
     city.transitioning = true;
+
+    // Save checkpoint: city phase complete, entering boss fight
+    try { localStorage.setItem('superzion_checkpoint_l4', 'boss'); } catch (e) { /* ignore */ }
     this.instrText.setAlpha(0);
     this.instrBg.setAlpha(0);
 
@@ -1736,21 +1766,21 @@ export default class DroneScene extends Phaser.Scene {
         this.time.delayedCall(1200, () => {
           interiorBg.setFillStyle(0x1a1810);
 
-          // "THE WARDEN" text
-          const wardenTitle = this.add.text(W / 2, H / 2 - 30, 'THE WARDEN', {
+          // "ANGRY EYEBROWS" text
+          const angryTitle = this.add.text(W / 2, H / 2 - 30, 'ANGRY EYEBROWS', {
             fontFamily: 'monospace', fontSize: '42px', color: '#ff4400',
             fontStyle: 'bold',
             shadow: { offsetX: 0, offsetY: 0, color: '#ff4400', blur: 20, fill: true },
           }).setOrigin(0.5).setDepth(42).setAlpha(0);
-          city.objects.push(wardenTitle);
+          city.objects.push(angryTitle);
 
-          const wardenSub = this.add.text(W / 2, H / 2 + 20, 'HE KNOWS YOU\'RE HERE', {
+          const angrySub = this.add.text(W / 2, H / 2 + 20, 'HE KNOWS YOU\'RE HERE', {
             fontFamily: 'monospace', fontSize: '14px', color: '#ff8844',
           }).setOrigin(0.5).setDepth(42).setAlpha(0);
-          city.objects.push(wardenSub);
+          city.objects.push(angrySub);
 
           this.tweens.add({
-            targets: [wardenTitle, wardenSub],
+            targets: [angryTitle, angrySub],
             alpha: 1,
             duration: 800,
           });
@@ -1811,7 +1841,7 @@ export default class DroneScene extends Phaser.Scene {
       shadow: { offsetX: 0, offsetY: 0, color: '#ff8800', blur: 10, fill: true },
     }).setOrigin(0.5).setDepth(41);
 
-    const sub = this.add.text(W / 2, H / 2 + 20, 'INFILTRATE AND ELIMINATE THE WARDEN', {
+    const sub = this.add.text(W / 2, H / 2 + 20, 'INFILTRATE AND ELIMINATE ANGRY EYEBROWS', {
       fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
     }).setOrigin(0.5).setDepth(41);
 
@@ -1824,7 +1854,7 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   // ═════════════════════════════════════════════════════════════
-  // BOSS FIGHT: THE WARDEN (top-down destroyed room)
+  // BOSS FIGHT: ANGRY EYEBROWS (top-down destroyed room)
   // ═════════════════════════════════════════════════════════════
   _startBossFight() {
     this.phase = 'boss';
@@ -1981,7 +2011,7 @@ export default class DroneScene extends Phaser.Scene {
     this.bossHPBarFill = this.add.rectangle(barX + 1, barY + 1, barW - 2, barH - 2, 0xff0000)
       .setDepth(52).setScrollFactor(0).setOrigin(0, 0);
 
-    this.bossHPBarLabel = this.add.text(W / 2, barY - 2, 'THE WARDEN', {
+    this.bossHPBarLabel = this.add.text(W / 2, barY - 2, 'ANGRY EYEBROWS', {
       fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
       shadow: { offsetX: 0, offsetY: 0, color: '#ff4444', blur: 6, fill: true },
     }).setOrigin(0.5, 1).setDepth(53).setScrollFactor(0);
@@ -2060,7 +2090,7 @@ export default class DroneScene extends Phaser.Scene {
           this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
         }
 
-        const nameText = this.add.text(W / 2, H / 2, 'THE WARDEN', {
+        const nameText = this.add.text(W / 2, H / 2, 'ANGRY EYEBROWS', {
           fontFamily: 'monospace', fontSize: '40px', color: '#ff4444',
           shadow: { offsetX: 0, offsetY: 0, color: '#ff4444', blur: 20, fill: true },
         }).setOrigin(0.5).setDepth(55).setScrollFactor(0).setAlpha(0);
@@ -2112,6 +2142,17 @@ export default class DroneScene extends Phaser.Scene {
       this.cameras.main.shake(250, 0.018);
       if (this.bossSprite) {
         this.tweens.add({ targets: this.bossSprite, alpha: 0.3, duration: 80, yoyo: true, repeat: 4 });
+        // Start breathing idle animation for phases 2+
+        if (!this._bossBreathingTween) {
+          this._bossBreathingTween = this.tweens.add({
+            targets: this.bossSprite,
+            scaleY: (BOSS_DISPLAY * 1.02) / 128,
+            duration: 1200,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+          });
+        }
       }
     }
 
@@ -2215,7 +2256,8 @@ export default class DroneScene extends Phaser.Scene {
         }
         if (this.bossStateTimer <= 0) {
           this.bossState = 'hiding';
-          this.bossStateTimer = BOSS_P1_HIDE_MIN + Math.random() * (BOSS_P1_HIDE_MAX - BOSS_P1_HIDE_MIN);
+          // Consistent hide duration (rhythmic, not random)
+          this.bossStateTimer = BOSS_P1_HIDE_MIN + 0.25; // always 1.75s
         }
         break;
     }
@@ -2250,8 +2292,10 @@ export default class DroneScene extends Phaser.Scene {
       this.bossThrowTimer = BOSS_P2_THROW_INTERVAL;
       this._bossThrowObject(BOSS_P2_PROJ_SIZE);
 
-      // 20% chance to push armchair
-      if (this.armchairInPlace && Math.random() < BOSS_P2_ARMCHAIR_CHANCE) {
+      // Armchair push every 5th throw (predictable pattern instead of random 20%)
+      if (!this._p2ThrowCount) this._p2ThrowCount = 0;
+      this._p2ThrowCount++;
+      if (this.armchairInPlace && this._p2ThrowCount % 5 === 0) {
         this._bossPushArmchair();
       }
     }
@@ -2270,6 +2314,19 @@ export default class DroneScene extends Phaser.Scene {
       this.bossChargeElapsed += dt;
       this.bossX += this.bossChargeDirX * BOSS_P3_CHARGE_SPEED * dt;
       this.bossY += this.bossChargeDirY * BOSS_P3_CHARGE_SPEED * dt;
+
+      // Red glow trail behind boss during charge
+      if (Math.random() < 0.7) {
+        const trailGlow = this.add.circle(
+          this.bossX - this.bossChargeDirX * 30,
+          this.bossY - this.bossChargeDirY * 30,
+          12 + Math.random() * 8, 0xff0000, 0.4
+        ).setDepth(15);
+        this.tweens.add({
+          targets: trailGlow, alpha: 0, scale: 2.0, duration: 400,
+          onComplete: () => trailGlow.destroy(),
+        });
+      }
 
       // Keep in bounds
       this.bossX = Phaser.Math.Clamp(this.bossX, ROOM_LEFT + 50, ROOM_RIGHT - 50);
@@ -2308,21 +2365,46 @@ export default class DroneScene extends Phaser.Scene {
       this.bossX = Phaser.Math.Clamp(this.bossX, ROOM_LEFT + 50, ROOM_RIGHT - 50);
       this.bossY = Phaser.Math.Clamp(this.bossY, ROOM_TOP + 50, ROOM_BOTTOM - 50);
 
-      // Charge timer
+      // Charge timer — with 0.5s telegraph before charging
       this.bossChargeTimer -= dt;
-      if (this.bossChargeTimer <= 0) {
-        // Start charge toward drone
-        this.bossCharging = true;
-        this.bossChargeElapsed = 0;
-        const cdx = this.droneX - this.bossX;
-        const cdy = this.droneY - this.bossY;
-        const cDist = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
-        this.bossChargeDirX = cdx / cDist;
-        this.bossChargeDirY = cdy / cDist;
-        SoundManager.get().playBossRoar();
-        if (this.bossSprite) {
-          this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.15, BOSS_DISPLAY * 1.15);
-        }
+      if (this.bossChargeTimer <= 0 && !this._chargeTelegraphing) {
+        this._chargeTelegraphing = true;
+
+        // TELEGRAPH: Red exclamation mark above boss head for 0.5s
+        const exclMark = this.add.text(this.bossX, this.bossY - 50, '!', {
+          fontFamily: 'monospace', fontSize: '32px', color: '#ff0000', fontStyle: 'bold',
+          shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 12, fill: true },
+        }).setOrigin(0.5).setDepth(25);
+        this.tweens.add({
+          targets: exclMark, scale: 1.4, alpha: 0.4, duration: 125,
+          yoyo: true, repeat: 1,
+        });
+
+        // Red glow telegraph around boss
+        const chargeGlow = this.add.circle(this.bossX, this.bossY, 55, 0xff0000, 0.35).setDepth(16);
+        this.tweens.add({
+          targets: chargeGlow, scale: 1.6, alpha: 0.55, duration: 200,
+          yoyo: true,
+          onComplete: () => chargeGlow.destroy(),
+        });
+
+        // Delay charge by 0.5s after telegraph
+        this.time.delayedCall(500, () => {
+          exclMark.destroy();
+          this._chargeTelegraphing = false;
+          // Start charge toward drone
+          this.bossCharging = true;
+          this.bossChargeElapsed = 0;
+          const cdx = this.droneX - this.bossX;
+          const cdy = this.droneY - this.bossY;
+          const cDist = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
+          this.bossChargeDirX = cdx / cDist;
+          this.bossChargeDirY = cdy / cDist;
+          SoundManager.get().playBossRoar();
+          if (this.bossSprite) {
+            this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.15, BOSS_DISPLAY * 1.15);
+          }
+        });
       }
     }
 
@@ -2335,44 +2417,90 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   _pickBossMoveTarget() {
-    this.bossTargetX = ROOM_LEFT + 80 + Math.random() * (ROOM_RIGHT - ROOM_LEFT - 160);
-    this.bossTargetY = ROOM_TOP + 80 + Math.random() * (ROOM_BOTTOM - ROOM_TOP - 160);
+    // Patrol pattern instead of random positions — cycles through predictable waypoints
+    if (!this._patrolIndex) this._patrolIndex = 0;
+    const patrolPoints = [
+      { x: ROOM_LEFT + 120, y: ROOM_TOP + 120 },       // top-left
+      { x: ROOM_RIGHT - 120, y: ROOM_TOP + 120 },      // top-right
+      { x: W / 2, y: H / 2 },                           // center
+      { x: ROOM_RIGHT - 120, y: ROOM_BOTTOM - 120 },   // bottom-right
+      { x: ROOM_LEFT + 120, y: ROOM_BOTTOM - 120 },    // bottom-left
+      { x: W / 2, y: ROOM_TOP + 100 },                  // top-center
+      { x: W / 2, y: ROOM_BOTTOM - 100 },               // bottom-center
+      { x: ROOM_LEFT + 100, y: H / 2 },                 // left-center
+      { x: ROOM_RIGHT - 100, y: H / 2 },                // right-center
+      { x: W / 2, y: H / 2 },                           // center again
+    ];
+    const pt = patrolPoints[this._patrolIndex % patrolPoints.length];
+    this._patrolIndex++;
+    this.bossTargetX = pt.x;
+    this.bossTargetY = pt.y;
   }
 
   // ── Boss throws an object toward the drone ──
+  // Wind-up telegraph: boss scales up 1.1x for 0.3s with red glow before throwing
   _bossThrowObject(projSize) {
     if (!this.bossSprite) return;
-    SoundManager.get().playBossLaser();
+    if (this._throwTelegraphing) return; // prevent overlap
+    this._throwTelegraphing = true;
 
-    const size = projSize || 32;
-    const startX = this.bossX;
-    const startY = this.bossY;
-    const spread = 40;
-    const targetX = this.droneX + (Math.random() - 0.5) * spread;
-    const targetY = this.droneY + (Math.random() - 0.5) * spread;
+    // TELEGRAPH: boss wind-up animation
+    // Scale up boss sprite to 1.1x for 0.3s
+    const origW = this.bossSprite.displayWidth;
+    const origH = this.bossSprite.displayHeight;
+    this.tweens.add({
+      targets: this.bossSprite,
+      displayWidth: origW * 1.1,
+      displayHeight: origH * 1.1,
+      duration: 150,
+      yoyo: true,
+    });
 
-    const projIdx = Math.floor(Math.random() * 4);
-    const projTex = 'boss_projectile_' + projIdx;
-    const texKey = this.textures.exists(projTex) ? projTex : 'boss_projectile';
-    const projTypes = ['plank', 'brick', 'concrete', 'bottle', 'chair'];
-    const projType = projTypes[Math.floor(Math.random() * projTypes.length)];
+    // Red glow around boss for 0.3s
+    const throwGlow = this.add.circle(this.bossX, this.bossY, 50, 0xff0000, 0.3).setDepth(17);
+    this.tweens.add({
+      targets: throwGlow, scale: 1.4, alpha: 0.5, duration: 150,
+      yoyo: true,
+      onComplete: () => throwGlow.destroy(),
+    });
 
-    const proj = this.add.image(startX, startY, texKey).setDepth(18);
-    proj.setDisplaySize(size, size);
+    // Actually throw after 0.3s wind-up delay
+    this.time.delayedCall(300, () => {
+      this._throwTelegraphing = false;
+      if (!this.bossSprite) return;
+      SoundManager.get().playBossLaser();
 
-    const dx = targetX - startX;
-    const dy = targetY - startY;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const size = projSize || 32;
+      const startX = this.bossX;
+      const startY = this.bossY;
+      // Reduced spread for more predictability
+      const spread = 20;
+      const targetX = this.droneX + (Math.random() - 0.5) * spread;
+      const targetY = this.droneY + (Math.random() - 0.5) * spread;
 
-    this.bossProjectiles.push({
-      sprite: proj,
-      x: startX,
-      y: startY,
-      vx: (dx / dist) * BOSS_THROW_SPEED,
-      vy: (dy / dist) * BOSS_THROW_SPEED,
-      size: size,
-      type: projType,
-      alive: true,
+      const projIdx = Math.floor(Math.random() * 4);
+      const projTex = 'boss_projectile_' + projIdx;
+      const texKey = this.textures.exists(projTex) ? projTex : 'boss_projectile';
+      const projTypes = ['plank', 'brick', 'concrete', 'bottle', 'chair'];
+      const projType = projTypes[Math.floor(Math.random() * projTypes.length)];
+
+      const proj = this.add.image(startX, startY, texKey).setDepth(18);
+      proj.setDisplaySize(size, size);
+
+      const dx = targetX - startX;
+      const dy = targetY - startY;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+      this.bossProjectiles.push({
+        sprite: proj,
+        x: startX,
+        y: startY,
+        vx: (dx / dist) * BOSS_THROW_SPEED,
+        vy: (dy / dist) * BOSS_THROW_SPEED,
+        size: size,
+        type: projType,
+        alive: true,
+      });
     });
   }
 
@@ -2489,21 +2617,24 @@ export default class DroneScene extends Phaser.Scene {
     const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.12).setDepth(45).setScrollFactor(0);
     this.tweens.add({ targets: flash, alpha: 0, duration: 150, onComplete: () => flash.destroy() });
 
-    for (let i = 0; i < 8; i++) {
+    const debrisColors = [0xff6600, 0xff8800, 0xffaa00, 0x8a7a6a, 0x6a5a4a, 0xffffff];
+    for (let i = 0; i < 15; i++) {
       const px = this.bossX + (Math.random() - 0.5) * 50;
       const py = this.bossY + (Math.random() - 0.5) * 50;
-      const size = 1.5 + Math.random() * 3;
-      const colors = [0x8a7a6a, 0x6a5a4a, 0xa09080, 0x5a4a3a];
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      const debris = this.add.circle(px, py, size, color, 0.9).setDepth(22);
-      const vx = (Math.random() - 0.5) * 120;
-      const vy = (Math.random() - 0.5) * 120;
+      const radius = 1 + Math.random() * 4;
+      const color = debrisColors[Math.floor(Math.random() * debrisColors.length)];
+      const debris = this.add.circle(px, py, radius, color, 0.9).setDepth(22);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 40 + Math.random() * 120;
       this.tweens.add({
         targets: debris,
-        x: px + vx * 0.5,
-        y: py + vy * 0.5,
+        x: px + Math.cos(angle) * speed,
+        y: py + Math.sin(angle) * speed,
+        scale: 0,
         alpha: 0,
-        duration: 350 + Math.random() * 250,
+        rotation: Math.random() * 6,
+        duration: 400 + Math.random() * 400,
+        ease: 'Quad.easeOut',
         onComplete: () => debris.destroy(),
       });
     }
@@ -2666,15 +2797,25 @@ export default class DroneScene extends Phaser.Scene {
     this.bossHP -= amount;
     SoundManager.get().playBossHit();
 
-    // Flash boss white
+    // White flash then restore
     if (this.bossSprite) {
+      this.bossSprite.setTint(0xffffff);
+      this.time.delayedCall(50, () => {
+        if (this.bossSprite && this.bossSprite.active) this.bossSprite.clearTint();
+      });
+      // Scale bump
       this.tweens.add({
         targets: this.bossSprite,
-        alpha: 0.4,
-        duration: 80,
+        scaleX: (BOSS_DISPLAY * 1.05) / 128,
+        scaleY: (BOSS_DISPLAY * 1.05) / 128,
+        duration: 100,
         yoyo: true,
+        ease: 'Quad.easeOut',
       });
     }
+
+    // Screen shake
+    this.cameras.main.shake(100, 0.005);
 
     this._bossDamageEffects();
 
@@ -2986,9 +3127,9 @@ export default class DroneScene extends Phaser.Scene {
       }
     });
 
-    // 3. "THE WARDEN IS DOWN" text (gold, centered, glow)
+    // 3. "ANGRY EYEBROWS IS DOWN" text (gold, centered, glow)
     this.time.delayedCall(2500, () => {
-      const victoryText = this.add.text(W / 2, H / 2, 'THE WARDEN IS DOWN', {
+      const victoryText = this.add.text(W / 2, H / 2, 'ANGRY EYEBROWS IS DOWN', {
         fontFamily: 'monospace', fontSize: '32px', color: '#FFD700',
         fontStyle: 'bold',
         shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 16, fill: true },
@@ -3162,6 +3303,9 @@ export default class DroneScene extends Phaser.Scene {
     this._stopAmbient();
     MusicManager.get().stop(1);
 
+    // Clear checkpoint on level completion
+    try { localStorage.removeItem('superzion_checkpoint_l4'); } catch (e) { /* ignore */ }
+
     const missionSuccess = this.bossDefeated;
     this.missionSuccess = missionSuccess;
     if (missionSuccess) SoundManager.get().playVictory();
@@ -3176,7 +3320,7 @@ export default class DroneScene extends Phaser.Scene {
     const bossStatus = this.bossDefeated ? 'ELIMINATED' : `${this.bossHP}/${this.bossMaxHP} HP remaining`;
     const stats = [
       { label: 'ENEMIES DOWNED', value: `${this.enemiesKilled}` },
-      { label: 'THE WARDEN', value: bossStatus },
+      { label: 'ANGRY EYEBROWS', value: bossStatus },
       { label: 'DRONE STATUS', value: this.droneHP > 0 ? 'INTACT' : 'DESTROYED' },
       { label: 'SCORE', value: `${this.score}` },
     ];
@@ -3203,6 +3347,9 @@ export default class DroneScene extends Phaser.Scene {
   // MAIN UPDATE LOOP
   // ═════════════════════════════════════════════════════════════
   update(time, delta) {
+    // Tutorial active: skip all gameplay
+    if (this.tutorialActive) return;
+
     const dt = delta / 1000;
 
     // Mute toggle

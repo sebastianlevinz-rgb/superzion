@@ -111,6 +111,7 @@ export default class GameIntroScene extends BaseCinematicScene {
         color: '#000000', size: 1, y: -100,  // hidden text
         charDelay: 1,
         setup: () => this._setupTitleReveal(),
+        cleanup: () => { if (this._emberTimer) { this._emberTimer.remove(); this._emberTimer = null; } },
       },
     ], 'MenuScene');
   }
@@ -708,8 +709,8 @@ export default class GameIntroScene extends BaseCinematicScene {
     }
 
     // Boss sprites as dark silhouettes with red backlight
-    const bossKeys = ['parade_foambeard', 'parade_turboturban', 'parade_warden', 'parade_supremeturban'];
-    const bossNames = ['FOAM BEARD', 'TURBO TURBAN', 'THE WARDEN', 'SUPREME TURBAN'];
+    const bossKeys = ['parade_foambeard', 'parade_turboturban', 'parade_angryeyebrows', 'parade_supremeturban'];
+    const bossNames = ['FOAM BEARD', 'TURBO TURBAN', 'ANGRY EYEBROWS', 'SUPREME TURBAN'];
     const spacing = W / 5;
 
     bossKeys.forEach((key, i) => {
@@ -726,7 +727,6 @@ export default class GameIntroScene extends BaseCinematicScene {
         const boss = this.add.sprite(bx, by, key).setDepth(5).setScale(0.8).setAlpha(0).setTint(0x220000);
         this._addPageVisual(boss);
         this.tweens.add({ targets: boss, alpha: 0.8, duration: 400, delay: i * 200 });
-        SoundManager.get().playExplosion();
       }
 
       // Name label
@@ -768,19 +768,11 @@ export default class GameIntroScene extends BaseCinematicScene {
       }
     });
 
-    // Missiles flying across
+    // Missiles flying across (visual only, no sounds)
     for (let i = 0; i < 5; i++) {
       this.time.delayedCall(i * 400, () => {
         if (this.skipped) return;
         this._spawnMissile();
-      });
-    }
-
-    // Random explosions
-    for (let i = 0; i < 4; i++) {
-      this.time.delayedCall(300 + i * 500, () => {
-        if (this.skipped) return;
-        this._spawnExplosion(100 + Math.random() * (W - 200), 80 + Math.random() * (H - 180));
       });
     }
   }
@@ -804,8 +796,7 @@ export default class GameIntroScene extends BaseCinematicScene {
       this.tweens.add({ targets: flag, alpha: 1, duration: 800 });
     }
 
-    this.cameras.main.shake(200, 0.008);
-    SoundManager.get().playExplosion();
+    // Gentle visual effect only — no explosion sound
   }
 
   /** Israeli arsenal — jets, tanks, Iron Dome */
@@ -895,110 +886,523 @@ export default class GameIntroScene extends BaseCinematicScene {
       });
     }
 
-    // Explosions in background
-    for (let i = 0; i < 3; i++) {
-      this.time.delayedCall(500 + i * 800, () => {
-        if (this.skipped) return;
-        this._spawnExplosion(600 + Math.random() * 300, 100 + Math.random() * 200);
-      });
-    }
+    // Background smoke wisps (no explosions — keep intro quiet)
   }
 
-  /** SUPERZION title reveal — golden Maguen David, title, subtitle */
+  /** SUPERZION title reveal — post-apocalyptic chrome metal epic */
   _setupTitleReveal() {
-    // Dark background with subtle golden glow
+    const cx = W / 2, cy = H / 2;
+    const sm = SoundManager.get();
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 0 — POST-APOCALYPTIC SKY (dark gradient with fire glow)
+    // ══════════════════════════════════════════════════════════════
     const bg = this.add.graphics().setDepth(0);
     this._addPageVisual(bg);
     for (let y = 0; y < H; y++) {
       const t = y / H;
-      bg.fillStyle(Phaser.Display.Color.GetColor(8 + t * 15 | 0, 6 + t * 12 | 0, 2 + t * 8 | 0));
+      // Dark smoky sky: top #080408 → mid #1a0a08 → bottom #0a0604
+      const r = Math.round(8 + t * 18 * Math.sin(t * Math.PI));
+      const g = Math.round(4 + t * 6 * Math.sin(t * Math.PI));
+      const b = Math.round(8 - t * 6);
+      bg.fillStyle(Phaser.Display.Color.GetColor(
+        Math.max(0, r), Math.max(0, g), Math.max(0, Math.min(b, 10))
+      ));
       bg.fillRect(0, y, W, 1);
     }
 
-    // WHITE FLASH
-    const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.9).setDepth(30);
-    this._addPageVisual(flash);
-    this.tweens.add({ targets: flash, alpha: 0, duration: 600 });
-
-    this.cameras.main.shake(500, 0.03);
-
-    // Giant golden Maguen David
-    const starGfx = this.add.graphics().setDepth(19);
-    this._addPageVisual(starGfx);
-    const cx = W / 2, cy = H / 2 - 30;
-    const r = 110;
-    starGfx.fillStyle(0xFFD700, 0.25);
-    starGfx.fillTriangle(cx, cy - r, cx - r * 0.866, cy + r * 0.5, cx + r * 0.866, cy + r * 0.5);
-    starGfx.fillTriangle(cx, cy + r, cx - r * 0.866, cy - r * 0.5, cx + r * 0.866, cy - r * 0.5);
-    starGfx.setAlpha(0);
-    this.tweens.add({ targets: starGfx, alpha: 1, duration: 600 });
-
-    // "SUPERZION" title with outline, shadow, glow
-    const titleFont = '"Impact", "Arial Black", "Trebuchet MS", sans-serif';
-    // Drop shadow
-    const titleShadow = this.add.text(W / 2 + 4, H / 2 - 36, 'S U P E R Z I O N', {
-      fontFamily: titleFont, fontSize: '72px', color: '#000000',
-    }).setOrigin(0.5).setDepth(49).setAlpha(0).setScale(3);
-    this._addPageVisual(titleShadow);
-    // Outline layers
-    const outlineOffsets = [[-3,0],[3,0],[0,-3],[0,3],[-3,-3],[3,-3],[-3,3],[3,3]];
-    const outlineTexts = [];
-    for (const [dx, dy] of outlineOffsets) {
-      const ol = this.add.text(W / 2 + dx, H / 2 - 40 + dy, 'S U P E R Z I O N', {
-        fontFamily: titleFont, fontSize: '72px', color: '#000000',
-      }).setOrigin(0.5).setDepth(49).setAlpha(0).setScale(3);
-      this._addPageVisual(ol);
-      outlineTexts.push(ol);
+    // Distant fire glow at top center (explosion on horizon)
+    for (let lr = 200; lr > 5; lr -= 8) {
+      const a = 0.015 * (lr / 200);
+      bg.fillStyle(0xff6600, a);
+      bg.fillCircle(cx + 40, H * 0.22, lr);
     }
-    // Golden glow
-    const titleGlow = this.add.text(W / 2, H / 2 - 40, 'S U P E R Z I O N', {
-      fontFamily: titleFont, fontSize: '72px', color: '#FFD700',
-      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 80, fill: true },
-    }).setOrigin(0.5).setDepth(48).setAlpha(0).setScale(3);
-    this._addPageVisual(titleGlow);
-    // Main gold title
-    const title = this.add.text(W / 2, H / 2 - 40, 'S U P E R Z I O N', {
-      fontFamily: titleFont, fontSize: '72px', color: '#FFD700',
-      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 40, fill: true },
-    }).setOrigin(0.5).setDepth(50).setAlpha(0).setScale(3);
-    this._addPageVisual(title);
-
-    // Zoom in
-    const allParts = [title, titleShadow, titleGlow, ...outlineTexts];
-    for (const part of allParts) {
-      this.tweens.add({
-        targets: part,
-        alpha: part === titleGlow ? 0.4 : part === titleShadow ? 0.5 : 1,
-        scaleX: 1, scaleY: 1,
-        duration: 300, ease: 'Back.easeOut',
-      });
+    for (let lr = 120; lr > 5; lr -= 6) {
+      bg.fillStyle(0xffaa00, 0.02 * (lr / 120));
+      bg.fillCircle(cx + 40, H * 0.18, lr);
     }
-    // Breathing pulse
-    for (const part of allParts) {
-      this.tweens.add({
-        targets: part, scaleX: 1.04, scaleY: 1.04,
-        duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 400,
-      });
+    // White-hot core
+    bg.fillStyle(0xffeedd, 0.08);
+    bg.fillCircle(cx + 40, H * 0.2, 30);
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 1 — DESTROYED CITY SKYLINE (horizon silhouettes)
+    // ══════════════════════════════════════════════════════════════
+    const skyline = this.add.graphics().setDepth(1);
+    this._addPageVisual(skyline);
+    const horizY = H * 0.62;
+
+    // Dark building silhouettes — jagged, broken
+    skyline.fillStyle(0x0a0808, 1);
+    const buildings = [
+      { x: 0, w: 45, h: 80 }, { x: 50, w: 30, h: 120, broken: true },
+      { x: 85, w: 50, h: 60 }, { x: 140, w: 25, h: 140, broken: true },
+      { x: 170, w: 40, h: 90 }, { x: 215, w: 55, h: 70 },
+      { x: 275, w: 35, h: 110, broken: true }, { x: 315, w: 45, h: 65 },
+      { x: 365, w: 30, h: 130, broken: true }, { x: 400, w: 50, h: 85 },
+      { x: 455, w: 40, h: 100 }, { x: 500, w: 55, h: 75 },
+      { x: 560, w: 30, h: 145, broken: true }, { x: 595, w: 45, h: 95 },
+      { x: 645, w: 35, h: 60 }, { x: 685, w: 50, h: 115, broken: true },
+      { x: 740, w: 40, h: 80 }, { x: 785, w: 55, h: 70 },
+      { x: 845, w: 30, h: 125, broken: true }, { x: 880, w: 45, h: 90 },
+      { x: 930, w: 35, h: 75 },
+    ];
+    for (const b of buildings) {
+      const by = horizY - b.h;
+      if (b.broken) {
+        // Jagged broken top
+        skyline.beginPath();
+        skyline.moveTo(b.x, horizY);
+        skyline.lineTo(b.x, by + 15);
+        skyline.lineTo(b.x + b.w * 0.3, by);
+        skyline.lineTo(b.x + b.w * 0.5, by + 20);
+        skyline.lineTo(b.x + b.w * 0.7, by + 5);
+        skyline.lineTo(b.x + b.w, by + 25);
+        skyline.lineTo(b.x + b.w, horizY);
+        skyline.closePath();
+        skyline.fill();
+      } else {
+        skyline.fillRect(b.x, by, b.w, b.h);
+      }
+      // Dim window flickers on some buildings
+      if (b.h > 80 && Math.random() > 0.4) {
+        skyline.fillStyle(0xff6600, 0.06);
+        for (let wy = 0; wy < 3; wy++) {
+          skyline.fillRect(b.x + 4 + Math.random() * (b.w - 10), by + 10 + wy * 20, 3, 4);
+        }
+        skyline.fillStyle(0x0a0808, 1);
+      }
+    }
+    // Ground fill below horizon
+    skyline.fillStyle(0x060404, 1);
+    skyline.fillRect(0, horizY, W, H - horizY);
+
+    // Rubble texture on ground
+    skyline.fillStyle(0x1a1210, 1);
+    for (let i = 0; i < 30; i++) {
+      const rx = Math.random() * W;
+      const ry = horizY + 5 + Math.random() * (H - horizY - 20);
+      skyline.fillRect(rx, ry, 3 + Math.random() * 8, 2 + Math.random() * 3);
     }
 
-    // Subtitle — new tagline
-    this.time.delayedCall(800, () => {
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 2 — SMOKE & ATMOSPHERE
+    // ══════════════════════════════════════════════════════════════
+    const smokeGfx = this.add.graphics().setDepth(2);
+    this._addPageVisual(smokeGfx);
+    // Smoke columns rising from ruins
+    for (let i = 0; i < 8; i++) {
+      const sx = 60 + Math.random() * (W - 120);
+      const sy = horizY - 20 - Math.random() * 40;
+      for (let j = 0; j < 6; j++) {
+        smokeGfx.fillStyle(0x222218, 0.04 + Math.random() * 0.03);
+        smokeGfx.fillCircle(sx + (Math.random() - 0.5) * 20, sy - j * 25 - Math.random() * 15, 15 + Math.random() * 25);
+      }
+    }
+    // Haze layer
+    smokeGfx.fillStyle(0x1a1008, 0.15);
+    smokeGfx.fillRect(0, horizY - 40, W, 60);
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 3 — SOLDIER SILHOUETTE (bottom-left foreground)
+    // ══════════════════════════════════════════════════════════════
+    const soldierGfx = this.add.graphics().setDepth(3);
+    this._addPageVisual(soldierGfx);
+    const solX = 100, solBaseY = H - 30;
+    soldierGfx.fillStyle(0x050303, 1);
+    // Body — standing, slightly turned
+    soldierGfx.fillRect(solX - 4, solBaseY - 50, 8, 30); // torso
+    soldierGfx.fillRect(solX - 5, solBaseY - 20, 4, 22); // left leg
+    soldierGfx.fillRect(solX + 1, solBaseY - 20, 4, 22); // right leg
+    // Head
+    soldierGfx.fillCircle(solX, solBaseY - 55, 6);
+    // Helmet rim
+    soldierGfx.fillRect(solX - 7, solBaseY - 58, 14, 3);
+    // Rifle (held diagonally)
+    soldierGfx.lineStyle(2, 0x050303, 1);
+    soldierGfx.lineBetween(solX + 5, solBaseY - 46, solX + 22, solBaseY - 65);
+    // Rifle stock
+    soldierGfx.lineBetween(solX + 5, solBaseY - 46, solX + 2, solBaseY - 38);
+    // Slight orange-lit edge (backlit by fire)
+    soldierGfx.lineStyle(1, 0x663300, 0.3);
+    soldierGfx.lineBetween(solX + 4, solBaseY - 50, solX + 4, solBaseY - 22);
+    // Rubble at feet
+    soldierGfx.fillStyle(0x0a0606, 1);
+    for (let i = 0; i < 8; i++) {
+      soldierGfx.fillRect(solX - 20 + Math.random() * 50, solBaseY - 2 + Math.random() * 4, 4 + Math.random() * 8, 2 + Math.random() * 3);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 4 — EMBERS & FIRE PARTICLES (continuous)
+    // ══════════════════════════════════════════════════════════════
+    const spawnEmber = () => {
       if (this.skipped) return;
-      const sub = this.add.text(W / 2, H / 2 + 30, 'THEY FIGHT TO CONQUER. WE FIGHT TO EXIST.', {
-        fontFamily: titleFont, fontSize: '22px', color: '#ffffff',
-        shadow: { offsetX: 0, offsetY: 0, color: '#ffffff', blur: 10, fill: true },
-      }).setOrigin(0.5).setDepth(50).setAlpha(0);
+      const ex = Math.random() * W;
+      const ey = H + 10;
+      const eSize = 1 + Math.random() * 2;
+      const colors = [0xff6600, 0xff9900, 0xffcc00, 0xff4400, 0xffaa33];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const ember = this.add.circle(ex, ey, eSize, color, 0.5 + Math.random() * 0.4).setDepth(4);
+      this._addPageVisual(ember);
+      const drift = (Math.random() - 0.5) * 80;
+      this.tweens.add({
+        targets: ember, y: -20, x: ex + drift, alpha: 0,
+        duration: 3000 + Math.random() * 4000, ease: 'Linear',
+        onComplete: () => { if (ember && ember.destroy) ember.destroy(); },
+      });
+    };
+    // Continuous ember spawning
+    this._emberTimer = this.time.addEvent({
+      delay: 80, repeat: -1,
+      callback: () => { if (!this.skipped) spawnEmber(); },
+    });
+    // Initial batch
+    for (let i = 0; i < 30; i++) {
+      const e = this.add.circle(Math.random() * W, Math.random() * H, 1 + Math.random(), 0xff6600, 0.2 + Math.random() * 0.3).setDepth(4);
+      this._addPageVisual(e);
+      this.tweens.add({
+        targets: e, y: -20, x: e.x + (Math.random() - 0.5) * 60, alpha: 0,
+        duration: 2000 + Math.random() * 3000, ease: 'Linear',
+        onComplete: () => { if (e && e.destroy) e.destroy(); },
+      });
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 5 — GOLDEN AURA (light source behind star)
+    // ══════════════════════════════════════════════════════════════
+    const auraGfx = this.add.graphics().setDepth(5);
+    this._addPageVisual(auraGfx);
+    // Large warm radial glow
+    for (let lr = 280; lr > 10; lr -= 6) {
+      const t = lr / 280;
+      // Amber-gold glow: brighter near center
+      const r2 = Math.round(255 * (1 - t * 0.6));
+      const g2 = Math.round(180 * (1 - t * 0.7));
+      const b2 = Math.round(40 * (1 - t * 0.8));
+      auraGfx.fillStyle(Phaser.Display.Color.GetColor(r2, g2, b2), 0.008 + (1 - t) * 0.015);
+      auraGfx.fillCircle(cx, cy - 10, lr);
+    }
+    // Pulsing glow
+    this.tweens.add({
+      targets: auraGfx, alpha: { from: 0.7, to: 1 },
+      duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 6 — METALLIC STAR OF DAVID (bronze/gold, light source)
+    // ══════════════════════════════════════════════════════════════
+    const starR = 180;
+    const starCy = cy - 10;
+
+    // Star golden glow halo behind
+    const starHaloGfx = this.add.graphics().setDepth(6);
+    this._addPageVisual(starHaloGfx);
+    for (let lr = 220; lr > 10; lr -= 5) {
+      starHaloGfx.fillStyle(0xFFD700, 0.005 + (1 - lr / 220) * 0.01);
+      starHaloGfx.fillCircle(cx, starCy, lr);
+    }
+
+    // Main metallic star — canvas texture for gradient control
+    const starTexKey = '__star_metal_tex';
+    if (this.textures.exists(starTexKey)) this.textures.remove(starTexKey);
+    const starCanvas = this.textures.createCanvas(starTexKey, 460, 460);
+    const sCtx = starCanvas.context;
+    const sCx = 230, sCy = 230;
+
+    // Draw metallic star of david
+    const drawStarTriangle = (rotation, fillGrad) => {
+      sCtx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = rotation + (i * 2 * Math.PI) / 3;
+        const tx = sCx + Math.cos(a) * 200;
+        const ty = sCy + Math.sin(a) * 200;
+        i === 0 ? sCtx.moveTo(tx, ty) : sCtx.lineTo(tx, ty);
+      }
+      sCtx.closePath();
+      sCtx.fillStyle = fillGrad;
+      sCtx.fill();
+    };
+
+    // Bronze/gold metallic gradient for triangle 1 (pointing up)
+    const grad1 = sCtx.createLinearGradient(sCx, sCy - 200, sCx, sCy + 100);
+    grad1.addColorStop(0, '#e8c44a');   // bright gold top
+    grad1.addColorStop(0.3, '#c49520');  // warm bronze
+    grad1.addColorStop(0.5, '#8B6914');  // dark bronze
+    grad1.addColorStop(0.7, '#c49520');  // light again (metallic banding)
+    grad1.addColorStop(1, '#a07818');
+    drawStarTriangle(-Math.PI / 2, grad1);
+
+    // Triangle 2 (pointing down) — slightly different gradient angle for metal effect
+    const grad2 = sCtx.createLinearGradient(sCx - 100, sCy + 100, sCx + 100, sCy - 100);
+    grad2.addColorStop(0, '#a07818');
+    grad2.addColorStop(0.3, '#c49520');
+    grad2.addColorStop(0.5, '#e8c44a');
+    grad2.addColorStop(0.7, '#8B6914');
+    grad2.addColorStop(1, '#c49520');
+    drawStarTriangle(Math.PI / 2, grad2);
+
+    // Edge highlights — bright stroke on both triangles
+    sCtx.strokeStyle = '#FFD700';
+    sCtx.lineWidth = 2.5;
+    for (const rot of [-Math.PI / 2, Math.PI / 2]) {
+      sCtx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = rot + (i * 2 * Math.PI) / 3;
+        const tx = sCx + Math.cos(a) * 200;
+        const ty = sCy + Math.sin(a) * 200;
+        i === 0 ? sCtx.moveTo(tx, ty) : sCtx.lineTo(tx, ty);
+      }
+      sCtx.closePath();
+      sCtx.stroke();
+    }
+
+    // Inner bright highlight lines — chrome reflection streaks
+    sCtx.strokeStyle = 'rgba(255, 240, 180, 0.4)';
+    sCtx.lineWidth = 1.5;
+    for (const rot of [-Math.PI / 2, Math.PI / 2]) {
+      sCtx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = rot + (i * 2 * Math.PI) / 3;
+        const tx = sCx + Math.cos(a) * 180;
+        const ty = sCy + Math.sin(a) * 180;
+        i === 0 ? sCtx.moveTo(tx, ty) : sCtx.lineTo(tx, ty);
+      }
+      sCtx.closePath();
+      sCtx.stroke();
+    }
+
+    // Center glow (intense light source)
+    const cGlow = sCtx.createRadialGradient(sCx, sCy, 5, sCx, sCy, 80);
+    cGlow.addColorStop(0, 'rgba(255, 250, 220, 0.5)');
+    cGlow.addColorStop(0.3, 'rgba(255, 215, 0, 0.2)');
+    cGlow.addColorStop(0.7, 'rgba(200, 150, 30, 0.05)');
+    cGlow.addColorStop(1, 'rgba(200, 150, 30, 0)');
+    sCtx.fillStyle = cGlow;
+    sCtx.fillRect(0, 0, 460, 460);
+
+    starCanvas.refresh();
+
+    // Display star — entrance: scale from 0 with sound
+    const starImg = this.add.image(cx, starCy, starTexKey).setDepth(7).setScale(0).setAlpha(0);
+    this._addPageVisual(starImg);
+    sm.playStarReveal();
+    this.tweens.add({
+      targets: starImg, scaleX: 0.82, scaleY: 0.82, alpha: 1,
+      duration: 1200, ease: 'Back.easeOut',
+    });
+    // Gentle pulse
+    this.tweens.add({
+      targets: starImg, scaleX: { from: 0.80, to: 0.84 }, scaleY: { from: 0.80, to: 0.84 },
+      duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 1500,
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 8 — "SUPERZION" CHROME METAL 3D TEXT
+    // ══════════════════════════════════════════════════════════════
+    const titleStr = 'SUPERZION';
+    const titleFont = '72px "Impact", "Arial Black", sans-serif';
+    const titleY = cy - 10;
+
+    const titleTexKey = '__title_reveal_tex';
+    if (this.textures.exists(titleTexKey)) this.textures.remove(titleTexKey);
+    const titleCanvas = this.textures.createCanvas(titleTexKey, W, 140);
+    const tCtx = titleCanvas.context;
+    tCtx.textAlign = 'center';
+    tCtx.textBaseline = 'middle';
+    tCtx.font = titleFont;
+
+    const drawX = W / 2;
+    const drawY = 70;
+
+    const letters = titleStr.split('');
+    const totalWidth = tCtx.measureText(titleStr).width;
+    const letterWidths = letters.map(l => tCtx.measureText(l).width);
+    let letterX = drawX - totalWidth / 2;
+
+    for (let li = 0; li < letters.length; li++) {
+      const lx = letterX + letterWidths[li] / 2;
+
+      // DEPTH LAYERS: 6px deep 3D extrusion (gold/bronze bevel)
+      const depthColors = ['#2a1a08', '#3a2510', '#5a3a15', '#7a5518', '#8B6914', '#a07818'];
+      for (let d = 5; d >= 0; d--) {
+        tCtx.fillStyle = depthColors[d];
+        tCtx.fillText(letters[li], lx + d, drawY + d);
+      }
+
+      // Black outline on the face
+      tCtx.strokeStyle = '#000000';
+      tCtx.lineWidth = 3;
+      tCtx.lineJoin = 'round';
+      tCtx.strokeText(letters[li], lx, drawY);
+
+      // Chrome face — vertical gradient (silver metal with horizontal banding)
+      const chromeGrad = tCtx.createLinearGradient(lx, drawY - 30, lx, drawY + 30);
+      chromeGrad.addColorStop(0, '#e0e0e8');    // bright chrome top
+      chromeGrad.addColorStop(0.15, '#c0c0c8');  // slightly darker
+      chromeGrad.addColorStop(0.3, '#a0a0a8');   // mid gray
+      chromeGrad.addColorStop(0.45, '#d0d0d8');  // bright band (metal reflection)
+      chromeGrad.addColorStop(0.55, '#909098');   // dark band
+      chromeGrad.addColorStop(0.7, '#c8c8d0');   // another bright band
+      chromeGrad.addColorStop(0.85, '#a8a8b0');   // tapering
+      chromeGrad.addColorStop(1, '#808088');      // darker bottom
+      tCtx.fillStyle = chromeGrad;
+      tCtx.fillText(letters[li], lx, drawY);
+
+      // Top highlight line (bright chrome edge)
+      tCtx.save();
+      tCtx.globalAlpha = 0.5;
+      tCtx.fillStyle = '#ffffff';
+      tCtx.fillText(letters[li], lx, drawY - 1);
+      tCtx.restore();
+
+      // Gold bevel outline (inner edge tint)
+      tCtx.strokeStyle = '#c49520';
+      tCtx.lineWidth = 1.2;
+      tCtx.strokeText(letters[li], lx, drawY);
+
+      letterX += letterWidths[li];
+    }
+    titleCanvas.refresh();
+
+    // ── Letter-by-letter slam entrance with metallic SFX ──
+    // Create individual letter images from the canvas
+    const letterImgs = [];
+    let lxPos = 0;
+    for (let li = 0; li < letters.length; li++) {
+      const lw = letterWidths[li];
+      // Crop each letter region from the full canvas
+      const frameKey = `__title_letter_${li}`;
+      // We'll use the full texture but position each as one image per letter
+      // Instead: show full title image but with staggered entrance
+      lxPos += lw;
+    }
+
+    // Full title image — letters slam in as one piece
+    const titleImg = this.add.image(cx, titleY, titleTexKey).setDepth(20).setAlpha(0);
+    this._addPageVisual(titleImg);
+
+    // Swoosh sound before slam
+    this.time.delayedCall(600, () => {
+      if (this.skipped) return;
+      sm.playTitleRevealSwoosh();
+    });
+
+    // SLAM entrance: drop from above with camera shake
+    titleImg.setPosition(cx, titleY - 80).setScale(1.8);
+    this.time.delayedCall(900, () => {
+      if (this.skipped) return;
+      sm.playMetalSlam(1.0);
+      this.cameras.main.shake(200, 0.02);
+    });
+    this.tweens.add({
+      targets: titleImg, y: titleY, scaleX: 1, scaleY: 1, alpha: 1,
+      duration: 350, ease: 'Bounce.easeOut', delay: 800,
+    });
+
+    // Second smaller impact (echo)
+    this.time.delayedCall(1250, () => {
+      if (this.skipped) return;
+      sm.playMetalSlam(1.3);
+      this.cameras.main.shake(80, 0.008);
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 9 — LENS FLARES on metal edges
+    // ══════════════════════════════════════════════════════════════
+    const spawnLensFlare = () => {
+      if (this.skipped) return;
+      // Random position near title or star edges
+      const onTitle = Math.random() > 0.4;
+      let fx, fy;
+      if (onTitle) {
+        fx = cx + (Math.random() - 0.5) * (totalWidth * 0.9);
+        fy = titleY + (Math.random() - 0.5) * 30;
+      } else {
+        // On star points
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 120 + Math.random() * 50;
+        fx = cx + Math.cos(angle) * dist;
+        fy = starCy + Math.sin(angle) * dist;
+      }
+
+      const flareGfx = this.add.graphics().setDepth(35).setPosition(fx, fy).setAlpha(0);
+      this._addPageVisual(flareGfx);
+
+      // Cross flare (4-ray star)
+      const flareSize = 6 + Math.random() * 10;
+      flareGfx.lineStyle(1.5, 0xffffff, 0.9);
+      flareGfx.lineBetween(-flareSize, 0, flareSize, 0);
+      flareGfx.lineBetween(0, -flareSize, 0, flareSize);
+      // Diagonal rays (dimmer)
+      flareGfx.lineStyle(1, 0xffffff, 0.4);
+      const ds = flareSize * 0.6;
+      flareGfx.lineBetween(-ds, -ds, ds, ds);
+      flareGfx.lineBetween(-ds, ds, ds, -ds);
+      // Central dot glow
+      flareGfx.fillStyle(0xffffff, 0.7);
+      flareGfx.fillCircle(0, 0, 2);
+      flareGfx.fillStyle(0xFFD700, 0.3);
+      flareGfx.fillCircle(0, 0, 4);
+
+      this.tweens.add({
+        targets: flareGfx, alpha: { from: 0, to: 0.8 },
+        duration: 200 + Math.random() * 200, yoyo: true, ease: 'Sine.easeInOut',
+        onComplete: () => {
+          if (flareGfx && flareGfx.destroy) flareGfx.destroy();
+          this.time.delayedCall(300 + Math.random() * 800, spawnLensFlare);
+        },
+      });
+    };
+    // Start flare chains after title appears
+    for (let i = 0; i < 8; i++) {
+      this.time.delayedCall(1200 + i * 200, spawnLensFlare);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 10 — SUBTITLE + PRESS SPACE
+    // ══════════════════════════════════════════════════════════════
+    this.time.delayedCall(2000, () => {
+      if (this.skipped) return;
+      const sub = this.add.text(cx, titleY + 55, 'THEY FIGHT TO CONQUER. WE FIGHT TO EXIST.', {
+        fontFamily: '"Impact", "Arial Black", sans-serif', fontSize: '18px', color: '#ffffff',
+        shadow: { offsetX: 0, offsetY: 0, color: '#ffffff', blur: 8, fill: true },
+      }).setOrigin(0.5).setDepth(25).setAlpha(0);
       this._addPageVisual(sub);
-      this.tweens.add({ targets: sub, alpha: 1, duration: 500 });
+      this.tweens.add({ targets: sub, alpha: 1, duration: 800 });
     });
 
-    // Secondary shake
-    this.time.delayedCall(1000, () => {
+    const pressSpace = this.add.text(cx, H - 40, 'PRESS SPACE TO CONTINUE', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#FFD700',
+    }).setOrigin(0.5).setDepth(25).setAlpha(0);
+    this._addPageVisual(pressSpace);
+    this.time.delayedCall(2800, () => {
       if (this.skipped) return;
-      this.cameras.main.shake(200, 0.015);
+      this.tweens.add({
+        targets: pressSpace, alpha: { from: 0, to: 1 },
+        duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      });
     });
 
-    // Make this page ready immediately (no typewriter text to wait for)
+    // ══════════════════════════════════════════════════════════════
+    // LAYER 11 — SCANLINES + VIGNETTE (top layer)
+    // ══════════════════════════════════════════════════════════════
+    const scanGfx = this.add.graphics().setDepth(40);
+    this._addPageVisual(scanGfx);
+    for (let sy = 0; sy < H; sy += 2) {
+      scanGfx.fillStyle(0x000000, 0.08);
+      scanGfx.fillRect(0, sy, W, 1);
+    }
+    // Vignette
+    const vigGfx = this.add.graphics().setDepth(41);
+    this._addPageVisual(vigGfx);
+    for (const c of [{ x: 0, y: 0 }, { x: W, y: 0 }, { x: 0, y: H }, { x: W, y: H }]) {
+      for (let lr = 300; lr > 40; lr -= 15) {
+        vigGfx.fillStyle(0x000000, 0.25 * (lr / 300) * 0.15);
+        vigGfx.fillCircle(c.x, c.y, lr);
+      }
+    }
+
+    // Make this page ready immediately
     this.typewriterComplete = true;
     this.pageReady = true;
   }
@@ -1043,13 +1447,34 @@ export default class GameIntroScene extends BaseCinematicScene {
     expGfx.fillCircle(x, y, 3);
 
     this.cameras.main.shake(120, 0.005 + Math.random() * 0.005);
-    SoundManager.get().playExplosion();
+    // Removed playExplosion() — no aggressive sounds in cinematics
 
     this.tweens.add({
       targets: expGfx, alpha: 0, scale: 1.8,
       duration: 400 + Math.random() * 200, ease: 'Cubic.easeOut',
       onComplete: () => { if (expGfx && expGfx.destroy) expGfx.destroy(); },
     });
+
+    // Scatter circular particles
+    const colors = [0xff6600, 0xff8800, 0xffaa00, 0xff2200, 0xffdd00, 0xffffff];
+    for (let i = 0; i < 15; i++) {
+      const radius = 1 + Math.random() * 4;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const p = this.add.circle(x, y, radius, color, 0.9).setDepth(22);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 40 + Math.random() * 100;
+      this.tweens.add({
+        targets: p,
+        x: x + Math.cos(angle) * speed,
+        y: y + Math.sin(angle) * speed,
+        scale: 0,
+        alpha: 0,
+        rotation: Math.random() * 6,
+        duration: 400 + Math.random() * 400,
+        ease: 'Quad.easeOut',
+        onComplete: () => p.destroy(),
+      });
+    }
   }
 
   _spawnJetStrike(startY, endY, firesProjectile) {

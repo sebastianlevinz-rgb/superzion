@@ -146,10 +146,19 @@ export function showVictoryScreen(scene, opts = {}) {
   const nextBtn = _makeButton(scene, rightX, btnY, 'NEXT LEVEL (ENTER)', 0xFFD700, '#FFD700');
   elements.push(nextBtn.btn, nextBtn.txt);
 
+  // 5b. ESC — MENU label (center-bottom, below buttons)
+  const escLabel = scene.add.text(W / 2, btnY + 40, 'ESC \u2014 MENU', {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    color: '#888888',
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(501);
+  elements.push(escLabel);
+
   // 6. Key handling (delayed 500ms to prevent accidental skip)
   scene.time.delayedCall(500, () => {
     const rKey = scene.input.keyboard.addKey('R');
     const enterKey = scene.input.keyboard.addKey('ENTER');
+    const escKey = scene.input.keyboard.addKey('ESC');
 
     const rHandler = () => {
       _transitionTo(scene, currentScene, onBeforeTransition);
@@ -157,12 +166,17 @@ export function showVictoryScreen(scene, opts = {}) {
     const enterHandler = () => {
       _transitionTo(scene, nextScene, onBeforeTransition);
     };
+    const escHandler = () => {
+      _transitionTo(scene, 'MenuScene', onBeforeTransition);
+    };
 
     rKey.on('down', rHandler);
     enterKey.on('down', enterHandler);
+    escKey.on('down', escHandler);
 
     cleanups.push({ key: rKey, handler: rHandler });
     cleanups.push({ key: enterKey, handler: enterHandler });
+    cleanups.push({ key: escKey, handler: escHandler });
   });
 
   function destroy() {
@@ -227,10 +241,19 @@ export function showDefeatScreen(scene, opts = {}) {
   const skipBtn = _makeButton(scene, rightX, btnY, 'SKIP LEVEL (S)', 0xffff00, '#ffff00');
   elements.push(skipBtn.btn, skipBtn.txt);
 
+  // 4b. ESC — MENU label (center-bottom, below buttons)
+  const escLabel = scene.add.text(W / 2, btnY + 40, 'ESC \u2014 MENU', {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    color: '#888888',
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(501);
+  elements.push(escLabel);
+
   // 5. Key handling (delayed 500ms to prevent accidental skip)
   scene.time.delayedCall(500, () => {
     const rKey = scene.input.keyboard.addKey('R');
     const sKey = scene.input.keyboard.addKey('S');
+    const escKey = scene.input.keyboard.addKey('ESC');
 
     const rHandler = () => {
       _transitionTo(scene, currentScene, onBeforeTransition);
@@ -238,12 +261,17 @@ export function showDefeatScreen(scene, opts = {}) {
     const sHandler = () => {
       _transitionTo(scene, skipScene, onBeforeTransition);
     };
+    const escHandler = () => {
+      _transitionTo(scene, 'MenuScene', onBeforeTransition);
+    };
 
     rKey.on('down', rHandler);
     sKey.on('down', sHandler);
+    escKey.on('down', escHandler);
 
     cleanups.push({ key: rKey, handler: rHandler });
     cleanups.push({ key: sKey, handler: sHandler });
+    cleanups.push({ key: escKey, handler: escHandler });
   });
 
   function destroy() {

@@ -1,74 +1,25 @@
-// ═══════════════════════════════════════════════════════════════
-// EndgameManager — Side-scroller building, plant, escape, explode
-// Enhancements: golden glow, skull, DodAvi
-// ═══════════════════════════════════════════════════════════════
+// ===================================================================
+// Bomberman EndgameManager — plant explosive, escape sequence
+// ===================================================================
 
 import Phaser from 'phaser';
-import { TILE, GROUND_Y, BUILDING_CENTER_TILE } from '../data/LevelConfig.js';
+import { gx, gy, toCol, toRow, OBJ, SPAWN, TILE } from '../data/LevelConfig.js';
 import SoundManager from './SoundManager.js';
 import MusicManager from './MusicManager.js';
 
-const FLOOR_H = 38;
-const NUM_FLOORS = 5;
-const BUILDING_W = 224;
-const PROXIMITY = 80; // px from building center to allow planting
+const ESCAPE_TIME = 15; // seconds
+const PROXIMITY = TILE * 1.5;
 
-export default class EndgameManager {
+export default class BombermanEndgame {
   constructor(scene, player) {
     this.scene = scene;
     this.player = player;
-    this.phase = 'infiltrate'; // infiltrate → escape → detonate → done
-    this.bombPlanted = false;
-    this.bombSprite = null;
+    this.phase = 'infiltrate'; // infiltrate → planting → escape → done
+    this.escapeTimer = 0;
+    this.escapeSeconds = ESCAPE_TIME;
     this.plantPrompt = null;
-
-    this._buildTargetBuilding();
-  }
-
-  _buildTargetBuilding() {
-    const scene = this.scene;
-    const buildingX = BUILDING_CENTER_TILE * TILE;
-    const groundPx = GROUND_Y * TILE;
-
-    // Stack floors bottom-up
-    const totalH = (NUM_FLOORS + 1) * FLOOR_H; // 5 floors + roof
-    this.buildingTop = groundPx - totalH;
-    this.buildingX = buildingX;
-
-    this.floorSprites = [];
-    for (let i = 0; i < NUM_FLOORS; i++) {
-      const floorY = groundPx - (i + 1) * FLOOR_H;
-      const sprite = scene.add.image(buildingX, floorY + FLOOR_H / 2, `target_bldg_floor_${i}`);
-      sprite.setDepth(3);
-      this.floorSprites.push(sprite);
-    }
-
-    // Roof
-    const roofY = groundPx - NUM_FLOORS * FLOOR_H - FLOOR_H;
-    this.roofSprite = scene.add.image(buildingX, roofY + FLOOR_H / 2, 'target_bldg_roof');
-    this.roofSprite.setDepth(3);
-
-    // Target marker (bouncing arrow)
-    this.marker = scene.add.image(buildingX, this.buildingTop - 30, 'target_marker');
-    this.marker.setDepth(4);
-    scene.tweens.add({
-      targets: this.marker,
-      y: this.buildingTop - 45,
-      duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
-
-    // Enhancement 4: Golden glow behind building
-    const glowH = totalH + 20;
-    this.targetGlow = scene.add.rectangle(
-      buildingX, groundPx - totalH / 2,
-      BUILDING_W + 30, glowH,
-      0xFFD700, 0.12
-    );
-    this.targetGlow.setDepth(2);
-    scene.tweens.add({
-      targets: this.targetGlow,
-      alpha: 0.25, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
+    this.flashTimer = 0;
+    this.flashOverlay = null;
   }
 
   update(delta) {
@@ -76,204 +27,201 @@ export default class EndgameManager {
 
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
-    const groundPx = GROUND_Y * TILE;
-    const dist = Math.abs(px - this.buildingX);
+    const objX = gx(OBJ.col);
+    const objY = gy(OBJ.row);
 
     if (this.phase === 'infiltrate') {
-      // Show/hide proximity prompt
-      if (dist < PROXIMITY && py > groundPx - 150) {
+      const dist = Math.abs(px - objX) + Math.abs(py - objY);
+      if (dist < PROXIMITY) {
         if (!this.plantPrompt) {
-          this.plantPrompt = this.scene.add.text(this.buildingX, groundPx - (NUM_FLOORS + 1) * FLOOR_H - 60,
-            'PRESS SPACE TO PLANT', {
-            fontFamily: 'monospace', fontSize: '12px', color: '#00ff00',
+          this.plantPrompt = this.scene.add.text(objX, objY - 28, 'PRESS E TO PLANT EXPLOSIVE', {
+            fontFamily: 'monospace', fontSize: '10px', color: '#00ff00',
             shadow: { offsetX: 0, offsetY: 0, color: '#00ff00', blur: 6, fill: true },
           });
-          this.plantPrompt.setOrigin(0.5);
-          this.plantPrompt.setDepth(50);
+          this.plantPrompt.setOrigin(0.5).setDepth(50);
         }
-
-        if (Phaser.Input.Keyboard.JustDown(this.player.actionKey)) {
-          this._plantBomb();
+        if (this.player.wantsInteract()) {
+          this._startPlanting();
         }
-      } else {
-        if (this.plantPrompt) {
-          this.plantPrompt.destroy();
-          this.plantPrompt = null;
-        }
+      } else if (this.plantPrompt) {
+        this.plantPrompt.destroy();
+        this.plantPrompt = null;
       }
     } else if (this.phase === 'escape') {
-      // Countdown is running on-screen — nothing to check here,
-      // the countdown timer handles transition automatically
+      this.escapeTimer -= delta;
+      const secs = Math.max(0, Math.ceil(this.escapeTimer / 1000));
+
+      if (secs !== this.escapeSeconds) {
+        this.escapeSeconds = secs;
+        this.scene.hud.updateTimer(secs);
+        if (secs > 0 && secs <= 5) SoundManager.get().playCountdownTick();
+      }
+
+      // Red flash effect
+      this.flashTimer -= delta;
+      if (this.flashTimer <= 0) {
+        this.flashTimer = 800;
+        if (this.flashOverlay) {
+          this.flashOverlay.setAlpha(this.flashOverlay.alpha > 0 ? 0 : 0.08);
+        }
+      }
+
+      // Check if player reached exit
+      const exitDist = Math.abs(px - gx(SPAWN.col)) + Math.abs(py - gy(SPAWN.row));
+      if (exitDist < TILE) {
+        this._escapeSuccess();
+        return;
+      }
+
+      // Time's up
+      if (this.escapeTimer <= 0) {
+        this._escapeFailed();
+      }
     }
   }
 
-  _plantBomb() {
-    this.phase = 'escape';
+  _startPlanting() {
+    this.phase = 'planting';
     this.player.frozen = true;
     SoundManager.get().playPlantBeeps();
-    MusicManager.get().playLevel1Music(true);
+    if (this.plantPrompt) { this.plantPrompt.destroy(); this.plantPrompt = null; }
 
-    if (this.plantPrompt) {
-      this.plantPrompt.destroy();
-      this.plantPrompt = null;
-    }
+    const objX = gx(OBJ.col);
+    const objY = gy(OBJ.row);
 
-    const cx = this.buildingX;
-    const groundPx = GROUND_Y * TILE;
-    const bombY = groundPx - 10;
-
-    // Planting animation
-    const plantText = this.scene.add.text(cx, groundPx - 60, 'PLANTING...', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#00ff00',
+    const txt = this.scene.add.text(objX, objY - 30, 'PLANTING...', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#00ff00',
       shadow: { offsetX: 0, offsetY: 0, color: '#00ff00', blur: 8, fill: true },
     });
-    plantText.setOrigin(0.5); plantText.setDepth(50);
+    txt.setOrigin(0.5).setDepth(50);
 
     let dots = 0;
     const dotTimer = this.scene.time.addEvent({
       delay: 400, repeat: 4,
-      callback: () => { dots++; plantText.setText('PLANTING' + '.'.repeat(dots % 4)); },
+      callback: () => { dots++; txt.setText('PLANTING' + '.'.repeat(dots % 4)); },
     });
 
     this.scene.time.delayedCall(2000, () => {
-      plantText.destroy();
+      txt.destroy();
       dotTimer.destroy();
       this.player.frozen = false;
-
-      // Place bomb sprite
-      this.bombSprite = this.scene.add.image(cx, bombY, 'explosive_device');
-      this.bombSprite.setDepth(5);
-      this.bombSprite.setScale(1.5);
-      this.bombSprite.setScale(0);
-      this.scene.tweens.add({
-        targets: this.bombSprite,
-        scaleX: 1.5, scaleY: 1.5, duration: 300, ease: 'Bounce.easeOut',
-      });
-      this.scene.tweens.add({
-        targets: this.bombSprite,
-        alpha: 0.6, duration: 400, yoyo: true, repeat: -1,
-      });
-
-      // Remove glow and marker
-      if (this.targetGlow) {
-        this.scene.tweens.killTweensOf(this.targetGlow);
-        this.scene.tweens.add({ targets: this.targetGlow, alpha: 0, duration: 500, onComplete: () => this.targetGlow.destroy() });
-      }
-      if (this.marker) {
-        this.scene.tweens.killTweensOf(this.marker);
-        this.scene.tweens.add({ targets: this.marker, alpha: 0, duration: 500, onComplete: () => this.marker.destroy() });
-      }
-
-      // Deactivate obstacles
-      this.scene.deactivateAllObstacles();
-
-      // Show messages
-      this._showLog('DEVICE PLANTED! GET TO SAFETY!');
-      this.scene.time.delayedCall(1500, () => {
-        this._showLog('RUN!');
-      });
-
-      // Start visible 10-second countdown immediately
-      this._startDetonate();
+      this._startEscape();
     });
   }
 
-  _startDetonate() {
-    this.phase = 'detonate';
-    // Player is NOT frozen — they can run during countdown
+  _startEscape() {
+    this.phase = 'escape';
+    this.escapeTimer = ESCAPE_TIME * 1000;
+    this.escapeSeconds = ESCAPE_TIME;
 
+    // HUD timer
+    this.scene.hud.showTimer(ESCAPE_TIME);
+
+    // Big "ESCAPE!" text
     const cam = this.scene.cameras.main;
-    let count = 10;
-
-    // Countdown HUD in top-right corner
-    const countText = this.scene.add.text(cam.width - 20, 20, '10', {
+    const escTxt = this.scene.add.text(cam.width / 2, cam.height / 2, 'ESCAPE!', {
       fontFamily: 'monospace', fontSize: '48px', color: '#ff2222',
-      shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 16, fill: true },
+      shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 20, fill: true },
     });
-    countText.setOrigin(1, 0); countText.setScrollFactor(0); countText.setDepth(300);
-
-    const label = this.scene.add.text(cam.width - 20, 70, 'DETONATION', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
+    escTxt.setOrigin(0.5).setScrollFactor(0).setDepth(200);
+    this.scene.tweens.add({
+      targets: escTxt,
+      scaleX: 1.3, scaleY: 1.3, alpha: 0,
+      duration: 1500,
+      onComplete: () => escTxt.destroy(),
     });
-    label.setOrigin(1, 0); label.setScrollFactor(0); label.setDepth(300);
 
-    const tick = () => {
-      SoundManager.get().playCountdownTick();
-      this.scene.tweens.add({
-        targets: countText,
-        scaleX: 1.2, scaleY: 1.2, duration: 80, yoyo: true,
-      });
-      this.scene.time.delayedCall(1000, () => {
-        count--;
-        if (count > 0) {
-          countText.setText(`${count}`);
-          // Last 3 seconds: bigger, centered
-          if (count <= 3) {
-            countText.setFontSize('72px');
-            countText.setOrigin(0.5, 0.5);
-            countText.setPosition(cam.width / 2, cam.height / 2);
-            label.setVisible(false);
-          }
-          tick();
-        } else {
-          countText.setText('0');
-          this.player.frozen = true;
-          this.scene.time.delayedCall(300, () => {
-            countText.destroy();
-            label.destroy();
-            this._transitionToExplosion();
-          });
-        }
-      });
-    };
-    tick();
+    // Red overlay for alarm
+    this.flashOverlay = this.scene.add.rectangle(cam.width / 2, cam.height / 2, cam.width, cam.height, 0xff0000, 0.08);
+    this.flashOverlay.setScrollFactor(0).setDepth(150);
+
+    // Speed up guards
+    if (this.scene.guards) {
+      for (const g of this.scene.guards) {
+        if (g.alive) g.setSpeedMultiplier(1.6);
+      }
+    }
+
+    // Show exit marker with bounce
+    const exitX = gx(SPAWN.col);
+    const exitY = gy(SPAWN.row);
+    this.exitMarker = this.scene.add.image(exitX, exitY, 'bm_exit').setDepth(15);
+    this.scene.tweens.add({
+      targets: this.exitMarker, alpha: 0.4, duration: 400, yoyo: true, repeat: -1,
+    });
+
+    // Arrow pointing to exit
+    this.exitArrow = this.scene.add.text(exitX, exitY - 22, '\u25BC', {
+      fontSize: '16px', color: '#00ff00',
+    });
+    this.exitArrow.setOrigin(0.5).setDepth(16);
+    this.scene.tweens.add({
+      targets: this.exitArrow, y: exitY - 30, duration: 400, yoyo: true, repeat: -1,
+    });
+
+    MusicManager.get().playLevel1Music(true);
   }
 
-  _transitionToExplosion() {
-    const scene = this.scene;
+  _escapeSuccess() {
     this.phase = 'done';
+    this.player.frozen = true;
 
-    // Brief white flash to cover the scene transition
-    const cam = scene.cameras.main;
-    const flash = scene.add.rectangle(cam.width / 2, cam.height / 2, cam.width + 200, cam.height + 200, 0xffffff, 1);
-    flash.setScrollFactor(0); flash.setDepth(300);
+    // Clear Level 1 checkpoint on completion
+    try { localStorage.removeItem('superzion_checkpoint_l1'); } catch (e) { /* ignore */ }
+    this.scene.hud.hideTimer();
+    if (this.flashOverlay) this.flashOverlay.destroy();
+    if (this.exitMarker) this.exitMarker.destroy();
+    if (this.exitArrow) this.exitArrow.destroy();
 
-    // Collect stats and transition
-    MusicManager.get().stop(0.3)
-    const elapsed = scene.time.now - scene.stats.startTime;
-    scene.time.delayedCall(100, () => {
-      scene.scene.start('ExplosionCinematicScene', {
+    // White flash + shake
+    const cam = this.scene.cameras.main;
+    cam.shake(800, 0.04);
+    cam.flash(600, 255, 255, 255);
+
+    SoundManager.get().playExplosion();
+
+    // Expanding explosion circle
+    const cx = cam.width / 2, cy = cam.height / 2;
+    const circle = this.scene.add.circle(cx, cy, 10, 0xff6600, 0.8);
+    circle.setScrollFactor(0).setDepth(300);
+    this.scene.tweens.add({
+      targets: circle,
+      scaleX: 60, scaleY: 60, alpha: 0,
+      duration: 1200,
+      onComplete: () => circle.destroy(),
+    });
+
+    // Transition
+    MusicManager.get().stop(0.3);
+    const elapsed = this.scene.time.now - (this.scene.stats?.startTime || 0);
+    this.scene.time.delayedCall(1500, () => {
+      this.scene.scene.start('ExplosionCinematicScene', {
         stats: {
-          timesDetected: scene.stats.timesDetected,
-          elapsed: elapsed,
+          timesDetected: 0,
+          guardsKilled: this.scene.hud.guardsKilled,
+          powerupsCollected: this.scene.hud.powerupsCollected,
+          elapsed,
           hp: this.player.hp,
           maxHp: this.player.maxHp,
+          livesRemaining: this.player.hp,
         },
       });
     });
   }
 
-  _showLog(text) {
+  _escapeFailed() {
+    this.phase = 'done';
+    this.player.frozen = true;
+    this.scene.hud.hideTimer();
+    if (this.flashOverlay) this.flashOverlay.destroy();
+
+    // Explosion kills player
     const cam = this.scene.cameras.main;
-    const log = this.scene.add.text(cam.width / 2, cam.height - 50, '', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#00ff00',
-      backgroundColor: 'rgba(0,0,0,0.8)',
-      padding: { x: 12, y: 6 },
-    });
-    log.setOrigin(0.5); log.setScrollFactor(0); log.setDepth(100);
+    cam.shake(1000, 0.06);
+    cam.flash(500, 255, 100, 0);
+    SoundManager.get().playExplosion();
 
-    let idx = 0;
-    this.scene.time.addEvent({
-      delay: 30, repeat: text.length - 1,
-      callback: () => { idx++; log.setText(text.substring(0, idx)); },
-    });
-
-    this.scene.time.delayedCall(4000, () => {
-      this.scene.tweens.add({
-        targets: log, alpha: 0, duration: 500,
-        onComplete: () => log.destroy(),
-      });
-    });
+    this.player.hp = 0;
+    this.scene._gameOverScreen('TIME\'S UP - MISSION FAILED');
   }
-
 }
