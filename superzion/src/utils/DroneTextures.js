@@ -108,11 +108,12 @@ export function createDaytimeSky(scene) {
   c.width = W; c.height = H;
   const ctx = c.getContext('2d');
 
-  // Blue gradient sky
+  // Blue gradient sky — bright daytime with slight dust haze
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
-  skyGrad.addColorStop(0, '#87CEEB');
-  skyGrad.addColorStop(0.6, '#B8E0F0');
-  skyGrad.addColorStop(1, '#E0F0FF');
+  skyGrad.addColorStop(0, '#5588cc');
+  skyGrad.addColorStop(0.5, '#6699cc');
+  skyGrad.addColorStop(0.8, '#88bbee');
+  skyGrad.addColorStop(1, '#aaccdd');
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W, H);
 
@@ -123,6 +124,26 @@ export function createDaytimeSky(scene) {
   sunGrad.addColorStop(1, 'rgba(255, 220, 160, 0)');
   ctx.fillStyle = sunGrad;
   ctx.fillRect(0, 0, W, H);
+
+  // Dust/haze in the air (semi-transparent tan particles scattered across sky)
+  for (let i = 0; i < 80; i++) {
+    const hx = Math.random() * W;
+    const hy = Math.random() * H;
+    const hr = 2 + Math.random() * 6;
+    const ha = 0.04 + Math.random() * 0.08;
+    ctx.fillStyle = `rgba(200, 180, 140, ${ha})`;
+    ctx.beginPath();
+    ctx.arc(hx, hy, hr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Haze band near horizon (lower third)
+  const hazeGrad = ctx.createLinearGradient(0, H * 0.6, 0, H);
+  hazeGrad.addColorStop(0, 'rgba(200, 185, 150, 0)');
+  hazeGrad.addColorStop(0.5, 'rgba(200, 185, 150, 0.1)');
+  hazeGrad.addColorStop(1, 'rgba(190, 175, 140, 0.15)');
+  ctx.fillStyle = hazeGrad;
+  ctx.fillRect(0, H * 0.6, W, H * 0.4);
 
   // Wispy clouds
   const clouds = [
@@ -329,7 +350,7 @@ export function createRuinedCityTile(scene) {
     ctx.fill();
   }
 
-  // Cracks on facade
+  // Major cracks on facade — branching pattern
   ctx.strokeStyle = 'rgba(50, 45, 40, 0.6)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -338,11 +359,103 @@ export function createRuinedCityTile(scene) {
   ctx.lineTo(65, 200);
   ctx.lineTo(50, 250);
   ctx.stroke();
+  // Branch crack from main
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(55, 150);
+  ctx.lineTo(35, 170);
+  ctx.lineTo(30, 195);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(65, 200);
+  ctx.lineTo(85, 215);
+  ctx.lineTo(90, 240);
+  ctx.stroke();
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(120, 300);
   ctx.lineTo(115, 340);
   ctx.lineTo(125, 380);
   ctx.stroke();
+  // Additional branching cracks
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(115, 340);
+  ctx.lineTo(100, 350);
+  ctx.lineTo(95, 370);
+  ctx.stroke();
+
+  // Exposed rebar sticking out of wall holes
+  ctx.strokeStyle = '#8A4A2A';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(145, 200);
+  ctx.lineTo(160, 185);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(155, 250);
+  ctx.lineTo(170, 240);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(130, 220);
+  ctx.lineTo(125, 195);
+  ctx.stroke();
+
+  // Additional wall hole with exposed interior
+  ctx.fillStyle = '#2A2218';
+  ctx.beginPath();
+  ctx.moveTo(20, 380);
+  ctx.lineTo(65, 370);
+  ctx.lineTo(70, 420);
+  ctx.lineTo(50, 430);
+  ctx.lineTo(15, 410);
+  ctx.closePath();
+  ctx.fill();
+  // Rebar from second hole
+  ctx.strokeStyle = '#8A4A2A';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(20, 380); ctx.lineTo(10, 365); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(65, 370); ctx.lineTo(75, 358); ctx.stroke();
+
+  // Scattered debris on ground (additional larger chunks)
+  for (let i = 0; i < 10; i++) {
+    const rx = Math.random() * tw;
+    const ry = th - 70 + Math.random() * 60;
+    const rs = 4 + Math.random() * 14;
+    const shade = 100 + Math.random() * 50;
+    ctx.fillStyle = `rgba(${shade}, ${shade - 10}, ${shade - 20}, 0.5)`;
+    ctx.beginPath();
+    ctx.moveTo(rx, ry);
+    ctx.lineTo(rx + rs * 0.8, ry + Math.random() * 5);
+    ctx.lineTo(rx + rs, ry + rs * 0.4);
+    ctx.lineTo(rx + rs * 0.3, ry + rs * 0.6);
+    ctx.lineTo(rx - 2, ry + rs * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Missing pieces of wall — jagged edges at top
+  ctx.fillStyle = '#2A2218';
+  ctx.beginPath();
+  ctx.moveTo(tw * 0.6, 0);
+  ctx.lineTo(tw * 0.65, 20);
+  ctx.lineTo(tw * 0.75, 10);
+  ctx.lineTo(tw * 0.8, 25);
+  ctx.lineTo(tw, 15);
+  ctx.lineTo(tw, 0);
+  ctx.closePath();
+  ctx.fill();
+  // Sky showing through missing top
+  ctx.fillStyle = 'rgba(85, 136, 204, 0.4)';
+  ctx.beginPath();
+  ctx.moveTo(tw * 0.6, 0);
+  ctx.lineTo(tw * 0.65, 20);
+  ctx.lineTo(tw * 0.75, 10);
+  ctx.lineTo(tw * 0.8, 25);
+  ctx.lineTo(tw, 15);
+  ctx.lineTo(tw, 0);
+  ctx.closePath();
+  ctx.fill();
 
   scene.textures.addCanvas('ruined_city_tile', c);
 }
@@ -491,6 +604,70 @@ export function createRuinedCityTile2(scene) {
     ctx.arc(Math.random() * tw, Math.random() * th, 1 + Math.random() * 2, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // Additional exposed rebar from damage areas
+  ctx.strokeStyle = '#8A4A2A';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(40, 95); ctx.lineTo(35, 75); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(55, 100); ctx.lineTo(65, 80); ctx.stroke();
+  // Rebar from collapsed slab
+  ctx.beginPath(); ctx.moveTo(tw * 0.6, 290); ctx.lineTo(tw * 0.55, 310); ctx.stroke();
+
+  // Additional debris chunks on ground
+  for (let i = 0; i < 12; i++) {
+    const rx = Math.random() * tw;
+    const ry = th - 60 + Math.random() * 55;
+    const rs = 5 + Math.random() * 12;
+    const shade = 140 + Math.random() * 50;
+    ctx.fillStyle = `rgba(${shade}, ${shade - 15}, ${shade - 40}, 0.45)`;
+    ctx.beginPath();
+    ctx.moveTo(rx, ry);
+    ctx.lineTo(rx + rs, ry + 2);
+    ctx.lineTo(rx + rs * 0.7, ry + rs * 0.5);
+    ctx.lineTo(rx - 3, ry + rs * 0.4);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Major wall crack with branching
+  ctx.strokeStyle = 'rgba(80, 60, 30, 0.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(tw * 0.5, 0);
+  ctx.lineTo(tw * 0.48, 40);
+  ctx.lineTo(tw * 0.52, 80);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(tw * 0.48, 40);
+  ctx.lineTo(tw * 0.38, 55);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(tw * 0.52, 80);
+  ctx.lineTo(tw * 0.62, 95);
+  ctx.stroke();
+
+  // Collapsed roof section — jagged missing piece at top
+  ctx.fillStyle = '#2A2218';
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, 15);
+  ctx.lineTo(20, 25);
+  ctx.lineTo(35, 10);
+  ctx.lineTo(55, 20);
+  ctx.lineTo(70, 5);
+  ctx.lineTo(70, 0);
+  ctx.closePath();
+  ctx.fill();
+  // Sky visible through missing roof
+  ctx.fillStyle = 'rgba(85, 136, 204, 0.35)';
+  ctx.fillRect(0, 0, 70, 5);
+
+  // Exposed rebar from collapsed roof
+  ctx.strokeStyle = '#8A4A2A';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(25, 25); ctx.lineTo(22, 40); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(50, 18); ctx.lineTo(52, 35); ctx.stroke();
 
   scene.textures.addCanvas('ruined_city_tile2', c);
 }
@@ -964,8 +1141,8 @@ export function createCommandRoom(scene) {
   ctx.stroke();
   ctx.restore();
 
-  // ── BROKEN LAMPS (bent floor lamp shapes) ──
-  // Lamp 1 — left side, fallen over
+  // ── BROKEN LAMPS (tilted lamp shapes with cracked bulbs) ──
+  // Lamp 1 — left side, fallen over, cracked bulb
   ctx.save();
   ctx.translate(sideInset + 60, floorTop + 50);
   ctx.rotate(0.8);
@@ -979,11 +1156,20 @@ export function createCommandRoom(scene) {
   ctx.lineTo(-6, -55);
   ctx.closePath();
   ctx.fill(); // lamp shade
+  // Cracked bulb inside shade
+  ctx.fillStyle = 'rgba(220, 210, 180, 0.3)';
+  ctx.beginPath();
+  ctx.arc(0, -58, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(100, 90, 70, 0.5)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(-2, -60); ctx.lineTo(2, -56); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(1, -61); ctx.lineTo(-1, -55); ctx.stroke();
   ctx.fillStyle = '#8A8070';
   ctx.fillRect(-6, 0, 12, 4); // base
   ctx.restore();
 
-  // Lamp 2 — right side, partially standing but bent
+  // Lamp 2 — right side, partially standing but bent, cracked bulb
   ctx.save();
   ctx.translate(W - sideInset - 50, floorTop + 70);
   ctx.rotate(-0.3);
@@ -997,33 +1183,108 @@ export function createCommandRoom(scene) {
   ctx.lineTo(-5, -46);
   ctx.closePath();
   ctx.fill();
+  // Cracked bulb
+  ctx.fillStyle = 'rgba(220, 210, 180, 0.25)';
+  ctx.beginPath();
+  ctx.arc(0, -49, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(100, 90, 70, 0.4)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(-2, -51); ctx.lineTo(1, -47); ctx.stroke();
   ctx.restore();
 
-  // ── CRACKED MIRROR on wall ──
+  // Lamp 3 — on back wall, hanging at angle (wall sconce broken)
+  ctx.save();
+  ctx.translate(W / 2 + 160, backWallTop + 60);
+  ctx.rotate(0.5);
+  ctx.fillStyle = '#5A5040';
+  ctx.fillRect(-1, -20, 3, 20); // short pole
+  ctx.fillStyle = '#6A6050';
+  ctx.beginPath();
+  ctx.moveTo(-6, -24);
+  ctx.lineTo(6, -24);
+  ctx.lineTo(4, -18);
+  ctx.lineTo(-4, -18);
+  ctx.closePath();
+  ctx.fill();
+  // Shattered bulb
+  ctx.strokeStyle = 'rgba(180, 170, 150, 0.3)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(3, -26); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(-2, -27); ctx.stroke();
+  ctx.restore();
+
+  // ── CRACKED/BROKEN MIRRORS on wall (irregular shapes) ──
+  // Mirror 1 — large, on back wall right side
   const mirrorX = W - sideInset - 200;
   const mirrorY = backWallTop + 40;
   const mirrorW = 50;
   const mirrorH = 65;
-  // Mirror frame
+  // Mirror frame (slightly irregular — one corner bent)
   ctx.strokeStyle = '#7A6A50';
   ctx.lineWidth = 3;
-  ctx.strokeRect(mirrorX, mirrorY, mirrorW, mirrorH);
+  ctx.beginPath();
+  ctx.moveTo(mirrorX, mirrorY);
+  ctx.lineTo(mirrorX + mirrorW, mirrorY + 2);
+  ctx.lineTo(mirrorX + mirrorW - 3, mirrorY + mirrorH);
+  ctx.lineTo(mirrorX + 2, mirrorY + mirrorH - 3);
+  ctx.closePath();
+  ctx.stroke();
   // Reflective surface (slightly lighter than wall)
   ctx.fillStyle = 'rgba(200, 210, 220, 0.2)';
-  ctx.fillRect(mirrorX + 2, mirrorY + 2, mirrorW - 4, mirrorH - 4);
+  ctx.beginPath();
+  ctx.moveTo(mirrorX + 3, mirrorY + 3);
+  ctx.lineTo(mirrorX + mirrorW - 3, mirrorY + 5);
+  ctx.lineTo(mirrorX + mirrorW - 6, mirrorY + mirrorH - 3);
+  ctx.lineTo(mirrorX + 5, mirrorY + mirrorH - 6);
+  ctx.closePath();
+  ctx.fill();
   // Crack lines radiating from impact point
   const crackCx = mirrorX + mirrorW * 0.4;
   const crackCy = mirrorY + mirrorH * 0.3;
   ctx.strokeStyle = 'rgba(60, 50, 40, 0.6)';
   ctx.lineWidth = 1;
-  for (let ci = 0; ci < 8; ci++) {
-    const angle = (ci / 8) * Math.PI * 2;
-    const len = 15 + Math.random() * 20;
+  for (let ci = 0; ci < 10; ci++) {
+    const angle = (ci / 10) * Math.PI * 2;
+    const len = 12 + Math.random() * 22;
     ctx.beginPath();
     ctx.moveTo(crackCx, crackCy);
     ctx.lineTo(crackCx + Math.cos(angle) * len, crackCy + Math.sin(angle) * len);
     ctx.stroke();
+    // Sub-branches
+    if (ci % 3 === 0) {
+      const midLen = len * 0.5;
+      const subAngle = angle + (Math.random() - 0.5) * 0.8;
+      ctx.beginPath();
+      ctx.moveTo(crackCx + Math.cos(angle) * midLen, crackCy + Math.sin(angle) * midLen);
+      ctx.lineTo(crackCx + Math.cos(subAngle) * (midLen + 8), crackCy + Math.sin(subAngle) * (midLen + 8));
+      ctx.stroke();
+    }
   }
+  // Missing shard from mirror edge
+  ctx.fillStyle = '#C4B498'; // same as wall color
+  ctx.beginPath();
+  ctx.moveTo(mirrorX + mirrorW - 8, mirrorY + mirrorH - 10);
+  ctx.lineTo(mirrorX + mirrorW - 3, mirrorY + mirrorH);
+  ctx.lineTo(mirrorX + mirrorW - 14, mirrorY + mirrorH - 3);
+  ctx.closePath();
+  ctx.fill();
+
+  // Mirror 2 — small, on left wall, half-fallen
+  ctx.save();
+  ctx.translate(sideInset - 20, backWallTop + 80);
+  ctx.rotate(0.35);
+  ctx.strokeStyle = '#6A5A40';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-15, -20, 30, 40);
+  ctx.fillStyle = 'rgba(190, 200, 210, 0.15)';
+  ctx.fillRect(-13, -18, 26, 36);
+  // Diagonal crack
+  ctx.strokeStyle = 'rgba(60, 50, 40, 0.5)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(-13, -18); ctx.lineTo(13, 18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(10, -16); ctx.lineTo(-8, 14); ctx.stroke();
+  ctx.restore();
 
   // ── OVERTURNED TABLES ──
   ctx.fillStyle = '#5A4A30';
@@ -1091,6 +1352,134 @@ export function createCommandRoom(scene) {
     ctx.fill();
   }
 
+  // ── BROKEN GLASS on floor (small reflective dots scattered) ──
+  for (let i = 0; i < 40; i++) {
+    const gx = sideInset + 30 + Math.random() * (W - 2 * sideInset - 60);
+    const gy = floorTop + 15 + Math.random() * (H - floorTop - 40);
+    const gs = 1 + Math.random() * 2;
+    // Slightly reflective bright spots
+    ctx.fillStyle = `rgba(200, 220, 240, ${0.15 + Math.random() * 0.2})`;
+    ctx.beginPath();
+    ctx.arc(gx, gy, gs, 0, Math.PI * 2);
+    ctx.fill();
+    // Some with a bright highlight
+    if (Math.random() > 0.6) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.beginPath();
+      ctx.arc(gx + 0.5, gy - 0.5, gs * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ── FALLEN PICTURE FRAMES on walls and floor ──
+  // Frame 1 — tilted on back wall
+  ctx.save();
+  ctx.translate(sideInset + 250, backWallTop + 70);
+  ctx.rotate(0.25);
+  ctx.strokeStyle = '#6A5A40';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-18, -24, 36, 48);
+  ctx.fillStyle = 'rgba(60, 50, 35, 0.3)';
+  ctx.fillRect(-16, -22, 32, 44);
+  // Crack across glass
+  ctx.strokeStyle = 'rgba(180, 200, 220, 0.2)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(-16, -10); ctx.lineTo(16, 15); ctx.stroke();
+  ctx.restore();
+
+  // Frame 2 — fallen on floor
+  ctx.save();
+  ctx.translate(W / 2 + 60, floorTop + 140);
+  ctx.rotate(-0.6);
+  ctx.strokeStyle = '#7A6A50';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-14, -20, 28, 40);
+  ctx.fillStyle = 'rgba(50, 40, 30, 0.25)';
+  ctx.fillRect(-12, -18, 24, 36);
+  ctx.restore();
+
+  // Frame 3 — hanging crooked on right wall
+  ctx.save();
+  ctx.translate(W - sideInset - 40, backWallTop + 100);
+  ctx.rotate(-0.15);
+  ctx.strokeStyle = '#6A5A40';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(-12, -16, 24, 32);
+  ctx.fillStyle = 'rgba(70, 60, 40, 0.2)';
+  ctx.fillRect(-10, -14, 20, 28);
+  ctx.restore();
+
+  // ── CEILING DEBRIS on floor (irregular gray shapes) ──
+  const debrisPositions = [
+    { x: W / 2 - 130, y: floorTop + 40, s: 14 },
+    { x: W / 2 + 40, y: floorTop + 65, s: 10 },
+    { x: sideInset + 180, y: floorTop + 90, s: 12 },
+    { x: W - sideInset - 120, y: floorTop + 55, s: 16 },
+    { x: W / 2 - 60, y: floorTop + 110, s: 8 },
+    { x: sideInset + 300, y: floorTop + 130, s: 11 },
+    { x: W / 2 + 150, y: floorTop + 95, s: 9 },
+  ];
+  for (const d of debrisPositions) {
+    ctx.fillStyle = `rgba(${120 + Math.random() * 30}, ${115 + Math.random() * 25}, ${95 + Math.random() * 20}, 0.5)`;
+    ctx.beginPath();
+    ctx.moveTo(d.x, d.y);
+    ctx.lineTo(d.x + d.s * 0.8, d.y + d.s * 0.2);
+    ctx.lineTo(d.x + d.s, d.y + d.s * 0.6);
+    ctx.lineTo(d.x + d.s * 0.4, d.y + d.s * 0.8);
+    ctx.lineTo(d.x - d.s * 0.2, d.y + d.s * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ── ADDITIONAL WALL CRACKS (branching lines on wall surfaces) ──
+  // Left wall cracks
+  ctx.strokeStyle = 'rgba(60, 45, 30, 0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(30, 80);
+  ctx.lineTo(45, 140);
+  ctx.lineTo(35, 200);
+  ctx.stroke();
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(45, 140);
+  ctx.lineTo(60, 155);
+  ctx.stroke();
+
+  // Right wall cracks
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(W - 35, 120);
+  ctx.lineTo(W - 50, 180);
+  ctx.lineTo(W - 40, 240);
+  ctx.stroke();
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(W - 50, 180);
+  ctx.lineTo(W - 65, 195);
+  ctx.stroke();
+
+  // ── DAYTIME LIGHT PATCHES (bright rectangular patches from broken windows) ──
+  const lightPatches = [
+    { x: sideInset + 30, y: floorTop + 20, w: 70, h: 100 },
+    { x: W - sideInset - 100, y: floorTop + 30, w: 60, h: 80 },
+    { x: W / 2 - 40, y: floorTop + 10, w: 80, h: 50 },
+    // Light on back wall from holes
+    { x: sideInset + 90, y: backWallTop + 40, w: 50, h: 60 },
+    { x: W - sideInset - 120, y: backWallTop + 35, w: 45, h: 55 },
+  ];
+  for (const lp of lightPatches) {
+    const lightGrad = ctx.createRadialGradient(
+      lp.x + lp.w / 2, lp.y + lp.h / 2, 5,
+      lp.x + lp.w / 2, lp.y + lp.h / 2, Math.max(lp.w, lp.h)
+    );
+    lightGrad.addColorStop(0, 'rgba(255, 245, 200, 0.12)');
+    lightGrad.addColorStop(0.5, 'rgba(255, 240, 180, 0.06)');
+    lightGrad.addColorStop(1, 'rgba(255, 235, 160, 0)');
+    ctx.fillStyle = lightGrad;
+    ctx.fillRect(lp.x, lp.y, lp.w, lp.h);
+  }
+
   // ── Back wall baseboard ──
   ctx.fillStyle = '#9A8A70';
   ctx.fillRect(sideInset, backWallBottom - 8, W - 2 * sideInset, 8);
@@ -1132,164 +1521,240 @@ export function createCommandRoom(scene) {
   scene.textures.addCanvas('command_room', c);
 }
 
-// ── Armchair texture (80x80) — front perspective ─────────────
+// ── Armchair texture (120x120) — large wingback chair, front perspective ──
 export function createArmchairTexture(scene) {
   if (scene.textures.exists('armchair')) return;
 
-  const s = 80;
+  const s = 120;
   const c = document.createElement('canvas');
   c.width = s; c.height = s;
   const ctx = c.getContext('2d');
   const cx = s / 2, cy = s / 2;
 
-  // Back of chair (rounded, taller than seat)
-  ctx.fillStyle = '#4A3A2A';
+  // Shadow at base (drawn first, behind everything)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
   ctx.beginPath();
-  ctx.moveTo(cx - 28, cy - 30);
-  ctx.quadraticCurveTo(cx - 30, cy - 38, cx - 20, cy - 38);
-  ctx.lineTo(cx + 20, cy - 38);
-  ctx.quadraticCurveTo(cx + 30, cy - 38, cx + 28, cy - 30);
-  ctx.lineTo(cx + 28, cy - 5);
-  ctx.lineTo(cx - 28, cy - 5);
+  ctx.ellipse(cx, cy + 50, 45, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // HIGH WINGBACK — tall back with prominent "wings" on each side
+  // Main back panel
+  ctx.fillStyle = '#3a2a1a';
+  ctx.beginPath();
+  ctx.moveTo(cx - 38, cy - 48);
+  ctx.quadraticCurveTo(cx - 42, cy - 56, cx - 28, cy - 56);
+  ctx.lineTo(cx + 28, cy - 56);
+  ctx.quadraticCurveTo(cx + 42, cy - 56, cx + 38, cy - 48);
+  ctx.lineTo(cx + 38, cy - 5);
+  ctx.lineTo(cx - 38, cy - 5);
   ctx.closePath();
   ctx.fill();
 
-  // Back cushion padding highlight
-  ctx.fillStyle = '#5A4A38';
+  // Wing extensions (curved side panels that wrap forward)
+  // Left wing
+  ctx.fillStyle = '#3a2a1a';
   ctx.beginPath();
-  ctx.ellipse(cx, cy - 20, 18, 12, 0, 0, Math.PI * 2);
+  ctx.moveTo(cx - 38, cy - 48);
+  ctx.quadraticCurveTo(cx - 52, cy - 42, cx - 50, cy - 30);
+  ctx.lineTo(cx - 48, cy - 10);
+  ctx.lineTo(cx - 38, cy - 5);
+  ctx.lineTo(cx - 38, cy - 48);
+  ctx.closePath();
   ctx.fill();
-
-  // Seat cushion
-  ctx.fillStyle = '#4A3A2A';
+  // Right wing
   ctx.beginPath();
-  ctx.moveTo(cx - 28, cy - 5);
-  ctx.lineTo(cx + 28, cy - 5);
-  ctx.lineTo(cx + 30, cy + 10);
-  ctx.lineTo(cx - 30, cy + 10);
+  ctx.moveTo(cx + 38, cy - 48);
+  ctx.quadraticCurveTo(cx + 52, cy - 42, cx + 50, cy - 30);
+  ctx.lineTo(cx + 48, cy - 10);
+  ctx.lineTo(cx + 38, cy - 5);
+  ctx.lineTo(cx + 38, cy - 48);
   ctx.closePath();
   ctx.fill();
 
-  // Seat padding
-  ctx.fillStyle = '#5A4A35';
+  // Back cushion padding highlight (lighter leather)
+  ctx.fillStyle = '#4a3a28';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 2, 22, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy - 28, 26, 18, 0, 0, Math.PI * 2);
   ctx.fill();
+  // Tufted button details on back
+  ctx.fillStyle = '#3a2a1a';
+  const tufts = [[-8, -32], [8, -32], [-12, -22], [0, -20], [12, -22]];
+  for (const [tx, ty] of tufts) {
+    ctx.beginPath();
+    ctx.arc(cx + tx, cy + ty, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // Left armrest
-  ctx.fillStyle = '#3A2A1A';
+  // Seat cushion (thick, prominent)
+  ctx.fillStyle = '#3a2a1a';
   ctx.beginPath();
-  ctx.moveTo(cx - 30, cy - 25);
-  ctx.lineTo(cx - 36, cy - 22);
-  ctx.lineTo(cx - 36, cy + 10);
-  ctx.lineTo(cx - 30, cy + 10);
+  ctx.moveTo(cx - 40, cy - 5);
+  ctx.lineTo(cx + 40, cy - 5);
+  ctx.lineTo(cx + 42, cy + 12);
+  ctx.lineTo(cx - 42, cy + 12);
   ctx.closePath();
   ctx.fill();
-  // Armrest top
-  ctx.fillStyle = '#4A3828';
-  ctx.fillRect(cx - 37, cy - 25, 8, 4);
+
+  // Seat padding highlight (rounded cushion feel)
+  ctx.fillStyle = '#4a3a28';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 3, 30, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Left armrest (thick, padded)
+  ctx.fillStyle = '#3a2a1a';
+  ctx.beginPath();
+  ctx.moveTo(cx - 42, cy - 28);
+  ctx.lineTo(cx - 50, cy - 25);
+  ctx.lineTo(cx - 50, cy + 12);
+  ctx.lineTo(cx - 40, cy + 12);
+  ctx.closePath();
+  ctx.fill();
+  // Armrest top pad
+  ctx.fillStyle = '#4a3828';
+  ctx.fillRect(cx - 51, cy - 28, 10, 5);
 
   // Right armrest
-  ctx.fillStyle = '#3A2A1A';
+  ctx.fillStyle = '#3a2a1a';
   ctx.beginPath();
-  ctx.moveTo(cx + 30, cy - 25);
-  ctx.lineTo(cx + 36, cy - 22);
-  ctx.lineTo(cx + 36, cy + 10);
-  ctx.lineTo(cx + 30, cy + 10);
+  ctx.moveTo(cx + 42, cy - 28);
+  ctx.lineTo(cx + 50, cy - 25);
+  ctx.lineTo(cx + 50, cy + 12);
+  ctx.lineTo(cx + 40, cy + 12);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = '#4A3828';
-  ctx.fillRect(cx + 29, cy - 25, 8, 4);
+  ctx.fillStyle = '#4a3828';
+  ctx.fillRect(cx + 41, cy - 28, 10, 5);
 
-  // Front panel below seat
-  ctx.fillStyle = '#3A2A1A';
-  ctx.fillRect(cx - 28, cy + 10, 56, 14);
+  // Front panel below seat (skirt)
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(cx - 40, cy + 12, 80, 18);
 
-  // Visible leg at bottom center
+  // Front panel texture (darker bands)
+  ctx.fillStyle = '#2a1a0a';
+  ctx.fillRect(cx - 38, cy + 16, 76, 2);
+  ctx.fillRect(cx - 38, cy + 22, 76, 2);
+
+  // Legs (short, sturdy — dark wood)
   ctx.fillStyle = '#2A1A0A';
-  ctx.fillRect(cx - 4, cy + 24, 8, 12);
+  ctx.fillRect(cx - 35, cy + 30, 8, 16);
+  ctx.fillRect(cx + 27, cy + 30, 8, 16);
+  // Center brace
+  ctx.fillRect(cx - 5, cy + 30, 10, 14);
 
-  // Worn/torn fabric patches
-  ctx.fillStyle = 'rgba(90, 70, 40, 0.3)';
-  ctx.fillRect(cx - 10, cy - 15, 8, 5);
-  ctx.fillRect(cx + 5, cy + 3, 6, 4);
+  // Worn/torn leather patches (visible wear)
+  ctx.fillStyle = 'rgba(80, 60, 35, 0.3)';
+  ctx.fillRect(cx - 15, cy - 18, 10, 6);
+  ctx.fillRect(cx + 8, cy + 4, 8, 5);
+  ctx.fillRect(cx - 20, cy - 40, 6, 8);
 
-  // Shadow at base
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 35, 28, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Subtle leather texture lines
+  ctx.strokeStyle = 'rgba(30, 20, 10, 0.15)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 8; i++) {
+    const ly = cy - 48 + i * 10;
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, ly);
+    ctx.lineTo(cx + 30, ly);
+    ctx.stroke();
+  }
 
   scene.textures.addCanvas('armchair', c);
 }
 
-// ── Armchair side texture (60x80) — side profile ─────────────
+// ── Armchair side texture (90x120) — large wingback side profile ──
 export function createArmchairSideTexture(scene) {
   if (scene.textures.exists('armchair_side')) return;
 
-  const sw = 60, sh = 80;
+  const sw = 90, sh = 120;
   const c = document.createElement('canvas');
   c.width = sw; c.height = sh;
   const ctx = c.getContext('2d');
 
-  // Back of chair (side profile — curved)
-  ctx.fillStyle = '#4A3A2A';
+  // Shadow at base
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+  ctx.beginPath();
+  ctx.ellipse(45, sh - 10, 35, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // HIGH WINGBACK — tall back with wing extension
+  ctx.fillStyle = '#3a2a1a';
   ctx.beginPath();
   ctx.moveTo(10, 10);
-  ctx.quadraticCurveTo(5, 5, 12, 2);
-  ctx.lineTo(22, 2);
-  ctx.quadraticCurveTo(28, 5, 25, 15);
-  ctx.lineTo(25, 40);
-  ctx.lineTo(10, 40);
+  ctx.quadraticCurveTo(5, 2, 15, 2);
+  ctx.lineTo(30, 2);
+  ctx.quadraticCurveTo(38, 5, 35, 18);
+  ctx.lineTo(35, 55);
+  ctx.lineTo(10, 55);
   ctx.closePath();
   ctx.fill();
 
-  // Seat depth (side view)
-  ctx.fillStyle = '#4A3A2A';
+  // Wing curve (forward-facing wing panel from back)
+  ctx.fillStyle = '#3a2a1a';
   ctx.beginPath();
-  ctx.moveTo(10, 40);
-  ctx.lineTo(50, 38);
-  ctx.lineTo(52, 50);
-  ctx.lineTo(10, 52);
+  ctx.moveTo(10, 10);
+  ctx.quadraticCurveTo(2, 15, 4, 30);
+  ctx.lineTo(6, 50);
+  ctx.lineTo(10, 55);
+  ctx.lineTo(10, 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // Back cushion shading
+  ctx.fillStyle = '#4a3a28';
+  ctx.beginPath();
+  ctx.ellipse(22, 28, 8, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Seat depth (side view)
+  ctx.fillStyle = '#3a2a1a';
+  ctx.beginPath();
+  ctx.moveTo(10, 55);
+  ctx.lineTo(65, 52);
+  ctx.lineTo(68, 68);
+  ctx.lineTo(10, 70);
   ctx.closePath();
   ctx.fill();
 
   // Seat cushion highlight
-  ctx.fillStyle = '#5A4A35';
+  ctx.fillStyle = '#4a3a28';
   ctx.beginPath();
-  ctx.ellipse(30, 44, 18, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(38, 60, 22, 6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Armrest (side profile)
-  ctx.fillStyle = '#3A2A1A';
+  // Armrest (side profile — thick padded)
+  ctx.fillStyle = '#3a2a1a';
   ctx.beginPath();
-  ctx.moveTo(8, 25);
-  ctx.lineTo(48, 22);
-  ctx.lineTo(50, 28);
-  ctx.lineTo(8, 32);
+  ctx.moveTo(6, 32);
+  ctx.lineTo(62, 28);
+  ctx.lineTo(64, 36);
+  ctx.lineTo(6, 40);
   ctx.closePath();
   ctx.fill();
+  // Armrest pad top
+  ctx.fillStyle = '#4a3828';
+  ctx.fillRect(6, 28, 58, 4);
 
   // Front panel
-  ctx.fillStyle = '#3A2A1A';
+  ctx.fillStyle = '#3a2a1a';
   ctx.beginPath();
-  ctx.moveTo(48, 38);
-  ctx.lineTo(52, 50);
-  ctx.lineTo(52, 60);
-  ctx.lineTo(48, 60);
+  ctx.moveTo(62, 52);
+  ctx.lineTo(68, 68);
+  ctx.lineTo(68, 82);
+  ctx.lineTo(62, 82);
   ctx.closePath();
   ctx.fill();
 
-  // Leg
-  ctx.fillStyle = '#2A1A0A';
-  ctx.fillRect(12, 58, 5, 16);
-  ctx.fillRect(45, 56, 5, 18);
+  // Skirt
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(10, 70, 58, 14);
+  ctx.fillStyle = '#2a1a0a';
+  ctx.fillRect(12, 74, 54, 2);
 
-  // Back cushion shading
-  ctx.fillStyle = '#5A4A38';
-  ctx.beginPath();
-  ctx.ellipse(17, 22, 6, 14, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Legs
+  ctx.fillStyle = '#2A1A0A';
+  ctx.fillRect(14, 84, 6, 18);
+  ctx.fillRect(58, 82, 6, 20);
 
   scene.textures.addCanvas('armchair_side', c);
 }
@@ -1349,11 +1814,12 @@ export function createDroneSilhouette(scene) {
   scene.textures.addCanvas('drone_silhouette', c);
 }
 
-// ── Boss 4 / THE WARDEN (256x256) — brutish, keffiyeh, pure rage ──
+
+// ── Boss 4 / ANGRY EYEBROWS (256x256) — cabezón political leader ──
 /**
- * Draw Boss 4 — Angry Eyebrows / THE WARDEN: the most physical boss.
- * Brutish face with thick neck, heavy jaw, battle-worn keffiyeh.
- * Pure rage even in 'normal' state.
+ * Draw Boss 4 — Angry Eyebrows: cabezón (big-head) political/military leader.
+ * Elongated oval face, short gray hair, THICK signature eyebrows,
+ * compact gray beard, kefia on shoulders, dark suit.
  * @param {string} expression — 'normal' | 'angry' | 'furious' | 'dead'
  * @returns {HTMLCanvasElement}
  */
@@ -1362,502 +1828,598 @@ export function drawBoss4AngryEyebrows(expression = 'normal') {
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
   const ctx = c.getContext('2d');
-  const cx = S / 2, cy = S / 2;
+  const cx = S / 2; // 128
 
-  // ── Skin tint based on expression ──
+  // ── Skin tones by expression ──
   let skinBase, skinDark, skinLight;
   if (expression === 'furious') {
-    skinBase = '#a03020'; skinDark = '#702015'; skinLight = '#c04535';
+    skinBase = '#B07048'; skinDark = '#8A5030'; skinLight = '#D08868';
   } else if (expression === 'angry') {
-    skinBase = '#8a5535'; skinDark = '#6a3a20'; skinLight = '#a06545';
+    skinBase = '#BA8858'; skinDark = '#9A6A40'; skinLight = '#D0A070';
+  } else if (expression === 'dead') {
+    skinBase = '#8A8A7A'; skinDark = '#6A6A5A'; skinLight = '#A0A090';
   } else {
-    // Even 'normal' looks angry for THE WARDEN
-    skinBase = '#7a5030'; skinDark = '#5a3820'; skinLight = '#906040';
+    skinBase = '#C4956A'; skinDark = '#A07850'; skinLight = '#D8AA80';
   }
 
-  // ── THICK NECK (drawn first, behind head) ──
-  ctx.fillStyle = skinDark;
+  // ── Layout (CABEZÓN: ~40% head, ~60% body) ──
+  const headCY = 56;       // head center Y
+  const headRX = 40;       // head width radius (80px wide)
+  const headRY = 48;       // head height radius (96px tall — elongated)
+  const neckTop = headCY + headRY; // 104
+  const shoulderY = 118;
+  const torsoBottom = 200;
+  const legBottom = 240;
+
+  // ═══════════════════════════════════════════════════
+  // BODY (drawn first, behind head/kefia)
+  // ═══════════════════════════════════════════════════
+
+  // ── Legs (dark pants) ──
+  ctx.fillStyle = '#1E1E30';
+  ctx.fillRect(cx - 24, torsoBottom, 20, legBottom - torsoBottom);
+  ctx.fillRect(cx + 4, torsoBottom, 20, legBottom - torsoBottom);
+  // Shoes
+  ctx.fillStyle = '#0A0A14';
   ctx.beginPath();
-  ctx.moveTo(cx - 40, cy + 40);
-  ctx.lineTo(cx - 36, cy + 80);
-  ctx.lineTo(cx - 50, cy + 100);
-  ctx.lineTo(cx + 50, cy + 100);
-  ctx.lineTo(cx + 36, cy + 80);
-  ctx.lineTo(cx + 40, cy + 40);
+  ctx.moveTo(cx - 28, legBottom);
+  ctx.lineTo(cx + 0, legBottom);
+  ctx.lineTo(cx - 2, legBottom + 8);
+  ctx.lineTo(cx - 30, legBottom + 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + 0, legBottom);
+  ctx.lineTo(cx + 28, legBottom);
+  ctx.lineTo(cx + 30, legBottom + 8);
+  ctx.lineTo(cx + 2, legBottom + 8);
   ctx.closePath();
   ctx.fill();
 
-  // Neck tendons
-  ctx.strokeStyle = skinBase;
-  ctx.lineWidth = 2;
+  // ── Torso (dark suit) ──
+  const suitColor = '#1A1A2E';
+  ctx.fillStyle = suitColor;
   ctx.beginPath();
-  ctx.moveTo(cx - 20, cy + 42);
-  ctx.lineTo(cx - 24, cy + 80);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx + 20, cy + 42);
-  ctx.lineTo(cx + 24, cy + 80);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx, cy + 45);
-  ctx.lineTo(cx, cy + 78);
-  ctx.stroke();
+  ctx.moveTo(cx - 48, shoulderY);
+  ctx.lineTo(cx + 48, shoulderY);
+  ctx.lineTo(cx + 40, torsoBottom);
+  ctx.lineTo(cx - 40, torsoBottom);
+  ctx.closePath();
+  ctx.fill();
 
-  // ── ANGULAR HEAD SHAPE — heavy jaw, brutish ──
+  // Shoulder pads (wide, authoritative)
+  ctx.fillStyle = '#222238';
+  ctx.beginPath();
+  ctx.moveTo(cx - 56, shoulderY);
+  ctx.lineTo(cx - 38, shoulderY - 6);
+  ctx.lineTo(cx + 38, shoulderY - 6);
+  ctx.lineTo(cx + 56, shoulderY);
+  ctx.lineTo(cx + 52, shoulderY + 14);
+  ctx.lineTo(cx - 52, shoulderY + 14);
+  ctx.closePath();
+  ctx.fill();
+
+  // Suit lapels (partially under kefia)
+  ctx.fillStyle = '#3A3A4E';
+  ctx.beginPath();
+  ctx.moveTo(cx - 12, shoulderY - 2);
+  ctx.lineTo(cx - 24, shoulderY + 6);
+  ctx.lineTo(cx - 16, shoulderY + 48);
+  ctx.lineTo(cx - 4, shoulderY + 40);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + 12, shoulderY - 2);
+  ctx.lineTo(cx + 24, shoulderY + 6);
+  ctx.lineTo(cx + 16, shoulderY + 48);
+  ctx.lineTo(cx + 4, shoulderY + 40);
+  ctx.closePath();
+  ctx.fill();
+
+  // Buttons
+  ctx.fillStyle = '#0A0A1A';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(cx, shoulderY + 44 + i * 14, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Suit wrinkles
+  ctx.strokeStyle = '#121224';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - 28, shoulderY + 12); ctx.lineTo(cx - 20, torsoBottom - 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 28, shoulderY + 12); ctx.lineTo(cx + 20, torsoBottom - 8); ctx.stroke();
+
+  // ── Arms (short, suit sleeves, fists) ──
+  ctx.fillStyle = suitColor;
+  // Left arm
+  ctx.beginPath();
+  ctx.moveTo(cx - 52, shoulderY + 4);
+  ctx.lineTo(cx - 60, shoulderY + 10);
+  ctx.lineTo(cx - 64, shoulderY + 56);
+  ctx.lineTo(cx - 54, shoulderY + 58);
+  ctx.lineTo(cx - 50, shoulderY + 14);
+  ctx.closePath();
+  ctx.fill();
+  // Right arm
+  ctx.beginPath();
+  ctx.moveTo(cx + 52, shoulderY + 4);
+  ctx.lineTo(cx + 60, shoulderY + 10);
+  ctx.lineTo(cx + 64, shoulderY + 56);
+  ctx.lineTo(cx + 54, shoulderY + 58);
+  ctx.lineTo(cx + 50, shoulderY + 14);
+  ctx.closePath();
+  ctx.fill();
+  // Fists
   ctx.fillStyle = skinBase;
-  ctx.beginPath();
-  ctx.moveTo(cx - 48, cy - 40);   // top-left
-  ctx.lineTo(cx + 48, cy - 40);   // top-right
-  ctx.lineTo(cx + 56, cy - 25);   // right temple
-  ctx.lineTo(cx + 60, cy - 5);    // right cheekbone
-  ctx.lineTo(cx + 58, cy + 15);   // right mid-face
-  ctx.lineTo(cx + 52, cy + 30);   // right jaw (heavy)
-  ctx.lineTo(cx + 44, cy + 40);   // right jaw corner (SQUARE)
-  ctx.lineTo(cx + 30, cy + 44);   // right chin
-  ctx.lineTo(cx, cy + 46);        // chin center
-  ctx.lineTo(cx - 30, cy + 44);   // left chin
-  ctx.lineTo(cx - 44, cy + 40);   // left jaw corner
-  ctx.lineTo(cx - 52, cy + 30);   // left jaw
-  ctx.lineTo(cx - 58, cy + 15);   // left mid-face
-  ctx.lineTo(cx - 60, cy - 5);    // left cheekbone
-  ctx.lineTo(cx - 56, cy - 25);   // left temple
-  ctx.closePath();
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - 58, shoulderY + 60, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 58, shoulderY + 60, 7, 0, Math.PI * 2); ctx.fill();
 
-  // Cheekbone highlights (angular, pronounced)
-  ctx.fillStyle = skinLight;
-  ctx.beginPath();
-  ctx.moveTo(cx + 48, cy - 10);
-  ctx.lineTo(cx + 58, cy - 2);
-  ctx.lineTo(cx + 54, cy + 10);
-  ctx.lineTo(cx + 44, cy + 5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx - 48, cy - 10);
-  ctx.lineTo(cx - 58, cy - 2);
-  ctx.lineTo(cx - 54, cy + 10);
-  ctx.lineTo(cx - 44, cy + 5);
-  ctx.closePath();
-  ctx.fill();
+  // ═══════════════════════════════════════════════════
+  // KEFIA ON SHOULDERS (checkered white/dark gray)
+  // ═══════════════════════════════════════════════════
+  const kefW = '#E8E8E8';
+  const kefD = '#3A3A3A';
 
-  // Heavy jaw shadow
-  ctx.fillStyle = skinDark;
-  ctx.beginPath();
-  ctx.moveTo(cx - 44, cy + 34);
-  ctx.lineTo(cx + 44, cy + 34);
-  ctx.lineTo(cx + 30, cy + 44);
-  ctx.lineTo(cx, cy + 46);
-  ctx.lineTo(cx - 30, cy + 44);
-  ctx.closePath();
-  ctx.fill();
-
-  // ── EARS (thick, brutish) ──
-  ctx.fillStyle = skinDark;
-  ctx.beginPath();
-  ctx.moveTo(cx - 60, cy - 15);
-  ctx.lineTo(cx - 66, cy - 5);
-  ctx.lineTo(cx - 64, cy + 10);
-  ctx.lineTo(cx - 60, cy + 5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx + 60, cy - 15);
-  ctx.lineTo(cx + 66, cy - 5);
-  ctx.lineTo(cx + 64, cy + 10);
-  ctx.lineTo(cx + 60, cy + 5);
-  ctx.closePath();
-  ctx.fill();
-
-  // ── BATTLE-WORN KEFFIYEH ──
-  const keffBase = '#8a8070';
-  const keffDark = '#6a6055';
-
-  // Main keffiyeh head covering
-  ctx.fillStyle = keffBase;
-  ctx.beginPath();
-  ctx.moveTo(cx - 52, cy - 40);
-  ctx.lineTo(cx + 52, cy - 40);
-  ctx.lineTo(cx + 54, cy - 50);
-  ctx.lineTo(cx + 44, cy - 62);
-  ctx.lineTo(cx + 20, cy - 70);
-  ctx.lineTo(cx - 20, cy - 70);
-  ctx.lineTo(cx - 44, cy - 62);
-  ctx.lineTo(cx - 54, cy - 50);
-  ctx.closePath();
-  ctx.fill();
-
-  // Keffiyeh drape (left and right sides hanging down)
-  ctx.fillStyle = keffBase;
   // Left drape
+  ctx.fillStyle = kefW;
   ctx.beginPath();
-  ctx.moveTo(cx - 56, cy - 30);
-  ctx.lineTo(cx - 64, cy - 20);
-  ctx.lineTo(cx - 68, cy + 10);
-  ctx.lineTo(cx - 62, cy + 40);
-  ctx.lineTo(cx - 54, cy + 50);
-  ctx.lineTo(cx - 48, cy + 30);
-  ctx.lineTo(cx - 56, cy - 5);
+  ctx.moveTo(cx - 14, neckTop);
+  ctx.lineTo(cx - 54, shoulderY + 6);
+  ctx.lineTo(cx - 58, shoulderY + 42);
+  ctx.lineTo(cx - 42, shoulderY + 52);
+  ctx.lineTo(cx - 16, shoulderY + 38);
+  ctx.lineTo(cx - 2, shoulderY + 10);
   ctx.closePath();
   ctx.fill();
   // Right drape
   ctx.beginPath();
-  ctx.moveTo(cx + 56, cy - 30);
-  ctx.lineTo(cx + 64, cy - 20);
-  ctx.lineTo(cx + 68, cy + 10);
-  ctx.lineTo(cx + 62, cy + 40);
-  ctx.lineTo(cx + 54, cy + 50);
-  ctx.lineTo(cx + 48, cy + 30);
-  ctx.lineTo(cx + 56, cy - 5);
+  ctx.moveTo(cx + 14, neckTop);
+  ctx.lineTo(cx + 54, shoulderY + 6);
+  ctx.lineTo(cx + 58, shoulderY + 42);
+  ctx.lineTo(cx + 42, shoulderY + 52);
+  ctx.lineTo(cx + 16, shoulderY + 38);
+  ctx.lineTo(cx + 2, shoulderY + 10);
   ctx.closePath();
   ctx.fill();
 
-  // Keffiyeh pattern (crosshatch lines for traditional pattern)
-  ctx.strokeStyle = keffDark;
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 8; i++) {
-    const ky = cy - 65 + i * 6;
-    ctx.beginPath();
-    ctx.moveTo(cx - 42 + i * 3, ky);
-    ctx.lineTo(cx + 42 - i * 3, ky);
-    ctx.stroke();
+  // Center neckpiece
+  ctx.fillStyle = kefW;
+  ctx.beginPath();
+  ctx.moveTo(cx - 16, neckTop - 2);
+  ctx.lineTo(cx + 16, neckTop - 2);
+  ctx.lineTo(cx + 12, shoulderY + 16);
+  ctx.lineTo(cx - 12, shoulderY + 16);
+  ctx.closePath();
+  ctx.fill();
+
+  // Hanging ends in front
+  ctx.fillStyle = kefW;
+  ctx.fillRect(cx - 10, shoulderY + 16, 7, 36);
+  ctx.fillRect(cx + 3, shoulderY + 16, 7, 36);
+
+  // Checkered pattern on drapes
+  ctx.fillStyle = kefD;
+  for (let py = shoulderY + 2; py < shoulderY + 50; py += 8) {
+    for (let px = cx - 54; px < cx - 4; px += 8) {
+      if ((Math.floor(px / 8) + Math.floor(py / 8)) % 2 === 0) {
+        ctx.fillRect(px, py, 4, 4);
+      }
+    }
+  }
+  for (let py = shoulderY + 2; py < shoulderY + 50; py += 8) {
+    for (let px = cx + 4; px < cx + 56; px += 8) {
+      if ((Math.floor(px / 8) + Math.floor(py / 8)) % 2 === 0) {
+        ctx.fillRect(px, py, 4, 4);
+      }
+    }
+  }
+  // Pattern on center
+  for (let py = neckTop; py < shoulderY + 14; py += 8) {
+    for (let px = cx - 12; px < cx + 12; px += 8) {
+      if ((Math.floor(px / 8) + Math.floor(py / 8)) % 2 === 0) {
+        ctx.fillRect(px, py, 4, 4);
+      }
+    }
+  }
+  // Pattern on hanging ends
+  for (let py = shoulderY + 18; py < shoulderY + 50; py += 6) {
+    ctx.fillRect(cx - 8, py, 3, 3);
+    ctx.fillRect(cx + 5, py, 3, 3);
   }
 
-  // Battle damage on keffiyeh (tears, dark spots)
-  ctx.fillStyle = 'rgba(40, 30, 20, 0.3)';
-  ctx.fillRect(cx - 40, cy - 58, 8, 4);
-  ctx.fillRect(cx + 20, cy - 52, 6, 5);
-  ctx.fillRect(cx - 60, cy + 10, 5, 8);
-  // Torn edge
-  ctx.strokeStyle = keffDark;
+  // Fold lines
+  ctx.strokeStyle = '#C0C0C0';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - 34, shoulderY + 8); ctx.lineTo(cx - 38, shoulderY + 44); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 34, shoulderY + 8); ctx.lineTo(cx + 38, shoulderY + 44); ctx.stroke();
+
+  // ═══════════════════════════════════════════════════
+  // NECK (short, thick)
+  // ═══════════════════════════════════════════════════
+  ctx.fillStyle = skinDark;
+  ctx.fillRect(cx - 16, neckTop - 2, 32, shoulderY - neckTop + 6);
+
+  // ═══════════════════════════════════════════════════
+  // HEAD (elongated oval — CABEZÓN signature)
+  // ═══════════════════════════════════════════════════
+  ctx.fillStyle = skinBase;
+  ctx.beginPath();
+  ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Subtle outline
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(cx - 54, cy + 46);
-  ctx.lineTo(cx - 56, cy + 50);
-  ctx.lineTo(cx - 52, cy + 52);
-  ctx.lineTo(cx - 50, cy + 48);
+  ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Agal (black rope band)
-  ctx.fillStyle = '#1a1a1a';
+  // ── Ears ──
+  ctx.fillStyle = skinBase;
+  ctx.beginPath(); ctx.ellipse(cx - headRX - 3, headCY + 6, 6, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + headRX + 3, headCY + 6, 6, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = skinDark;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx - headRX - 3, headCY + 6, 4, 0.5, 2.5); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + headRX + 3, headCY + 6, 4, 0.5, 2.5); ctx.stroke();
+
+  // ═══════════════════════════════════════════════════
+  // SHORT GRAY HAIR (almost rapado, receding hairline)
+  // ═══════════════════════════════════════════════════
+  ctx.save();
   ctx.beginPath();
-  ctx.moveTo(cx - 50, cy - 42);
-  ctx.lineTo(cx + 50, cy - 42);
-  ctx.lineTo(cx + 48, cy - 38);
-  ctx.lineTo(cx - 48, cy - 38);
-  ctx.closePath();
-  ctx.fill();
-  // Second ring
+  ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Thin hair layer on top
+  ctx.fillStyle = '#8A8A8A';
   ctx.beginPath();
-  ctx.moveTo(cx - 48, cy - 38);
-  ctx.lineTo(cx + 48, cy - 38);
-  ctx.lineTo(cx + 46, cy - 35);
-  ctx.lineTo(cx - 46, cy - 35);
-  ctx.closePath();
+  ctx.ellipse(cx, headCY - 6, headRX - 2, headRY - 4, 0, Math.PI, 0, true);
   ctx.fill();
 
-  // ── MASSIVE THICK ANGRY EYEBROWS — dominate upper face ──
-  const browColor = expression === 'dead' ? '#3a3a3a' : '#0a0804';
+  // Sides thicker (entradas — receding on top center)
+  ctx.fillStyle = '#7A7A7A';
+  ctx.beginPath(); ctx.arc(cx - 28, headCY - 24, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 28, headCY - 24, 16, 0, Math.PI * 2); ctx.fill();
+
+  // Clear center forehead (receding hairline)
+  ctx.fillStyle = skinBase;
+  ctx.beginPath();
+  ctx.ellipse(cx, headCY - 18, 22, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hair texture strands (visible scalp through short hair)
+  ctx.strokeStyle = '#6A6A6A';
+  ctx.lineWidth = 0.7;
+  for (let i = 0; i < 40; i++) {
+    const hx = cx + (Math.random() - 0.5) * 70;
+    const hy = headCY - headRY + 6 + Math.random() * 24;
+    const dx2 = ((hx - cx) / headRX) ** 2;
+    const dy2 = ((hy - headCY) / headRY) ** 2;
+    if (dx2 + dy2 < 0.92) {
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(hx + (Math.random() - 0.5) * 3, hy - 2 - Math.random() * 3);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // ═══════════════════════════════════════════════════
+  // EYEBROWS — THE SIGNATURE FEATURE
+  // Thick, heavy, V-shaped, almost touching, textured
+  // ═══════════════════════════════════════════════════
+  const browY = headCY - 6;
+  const browColor = expression === 'dead' ? '#4A4A4A' : '#2A2A2A';
+  const browH = 8;   // thick! (~5px at 128 scale → 8px at 256)
+  const browW = 32;  // wide! (~18px at 128 → 32px at 256)
+  const browGap = 5; // almost touching
+  // Angle: inner end LOWER than outer (V-shape for anger)
+  const browAngle = expression === 'furious' ? 0.28 : expression === 'angry' ? 0.22 : 0.16;
+
   ctx.fillStyle = browColor;
 
-  // Left eyebrow — massive thick wedge, permanently furrowed
+  // Left eyebrow — inner end (near nose) is LOWER
   ctx.beginPath();
-  ctx.moveTo(cx - 48, cy - 28);   // outer top
-  ctx.lineTo(cx - 8, cy - 14);    // inner bottom (deep furrow)
-  ctx.lineTo(cx - 8, cy - 20);    // inner top
-  ctx.lineTo(cx - 48, cy - 36);   // outer higher
-  ctx.closePath();
-  ctx.fill();
-  // Right eyebrow
-  ctx.beginPath();
-  ctx.moveTo(cx + 48, cy - 28);
-  ctx.lineTo(cx + 8, cy - 14);
-  ctx.lineTo(cx + 8, cy - 20);
-  ctx.lineTo(cx + 48, cy - 36);
+  ctx.moveTo(cx - browGap / 2 - browW, browY - browH / 2 - browAngle * browW / 2);  // outer top
+  ctx.lineTo(cx - browGap / 2, browY - browH / 2 + browAngle * browW / 2 + 2);       // inner top (lower)
+  ctx.lineTo(cx - browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 2);       // inner bottom
+  ctx.lineTo(cx - browGap / 2 - browW, browY + browH / 2 - browAngle * browW / 2);   // outer bottom
   ctx.closePath();
   ctx.fill();
 
-  // Extra brow thickness/texture (hair strands on brows)
-  ctx.lineWidth = 1.5;
+  // Right eyebrow — mirror
+  ctx.beginPath();
+  ctx.moveTo(cx + browGap / 2 + browW, browY - browH / 2 - browAngle * browW / 2);
+  ctx.lineTo(cx + browGap / 2, browY - browH / 2 + browAngle * browW / 2 + 2);
+  ctx.lineTo(cx + browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 2);
+  ctx.lineTo(cx + browGap / 2 + browW, browY + browH / 2 - browAngle * browW / 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Brow hair texture (irregular strands for thick bushy look)
   ctx.strokeStyle = browColor;
-  for (let i = 0; i < 12; i++) {
-    const bx = cx - 44 + i * 7;
-    const by = cy - 32 + (i * 2);
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 24; i++) {
+    const t = i / 24;
+    // Left brow strands
+    const lx = cx - browGap / 2 - browW + t * browW;
+    const ly = browY + (t - 0.5) * browAngle * browW;
     ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(bx + 4, by + 3);
+    ctx.moveTo(lx, ly - browH / 2 - 1);
+    ctx.lineTo(lx + (Math.random() - 0.5) * 3, ly + browH / 2 + Math.random() * 2);
     ctx.stroke();
-  }
-  for (let i = 0; i < 12; i++) {
-    const bx = cx + 44 - i * 7;
-    const by = cy - 32 + (i * 2);
+    // Right brow strands
+    const rx = cx + browGap / 2 + t * browW;
+    const ry = browY + (0.5 - t) * browAngle * browW;
     ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(bx - 4, by + 3);
+    ctx.moveTo(rx, ry - browH / 2 - 1);
+    ctx.lineTo(rx + (Math.random() - 0.5) * 3, ry + browH / 2 + Math.random() * 2);
     ctx.stroke();
   }
 
-  // ── EYES — small, narrow, HATEFUL (pure rage even in normal) ──
+  // Eyebrow shadow (2px below each brow — creates depth)
+  ctx.fillStyle = 'rgba(20, 15, 10, 0.35)';
+  // Left shadow
+  const lShadowInner = browY + browH / 2 + browAngle * browW / 2 + 2;
+  const lShadowOuter = browY + browH / 2 - browAngle * browW / 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - browGap / 2 - browW, lShadowOuter);
+  ctx.lineTo(cx - browGap / 2, lShadowInner);
+  ctx.lineTo(cx - browGap / 2, lShadowInner + 3);
+  ctx.lineTo(cx - browGap / 2 - browW, lShadowOuter + 3);
+  ctx.closePath();
+  ctx.fill();
+  // Right shadow
+  ctx.beginPath();
+  ctx.moveTo(cx + browGap / 2 + browW, lShadowOuter);
+  ctx.lineTo(cx + browGap / 2, lShadowInner);
+  ctx.lineTo(cx + browGap / 2, lShadowInner + 3);
+  ctx.lineTo(cx + browGap / 2 + browW, lShadowOuter + 3);
+  ctx.closePath();
+  ctx.fill();
+
+  // ═══════════════════════════════════════════════════
+  // EYES (small, squinting, intense — partially hidden by brow shadow)
+  // ═══════════════════════════════════════════════════
+  const eyeY = browY + browH + 6;
+  const eyeSpacing = 20;
+
   if (expression === 'dead') {
-    // Spiral eyes
     ctx.strokeStyle = '#555555';
     ctx.lineWidth = 3;
-    for (const ex of [cx - 26, cx + 26]) {
+    for (const side of [-1, 1]) {
+      const ex = cx + side * eyeSpacing;
       ctx.beginPath();
-      for (let a = 0; a < Math.PI * 5; a += 0.2) {
-        const r = a * 1.5;
-        ctx.lineTo(ex + Math.cos(a) * r, cy - 8 + Math.sin(a) * r);
-      }
+      ctx.moveTo(ex - 7, eyeY - 4); ctx.lineTo(ex + 7, eyeY + 4);
+      ctx.moveTo(ex + 7, eyeY - 4); ctx.lineTo(ex - 7, eyeY + 4);
       ctx.stroke();
     }
-    // Heavy bruises
-    ctx.fillStyle = 'rgba(80, 30, 100, 0.5)';
-    ctx.beginPath(); ctx.ellipse(cx - 26, cy - 2, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx + 26, cy - 2, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
   } else {
-    let irisColor, scleraColor;
-    if (expression === 'furious') {
-      irisColor = '#dd0000'; scleraColor = '#ffaaaa';
-    } else if (expression === 'angry') {
-      irisColor = '#cc3300'; scleraColor = '#ffe0d0';
-    } else {
-      // Even normal is angry-looking
-      irisColor = '#aa4400'; scleraColor = '#eee8d8';
-    }
-
     for (const side of [-1, 1]) {
-      const ex = cx + side * 26;
-      const ey = cy - 8;
+      const ex = cx + side * eyeSpacing;
 
-      // Very narrow slit eyes (pure rage)
-      ctx.fillStyle = scleraColor;
+      // Narrow slit (squinting, barely open)
+      ctx.fillStyle = '#E8E4D8';
       ctx.beginPath();
-      ctx.moveTo(ex - 14, ey);
-      ctx.quadraticCurveTo(ex, ey - 5, ex + 14, ey);
-      ctx.quadraticCurveTo(ex, ey + 4, ex - 14, ey);
+      ctx.moveTo(ex - 12, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY - 4, ex + 12, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY + 3, ex - 12, eyeY);
       ctx.closePath();
       ctx.fill();
 
-      // Small intense iris
-      ctx.fillStyle = irisColor;
+      // Dark iris (almost black)
+      ctx.fillStyle = '#1A1A1A';
       ctx.beginPath();
-      ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+      ctx.arc(ex, eyeY, 4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Tiny pupil
-      ctx.fillStyle = '#050505';
+      // Pupil
+      ctx.fillStyle = '#000000';
       ctx.beginPath();
-      ctx.arc(ex, ey, 2, 0, Math.PI * 2);
+      ctx.arc(ex, eyeY, 2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Red/yellow glow
-      const glowAlpha = expression === 'furious' ? 0.5 : expression === 'angry' ? 0.35 : 0.2;
-      ctx.fillStyle = `rgba(255, 40, 0, ${glowAlpha})`;
-      ctx.beginPath();
-      ctx.arc(ex, ey, 8, 0, Math.PI * 2);
-      ctx.fill();
+      // 1px white highlight (gives life)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(ex + 1.5, eyeY - 2, 1.5, 1.5);
 
-      // Heavy dark circles
-      ctx.fillStyle = 'rgba(30, 15, 20, 0.4)';
-      ctx.beginPath();
-      ctx.ellipse(ex, ey + 8, 12, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Eye outline (intense stare)
+      // Eye outline
       ctx.strokeStyle = '#1a0a05';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(ex - 14, ey);
-      ctx.quadraticCurveTo(ex, ey - 5, ex + 14, ey);
-      ctx.quadraticCurveTo(ex, ey + 4, ex - 14, ey);
+      ctx.moveTo(ex - 12, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY - 4, ex + 12, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY + 3, ex - 12, eyeY);
       ctx.closePath();
       ctx.stroke();
     }
   }
 
-  // ── NOSE — broad, broken-looking ──
-  ctx.fillStyle = skinDark;
+  // ═══════════════════════════════════════════════════
+  // NOSE (large, prominent, wide — trapezoidal)
+  // ═══════════════════════════════════════════════════
+  const noseTop = eyeY + 6;
+  const noseBot = headCY + 22;
+
+  ctx.fillStyle = '#A07850';
   ctx.beginPath();
-  ctx.moveTo(cx, cy - 8);
-  ctx.lineTo(cx + 8, cy + 6);
-  ctx.lineTo(cx + 10, cy + 10);
-  ctx.lineTo(cx + 6, cy + 12);
-  ctx.lineTo(cx - 6, cy + 12);
-  ctx.lineTo(cx - 10, cy + 10);
-  ctx.lineTo(cx - 8, cy + 6);
+  ctx.moveTo(cx - 4, noseTop);
+  ctx.lineTo(cx + 4, noseTop);
+  ctx.lineTo(cx + 12, noseBot - 4);
+  ctx.lineTo(cx + 10, noseBot);
+  ctx.lineTo(cx - 10, noseBot);
+  ctx.lineTo(cx - 12, noseBot - 4);
   ctx.closePath();
   ctx.fill();
-  // Nose bridge bump (broken nose)
+
+  // Bridge highlight
   ctx.fillStyle = skinLight;
   ctx.beginPath();
-  ctx.moveTo(cx - 3, cy - 4);
-  ctx.lineTo(cx + 4, cy - 2);
-  ctx.lineTo(cx + 3, cy + 2);
-  ctx.lineTo(cx - 2, cy);
+  ctx.moveTo(cx - 2, noseTop + 2);
+  ctx.lineTo(cx + 2, noseTop + 2);
+  ctx.lineTo(cx + 3, noseBot - 8);
+  ctx.lineTo(cx - 1, noseBot - 8);
   ctx.closePath();
   ctx.fill();
+
   // Nostrils
-  ctx.fillStyle = '#1a0a05';
-  ctx.beginPath(); ctx.arc(cx - 5, cy + 10, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 5, cy + 10, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3A2A1A';
+  ctx.beginPath(); ctx.arc(cx - 6, noseBot - 2, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 6, noseBot - 2, 3, 0, Math.PI * 2); ctx.fill();
 
-  // ── MOUTH — rage grimace with bared teeth ──
+  // ═══════════════════════════════════════════════════
+  // MOUTH (thin frown, asymmetric rictus, never smiles)
+  // ═══════════════════════════════════════════════════
+  const mouthY = noseBot + 10;
+
   if (expression === 'dead') {
-    ctx.strokeStyle = '#4a2a1a';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#6A5A4A';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(cx - 20, cy + 22);
-    ctx.lineTo(cx - 8, cy + 26);
-    ctx.lineTo(cx + 6, cy + 23);
-    ctx.lineTo(cx + 20, cy + 25);
+    ctx.moveTo(cx - 18, mouthY);
+    ctx.lineTo(cx - 6, mouthY + 3);
+    ctx.lineTo(cx + 8, mouthY - 1);
+    ctx.lineTo(cx + 18, mouthY + 2);
     ctx.stroke();
-    // Broken tooth
-    ctx.fillStyle = '#ccc8b8';
-    ctx.beginPath();
-    ctx.moveTo(cx - 4, cy + 22);
-    ctx.lineTo(cx - 2, cy + 26);
-    ctx.lineTo(cx + 2, cy + 24);
-    ctx.closePath();
-    ctx.fill();
   } else {
-    // Wide snarling mouth
-    ctx.fillStyle = '#2a0a05';
+    ctx.fillStyle = '#8A6A4A';
     ctx.beginPath();
-    ctx.moveTo(cx - 24, cy + 18);
-    ctx.quadraticCurveTo(cx - 12, cy + 14, cx, cy + 16);
-    ctx.quadraticCurveTo(cx + 12, cy + 14, cx + 24, cy + 18);
-    ctx.lineTo(cx + 22, cy + 28);
-    ctx.quadraticCurveTo(cx, cy + 32, cx - 22, cy + 28);
+    ctx.moveTo(cx - 20, mouthY);
+    ctx.quadraticCurveTo(cx - 8, mouthY + 3, cx, mouthY + 2);
+    ctx.quadraticCurveTo(cx + 8, mouthY + 2, cx + 20, mouthY - 2);
+    ctx.quadraticCurveTo(cx + 8, mouthY + 5, cx, mouthY + 4);
+    ctx.quadraticCurveTo(cx - 8, mouthY + 6, cx - 20, mouthY);
     ctx.closePath();
     ctx.fill();
 
-    // Upper teeth row
-    ctx.fillStyle = '#ddd8c0';
-    const teethY = cy + 17;
-    const teethH = expression === 'furious' ? 7 : expression === 'angry' ? 6 : 5;
-    for (let t = -4; t <= 4; t++) {
-      const tw = 4;
-      ctx.fillRect(cx + t * 5 - 2, teethY, tw, teethH);
-    }
-    // Lower teeth
-    const lTeethY = cy + 24;
-    for (let t = -3; t <= 3; t++) {
-      ctx.fillRect(cx + t * 5 - 1, lTeethY, 3, teethH - 2);
-    }
-    // Gaps
-    ctx.fillStyle = '#0a0505';
-    for (let t = -4; t <= 3; t++) {
-      ctx.fillRect(cx + t * 5 + 2, teethY, 1, teethH);
-    }
-    for (let t = -3; t <= 2; t++) {
-      ctx.fillRect(cx + t * 5 + 2, lTeethY, 1, teethH - 2);
-    }
+    // Lip line
+    ctx.strokeStyle = '#5A4A3A';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, mouthY);
+    ctx.quadraticCurveTo(cx - 8, mouthY + 3, cx, mouthY + 2);
+    ctx.quadraticCurveTo(cx + 8, mouthY + 2, cx + 20, mouthY - 2);
+    ctx.stroke();
   }
 
-  // ── STUBBLE / FACIAL HAIR TEXTURE ──
-  ctx.fillStyle = 'rgba(10, 8, 5, 0.2)';
-  for (let i = 0; i < 100; i++) {
-    const hx = cx + (Math.random() - 0.5) * 80;
-    const hy = cy + 10 + Math.random() * 30;
-    ctx.fillRect(hx, hy, 1, 1 + Math.random());
+  // ═══════════════════════════════════════════════════
+  // BEARD (gray, short, compact — follows jawline)
+  // ═══════════════════════════════════════════════════
+  if (expression !== 'dead') {
+    const beardColor = '#7A7A7A';
+    ctx.fillStyle = beardColor;
+    ctx.beginPath();
+    ctx.moveTo(cx - 36, mouthY);
+    ctx.quadraticCurveTo(cx - 40, mouthY + 14, cx - 32, headCY + headRY - 2);
+    ctx.quadraticCurveTo(cx - 18, headCY + headRY + 8, cx, headCY + headRY + 6);
+    ctx.quadraticCurveTo(cx + 18, headCY + headRY + 8, cx + 32, headCY + headRY - 2);
+    ctx.quadraticCurveTo(cx + 40, mouthY + 14, cx + 36, mouthY);
+    ctx.lineTo(cx + 22, mouthY + 6);
+    ctx.lineTo(cx, mouthY + 8);
+    ctx.lineTo(cx - 22, mouthY + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Beard texture (granular — dense at chin, sparse at cheeks)
+    ctx.fillStyle = '#5A5A5A';
+    for (let i = 0; i < 100; i++) {
+      const bx = cx + (Math.random() - 0.5) * 64;
+      const by = mouthY + 4 + Math.random() * (headCY + headRY - mouthY + 6);
+      if (Math.random() > Math.abs(bx - cx) / 50) {
+        ctx.fillRect(bx, by, 1 + Math.random(), 1.5 + Math.random());
+      }
+    }
+
+    // Beard hair strands
+    ctx.strokeStyle = '#6A6A6A';
+    ctx.lineWidth = 0.7;
+    for (let i = 0; i < 25; i++) {
+      const bx = cx + (Math.random() - 0.5) * 56;
+      const by = mouthY + 6 + Math.random() * 18;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + (Math.random() - 0.5) * 3, by + 3 + Math.random() * 5);
+      ctx.stroke();
+    }
+  } else {
+    // Dead: disheveled beard remnants
+    ctx.fillStyle = 'rgba(100, 100, 90, 0.4)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, mouthY);
+    ctx.quadraticCurveTo(cx, headCY + headRY + 10, cx + 30, mouthY);
+    ctx.closePath();
+    ctx.fill();
   }
 
-  // ── SCARS (battle-worn) ──
-  ctx.strokeStyle = 'rgba(160, 100, 80, 0.5)';
-  ctx.lineWidth = 2;
-  // Scar across left cheek
-  ctx.beginPath();
-  ctx.moveTo(cx - 40, cy + 5);
-  ctx.lineTo(cx - 30, cy + 15);
-  ctx.lineTo(cx - 24, cy + 12);
-  ctx.stroke();
-  // Small scar on forehead
-  ctx.beginPath();
-  ctx.moveTo(cx + 10, cy - 34);
-  ctx.lineTo(cx + 16, cy - 28);
-  ctx.stroke();
-
-  // ── DAMAGE EXPRESSIONS ──
+  // ═══════════════════════════════════════════════════
+  // EXPRESSION-SPECIFIC EFFECTS
+  // ═══════════════════════════════════════════════════
   if (expression === 'angry' || expression === 'furious') {
-    // Forehead veins (multiple)
-    ctx.strokeStyle = expression === 'furious' ? '#dd2020' : '#bb4040';
-    ctx.lineWidth = expression === 'furious' ? 3 : 2;
-    // Left vein cluster
+    // Forehead veins
+    ctx.strokeStyle = expression === 'furious' ? '#CC2020' : '#AA5050';
+    ctx.lineWidth = expression === 'furious' ? 2.5 : 1.5;
     ctx.beginPath();
-    ctx.moveTo(cx - 36, cy - 36);
-    ctx.lineTo(cx - 28, cy - 28);
-    ctx.lineTo(cx - 32, cy - 22);
-    ctx.lineTo(cx - 24, cy - 18);
+    ctx.moveTo(cx - 28, headCY - 28);
+    ctx.lineTo(cx - 20, headCY - 20);
+    ctx.lineTo(cx - 24, headCY - 14);
     ctx.stroke();
-    // Right vein cluster
     ctx.beginPath();
-    ctx.moveTo(cx + 36, cy - 36);
-    ctx.lineTo(cx + 28, cy - 28);
-    ctx.lineTo(cx + 32, cy - 22);
-    ctx.lineTo(cx + 24, cy - 18);
-    ctx.stroke();
-    // Center vein
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 38);
-    ctx.lineTo(cx - 4, cy - 30);
-    ctx.lineTo(cx + 2, cy - 24);
+    ctx.moveTo(cx + 28, headCY - 28);
+    ctx.lineTo(cx + 20, headCY - 20);
+    ctx.lineTo(cx + 24, headCY - 14);
     ctx.stroke();
   }
 
   if (expression === 'furious') {
-    // Deep red tint overlay
-    ctx.fillStyle = 'rgba(180, 20, 10, 0.15)';
+    // Red tint
+    ctx.fillStyle = 'rgba(180, 20, 10, 0.12)';
     ctx.fillRect(0, 0, S, S);
 
-    // Throbbing temple veins
-    ctx.strokeStyle = '#dd2020';
-    ctx.lineWidth = 3.5;
+    // Temple veins
+    ctx.strokeStyle = '#CC2020';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(cx - 56, cy - 10);
-    ctx.lineTo(cx - 50, cy - 4);
-    ctx.lineTo(cx - 54, cy + 2);
-    ctx.lineTo(cx - 48, cy + 8);
+    ctx.moveTo(cx - headRX + 2, headCY - 2);
+    ctx.lineTo(cx - headRX + 6, headCY + 6);
+    ctx.lineTo(cx - headRX + 2, headCY + 12);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(cx + 56, cy - 10);
-    ctx.lineTo(cx + 50, cy - 4);
-    ctx.lineTo(cx + 54, cy + 2);
-    ctx.lineTo(cx + 48, cy + 8);
+    ctx.moveTo(cx + headRX - 2, headCY - 2);
+    ctx.lineTo(cx + headRX - 6, headCY + 6);
+    ctx.lineTo(cx + headRX - 2, headCY + 12);
     ctx.stroke();
 
-    // Steam/smoke above head
-    ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
-    for (let i = 0; i < 8; i++) {
-      const px = cx + (Math.random() - 0.5) * 60;
-      const py = cy - 72 - Math.random() * 20;
-      const pr = 4 + Math.random() * 6;
+    // Steam above head
+    ctx.fillStyle = 'rgba(200, 200, 200, 0.25)';
+    for (let i = 0; i < 6; i++) {
+      const sx = cx + (Math.random() - 0.5) * 50;
+      const sy = headCY - headRY - 8 - Math.random() * 16;
       ctx.beginPath();
-      ctx.arc(px, py, pr, 0, Math.PI * 2);
+      ctx.arc(sx, sy, 3 + Math.random() * 5, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
   if (expression === 'dead') {
     // Heavy bruises
-    ctx.fillStyle = 'rgba(80, 30, 100, 0.45)';
-    ctx.beginPath(); ctx.arc(cx - 30, cy, 10, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 34, cy + 6, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx - 10, cy + 16, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 16, cy + 20, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(80, 30, 100, 0.4)';
+    ctx.beginPath(); ctx.arc(cx - 22, headCY + 4, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 26, headCY + 8, 8, 0, Math.PI * 2); ctx.fill();
 
-    // Crack lines across face
+    // Crack lines
     ctx.strokeStyle = 'rgba(50, 25, 15, 0.5)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(cx - 20, cy - 30);
-    ctx.lineTo(cx - 12, cy - 15);
-    ctx.lineTo(cx - 18, cy);
-    ctx.lineTo(cx - 10, cy + 15);
+    ctx.moveTo(cx - 14, headCY - 30);
+    ctx.lineTo(cx - 8, headCY - 14);
+    ctx.lineTo(cx - 12, headCY);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(cx + 22, cy - 26);
-    ctx.lineTo(cx + 16, cy - 10);
-    ctx.lineTo(cx + 24, cy + 5);
+    ctx.moveTo(cx + 18, headCY - 24);
+    ctx.lineTo(cx + 12, headCY - 8);
+    ctx.lineTo(cx + 20, headCY + 6);
     ctx.stroke();
   }
 

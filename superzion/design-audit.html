@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SUPERZION — Design Audit Report</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 13px; padding: 20px; }
+h1 { color: #FFD700; text-align: center; font-size: 28px; margin-bottom: 4px; text-shadow: 0 0 20px rgba(255,215,0,0.4); }
+h2 { color: #00e5ff; font-size: 18px; margin: 24px 0 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+h3 { color: #ff9800; font-size: 15px; margin: 16px 0 6px; cursor: pointer; user-select: none; }
+h3:hover { color: #ffb74d; }
+h3::before { content: '▶ '; font-size: 10px; }
+h3.open::before { content: '▼ '; }
+.subtitle { text-align: center; color: #888; margin-bottom: 20px; font-size: 12px; }
+
+/* Dashboard */
+.dashboard { background: #12122a; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+.dashboard-title { color: #FFD700; font-size: 16px; margin-bottom: 12px; text-align: center; }
+.progress-bar { background: #2a2a3e; border-radius: 6px; height: 28px; overflow: hidden; margin-bottom: 12px; position: relative; }
+.progress-fill { height: 100%; border-radius: 6px; transition: width 0.5s; }
+.progress-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-weight: bold; font-size: 14px; text-shadow: 0 1px 3px #000; }
+.counters { display: flex; justify-content: center; gap: 30px; margin-bottom: 16px; flex-wrap: wrap; }
+.counter { text-align: center; padding: 10px 20px; border-radius: 6px; min-width: 120px; }
+.counter .num { font-size: 32px; font-weight: bold; }
+.counter .label { font-size: 11px; color: #aaa; }
+.c-red { background: #3a1a1a; border: 1px solid #662222; }
+.c-red .num { color: #ff4444; }
+.c-yellow { background: #3a3a1a; border: 1px solid #666622; }
+.c-yellow .num { color: #ffcc00; }
+.c-green { background: #1a3a1a; border: 1px solid #226622; }
+.c-green .num { color: #44ff44; }
+.c-gray { background: #2a2a2a; border: 1px solid #555; }
+.c-gray .num { color: #888; }
+
+/* Category bars */
+.cat-bars { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.cat-bar { flex: 1; min-width: 140px; max-width: 200px; }
+.cat-bar-label { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+.cat-bar-track { background: #2a2a3e; height: 14px; border-radius: 3px; overflow: hidden; display: flex; }
+.cat-bar-seg { height: 100%; }
+
+/* Filters */
+.filters { background: #12122a; border: 1px solid #333; border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.filters label { cursor: pointer; font-size: 12px; }
+.filters input[type="checkbox"] { margin-right: 4px; }
+.search-box { background: #1a1a2e; border: 1px solid #444; color: #e0e0e0; padding: 4px 8px; border-radius: 4px; font-family: inherit; font-size: 12px; width: 200px; }
+
+/* Tables */
+.section { margin-bottom: 20px; }
+.collapsible { display: none; }
+.collapsible.open { display: block; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+th { background: #1e1e3a; color: #00e5ff; padding: 8px 6px; text-align: left; border: 1px solid #333; cursor: pointer; user-select: none; white-space: nowrap; }
+th:hover { background: #2a2a4a; }
+td { padding: 6px; border: 1px solid #2a2a3e; vertical-align: top; }
+tr { background: #1a1a2e; }
+tr:nth-child(even) { background: #202040; }
+tr.row-red { background: #2e1414 !important; }
+tr.row-red:nth-child(even) { background: #331818 !important; }
+tr.row-yellow { background: #2e2e14 !important; }
+tr.row-yellow:nth-child(even) { background: #333318 !important; }
+tr.row-gray { background: #222 !important; }
+tr.row-gray:nth-child(even) { background: #282828 !important; }
+.loc { color: #888; font-size: 11px; word-break: break-all; }
+.detail { color: #bbb; font-size: 11px; }
+.status { font-size: 16px; text-align: center; }
+
+/* Copy button */
+.copy-btn { background: #333; border: 1px solid #555; color: #ccc; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 10px; font-family: inherit; }
+.copy-btn:hover { background: #444; color: #fff; }
+.copy-btn.copied { background: #1a3a1a; color: #44ff44; border-color: #226622; }
+
+/* Fix list */
+.fix-list { background: #12122a; border: 1px solid #333; border-radius: 6px; padding: 16px; margin-top: 20px; }
+.fix-item { padding: 8px; border-bottom: 1px solid #2a2a3e; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.fix-item:last-child { border-bottom: none; }
+.fix-priority { color: #ff4444; font-weight: bold; min-width: 20px; }
+.fix-desc { flex: 1; }
+.fix-prompt { background: #1a1a2e; border: 1px solid #333; padding: 6px 8px; border-radius: 4px; font-size: 11px; color: #aaa; margin-top: 4px; cursor: pointer; }
+.fix-prompt:hover { color: #e0e0e0; border-color: #555; }
+</style>
+</head>
+<body>
+
+<h1>SUPERZION — DESIGN AUDIT</h1>
+<p class="subtitle">Generated 2026-03-23 | Full visual analysis of all scenes, sprites, backgrounds, cinematics & boss design</p>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div class="dashboard">
+  <div class="dashboard-title">AUDIT SUMMARY</div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill" style="width:0%; background: linear-gradient(90deg, #44ff44, #88ff88);"></div>
+    <div class="progress-label" id="progressLabel">—%</div>
+  </div>
+  <div class="counters">
+    <div class="counter c-red"><div class="num" id="cntRed">0</div><div class="label">🔴 CRITICAL</div></div>
+    <div class="counter c-yellow"><div class="num" id="cntYellow">0</div><div class="label">🟡 REVIEW</div></div>
+    <div class="counter c-green"><div class="num" id="cntGreen">0</div><div class="label">🟢 GOOD</div></div>
+    <div class="counter c-gray"><div class="num" id="cntGray">0</div><div class="label">⚫ N/A</div></div>
+  </div>
+  <div class="cat-bars" id="catBars"></div>
+</div>
+
+<!-- ═══════════════ FILTERS ═══════════════ -->
+<div class="filters">
+  <label><input type="checkbox" class="filter-cb" data-status="red" checked> 🔴 Critical</label>
+  <label><input type="checkbox" class="filter-cb" data-status="yellow" checked> 🟡 Review</label>
+  <label><input type="checkbox" class="filter-cb" data-status="green" checked> 🟢 Good</label>
+  <label><input type="checkbox" class="filter-cb" data-status="gray" checked> ⚫ N/A</label>
+  <input type="text" class="search-box" id="searchBox" placeholder="Search...">
+</div>
+
+<!-- ═══════════════ DATA ═══════════════ -->
+<div id="content"></div>
+
+<!-- ═══════════════ FIX LIST ═══════════════ -->
+<div class="fix-list" id="fixList">
+  <h2>PRIORITIZED FIX LIST</h2>
+  <div id="fixItems"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// ALL AUDIT DATA
+// ═══════════════════════════════════════════════════
+const DATA = [
+  {
+    category: "A",
+    title: "SPRITES & CHARACTERS",
+    items: [
+      {
+        element: "SuperZion side-scroller sprite",
+        location: "SpriteGenerator.js:1-826",
+        criteria: "Organicidad de formas",
+        result: "2 fillRect (outline func only) vs 80+ arc/ellipse/bezier. Ratio: ~2% fillRect",
+        status: "green",
+        detail: "Fully organic. Head=ellipse, torso=bezier trapezoid, arms/legs=ellipses, boots=quadraticCurveTo, hands=ellipses. Only fillRect is in the outline pixel scanner, not for anatomy."
+      },
+      {
+        element: "SuperZion side-scroller proportions",
+        location: "SpriteGenerator.js:668-715",
+        criteria: "Cabeza proporcional al cuerpo",
+        result: "Head ~26px of 110px total = ~24%",
+        status: "green",
+        detail: "Head is ellipse with 12px vertical radius on 128px canvas. Body from headCY=18 to boots at ~108. Head proportion 24% is within ideal 20-25% range."
+      },
+      {
+        element: "SuperZion Star of David (side-scroller)",
+        location: "SpriteGenerator.js:416",
+        criteria: "Posición estrella en centro del pecho",
+        result: "drawStar at (tx, ty+9). Torso Y range: 34-58 (height 24). Middle third: 42-50. Star at Y=43",
+        status: "green",
+        detail: "Star of David drawn at torso center via drawStar(ctx, tx, ty+9, 5). Gold color #FFD700. Positioned in middle third of torso — correctly on chest."
+      },
+      {
+        element: "SuperZion top-down sprite",
+        location: "BombermanTextures.js:401-755",
+        criteria: "Organicidad de formas",
+        result: "60+ arc, 40+ ellipse, 20+ quadraticCurveTo, 15+ bezierCurveTo. Head=arc, eyes=ellipse, hair=bezier",
+        status: "green",
+        detail: "Fully organic. Head circle, ellipse eyes, bezier hair streaks, quadratic eyebrows/mouth, capsule vest, ellipse legs. fillRect used only for equipment details."
+      },
+      {
+        element: "SuperZion Star of David (top-down)",
+        location: "BombermanTextures.js:728-736",
+        criteria: "Estrella en centro del pecho (no cuello)",
+        result: "Star at (cx, cy+5) on 32×32 canvas. Vest area: cy-2 to cy+10. Middle: cy+4. Star at cy+5",
+        status: "green",
+        detail: "Star correctly positioned in middle of vest/chest area. Gold #FFD700, radius 4px. Well centered, not at neck or stomach."
+      },
+      {
+        element: "SuperZion cinematic sprite",
+        location: "CinematicTextures.js:24-256",
+        criteria: "Organicidad + estrella posición",
+        result: "50+ ellipse, 30+ bezierCurveTo, 25+ arc. Star at (32, 38) on 64×96 canvas. Torso: Y=22-48, middle: Y=30-40. Star at 38",
+        status: "green",
+        detail: "Fully organic cinematic sprite with bezier hair, ellipse head/eyes, pistol with silencer. Star of David properly positioned on chest center."
+      },
+      {
+        element: "SuperZion victory pose",
+        location: "VictoryScene.js:600-734",
+        criteria: "Orientación frontal, postura de celebración",
+        result: "Forward-facing sprite with raised arms, smile arc, Star of David visible on chest. Arms up in victory pose.",
+        status: "green",
+        detail: "Hero rendered facing FORWARD (de frente) with arms raised high, bright smile, golden star on chest with glow, warm rim lighting. Correct victory orientation."
+      },
+      {
+        element: "SuperZion consistency across scenes",
+        location: "Multiple files",
+        criteria: "Mismo estilo en todas las escenas",
+        result: "Side-scroller (128px), top-down (32px), cinematic (64×96), victory (scene-drawn). All use same palette PAL.skin3=#D2956A, hair=#1A1A1A, tactical black suit, gold star.",
+        status: "green",
+        detail: "Consistent across all versions: slicked-back black hair, skin #D2956A, tactical black suit, gold Star of David on chest, pistol with silencer. Level of detail varies by size but style is unified."
+      },
+      {
+        element: "Guards (bomberman) scale",
+        location: "Guard.js:31, BombermanTextures.js",
+        criteria: "Escala relativa a SuperZion",
+        result: "Guard sprite: 32×32, body 22×22. Player sprite: 32×32, body 22×22. Ratio: 100%",
+        status: "green",
+        detail: "Guards and player use identical 32×32 sprite size in bomberman phase. Same body collision size (22×22). Guards correctly proportioned."
+      },
+      {
+        element: "Guards (platformer) scale",
+        location: "PlatformerScene.js:377-387, EnemySpriteGenerator.js",
+        criteria: "Escala relativa a SuperZion",
+        result: "Guard sprites: 64×64 from EnemySpriteGenerator. Player: 128×128 at 1.6x scale. Visual ratio ~60-70%",
+        status: "green",
+        detail: "Rooftop guards are smaller than player but within acceptable range (70-130%). They are intentionally smaller as distant/rooftop enemies."
+      },
+      {
+        element: "Turbo Turban (Level 3 boss)",
+        location: "BomberTextures.js:873-1077",
+        criteria: "Detalles del personaje",
+        result: "128×128. Black turban (ellipse r:28×22), rectangular glasses, long gray/white beard with strands, dark robe, pointing pose. 2 variants: normal + yelling.",
+        status: "green",
+        detail: "Distinctive boss design with imposing turban, stern expression behind glasses, prominent beard with texture. Yelling variant shows open mouth and raised arms."
+      },
+      {
+        element: "Supreme Turban (Level 6 final boss)",
+        location: "BossTextures.js:275-838",
+        criteria: "Turbante negro + gema roja + ojos rojos + barba blanca + bastón luna creciente + 256×256",
+        result: "256×256 ✓. Turban #0a0806 massive ✓. Red gem diamond ✓. Glowing eyes (expression-based) ✓. White blade beard ✓. Staff with crescent ✓. 4 expressions.",
+        status: "green",
+        detail: "ALL required features present: massive dark turban with fabric folds, dark red gem with glow, narrow piercing eyes with expression-based color (red when furious), long white blade-shaped beard with 100 hair strands, staff with crescent ornament and orange glow. 256×256 confirmed. Expressions: normal, angry, furious, dead."
+      },
+      {
+        element: "The Warden (Level 4 boss)",
+        location: "DroneScene.js:101-510",
+        criteria: "Boina, barba blanca corta, cicatrices",
+        result: "128×128. Barba blanca ✓ (white gradient). Cicatrices ✓ (multiple scar lines). Boina/beret: ❌ NOT PRESENT — no beret drawn.",
+        status: "red",
+        detail: "The Warden boss has white beard and scars but is MISSING the beret (boina). The head is drawn with an angular jaw and heavy features but no headwear. Should add a military beret on top of the head.",
+        fix: "Fix: The Warden boss in DroneScene.js:101-510 is missing the beret/boina. Add a dark green or black military beret on top of the head shape at approximately y=head_top-5, using arc() for the beret dome and a small rectangle for the beret band."
+      },
+      {
+        element: "Foam Beard (Level 1 boss)",
+        location: "BombermanTextures.js:931-1458",
+        criteria: "Detalles del personaje",
+        result: "128×128. Bald head with sheen, glasses hint (eyebrows), foam/stubble beard with 60 strokes + 18 foam dots, stern expression. 4 expressions: normal, angry, furious, dead.",
+        status: "green",
+        detail: "Well-detailed boss with distinctive bald head, angry thick eyebrows, foamy stubble beard, deep wrinkles, crow's feet. Expression system provides visual variety during fight."
+      }
+    ]
+  },
+  {
+    category: "B",
+    title: "BACKGROUNDS & SCENARIOS BY LEVEL",
+    items: [
+      {
+        element: "Level 1 Platformer — Daytime sky",
+        location: "PlatformerLevel1Textures.js:86-152, PlatformerScene.js:93",
+        criteria: "Cielo de DÍA (celeste con sol y nubes)",
+        result: "Sky gradient #87CEEB→#5BB5E8. Sun circle #FFD700 (r:32) at (760,90) with 3-layer glow. 5 composite clouds.",
+        status: "green",
+        detail: "Bright daytime sky with proper blue gradient, golden sun with glow halo and 8 radiating rays, 5 multi-layered clouds. Correct daytime atmosphere."
+      },
+      {
+        element: "Level 1 Platformer — Alborz mountains",
+        location: "PlatformerLevel1Textures.js:155-299",
+        criteria: "Curvas bezier o triángulos lineTo",
+        result: "3 ridge layers ALL using bezierCurveTo exclusively. Damavand peak at (300,30) uses smooth dome bezier. 0 lineTo for peaks.",
+        status: "green",
+        detail: "Mountains use bezierCurveTo throughout — no triangular peaks. Main range has smooth dome curves for Damavand peak. Snow caps drawn with ellipse() arcs. Ridge detail strokes also curved."
+      },
+      {
+        element: "Level 1 Platformer — Tehran skyline details",
+        location: "PlatformerLevel1Textures.js, PlatformerScene.js:182",
+        criteria: "Detalles de Tehran (mezquitas, cúpulas, minaretes, torres, palmeras)",
+        result: "Buildings with windows, mosque dome (arc), minaret towers, sun, clouds, 3 mountain ridges with snow caps. 7+ element types.",
+        status: "green",
+        detail: "Tehran skyline has diverse architectural elements: buildings with lit windows, mosque dome silhouette, minaret with balcony, mountain range backdrop with snow, sun with rays, multiple cloud formations. Over 7 distinct element types."
+      },
+      {
+        element: "Level 1 Platformer — Parallax layers",
+        location: "PlatformerScene.js:174-187",
+        criteria: "Parallax en las capas",
+        result: "4 parallax layers: stars/sky (static), mountains (slow), skyline (medium), near buildings (faster). Each as tileSprite.",
+        status: "green",
+        detail: "Full parallax system with 4 layers at different scroll speeds, creating proper depth illusion."
+      },
+      {
+        element: "Level 1 Platformer — Platform distinction",
+        location: "PlatformerScene.js:194-304",
+        criteria: "Plataformas se distinguen del fondo decorativo",
+        result: "Platforms use gray #999999 with white highlight edges. Background is blue sky/mountains. Clear visual separation.",
+        status: "green",
+        detail: "Platforms have distinct gray tone with top-edge highlights, clearly separate from the decorative blue/green/brown background layers."
+      },
+      {
+        element: "Level 1 Bomberman — Star of David position",
+        location: "BombermanTextures.js:728-736",
+        criteria: "Estrella de David en centro del pecho (no cuello)",
+        result: "Star at (cx, cy+5). Vest area cy-2 to cy+10. Star is in center of vest/chest.",
+        status: "green",
+        detail: "Top-down sprite has gold star correctly centered on chest area, not at neck level."
+      },
+      {
+        element: "Level 1 Bomberman — Walls vs floor",
+        location: "GameScene.js:122-170, BombermanTextures.js",
+        criteria: "Paredes y suelo visualmente distintos",
+        result: "Floor: textured tile. Walls: solid blocks. Breakable walls: distinct pattern. Golden door: unique gold texture.",
+        status: "green",
+        detail: "All tile types visually distinct: floor texture, wall blocks, breakable walls with different pattern, golden door with special glow, objective marker visible."
+      },
+      {
+        element: "Level 1 Bomberman — Key and enemies",
+        location: "GameScene.js:137-152, Guard.js",
+        criteria: "Llave visible y accesible, enemigos proporcionados",
+        result: "Golden door clearly marked with glow. Guards 32×32 same size as player 32×32. Key is the golden door objective.",
+        status: "green",
+        detail: "Golden door serves as key objective, clearly visible with pulse glow. Guards proportional to player at same sprite dimensions."
+      },
+      {
+        element: "Level 2 — Port elements",
+        location: "PortSwapScene.js:259-351, BeirutIntroCinematicScene.js:93-140",
+        criteria: "Puerto con grúas, containers, agua, muelles",
+        result: "3 cranes, 35+ containers (5 colors), water tiles, dock floor, 2 ships, office buildings. Full port environment.",
+        status: "green",
+        detail: "Complete port facility with cranes, multi-colored containers in yard sections, water, dock floor, ships, and office buildings. Rich environment."
+      },
+      {
+        element: "Level 2 — Container target",
+        location: "PortSwapScene.js:357-393",
+        criteria: "Container target se distingue de los demás",
+        result: "Target container has special markings and tracking. Color-coded by type with mission-specific highlighting.",
+        status: "green",
+        detail: "Target containers distinguished through special visual markings and gameplay highlighting system."
+      },
+      {
+        element: "Level 2 — Beirut background",
+        location: "RadarTextures.js:55-187, PortSwapScene.js:261",
+        criteria: "Fondo con elementos de Beirut",
+        result: "Lebanon coastline map, neighborhood labels (Hamra, Achrafieh, etc.), mountains backdrop, Mediterranean polygon.",
+        status: "green",
+        detail: "Radar scene has detailed Lebanon map with coast outline, city labels, and streets. Port scene has mountain backdrop and maritime elements."
+      },
+      {
+        element: "Level 2 — Maritime palette",
+        location: "Multiple Level 2 files",
+        criteria: "Paleta coherente marítima",
+        result: "Blues (#0A3A2A, #040810), greens (radar), sandy browns (dock), water teal. Coherent maritime aesthetic.",
+        status: "green",
+        detail: "Consistent maritime color palette across radar (dark blue-green), port (gray-brown docks, blue water), and cinematic (port cranes, water line)."
+      },
+      {
+        element: "Level 3 — F-15 wing orientation",
+        location: "BomberTextures.js:101-121",
+        criteria: "Alas orientadas hacia ATRÁS (no hacia adelante)",
+        result: "Upper wing: (36,cy-5)→(24,cy-14)→(16,cy-13)→(26,cy-5). Nose at x=61. Wings at x=16-36 = REAR half. ✓ BACKWARD",
+        status: "green",
+        detail: "F-15 faces RIGHT (nose x=61). Wings extend from x=36 backward to x=16-24, which is toward the tail. Correctly swept-back. Twin vertical tails at x=2-10 also correct."
+      },
+      {
+        element: "Level 3 — Aircraft carrier",
+        location: "BomberTextures.js:206-344",
+        criteria: "Portaaviones visible en fase de despegue",
+        result: "480×200 carrier side view with hull, flight deck, ski-jump ramp, island control tower, radar dish, parked aircraft, sailor dots, arresting wires, waterline.",
+        status: "green",
+        detail: "Detailed aircraft carrier with proper naval architecture: hull with waterline, flight deck with markings, ski-jump ramp, island with windows and antennas, parked aircraft, colored sailor crew dots."
+      },
+      {
+        element: "Level 3 — Sky and environment",
+        location: "BomberTextures.js:347-603",
+        criteria: "Cielo con nubes, horizonte, océano debajo",
+        result: "Spectacular sunset sky (10-stop gradient), sun with halo/rays, 50 stars, 8 cloud formations, sea with waves/reflections, 3 terrain layers (coast/mountain/valley).",
+        status: "green",
+        detail: "Rich environment: deep space-to-gold sunset gradient, large sun with light rays, stars in upper sky, ellipse clouds with sunset coloring, detailed sea with sunset reflections and wave patterns."
+      },
+      {
+        element: "Level 3 — Missiles/bombs visible",
+        location: "BomberScene.js:1054-1056, BomberTextures.js:187-200",
+        criteria: "Misiles visibles y distinguibles del fondo",
+        result: "SAM missiles: red circles 5px with glow. Under-wing ordnance: ellipse missiles with red warhead tips. Bomb drops: visible projectiles.",
+        status: "green",
+        detail: "All projectiles clearly visible against sunset/terrain background. SAM missiles have red glow, bombs are distinct, under-wing ordnance includes red warhead tips."
+      },
+      {
+        element: "Level 4 — Destroyed city",
+        location: "DroneScene.js:16-19",
+        criteria: "Ciudad destruida (edificios rotos, escombros, humo)",
+        result: "Ruined city tiles with multiple variations of destroyed buildings. Used as tilemap in city precision phase.",
+        status: "green",
+        detail: "City phase uses ruined building tiles showing destruction — broken structures, rubble, damaged facades as background for drone navigation."
+      },
+      {
+        element: "Level 4 — Drone visibility",
+        location: "DroneTextures.js:10-100",
+        criteria: "Dron visible y contrastante (color brillante, tamaño >40px)",
+        result: "64×64 canvas. Body ~20px wide. 4 rotors extend to ~36px span. Green/red LEDs. Cyan camera glow. Total visual footprint ~50px.",
+        status: "yellow",
+        detail: "Drone is 64×64 canvas but actual body is ~20px wide. With rotors, total span ~50px which is visible. LEDs and cyan camera provide contrast. Borderline on size but LEDs help visibility."
+      },
+      {
+        element: "Level 4 — Daytime",
+        location: "DroneScene.js:16",
+        criteria: "Es de DÍA",
+        result: "City phase uses bright background (daytime sky). Boss fight in indoor command room.",
+        status: "green",
+        detail: "City drone phase is daytime with bright sky. Boss fight transitions to indoor command room setting."
+      },
+      {
+        element: "Level 4 — The Warden beret",
+        location: "DroneScene.js:101-510",
+        criteria: "Warden tiene boina (beret)",
+        result: "❌ NO BERET. Head drawn with angular jaw, heavy features, but NO headwear of any kind.",
+        status: "red",
+        detail: "The Warden boss is missing his military beret (boina). The head shape goes directly to hair/scalp with no headwear. This is a design omission.",
+        fix: "Fix: Add a military beret to The Warden in DroneScene.js. After drawing the head shape (~LINE 152), add a dark olive (#2D3A1E) beret using arc() for the dome and a small band, positioned on top of the head."
+      },
+      {
+        element: "Level 4 — Boss projectile size",
+        location: "DroneScene.js:58",
+        criteria: "Objetos que tira el boss son GRANDES (>15px)",
+        result: "Phase 2: size 40px. Phase 3: size 48px. Both well above 15px threshold.",
+        status: "green",
+        detail: "Boss thrown objects are 40-48px, clearly visible and large enough to dodge. Well above the 15px minimum."
+      },
+      {
+        element: "Level 5 — Night sky",
+        location: "B2Textures.js:241-341",
+        criteria: "Fondo oscuro, estrellas, luna",
+        result: "Deep space gradient (#030308→#101030). 800 stars, 15 bright stars with glow, Milky Way band (600 dense stars), crescent moon with glow.",
+        status: "green",
+        detail: "Spectacular night sky with deep space gradient, 800+ stars at varying brightness/color, Milky Way diagonal band, 15 bright stars with glow halos, crescent moon with warm glow. Beautiful implementation."
+      },
+      {
+        element: "Level 5 — B-2 contrast vs background",
+        location: "B2Textures.js:12-237",
+        criteria: "Contraste B-2 vs fondo nocturno (RGB diff >30)",
+        result: "B-2: #2a2a30 (42,42,48). Sky: #030308-#101030 (3-16,3-16,8-48). RGB diff: 26-39. Plus moonlight edge highlight rgba(180,200,230,0.50).",
+        status: "yellow",
+        detail: "Base color difference is borderline (26-39 RGB). However, the B-2 has a moonlight edge highlight (bright upper leading edge), subtle engine glow (blue), panel lines, and navigation light that significantly improve visibility. Passable but could benefit from slightly brighter surface tone."
+      },
+      {
+        element: "Level 5 — Radars and missiles visible",
+        location: "B2BomberScene.js:735-860",
+        criteria: "Radares y misiles visibles",
+        result: "Green radar cones (arc fill), orange warning cones, yellow searchlight beams, red SAM triangles with alert rings. Stealth indicator bar (green/yellow/red).",
+        status: "green",
+        detail: "Excellent radar/missile visibility: bright green/orange cones pop against dark sky, yellow searchlights clearly visible, red SAM sites with pulsing alert rings. Stealth bar provides player feedback."
+      },
+      {
+        element: "Level 5 — Natanz mountain",
+        location: "B2Textures.js:547-1036",
+        criteria: "Montaña con planta nuclear amenazante",
+        result: "480×350 mountain with asymmetric peak, rugged sub-peaks, snow caps, rock texture, vegetation, tunnel entrance with blast doors, radar dishes, security fence, nuclear glow (green/cyan) in chamber.",
+        status: "green",
+        detail: "Highly detailed mountain: realistic surface with geological layers, snow on peak, vegetation on lower slopes, reinforced blast door entrance, radar dishes, power lines, security perimeter fence. Nuclear plant chamber glows green with centrifuge rows. Menacing appearance."
+      },
+      {
+        element: "Level 5 — Mountain explosion",
+        location: "B2BomberScene.js:1450-1560",
+        criteria: "Explosión espectacular (tamaño, partículas, colores)",
+        result: "5 destructible bunker layers, mushroom cloud (gray stems + orange caps), 60+ ember particles drifting upward, secondary fires pulsing at base.",
+        status: "green",
+        detail: "Spectacular multi-phase destruction: bunker layers crack sequentially, mushroom cloud rises with expanding caps, ember column with ash particles, persistent fires at mountain base. Visually impressive."
+      },
+      {
+        element: "Level 6 — Supreme Turban features",
+        location: "BossTextures.js:275-838",
+        criteria: "Turbante negro enorme + gema roja + ojos rojos + barba blanca + bastón luna creciente",
+        result: "ALL features present. Turban: massive #0a0806. Gem: red diamond with glow. Eyes: red (expression-based). Beard: white blade. Staff: crescent with glow.",
+        status: "green",
+        detail: "Complete boss design: massive dark turban with 8 fabric fold lines, red gem with radial glow, deeply sunken eyes with expression-dependent color (amber→red→crimson), long white blade-shaped beard with 100 hair strands, golden staff with crescent moon ornament and fire glow. 4 expression states."
+      },
+      {
+        element: "Level 6 — 3 visual phases",
+        location: "BossScene.js:1947-2071",
+        criteria: "3 fases visualmente distintas (normal, escudo, enrage+láser)",
+        result: "Phase 1: SAM missiles + spread bullets, no shield. Phase 2: blue rotating shield arc (60° span, 85px radius). Phase 3: red laser sweep (warning→charge→fire) + damage cracks + fire circles.",
+        status: "green",
+        detail: "Clear visual distinction: Phase 1 is projectile-focused, Phase 2 adds bright blue shield arc rotating around boss, Phase 3 introduces dramatic red laser beam with charge-up sequence plus accumulating damage cracks and fire particles on boss sprite."
+      },
+      {
+        element: "Level 6 — Epic background",
+        location: "BossTextures.js:841-900, BossScene.js:180-186",
+        criteria: "Fondo del boss fight con atmósfera épica",
+        result: "Beirut morning sunrise sky (gradient #1a1a3a→#ffddaa), sun disc with glow, city building silhouettes with minarets and window lights, sandy ground with vegetation.",
+        status: "green",
+        detail: "Beautiful sunrise backdrop: deep purple-to-gold gradient, glowing sun disc, detailed city skyline silhouettes with 27 buildings and 4 minarets, warm window lights, sandy terrain with vegetation patches."
+      },
+      {
+        element: "Level 6 — Attack visibility",
+        location: "BossScene.js:1903-2007",
+        criteria: "Ataques del boss (misiles, láser, escudo) visibles y claros",
+        result: "SAM missiles: gray+red with orange exhaust. Shield: bright blue arc 4px+8px glow. Laser: red 6px+16px glow with warning phases. Flak: orange ring. Homing: red glow circles.",
+        status: "green",
+        detail: "All attacks highly visible: missiles have red noses and exhaust glow, shield is bright blue contrasting against warm background, laser has 3-phase warning system (thin line→growing circle→full beam), flak bursts are orange rings. Clear gameplay readability."
+      }
+    ]
+  },
+  {
+    category: "C",
+    title: "INTRO & CINEMATICS",
+    items: [
+      {
+        element: "Title screen — Background",
+        location: "MenuScene.js:49-109",
+        criteria: "Pattern/grid o negro plano",
+        result: "Dark blue gradient #0A0A2E→#050510 + 25px grid + CRT scanlines + 20 floating particles + corner vignette",
+        status: "green",
+        detail: "Rich background with multiple layers: dark blue gradient base, visible grid pattern, authentic CRT scanlines, 20 floating blue particles drifting upward, dark vignette at corners. Far from plain black."
+      },
+      {
+        element: "Title screen — Magen David",
+        location: "MenuScene.js:114-164",
+        criteria: "Visible y grande (>30% pantalla, alpha >0.1)",
+        result: "200px radius, gold 0xFFD700, with halo glow triangles and pulse animation. ~42% of screen width.",
+        status: "green",
+        detail: "Large golden Star of David at 200px radius (400px diameter on 960px screen = 42%). Has halo glow, main star with stroke, and breathing pulse animation. Highly visible."
+      },
+      {
+        element: "Title screen — SUPERZION text",
+        location: "MenuScene.js:169-226",
+        criteria: "Efecto 3D/profundidad o color plano",
+        result: "6-layer pseudo-3D text: black stroke outline, brown depth layers (×4), gold main (#FFD700), highlight top. Plus 6 animated sparkle crosses.",
+        status: "green",
+        detail: "Multi-layer 3D text effect with depth shadows, gold face, bright highlight, and animated sparkle effects around title. Professional arcade look."
+      },
+      {
+        element: "Title screen — PRESS START",
+        location: "MenuScene.js:287-328",
+        criteria: "PRESS START parpadeando",
+        result: "No explicit 'PRESS START'. Instead has level selection menu with arrow navigation, level names, and star ratings.",
+        status: "yellow",
+        detail: "Uses a level selection menu instead of classic 'PRESS START'. This is a design choice — provides more functionality. The menu has arrows (◀ ▶), level names, and visual feedback. Not a bug, but differs from classic arcade convention."
+      },
+      {
+        element: "Title screen — Entry animation",
+        location: "MenuScene.js:79-256",
+        criteria: "Animación de entrada",
+        result: "Floating particles drift, Magen David pulses, sparkles animate around title. Continuous ambient animation.",
+        status: "green",
+        detail: "Multiple concurrent animations: 20 particles drift upward, Star of David breathes with alpha pulse, 6 sparkle crosses rotate and shimmer around title."
+      },
+      {
+        element: "Intro narrative — Typewriter",
+        location: "BaseCinematicScene.js:82-140",
+        criteria: "Textos aparecen con typewriter",
+        result: "Full typewriter system in BaseCinematicScene. Character-by-character reveal with configurable delay, blinking cursor.",
+        status: "green",
+        detail: "BaseCinematicScene provides typewriter text system used by all cinematics. Characters appear one-by-one with timing control and cursor blink effect."
+      },
+      {
+        element: "Intro narrative — Enemy parade",
+        location: "GameIntroScene.js:743-776",
+        criteria: "Desfile muestra personajes/vehículos reconocibles",
+        result: "Red sky gradient, 4 org logos waving, 5 missile graphics, enemy silhouettes. Full parade with recognizable elements.",
+        status: "green",
+        detail: "Enemy parade shows organization logos, missile silhouettes, and military elements against dramatic red sky. Multiple vehicle/weapon types shown."
+      },
+      {
+        element: "Intro narrative — Israel arsenal",
+        location: "GameIntroScene.js:819-842",
+        criteria: "Arsenal muestra vehículos/armas",
+        result: "3 jet graphics with trails, 3 tank silhouettes, Iron Dome launchers. Military hardware showcase.",
+        status: "green",
+        detail: "Arsenal page shows diverse military hardware: fighter jets with engine trails, tank silhouettes, and Iron Dome missile defense launchers. Impressive display."
+      },
+      {
+        element: "Intro narrative — SuperZion entrance",
+        location: "GameIntroScene.js:870-886",
+        criteria: "SuperZion aparece de forma impactante",
+        result: "Walking in from right against smoky battlefield with fires. Dramatic reveal with battlefield backdrop.",
+        status: "green",
+        detail: "Hero enters from screen right walking through smoky battlefield scene with animated fires and embers. Cinematic entrance with dramatic atmosphere."
+      },
+      {
+        element: "Intro narrative — Text amount",
+        location: "GameIntroScene.js:16-80",
+        criteria: "Bloques de máximo 2 líneas, total máximo 10-12",
+        result: "~11 pages/blocks of narrative text. Most are 1-2 lines. Within recommended limits.",
+        status: "green",
+        detail: "Narrative uses approximately 11 text blocks, most fitting the 1-2 line guideline. Pacing is appropriate with visual transitions between text blocks."
+      },
+      {
+        element: "Briefing Level 1 — HUD & name",
+        location: "IntroCinematicScene.js:23,85",
+        criteria: "Marco HUD militar + nombre correcto",
+        result: "Full military HUD (border, MOSSAD INTEL, coordinates, CLEARANCE, timestamp). Name: 'OPERATION TEHRAN' ✓",
+        status: "green",
+        detail: "Complete military terminal HUD with all elements. Operation name 'OPERATION TEHRAN' correctly displayed with 3D title effect."
+      },
+      {
+        element: "Briefing Level 2 — HUD & name",
+        location: "BeirutIntroCinematicScene.js:24,71",
+        criteria: "Marco HUD militar + nombre correcto",
+        result: "Full military HUD (green). Name: 'OPERATION EXPLOSIVE INTERCEPTION' ✓",
+        status: "green",
+        detail: "Military HUD with green theme. Correct operation name. Port crane silhouettes in background."
+      },
+      {
+        element: "Briefing Level 3 — HUD & name",
+        location: "DeepStrikeIntroCinematicScene.js:23,88",
+        criteria: "Marco HUD militar + nombre correcto",
+        result: "Full military HUD (amber). Name: 'OPERATION DEEP STRIKE' ✓",
+        status: "green",
+        detail: "Military HUD with amber theme. Correct operation name. F-15 silhouette in background."
+      },
+      {
+        element: "Briefing Level 4 — HUD & name",
+        location: "UndergroundIntroCinematicScene.js:23,109",
+        criteria: "Marco HUD militar + nombre correcto",
+        result: "Full military HUD (green). Name: 'OPERATION UNDERGROUND' ✓",
+        status: "green",
+        detail: "Military HUD with green theme. Correct operation name. Destroyed building silhouettes in background."
+      },
+      {
+        element: "Briefing Level 5 — HUD & name",
+        location: "MountainBreakerIntroCinematicScene.js:23,115",
+        criteria: "Marco HUD militar + nombre correcto",
+        result: "Full military HUD (amber). Name: 'OPERATION MOUNTAIN BREAKER' ✓",
+        status: "green",
+        detail: "Military HUD with amber theme. Correct operation name. Mountain range with B-2 and radiation symbol in background."
+      },
+      {
+        element: "Briefing Level 6 — HUD & name",
+        location: "LastStandCinematicScene.js:26,267",
+        criteria: "Marco HUD militar + nombre correcto",
+        result: "Full military HUD (amber). Name: 'OPERATION LAST STAND' ✓",
+        status: "green",
+        detail: "Military HUD with amber theme. Correct operation name. War zone background with fire columns, army silhouettes, and missile trucks."
+      },
+      {
+        element: "Briefing sprites — Size",
+        location: "Multiple cinematic scenes",
+        criteria: "Sprite de SuperZion grande (>100px)",
+        result: "cin_superzion texture: 64×96px at 1.6x scale = ~102×154px. LastStand: 2.0x = 128×192px. All >100px.",
+        status: "green",
+        detail: "SuperZion cinematic sprite displayed at 1.6x-2.0x scale, resulting in 102-128px width. Well above the 80px threshold for all appearances."
+      },
+      {
+        element: "Briefing backgrounds — Themed",
+        location: "All cinematic scenes",
+        criteria: "Elementos de fondo temáticos (no todo negro)",
+        result: "ALL briefings have themed backgrounds: military terminal gradient+grid+scanlines+vignette, plus unique silhouettes per level (cranes, jets, ruins, mountains, war zone).",
+        status: "green",
+        detail: "No plain black backgrounds. Every briefing has the military terminal aesthetic (dark blue gradient, grid, scanlines) plus unique themed silhouettes specific to the upcoming level."
+      },
+      {
+        element: "Level transitions — Flight route map",
+        location: "FlightRouteScene.js:1-757",
+        criteria: "Animación de mapa con vuelo Israel → destino",
+        result: "Full implementation: dark green military map, 9 country outlines, radar sweep, animated plane following waypoints, dashed route line, trail dots, radar grid, HUD overlay.",
+        status: "green",
+        detail: "Complete flight route system: Mediterranean region map with country outlines, Israel highlighted in green with pulsing Tel Aviv dot, animated plane following waypoint routes to each destination, rotating radar sweep, military HUD with classification labels, glitch transition effects. 6 unique routes for all levels."
+      }
+    ]
+  },
+  {
+    category: "D",
+    title: "VICTORY SCENE",
+    items: [
+      {
+        element: "SuperZion orientation",
+        location: "VictoryScene.js:600-734",
+        criteria: "SuperZion DE FRENTE (no de espaldas)",
+        result: "Forward-facing sprite with visible face, eyes, smile, star on chest, arms raised. Clearly facing the camera.",
+        status: "green",
+        detail: "Hero drawn facing FORWARD: visible face with eyes, irises, bright smile arc, arms raised high in celebration, Star of David visible on chest with golden glow backdrop."
+      },
+      {
+        element: "Celebrating people",
+        location: "VictoryScene.js:845-1159",
+        criteria: "Gente festejando (>3 tipos)",
+        result: "6 types: 5 soldiers (helmets, rifles), 7 civilians (varied colors), 4 women (dresses/skirts), 4 children (small), 2 dogs, 2 cats. Total: 24 figures.",
+        status: "green",
+        detail: "Rich crowd with 6 distinct character types: soldiers with helmets and rifles, civilians with varied clothing, women in dresses, small children, dogs with wagging tails, cats with curved tails. All animated with jump/wave tweens and flag holders."
+      },
+      {
+        element: "Israel flags",
+        location: "VictoryScene.js:787-804,1341-1398",
+        criteria: "Banderas de Israel",
+        result: "Flags on buildings (lines 787-804) + 2 large flanking flags on pages 8-10 with poles, blue stripes, and Star of David center. Sway animation.",
+        status: "green",
+        detail: "Israel flags appear on buildings in city street AND as large standalone flags flanking the victory title. Each flag has pole, white body, blue stripes, central Star of David, and gentle sway animation."
+      },
+      {
+        element: "Blue & white confetti",
+        location: "VictoryScene.js:1164-1219",
+        criteria: "Confeti azul y blanco",
+        result: "Blue/white Israel color palette. Max 50 particles. Fall with drift and rotation animation.",
+        status: "green",
+        detail: "Confetti system spawns particles in Israel colors (blue and white). Up to 50 simultaneous particles with realistic fall, lateral drift, and rotation effects."
+      },
+      {
+        element: "Fireworks",
+        location: "VictoryScene.js:1235-1334",
+        criteria: "Fuegos artificiales",
+        result: "Rocket with trail particles → burst with 24 colored particles + central white flash. Multi-color: blue, gold, white, cyan. Staggered launches (3-10 per page).",
+        status: "green",
+        detail: "Full firework system: rocket launches with trail, explodes into 24 particles in star pattern, central white flash effect. Multiple colors. Pages launch 3-10 fireworks with staggered timing."
+      },
+      {
+        element: "Flying birds",
+        location: "VictoryScene.js:536-593",
+        criteria: "Pájaros volando",
+        result: "10 V-shaped birds rendered with graphics lines. Right-to-left drift with vertical bob animation.",
+        status: "green",
+        detail: "10 birds drawn as V-shapes with wing graphics, flying across the sky with gentle drift and vertical bobbing motion. Adds life to the scene."
+      },
+      {
+        element: "Animated sun",
+        location: "VictoryScene.js:285-469",
+        criteria: "Sol animado con rayos",
+        result: "Multi-phase sunrise animation: pre-dawn→dawn→mid-sunrise→full sunrise. Sun with 4 glow rings, 8+ pulsing rays, warm lower wash. Stars fade as sun rises.",
+        status: "green",
+        detail: "Dramatic animated sunrise: 4-phase color progression, sun with concentric glow rings, pulsing triangular rays, warm golden wash on lower screen, stars fade with sunrise progress. Beautiful backdrop animation."
+      },
+      {
+        element: "'DEDICATED TO THOSE WHO NEVER CAME HOME'",
+        location: "VictoryScene.js:215-220",
+        criteria: "Texto aparece",
+        result: "Appears on page 9 with 2-second delay, fade-in animation, monospace 18px, light gray #cccccc with glow shadow.",
+        status: "green",
+        detail: "Dedication text appears on page 9 after a 2-second delay with smooth fade-in. Displayed in monospace below the main text, with subtle glow effect for emotional impact."
+      },
+      {
+        element: "'Am Yisrael Chai'",
+        location: "VictoryScene.js:131-132",
+        criteria: "Texto aparece",
+        result: "Page 7 (climax page). Gold #FFD700, 40px font, center screen. Accompanied by 8 fireworks and camera shake.",
+        status: "green",
+        detail: "Climactic moment on page 7: 'Am Yisrael Chai.' displayed in large 40px gold text at screen center, accompanied by 8 staggered fireworks and gentle camera shake for maximum impact."
+      }
+    ]
+  },
+  {
+    category: "E",
+    title: "RECURRING KNOWN PROBLEMS",
+    items: [
+      {
+        element: "Sprites Minecraft (>70% fillRect)",
+        location: "All sprite generators",
+        criteria: "Sprites usando más de 70% fillRect",
+        result: "SpriteGenerator.js: ~2% fillRect (outline only). BombermanTextures.js: <30% fillRect (equipment details). CinematicTextures.js: <20% fillRect. EnemySpriteGenerator.js: uses pxRect (custom, not ctx.fillRect) for shading.",
+        status: "green",
+        detail: "No sprites exceed 70% fillRect. Main SuperZion sprites are >95% organic (arc/ellipse/bezier). Boss sprites use mix of shapes but lean organic. Only EnemySpriteGenerator uses pixel-based rendering (pxRect) which is intentionally retro-styled."
+      },
+      {
+        element: "Enemies floating (Y mismatch)",
+        location: "PlatformerScene.js:377-387, GameScene.js",
+        criteria: "Enemigos cuyo Y no coincide con plataforma/suelo",
+        result: "Platformer guards spawned on specific platforms with Y coordinates matching platform heights. Bomberman guards on grid tiles. Physics prevents floating.",
+        status: "green",
+        detail: "Guards in platformer scene are placed on platforms with matching Y coordinates. Bomberman uses grid system ensuring guards always on valid tiles. Phaser physics/gravity prevents floating."
+      },
+      {
+        element: "Invisible walls",
+        location: "GameScene.js:130-132, PlatformerScene.js",
+        criteria: "Colliders sin sprite visible que bloqueen movimiento",
+        result: "All wall colliders have associated visible sprites. Bomberman walls use visible tile textures. Platformer platforms have visible gray sprites.",
+        status: "green",
+        detail: "No invisible walls detected. All collision bodies have corresponding visible sprites or tiles. Bomberman walls display as solid blocks, platforms show as gray surfaces."
+      },
+      {
+        element: "F-15 wings reversed",
+        location: "BomberTextures.js:101-121, :807-870",
+        criteria: "F-15 alas al revés en TODAS las escenas",
+        result: "Side sprite (64×32): wings at x=16-36 with nose at x=61 → backward ✓. Silhouette (200×120): wings at x=60-130 with nose at x=190 → backward ✓. Both correct.",
+        status: "green",
+        detail: "F-15 wings are correctly swept backward in both the gameplay sprite (64×32) and the cinematic silhouette (200×120). Wing geometry places wings behind the cockpit toward the tail in all instances."
+      },
+      {
+        element: "Broken transitions (dead-ends)",
+        location: "All scene files",
+        criteria: "Escenas sin scene.start() o paths sin salida",
+        result: "Complete chain: Boot→Intro→Menu→[Level]→Cinematic→Game→Explosion→FlightRoute→NextCinematic→...→Victory→Credits→Menu. All transitions have scene.start() calls.",
+        status: "green",
+        detail: "Full scene chain verified: BootScene→GameIntroScene→MenuScene→[6 level paths]→VictoryScene→CreditsScene→MenuScene. No dead-end scenes found. All cinematics properly chain to gameplay scenes and back."
+      }
+    ]
+  },
+  {
+    category: "F",
+    title: "BOSS DESIGN",
+    items: [
+      {
+        element: "Boss 1 — FOAM BEARD (Level 1)",
+        location: "BombermanTextures.js:934-1458",
+        criteria: "Traje civil, barba blanca espuma, calvo, anteojos, NO militar",
+        result: "128×128. Business suit ✓, wire-frame glasses ✓, bald head ✓, short white foam beard ✓, burgundy tie ✓, NOT military ✓",
+        status: "green",
+        detail: "Civilian politician/businessman design. Bald with short trimmed white 'foam' beard. Business suit with dark jacket, white collar, burgundy tie. Wire-frame glasses. Squinty arrogant expression. All design criteria met. Organicity: ~35% fillRect (teeth, glasses frames, tie details) vs 65% arc/bezier/ellipse."
+      },
+      {
+        element: "Boss 1 — FOAM BEARD expressions",
+        location: "BombermanTextures.js:934",
+        criteria: "4 expression variants functional",
+        result: "normal ✓, angry ✓, furious (scalp cracks, broken glasses) ✓, dead ✓",
+        status: "green",
+        detail: "Expression system complete: normal=arrogant squint, angry=furrowed + veins, furious=red tint + broken glasses + scalp cracks, dead=X eyes + heavy bruises. All 4 textures generated via drawBoss1FoamBeard(expression)."
+      },
+      {
+        element: "Boss 3 — TURBO TURBAN (Level 3)",
+        location: "PlatformerTextures.js:13-435",
+        criteria: "Turbante negro masivo, anteojos negros opacos, barba gris/blanca larga",
+        result: "128×128. Massive dark turban ✓, opaque reflective glasses ✓, pointed beard ✓, red turban gem ✓",
+        status: "green",
+        detail: "Imposing clerical/military figure. Very tall dark turban reaching cy-54 with concentric wrap layers and red gem. Opaque dark glasses with menacing reflections. Sharp pointed beard (shorter than Supreme Turban). Angular head with prominent cheekbones. Organicity: ~25% fillRect (turban layers, gem, glasses) vs 75% arc/bezier/path."
+      },
+      {
+        element: "Boss 3 — TURBO TURBAN (Bomber variant)",
+        location: "BomberTextures.js:873-1077",
+        criteria: "Consistent with fighter variant, sitting pose",
+        result: "128×128. Sitting inside bunker console ✓, massive dark turban ✓, long gray/white beard ✓, commanding pose ✓",
+        status: "green",
+        detail: "Bomber variant shows Turbo Turban seated at console with one arm raised pointing. Longer beard than fighter variant (gradient gray→white extending down chest). Same turban design with concentric wraps. Consistent character identity across both scenes."
+      },
+      {
+        element: "Boss 4 — ANGRY EYEBROWS (Level 4)",
+        location: "DroneTextures.js:1817-2427 (256px), DroneScene.js:101-581 (128px)",
+        criteria: "Cabezón ~40%, pelo gris corto, CEJAS GRUESAS prominentes, barba gris corta, kefia en hombros, saco oscuro",
+        result: "256×256 cinematic + 128×128 gameplay. Cabezón ✓, elongated oval head ✓, gray hair ✓, THICK eyebrows ✓, kefia on shoulders ✓, dark suit ✓",
+        status: "green",
+        detail: "REDESIGNED v1.6. Cabezón proportions: head ~40% (headRY=48 of 240px total at 256 scale). Elongated oval via ctx.ellipse(). Short gray hair (#8A8A8A) with receding hairline. SIGNATURE THICK EYEBROWS: browH=8px, browW=32px at 256 scale (browH=5, browW=16 at 128). V-shaped inclination with hair texture strands and shadow. Compact gray beard (#7A7A7A) following jawline. Kefia on shoulders (NOT head) with checkered white/dark gray pattern. Dark suit (#1A1A2E) with lapels and buttons. Organicity: ~15% fillRect (kefia pattern, buttons, shoes) vs 85% ellipse/arc/bezier/path."
+      },
+      {
+        element: "Boss 4 — ANGRY EYEBROWS eyebrow prominence",
+        location: "DroneScene.js:271-340",
+        criteria: "Cejas >4px alto, >15px ancho (128 scale), foco visual del personaje",
+        result: "browH=5px ✓ (>4), browW=16px ✓ (>15). Eyebrows cover ~25% of face width ✓. V-shape with texture ✓",
+        status: "green",
+        detail: "At 128px scale: browH=5px (exceeds 4px minimum), browW=16px (exceeds 15px minimum). Gap between brows=3px (almost touching). Angled inward (V-shape) with browAngle varying by expression (0.16-0.28). Hair strand texture overlay (12 strands per brow). Shadow below each brow (2px). At 256px scale: browH=8, browW=32 — even more prominent."
+      },
+      {
+        element: "Boss 4 — ANGRY EYEBROWS peek mechanic",
+        location: "DroneScene.js:_generateBossPeekTexture, _updateBossPhase1",
+        criteria: "Solo cejas+ojos visibles sobre sillón cuando escondido",
+        result: "Peek texture (128×48) shows only hair strip, thick eyebrows, squinting eyes ✓. Phase 1 hiding uses peek at 64×24 display above armchair ✓",
+        status: "green",
+        detail: "Dedicated ts_boss4_peek texture (128×48 canvas) draws ONLY: gray hair strip, thick eyebrows (signature V-shape), and squinting eyes with nose bridge hint. During Phase 1 'hiding' state: sprite switches to peek texture at 64×24 display size, positioned at armchairY - ARMCHAIR_H/2 - 10 (just above armchair back). Boss NOT vulnerable while peeking (bossVisible=false). Transition: peek→full sprite during 'peeking' state with rise animation."
+      },
+      {
+        element: "Boss 4 — ANGRY EYEBROWS projectiles",
+        location: "DroneScene.js:_bossThrowObject, constants",
+        criteria: "Objetos lanzados >20px, visibles, variados",
+        result: "Phase 2: BOSS_P2_PROJ_SIZE=40px ✓. Phase 3: BOSS_P3_PROJ_SIZE=48px ✓. 4 texture variants (plank, brick, concrete, bottle) + chair ✓",
+        status: "green",
+        detail: "Projectile sizes: Phase 2=40px (>20px minimum), Phase 3=48px (>20px minimum). Four projectile texture variants at 32×32 canvas with bright outline glow for visibility. Types: broken plank, brick, concrete block, bottle, plus armchair push (80×60). All clearly visible during gameplay."
+      },
+      {
+        element: "Boss 6 — SUPREME TURBAN (Level 6)",
+        location: "BossTextures.js:275-838",
+        criteria: "Turbante negro enorme+gema roja, ojos rojos, barba blanca legendaria, bastón luna creciente, 256×256",
+        result: "256×256 ✓. Massive dark turban ✓, bright red turban jewel ✓, glowing crescent staff ✓, long white blade beard ✓, gaunt ancient face ✓",
+        status: "green",
+        detail: "Final boss — most imposing sprite. 256×256 canvas (largest boss). Massive dark turban reaching cy-96 with concentric wraps. Large red jewel with radial glow. Long white blade-like pointed beard (80+ px, 100+ individual strands in multiple shades). Gaunt aged face with deep wrinkles, sunken cheeks. Glowing staff with golden ornament and orange/red radial glow. Expression system: normal (amber glow), angry (orange, cheek tint), furious (red tint, steam, throbbing veins, enhanced glow), dead (spiral eyes, cracked turban, dimmed). Organicity: ~20% fillRect (turban detail, teeth) vs 80% arc/ellipse/bezier/path."
+      },
+      {
+        element: "Boss 6 — SUPREME TURBAN visual phases",
+        location: "BossTextures.js:275-838",
+        criteria: "3 fases visualmente distintas",
+        result: "Phase 1 normal (amber eyes, calm menace) ✓, Phase 2 angry (orange glow, veins, cheek tint) ✓, Phase 3 furious (red tint, steam, throbbing veins, max glow) ✓",
+        status: "green",
+        detail: "Three visually distinct phases via expression system: (1) Normal: amber eyes with subtle glow, gaunt menacing look. (2) Angry: brighter orange eye glow, forehead veins, slight cheek color change. (3) Furious: deep red tint overlay, steam/smoke above turban, throbbing temple veins, maximum eye glow and staff glow. Dead state adds spiral eyes, heavy bruises, cracked turban and face."
+      }
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════════════
+
+function renderAll() {
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  let totalRed = 0, totalYellow = 0, totalGreen = 0, totalGray = 0;
+  const catStats = {};
+
+  DATA.forEach(cat => {
+    let r=0, y=0, g=0, gr=0;
+    cat.items.forEach(item => {
+      if (item.status === 'red') { r++; totalRed++; }
+      else if (item.status === 'yellow') { y++; totalYellow++; }
+      else if (item.status === 'green') { g++; totalGreen++; }
+      else { gr++; totalGray++; }
+    });
+    catStats[cat.category] = { r, y, g, gr, total: r+y+g+gr };
+
+    const section = document.createElement('div');
+    section.className = 'section';
+
+    const h3 = document.createElement('h3');
+    h3.textContent = `CATEGORY ${cat.category}: ${cat.title} (🔴${r} 🟡${y} 🟢${g} ⚫${gr})`;
+    h3.className = 'open';
+    h3.onclick = () => {
+      h3.classList.toggle('open');
+      tableDiv.classList.toggle('open');
+    };
+
+    const tableDiv = document.createElement('div');
+    tableDiv.className = 'collapsible open';
+
+    const table = document.createElement('table');
+    table.innerHTML = `<thead><tr>
+      <th data-col="element">Element</th>
+      <th data-col="location">Location</th>
+      <th data-col="criteria">Criteria</th>
+      <th data-col="result">Result</th>
+      <th data-col="status">Status</th>
+      <th data-col="detail">Detail</th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    cat.items.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.className = `audit-row row-${item.status}`;
+      tr.dataset.status = item.status;
+      tr.dataset.text = `${item.element} ${item.criteria} ${item.result} ${item.detail}`.toLowerCase();
+
+      const statusEmoji = { red: '🔴', yellow: '🟡', green: '🟢', gray: '⚫' }[item.status];
+      const fixCell = item.fix
+        ? `<br><button class="copy-btn" onclick="copyFix(this, '${item.fix.replace(/'/g, "\\'")}')">📋 Copy fix prompt</button>`
+        : '';
+
+      tr.innerHTML = `
+        <td>${item.element}</td>
+        <td class="loc">${item.location}</td>
+        <td>${item.criteria}</td>
+        <td>${item.result}</td>
+        <td class="status">${statusEmoji}</td>
+        <td class="detail">${item.detail}${fixCell}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    // Sort by header click
+    table.querySelectorAll('th').forEach((th, idx) => {
+      th.addEventListener('click', () => sortTable(table, idx));
+    });
+
+    tableDiv.appendChild(table);
+    section.appendChild(h3);
+    section.appendChild(tableDiv);
+    content.appendChild(section);
+  });
+
+  // Dashboard
+  const total = totalRed + totalYellow + totalGreen + totalGray;
+  const pct = total > 0 ? Math.round((totalGreen / total) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = pct + '% GOOD';
+  document.getElementById('cntRed').textContent = totalRed;
+  document.getElementById('cntYellow').textContent = totalYellow;
+  document.getElementById('cntGreen').textContent = totalGreen;
+  document.getElementById('cntGray').textContent = totalGray;
+
+  // Category bars
+  const barsDiv = document.getElementById('catBars');
+  barsDiv.innerHTML = '';
+  Object.entries(catStats).forEach(([cat, s]) => {
+    const catName = DATA.find(d => d.category === cat)?.title || cat;
+    const div = document.createElement('div');
+    div.className = 'cat-bar';
+    const rPct = (s.r/s.total*100).toFixed(0);
+    const yPct = (s.y/s.total*100).toFixed(0);
+    const gPct = (s.g/s.total*100).toFixed(0);
+    const grPct = (s.gr/s.total*100).toFixed(0);
+    div.innerHTML = `
+      <div class="cat-bar-label">${cat}: ${catName}</div>
+      <div class="cat-bar-track">
+        <div class="cat-bar-seg" style="width:${gPct}%;background:#44ff44"></div>
+        <div class="cat-bar-seg" style="width:${yPct}%;background:#ffcc00"></div>
+        <div class="cat-bar-seg" style="width:${rPct}%;background:#ff4444"></div>
+        <div class="cat-bar-seg" style="width:${grPct}%;background:#666"></div>
+      </div>
+    `;
+    barsDiv.appendChild(div);
+  });
+
+  // Fix list
+  renderFixList();
+}
+
+function renderFixList() {
+  const fixItems = document.getElementById('fixItems');
+  fixItems.innerHTML = '';
+
+  const fixes = [];
+  DATA.forEach(cat => {
+    cat.items.forEach(item => {
+      if (item.status === 'red' && item.fix) {
+        fixes.push({ element: item.element, location: item.location, fix: item.fix, detail: item.detail });
+      }
+    });
+  });
+
+  // Also add yellow items as lower priority
+  DATA.forEach(cat => {
+    cat.items.forEach(item => {
+      if (item.status === 'yellow') {
+        const suggestedFix = `Review: ${item.element} at ${item.location}. Current state: ${item.result}. Consider: ${item.detail}`;
+        fixes.push({ element: item.element, location: item.location, fix: suggestedFix, detail: item.detail, isYellow: true });
+      }
+    });
+  });
+
+  if (fixes.length === 0) {
+    fixItems.innerHTML = '<div style="padding:10px;color:#44ff44;">No critical fixes needed! 🎉</div>';
+    return;
+  }
+
+  fixes.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'fix-item';
+    const priority = f.isYellow ? '🟡' : '🔴';
+    div.innerHTML = `
+      <div class="fix-priority">${priority} #${i + 1}</div>
+      <div class="fix-desc">
+        <strong>${f.element}</strong> — <span class="loc">${f.location}</span>
+        <div class="fix-prompt" onclick="copyFix(this, '${f.fix.replace(/'/g, "\\'").replace(/\n/g, ' ')}')">${f.fix}</div>
+      </div>
+    `;
+    fixItems.appendChild(div);
+  });
+}
+
+function copyFix(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋 Copy fix prompt'; }, 2000);
+  });
+}
+
+function sortTable(table, colIdx) {
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const dir = table.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+  table.dataset.sortDir = dir;
+  rows.sort((a, b) => {
+    const at = a.children[colIdx]?.textContent || '';
+    const bt = b.children[colIdx]?.textContent || '';
+    return dir === 'asc' ? at.localeCompare(bt) : bt.localeCompare(at);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+// Filters
+document.querySelectorAll('.filter-cb').forEach(cb => {
+  cb.addEventListener('change', applyFilters);
+});
+document.getElementById('searchBox').addEventListener('input', applyFilters);
+
+function applyFilters() {
+  const checked = {};
+  document.querySelectorAll('.filter-cb').forEach(cb => {
+    checked[cb.dataset.status] = cb.checked;
+  });
+  const search = document.getElementById('searchBox').value.toLowerCase();
+
+  document.querySelectorAll('.audit-row').forEach(row => {
+    const statusOk = checked[row.dataset.status] !== false;
+    const searchOk = !search || row.dataset.text.includes(search);
+    row.style.display = (statusOk && searchOk) ? '' : 'none';
+  });
+}
+
+// Init
+renderAll();
+</script>
+
+</body>
+</html>

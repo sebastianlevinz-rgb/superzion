@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
 // DroneScene — Level 4: Operation Underground
-// Front-facing perspective: drone hovers outside destroyed building,
-// looking INTO the daytime room. Boss hides behind armchair,
-// peeks out to throw objects, then hides again.
-// Boss: THE WARDEN — fought from drone POV with depth effects
+// Phase 1: City precision minigame (navigate to glowing window)
+// Phase 2: Boss fight — THE WARDEN (top-down destroyed room)
+//   The Warden hides behind armchair (phase 1), roams and throws
+//   objects (phase 2), then charges desperately (phase 3).
+//   Drone uses SPACE to shoot, X for missiles, SHIFT to dash.
 // + Victory/Results overlay
 // ═══════════════════════════════════════════════════════════════
 
@@ -22,49 +23,76 @@ import { showControlsOverlay } from '../ui/ControlsOverlay.js';
 const W = 960;
 const H = 540;
 
-// City flight constants
-const CITY_SCROLL_SPEED = 55;     // px/s auto-scroll rightward
-const CITY_DRONE_SPEED = 250;     // player manual movement
-const CITY_LENGTH = 5000;         // total horizontal distance
-const DRONE_SIZE = 20;            // collision half-size (radius)
+// City precision minigame constants
+const CITY_DRONE_SPEED = 200;     // player movement speed against wind
+const DRONE_SIZE = 12;            // collision half-size (radius)
+const WIND_CHANGE_INTERVAL = 2.5; // seconds between wind direction changes
+const WIND_STRENGTH_MIN = 45;     // min wind push px/s (increased 50%)
+const WIND_STRENGTH_MAX = 90;     // max wind push px/s (increased 50%)
+const DEBRIS_SPAWN_RATE = 1.8;    // debris per second (increased 50%)
+const DEBRIS_FALL_SPEED_MIN = 100;
+const DEBRIS_FALL_SPEED_MAX = 150;
+const DEBRIS_BOUNCE_DIST = 30;    // px knockback on debris hit
+const WINDOW_X = 740;
+const WINDOW_Y = 250;
+const WINDOW_SIZE = 40;           // decreased 20% for harder entry
 
-// Boss fight drone constants (front-facing perspective)
-const BOSS_DRONE_SPEED = 200;
-const DRONE_SHOOT_COOLDOWN = 0.25; // seconds between shots
-const DRONE_BULLET_SPEED = 300;    // visual speed into room (shrinking)
+// Boss fight (top-down destroyed room)
+const BOSS_DRONE_SPEED = 200;      // drone movement speed
+const DRONE_SHOOT_COOLDOWN = 0.25; // seconds between bullets
+const DRONE_BULLET_SPEED = 300;    // bullet speed toward boss
+const DRONE_BULLET_RADIUS = 4;     // small cyan circle
 const DRONE_MISSILE_COOLDOWN = 3;  // seconds between missiles
-const DRONE_MISSILE_SPEED = 200;
+const DRONE_MISSILE_SPEED = 200;   // missile speed
+const DRONE_MISSILE_RADIUS = 8;    // larger red circle
+const DRONE_DASH_DIST = 100;       // dash distance in px
+const DRONE_DASH_COOLDOWN = 1.0;   // seconds
+const DRONE_DASH_DURATION = 0.15;  // seconds of invuln during dash
 
-// Boss constants (front-facing)
-const BOSS_DISPLAY = 100;      // boss display size inside room
 const BOSS_BASE_HP = 30;
-const BOSS_SPEED_NORMAL = 60;  // horizontal movement speed
-const BOSS_SPEED_FURY = 110;
-const BOSS_BULLET_DMG = 1;     // normal bullet damage
-const BOSS_MISSILE_DMG = 15;   // missile does TRIPLE damage
-const BOSS_THROW_INTERVAL_MIN = 1.5;
-const BOSS_THROW_INTERVAL_MAX = 2.5;
-const BOSS_THROW_SPEED = 250;  // speed of objects thrown at drone
-const BOSS_THROW_DMG = 2;
-const BOSS_FURY_THRESHOLD = 0.3; // below 30% HP
-const BOSS_PHASE2_THRESHOLD = 0.5; // below 50% HP — running & throwing
-const BOSS_PHASE3_THRESHOLD = 0.2; // below 20% HP — melee charge
-const BOSS_SPEED_PHASE2 = 100;     // faster running in phase 2
-const BOSS_SPEED_PHASE3 = 150;     // charge speed in phase 3
-const BOSS_PHASE3_CHARGE_DMG = 4;  // heavy melee damage
+const BOSS_DISPLAY = 80;           // boss sprite display size
+const BOSS_BULLET_DMG = 1;         // bullet damage to boss
+const BOSS_MISSILE_DMG = 5;        // missile damage to boss
+const BOSS_THROW_DMG = 2;          // projectile damage to drone
+const BOSS_CHARGE_DMG = 4;         // charge damage to drone
+const BOSS_THROW_SPEED = 250;      // thrown object speed px/s
 
-// Room perspective constants
-const ROOM_BACK_Y = 120;      // Y position of the "back" of the room
-const ROOM_FRONT_Y = H - 30;  // Y position of the "front" (near drone)
+// Phase thresholds (fraction of max HP)
+const BOSS_PHASE2_THRESHOLD = 0.6; // below 60% HP
+const BOSS_PHASE3_THRESHOLD = 0.3; // below 30% HP
 
-// Single armchair cover — center of room
-const ARMCHAIR_X = W / 2;
-const ARMCHAIR_Y = 320;       // slightly forward in room
+// Phase 1: hiding behind armchair
+const BOSS_P1_HIDE_MIN = 1.5;
+const BOSS_P1_HIDE_MAX = 2.0;
+const BOSS_P1_PEEK_DUR = 0.5;
+const BOSS_P1_PEEK_RISE = 0.3;
 
-const BOSS_AREA_TOP = ROOM_BACK_Y + 30;
-const BOSS_AREA_BOTTOM = ARMCHAIR_Y - 40; // boss area above armchair
-const BOSS_AREA_LEFT = 180;
-const BOSS_AREA_RIGHT = W - 180;
+// Phase 2: roaming the room
+const BOSS_P2_SPEED = 100;
+const BOSS_P2_THROW_INTERVAL = 1.5;
+const BOSS_P2_PROJ_SIZE = 40;
+const BOSS_P2_ARMCHAIR_CHANCE = 0.2; // 20% chance to push armchair
+
+// Phase 3: desperate mode
+const BOSS_P3_SPEED = 150;
+const BOSS_P3_THROW_INTERVAL = 1.0;
+const BOSS_P3_PROJ_SIZE = 48;
+const BOSS_P3_CHARGE_SPEED = 250;
+const BOSS_P3_CHARGE_INTERVAL = 4.0;
+const BOSS_P3_CHARGE_DURATION = 1.0;
+
+// Room bounds (top-down, full screen with wall insets)
+const ROOM_WALL = 40;             // wall thickness
+const ROOM_LEFT = ROOM_WALL;
+const ROOM_RIGHT = W - ROOM_WALL;
+const ROOM_TOP = ROOM_WALL;
+const ROOM_BOTTOM = H - ROOM_WALL;
+
+// Armchair initial position
+const ARMCHAIR_X = 580;
+const ARMCHAIR_Y = 280;
+const ARMCHAIR_W = 80;
+const ARMCHAIR_H = 60;
 
 // ═══════════════════════════════════════════════════════════════
 // BOSS TEXTURE GENERATORS (inline — only DroneScene.js modified)
@@ -77,595 +105,786 @@ function _generateBossTexture(scene, key, expression) {
   const c = document.createElement('canvas');
   c.width = s; c.height = s;
   const ctx = c.getContext('2d');
-  const cx = s / 2, cy = s / 2;
+  const cx = s / 2; // 64
 
-  // Skin color based on expression — always rough/weathered tones
-  let skinColor, skinDark, skinLight;
+  // ── Skin tones by expression ──
+  let skinBase, skinDark, skinLight;
   if (expression === 'furious') {
-    skinColor = '#a03020'; skinDark = '#702015'; skinLight = '#c04535';
+    skinBase = '#B07048'; skinDark = '#8A5030'; skinLight = '#D08868';
   } else if (expression === 'angry') {
-    skinColor = '#8a5535'; skinDark = '#6a3a20'; skinLight = '#a06545';
+    skinBase = '#BA8858'; skinDark = '#9A6A40'; skinLight = '#D0A070';
   } else if (expression === 'dead') {
-    skinColor = '#6a6a6a'; skinDark = '#4a4a4a'; skinLight = '#808080';
+    skinBase = '#8A8A7A'; skinDark = '#6A6A5A'; skinLight = '#A0A090';
   } else {
-    // Even 'normal' looks menacing
-    skinColor = '#7a5030'; skinDark = '#5a3820'; skinLight = '#906040';
+    skinBase = '#C4956A'; skinDark = '#A07850'; skinLight = '#D8AA80';
   }
 
-  // Thick neck (drawn first, behind head)
-  ctx.fillStyle = skinDark;
+  // ── Layout (CABEZÓN: ~40% head, ~60% body) ──
+  const headCY = 28;      // head center Y
+  const headRX = 20;      // head width radius
+  const headRY = 24;      // head height radius (elongated)
+  const neckTop = headCY + headRY; // 52
+  const shoulderY = 58;
+  const torsoBottom = 100;
+  const legBottom = 120;
+
+  // ═══════════════════════════════════════════
+  // BODY (drawn first, behind head)
+  // ═══════════════════════════════════════════
+
+  // ── Legs ──
+  ctx.fillStyle = '#1E1E30';
+  ctx.fillRect(cx - 12, torsoBottom, 10, legBottom - torsoBottom);
+  ctx.fillRect(cx + 2, torsoBottom, 10, legBottom - torsoBottom);
+  // Shoes
+  ctx.fillStyle = '#0A0A14';
+  ctx.fillRect(cx - 14, legBottom, 13, 5);
+  ctx.fillRect(cx + 1, legBottom, 13, 5);
+
+  // ── Torso (dark suit) ──
+  const suitColor = '#1A1A2E';
+  ctx.fillStyle = suitColor;
   ctx.beginPath();
-  ctx.moveTo(cx - 22, cy + 38);
-  ctx.lineTo(cx - 20, cy + 56);
-  ctx.lineTo(cx - 26, cy + 66);
-  ctx.lineTo(cx + 26, cy + 66);
-  ctx.lineTo(cx + 20, cy + 56);
-  ctx.lineTo(cx + 22, cy + 38);
+  ctx.moveTo(cx - 24, shoulderY);
+  ctx.lineTo(cx + 24, shoulderY);
+  ctx.lineTo(cx + 20, torsoBottom);
+  ctx.lineTo(cx - 20, torsoBottom);
   ctx.closePath();
   ctx.fill();
-  // Neck tendons
-  ctx.strokeStyle = skinColor;
+
+  // Shoulders
+  ctx.fillStyle = '#222238';
+  ctx.beginPath();
+  ctx.moveTo(cx - 28, shoulderY);
+  ctx.lineTo(cx - 20, shoulderY - 3);
+  ctx.lineTo(cx + 20, shoulderY - 3);
+  ctx.lineTo(cx + 28, shoulderY);
+  ctx.lineTo(cx + 26, shoulderY + 7);
+  ctx.lineTo(cx - 26, shoulderY + 7);
+  ctx.closePath();
+  ctx.fill();
+
+  // Lapels
+  ctx.fillStyle = '#3A3A4E';
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, shoulderY - 1);
+  ctx.lineTo(cx - 12, shoulderY + 3);
+  ctx.lineTo(cx - 8, shoulderY + 24);
+  ctx.lineTo(cx - 2, shoulderY + 20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + 6, shoulderY - 1);
+  ctx.lineTo(cx + 12, shoulderY + 3);
+  ctx.lineTo(cx + 8, shoulderY + 24);
+  ctx.lineTo(cx + 2, shoulderY + 20);
+  ctx.closePath();
+  ctx.fill();
+
+  // Buttons
+  ctx.fillStyle = '#0A0A1A';
+  ctx.beginPath(); ctx.arc(cx, shoulderY + 22, 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, shoulderY + 29, 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, shoulderY + 36, 1.2, 0, Math.PI * 2); ctx.fill();
+
+  // ── Arms ──
+  ctx.fillStyle = suitColor;
+  ctx.fillRect(cx - 32, shoulderY + 2, 6, 26);
+  ctx.fillRect(cx + 26, shoulderY + 2, 6, 26);
+  // Fists
+  ctx.fillStyle = skinBase;
+  ctx.beginPath(); ctx.arc(cx - 29, shoulderY + 30, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 29, shoulderY + 30, 4, 0, Math.PI * 2); ctx.fill();
+
+  // ═══════════════════════════════════════════
+  // KEFIA ON SHOULDERS (checkered pattern)
+  // ═══════════════════════════════════════════
+  const kefW = '#E8E8E8';
+  const kefD = '#3A3A3A';
+
+  // Left drape
+  ctx.fillStyle = kefW;
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, neckTop);
+  ctx.lineTo(cx - 28, shoulderY + 3);
+  ctx.lineTo(cx - 30, shoulderY + 22);
+  ctx.lineTo(cx - 22, shoulderY + 26);
+  ctx.lineTo(cx - 8, shoulderY + 20);
+  ctx.lineTo(cx - 1, shoulderY + 5);
+  ctx.closePath();
+  ctx.fill();
+  // Right drape
+  ctx.beginPath();
+  ctx.moveTo(cx + 8, neckTop);
+  ctx.lineTo(cx + 28, shoulderY + 3);
+  ctx.lineTo(cx + 30, shoulderY + 22);
+  ctx.lineTo(cx + 22, shoulderY + 26);
+  ctx.lineTo(cx + 8, shoulderY + 20);
+  ctx.lineTo(cx + 1, shoulderY + 5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Center neck
+  ctx.fillStyle = kefW;
+  ctx.beginPath();
+  ctx.moveTo(cx - 9, neckTop - 1);
+  ctx.lineTo(cx + 9, neckTop - 1);
+  ctx.lineTo(cx + 6, shoulderY + 8);
+  ctx.lineTo(cx - 6, shoulderY + 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Hanging ends
+  ctx.fillStyle = kefW;
+  ctx.fillRect(cx - 5, shoulderY + 8, 4, 18);
+  ctx.fillRect(cx + 1, shoulderY + 8, 4, 18);
+
+  // Checkered pattern
+  ctx.fillStyle = kefD;
+  for (let py = shoulderY + 1; py < shoulderY + 24; py += 4) {
+    for (let px = cx - 28; px < cx - 2; px += 4) {
+      if ((Math.floor(px / 4) + Math.floor(py / 4)) % 2 === 0) {
+        ctx.fillRect(px, py, 2, 2);
+      }
+    }
+  }
+  for (let py = shoulderY + 1; py < shoulderY + 24; py += 4) {
+    for (let px = cx + 2; px < cx + 28; px += 4) {
+      if ((Math.floor(px / 4) + Math.floor(py / 4)) % 2 === 0) {
+        ctx.fillRect(px, py, 2, 2);
+      }
+    }
+  }
+  // Pattern on ends
+  for (let py = shoulderY + 10; py < shoulderY + 24; py += 3) {
+    ctx.fillRect(cx - 4, py, 1.5, 1.5);
+    ctx.fillRect(cx + 2, py, 1.5, 1.5);
+  }
+
+  // ═══════════════════════════════════════════
+  // NECK
+  // ═══════════════════════════════════════════
+  ctx.fillStyle = skinDark;
+  ctx.fillRect(cx - 8, neckTop - 1, 16, shoulderY - neckTop + 3);
+
+  // ═══════════════════════════════════════════
+  // HEAD (elongated oval — CABEZÓN)
+  // ═══════════════════════════════════════════
+  ctx.fillStyle = skinBase;
+  ctx.beginPath();
+  ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Outline
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(cx - 10, cy + 40); ctx.lineTo(cx - 12, cy + 58); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + 10, cy + 40); ctx.lineTo(cx + 12, cy + 58); ctx.stroke();
-
-  // Angular head shape — squarer jaw, menacing
-  ctx.fillStyle = skinColor;
   ctx.beginPath();
-  ctx.moveTo(cx - 42, cy - 36);   // top-left
-  ctx.lineTo(cx + 42, cy - 36);   // top-right
-  ctx.lineTo(cx + 50, cy - 20);   // right temple
-  ctx.lineTo(cx + 52, cy - 4);    // right cheekbone
-  ctx.lineTo(cx + 50, cy + 12);   // right mid-face
-  ctx.lineTo(cx + 46, cy + 26);   // right jaw (heavy, SQUARE)
-  ctx.lineTo(cx + 40, cy + 36);   // right jaw corner
-  ctx.lineTo(cx + 24, cy + 40);   // right chin
-  ctx.lineTo(cx, cy + 42);        // chin center
-  ctx.lineTo(cx - 24, cy + 40);   // left chin
-  ctx.lineTo(cx - 40, cy + 36);   // left jaw corner
-  ctx.lineTo(cx - 46, cy + 26);   // left jaw
-  ctx.lineTo(cx - 50, cy + 12);   // left mid-face
-  ctx.lineTo(cx - 52, cy - 4);    // left cheekbone
-  ctx.lineTo(cx - 50, cy - 20);   // left temple
-  ctx.closePath();
+  ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Ears
+  ctx.fillStyle = skinBase;
+  ctx.beginPath(); ctx.ellipse(cx - headRX - 2, headCY + 3, 3, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + headRX + 2, headCY + 3, 3, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ═══════════════════════════════════════════
+  // SHORT GRAY HAIR (receding hairline)
+  // ═══════════════════════════════════════════
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Thin hair top
+  ctx.fillStyle = '#8A8A8A';
+  ctx.beginPath();
+  ctx.ellipse(cx, headCY - 3, headRX - 1, headRY - 2, 0, Math.PI, 0, true);
   ctx.fill();
 
-  // Cheekbone highlights (angular, pronounced)
-  ctx.fillStyle = skinLight;
+  // Side hair thicker (entradas)
+  ctx.fillStyle = '#7A7A7A';
+  ctx.beginPath(); ctx.arc(cx - 14, headCY - 12, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 14, headCY - 12, 8, 0, Math.PI * 2); ctx.fill();
+
+  // Receding center
+  ctx.fillStyle = skinBase;
   ctx.beginPath();
-  ctx.moveTo(cx + 40, cy - 8);
-  ctx.lineTo(cx + 50, cy - 2);
-  ctx.lineTo(cx + 48, cy + 8);
-  ctx.lineTo(cx + 38, cy + 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx - 40, cy - 8);
-  ctx.lineTo(cx - 50, cy - 2);
-  ctx.lineTo(cx - 48, cy + 8);
-  ctx.lineTo(cx - 38, cy + 4);
-  ctx.closePath();
+  ctx.ellipse(cx, headCY - 10, 11, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Heavy jaw shadow
-  ctx.fillStyle = skinDark;
-  ctx.beginPath();
-  ctx.moveTo(cx - 40, cy + 30);
-  ctx.lineTo(cx + 40, cy + 30);
-  ctx.lineTo(cx + 24, cy + 40);
-  ctx.lineTo(cx, cy + 42);
-  ctx.lineTo(cx - 24, cy + 40);
-  ctx.closePath();
-  ctx.fill();
+  // Hair strands
+  ctx.strokeStyle = '#6A6A6A';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 20; i++) {
+    const hx = cx + (Math.random() - 0.5) * 34;
+    const hy = headCY - headRY + 3 + Math.random() * 12;
+    const dx2 = ((hx - cx) / headRX) ** 2;
+    const dy2 = ((hy - headCY) / headRY) ** 2;
+    if (dx2 + dy2 < 0.9) {
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(hx + (Math.random() - 0.5) * 2, hy - 1 - Math.random() * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 
-  // Tiny body below head
-  ctx.fillStyle = '#3a3a2a';
-  ctx.fillRect(cx - 16, cy + 52, 32, 14);
-  // Arms
-  ctx.fillStyle = '#444434';
-  ctx.fillRect(cx - 26, cy + 54, 12, 5);
-  ctx.fillRect(cx + 14, cy + 54, 12, 5);
+  // ═══════════════════════════════════════════
+  // EYEBROWS — SIGNATURE FEATURE
+  // ═══════════════════════════════════════════
+  const browY = headCY - 3;
+  const browColor = expression === 'dead' ? '#4A4A4A' : '#2A2A2A';
+  const browH = 5;   // thick!
+  const browW = 16;  // wide!
+  const browGap = 3; // almost touching
+  const browAngle = expression === 'furious' ? 0.28 : expression === 'angry' ? 0.22 : 0.16;
 
-  // Battle-worn beret
-  ctx.fillStyle = '#2a4a2a';
-  ctx.beginPath();
-  ctx.moveTo(cx - 46, cy - 36);
-  ctx.lineTo(cx + 46, cy - 36);
-  ctx.lineTo(cx + 48, cy - 44);
-  ctx.lineTo(cx + 38, cy - 54);
-  ctx.lineTo(cx + 14, cy - 58);
-  ctx.lineTo(cx - 14, cy - 58);
-  ctx.lineTo(cx - 38, cy - 54);
-  ctx.lineTo(cx - 48, cy - 44);
-  ctx.closePath();
-  ctx.fill();
-  // Beret band
-  ctx.fillStyle = '#1a3a1a';
-  ctx.fillRect(cx - 44, cy - 38, 88, 5);
-  // Battle damage on beret (scuffs, dirt)
-  ctx.fillStyle = 'rgba(30, 25, 15, 0.4)';
-  ctx.fillRect(cx - 30, cy - 52, 8, 4);
-  ctx.fillRect(cx + 18, cy - 50, 6, 5);
-  // Tarnished badge
-  ctx.fillStyle = '#8a7a20';
-  ctx.beginPath();
-  ctx.arc(cx, cy - 50, 3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Dark eye sockets (drawn before eyes)
-  const eyeL = cx - 18, eyeR = cx + 18, eyeY = cy - 10;
-  ctx.fillStyle = 'rgba(20, 10, 5, 0.5)';
-  ctx.beginPath(); ctx.ellipse(eyeL, eyeY, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(eyeR, eyeY, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
-
-  // THICK ANGRY EYEBROWS — dominate the face, present in ALL expressions
-  const browColor = expression === 'dead' ? '#3a3a3a' : '#0a0804';
   ctx.fillStyle = browColor;
-  // Left eyebrow — massive thick wedge, permanently furrowed
+
+  // Left eyebrow
   ctx.beginPath();
-  ctx.moveTo(cx - 44, cy - 24);
-  ctx.lineTo(cx - 6, cy - 12);
-  ctx.lineTo(cx - 6, cy - 18);
-  ctx.lineTo(cx - 44, cy - 32);
+  ctx.moveTo(cx - browGap / 2 - browW, browY - browH / 2 - browAngle * browW / 2);
+  ctx.lineTo(cx - browGap / 2, browY - browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx - browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx - browGap / 2 - browW, browY + browH / 2 - browAngle * browW / 2);
   ctx.closePath();
   ctx.fill();
+
   // Right eyebrow
   ctx.beginPath();
-  ctx.moveTo(cx + 44, cy - 24);
-  ctx.lineTo(cx + 6, cy - 12);
-  ctx.lineTo(cx + 6, cy - 18);
-  ctx.lineTo(cx + 44, cy - 32);
+  ctx.moveTo(cx + browGap / 2 + browW, browY - browH / 2 - browAngle * browW / 2);
+  ctx.lineTo(cx + browGap / 2, browY - browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx + browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx + browGap / 2 + browW, browY + browH / 2 - browAngle * browW / 2);
   ctx.closePath();
   ctx.fill();
-  // Extra brow hair strands
-  ctx.lineWidth = 1;
+
+  // Brow hair strands
   ctx.strokeStyle = browColor;
-  for (let i = 0; i < 8; i++) {
-    const bx = cx - 40 + i * 8;
-    const by = cy - 28 + (i * 1.5);
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 3, by + 2); ctx.stroke();
-  }
-  for (let i = 0; i < 8; i++) {
-    const bx = cx + 40 - i * 8;
-    const by = cy - 28 + (i * 1.5);
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - 3, by + 2); ctx.stroke();
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const t = i / 12;
+    const lx = cx - browGap / 2 - browW + t * browW;
+    const ly = browY + (t - 0.5) * browAngle * browW;
+    ctx.beginPath();
+    ctx.moveTo(lx, ly - browH / 2);
+    ctx.lineTo(lx + (Math.random() - 0.5) * 2, ly + browH / 2 + Math.random());
+    ctx.stroke();
+    const rx = cx + browGap / 2 + t * browW;
+    const ry = browY + (0.5 - t) * browAngle * browW;
+    ctx.beginPath();
+    ctx.moveTo(rx, ry - browH / 2);
+    ctx.lineTo(rx + (Math.random() - 0.5) * 2, ry + browH / 2 + Math.random());
+    ctx.stroke();
   }
 
+  // Brow shadow
+  ctx.fillStyle = 'rgba(20, 15, 10, 0.3)';
+  ctx.beginPath();
+  ctx.moveTo(cx - browGap / 2 - browW, browY + browH / 2 - browAngle * browW / 2);
+  ctx.lineTo(cx - browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx - browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 3);
+  ctx.lineTo(cx - browGap / 2 - browW, browY + browH / 2 - browAngle * browW / 2 + 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + browGap / 2 + browW, browY + browH / 2 - browAngle * browW / 2);
+  ctx.lineTo(cx + browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx + browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 3);
+  ctx.lineTo(cx + browGap / 2 + browW, browY + browH / 2 - browAngle * browW / 2 + 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // ═══════════════════════════════════════════
+  // EYES (small, squinting, intense)
+  // ═══════════════════════════════════════════
+  const eyeY = browY + browH + 3;
+  const eyeSpacing = 10;
+
   if (expression === 'dead') {
-    // X eyes
     ctx.strokeStyle = '#555555';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(eyeL - 6, eyeY - 4); ctx.lineTo(eyeL + 6, eyeY + 4);
-    ctx.moveTo(eyeL + 6, eyeY - 4); ctx.lineTo(eyeL - 6, eyeY + 4);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(eyeR - 6, eyeY - 4); ctx.lineTo(eyeR + 6, eyeY + 4);
-    ctx.moveTo(eyeR + 6, eyeY - 4); ctx.lineTo(eyeR - 6, eyeY + 4);
-    ctx.stroke();
-    // Heavy bruises
-    ctx.fillStyle = 'rgba(80, 30, 100, 0.5)';
-    ctx.beginPath(); ctx.ellipse(eyeL, eyeY + 4, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(eyeR, eyeY + 4, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
-  } else {
-    // Narrow slit eyes — hateful, small
-    let irisColor, scleraColor;
-    if (expression === 'furious') {
-      irisColor = '#dd0000'; scleraColor = '#ffaaaa';
-    } else if (expression === 'angry') {
-      irisColor = '#cc3300'; scleraColor = '#ffe0d0';
-    } else {
-      irisColor = '#aa4400'; scleraColor = '#ddd8c8';
-    }
-
-    for (const side of [-1, 1]) {
-      const ex = cx + side * 18;
-      const ey = eyeY;
-      // Very narrow slit shape
-      ctx.fillStyle = scleraColor;
-      ctx.beginPath();
-      ctx.moveTo(ex - 10, ey);
-      ctx.quadraticCurveTo(ex, ey - 3, ex + 10, ey);
-      ctx.quadraticCurveTo(ex, ey + 2, ex - 10, ey);
-      ctx.closePath();
-      ctx.fill();
-      // Small iris
-      ctx.fillStyle = irisColor;
-      ctx.beginPath();
-      ctx.arc(ex, ey, 3, 0, Math.PI * 2);
-      ctx.fill();
-      // Tiny pupil
-      ctx.fillStyle = '#050505';
-      ctx.beginPath();
-      ctx.arc(ex, ey, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-      // Red glow around eyes
-      const glowAlpha = expression === 'furious' ? 0.5 : expression === 'angry' ? 0.3 : 0.15;
-      ctx.fillStyle = `rgba(255, 40, 0, ${glowAlpha})`;
-      ctx.beginPath();
-      ctx.arc(ex, ey, 6, 0, Math.PI * 2);
-      ctx.fill();
-      // Eye outline
-      ctx.strokeStyle = '#1a0a05';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(ex - 10, ey);
-      ctx.quadraticCurveTo(ex, ey - 3, ex + 10, ey);
-      ctx.quadraticCurveTo(ex, ey + 2, ex - 10, ey);
-      ctx.closePath();
-      ctx.stroke();
-    }
-
-    // Dark circles under eyes
-    ctx.fillStyle = 'rgba(30, 15, 20, 0.35)';
-    ctx.beginPath(); ctx.ellipse(eyeL, eyeY + 6, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(eyeR, eyeY + 6, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // Nose — broad, broken-looking
-  ctx.fillStyle = skinDark;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - 4);
-  ctx.lineTo(cx + 6, cy + 6);
-  ctx.lineTo(cx + 7, cy + 8);
-  ctx.lineTo(cx + 4, cy + 10);
-  ctx.lineTo(cx - 4, cy + 10);
-  ctx.lineTo(cx - 7, cy + 8);
-  ctx.lineTo(cx - 6, cy + 6);
-  ctx.closePath();
-  ctx.fill();
-  // Nose bridge bump (broken nose)
-  ctx.fillStyle = skinLight;
-  ctx.beginPath();
-  ctx.moveTo(cx - 2, cy - 2);
-  ctx.lineTo(cx + 3, cy);
-  ctx.lineTo(cx + 2, cy + 3);
-  ctx.lineTo(cx - 1, cy + 1);
-  ctx.closePath();
-  ctx.fill();
-  // Nostrils
-  ctx.fillStyle = '#1a0a05';
-  ctx.beginPath(); ctx.arc(cx - 3, cy + 8, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 3, cy + 8, 2, 0, Math.PI * 2); ctx.fill();
-
-  // Mouth — cruel grimace/snarl with bared teeth
-  if (expression === 'dead') {
-    ctx.strokeStyle = '#4a2a1a';
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cx - 16, cy + 20);
-    ctx.lineTo(cx - 6, cy + 23);
-    ctx.lineTo(cx + 4, cy + 19);
-    ctx.lineTo(cx + 16, cy + 21);
-    ctx.stroke();
-    // Broken tooth
-    ctx.fillStyle = '#aaa898';
-    ctx.beginPath();
-    ctx.moveTo(cx - 3, cy + 19);
-    ctx.lineTo(cx - 1, cy + 23);
-    ctx.lineTo(cx + 2, cy + 20);
-    ctx.closePath();
-    ctx.fill();
-  } else {
-    // Wide snarling grimace
-    ctx.fillStyle = '#2a0a05';
-    ctx.beginPath();
-    ctx.moveTo(cx - 20, cy + 16);
-    ctx.quadraticCurveTo(cx - 10, cy + 12, cx, cy + 14);
-    ctx.quadraticCurveTo(cx + 10, cy + 12, cx + 20, cy + 16);
-    ctx.lineTo(cx + 18, cy + 24);
-    ctx.quadraticCurveTo(cx, cy + 28, cx - 18, cy + 24);
-    ctx.closePath();
-    ctx.fill();
-    // Upper teeth row
-    ctx.fillStyle = '#ccc8b0';
-    const teethY = cy + 15;
-    const teethH = expression === 'furious' ? 6 : expression === 'angry' ? 5 : 4;
-    for (let t = -3; t <= 3; t++) {
-      ctx.fillRect(cx + t * 5 - 2, teethY, 3, teethH);
-    }
-    // Lower teeth
-    for (let t = -2; t <= 2; t++) {
-      ctx.fillRect(cx + t * 5 - 1, cy + 21, 2, teethH - 1);
-    }
-    // Tooth gaps
-    ctx.fillStyle = '#0a0505';
-    for (let t = -3; t <= 2; t++) {
-      ctx.fillRect(cx + t * 5 + 1, teethY, 1, teethH);
-    }
-  }
-
-  // Stubble
-  ctx.fillStyle = 'rgba(10, 8, 5, 0.2)';
-  for (let i = 0; i < 60; i++) {
-    const hx = cx + (Math.random() - 0.5) * 60;
-    const hy = cy + 10 + Math.random() * 26;
-    ctx.fillRect(hx, hy, 1, 1 + Math.random());
-  }
-
-  // Short white beard (chin and jaw area)
-  if (expression !== 'dead') {
-    const beardGrad = ctx.createLinearGradient(0, cy + 22, 0, cy + 42);
-    beardGrad.addColorStop(0, 'rgba(200,200,200,0.5)');
-    beardGrad.addColorStop(0.5, 'rgba(220,220,220,0.6)');
-    beardGrad.addColorStop(1, 'rgba(240,240,240,0.45)');
-    ctx.fillStyle = beardGrad;
-    ctx.beginPath();
-    ctx.moveTo(cx - 22, cy + 22);
-    ctx.quadraticCurveTo(cx - 26, cy + 30, cx - 18, cy + 38);
-    ctx.quadraticCurveTo(cx, cy + 44, cx + 18, cy + 38);
-    ctx.quadraticCurveTo(cx + 26, cy + 30, cx + 22, cy + 22);
-    ctx.closePath();
-    ctx.fill();
-    // Beard hair strands
-    ctx.strokeStyle = 'rgba(230,230,230,0.25)';
-    ctx.lineWidth = 0.7;
-    for (let i = 0; i < 10; i++) {
-      const bx = cx - 16 + i * 3.5;
+    for (const side of [-1, 1]) {
+      const ex = cx + side * eyeSpacing;
       ctx.beginPath();
-      ctx.moveTo(bx, cy + 24);
-      ctx.lineTo(bx + (Math.random() - 0.5) * 2, cy + 36 + Math.random() * 5);
+      ctx.moveTo(ex - 4, eyeY - 3); ctx.lineTo(ex + 4, eyeY + 3);
+      ctx.moveTo(ex + 4, eyeY - 3); ctx.lineTo(ex - 4, eyeY + 3);
+      ctx.stroke();
+    }
+  } else {
+    for (const side of [-1, 1]) {
+      const ex = cx + side * eyeSpacing;
+
+      // Narrow slit
+      ctx.fillStyle = '#E8E4D8';
+      ctx.beginPath();
+      ctx.moveTo(ex - 6, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY - 2, ex + 6, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY + 1.5, ex - 6, eyeY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Dark iris
+      ctx.fillStyle = '#1A1A1A';
+      ctx.beginPath();
+      ctx.arc(ex, eyeY, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // White highlight
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(ex + 0.5, eyeY - 1, 1, 1);
+
+      // Outline
+      ctx.strokeStyle = '#1a0a05';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(ex - 6, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY - 2, ex + 6, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY + 1.5, ex - 6, eyeY);
+      ctx.closePath();
       ctx.stroke();
     }
   }
 
-  // Facial scars (multiple, battle-worn)
-  ctx.strokeStyle = 'rgba(160, 100, 80, 0.6)';
-  ctx.lineWidth = 1.5;
-  // Scar across right cheek
-  ctx.beginPath();
-  ctx.moveTo(cx + 22, cy - 16);
-  ctx.lineTo(cx + 18, cy - 2);
-  ctx.lineTo(cx + 24, cy + 8);
-  ctx.stroke();
-  // Scar across left cheek
-  ctx.beginPath();
-  ctx.moveTo(cx - 36, cy + 4);
-  ctx.lineTo(cx - 26, cy + 14);
-  ctx.lineTo(cx - 20, cy + 10);
-  ctx.stroke();
-  // Small scar on forehead
-  ctx.beginPath();
-  ctx.moveTo(cx + 8, cy - 30);
-  ctx.lineTo(cx + 14, cy - 24);
-  ctx.stroke();
+  // ═══════════════════════════════════════════
+  // NOSE (large, wide, trapezoidal)
+  // ═══════════════════════════════════════════
+  const noseTop2 = eyeY + 3;
+  const noseBot = headCY + 11;
 
-  // Rough skin texture (pockmarks/weathering)
-  ctx.fillStyle = 'rgba(40, 25, 15, 0.12)';
-  for (let i = 0; i < 20; i++) {
-    const px = cx + (Math.random() - 0.5) * 80;
-    const py = cy + (Math.random() - 0.5) * 50;
+  ctx.fillStyle = '#A07850';
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, noseTop2);
+  ctx.lineTo(cx + 2, noseTop2);
+  ctx.lineTo(cx + 6, noseBot - 2);
+  ctx.lineTo(cx + 5, noseBot);
+  ctx.lineTo(cx - 5, noseBot);
+  ctx.lineTo(cx - 6, noseBot - 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Bridge highlight
+  ctx.fillStyle = skinLight;
+  ctx.fillRect(cx - 1, noseTop2 + 1, 2, noseBot - noseTop2 - 4);
+
+  // Nostrils
+  ctx.fillStyle = '#3A2A1A';
+  ctx.beginPath(); ctx.arc(cx - 3, noseBot - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 3, noseBot - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+
+  // ═══════════════════════════════════════════
+  // MOUTH (thin frown)
+  // ═══════════════════════════════════════════
+  const mouthY = noseBot + 5;
+
+  if (expression === 'dead') {
+    ctx.strokeStyle = '#6A5A4A';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(px, py, 0.5 + Math.random() * 1.5, 0, Math.PI * 2);
+    ctx.moveTo(cx - 10, mouthY);
+    ctx.lineTo(cx + 10, mouthY + 1);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#8A6A4A';
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, mouthY);
+    ctx.quadraticCurveTo(cx, mouthY + 2, cx + 10, mouthY - 1);
+    ctx.quadraticCurveTo(cx, mouthY + 3, cx - 10, mouthY);
+    ctx.closePath();
     ctx.fill();
+
+    ctx.strokeStyle = '#5A4A3A';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, mouthY);
+    ctx.quadraticCurveTo(cx, mouthY + 2, cx + 10, mouthY - 1);
+    ctx.stroke();
   }
 
-  // Expression-specific damage (veins etc.)
+  // ═══════════════════════════════════════════
+  // BEARD (gray, short, compact)
+  // ═══════════════════════════════════════════
+  if (expression !== 'dead') {
+    ctx.fillStyle = '#7A7A7A';
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, mouthY);
+    ctx.quadraticCurveTo(cx - 20, mouthY + 7, cx - 16, headCY + headRY - 1);
+    ctx.quadraticCurveTo(cx - 10, headCY + headRY + 4, cx, headCY + headRY + 3);
+    ctx.quadraticCurveTo(cx + 10, headCY + headRY + 4, cx + 16, headCY + headRY - 1);
+    ctx.quadraticCurveTo(cx + 20, mouthY + 7, cx + 18, mouthY);
+    ctx.lineTo(cx + 12, mouthY + 3);
+    ctx.lineTo(cx, mouthY + 4);
+    ctx.lineTo(cx - 12, mouthY + 3);
+    ctx.closePath();
+    ctx.fill();
+
+    // Texture
+    ctx.fillStyle = '#5A5A5A';
+    for (let i = 0; i < 40; i++) {
+      const bx = cx + (Math.random() - 0.5) * 32;
+      const by = mouthY + 2 + Math.random() * (headCY + headRY - mouthY + 2);
+      if (Math.random() > Math.abs(bx - cx) / 24) {
+        ctx.fillRect(bx, by, 0.8 + Math.random() * 0.5, 1 + Math.random());
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // EXPRESSION EFFECTS
+  // ═══════════════════════════════════════════
   if (expression === 'angry' || expression === 'furious') {
-    ctx.strokeStyle = expression === 'furious' ? '#dd2020' : '#bb4040';
-    ctx.lineWidth = expression === 'furious' ? 2 : 1.5;
-    // Left vein
+    ctx.strokeStyle = expression === 'furious' ? '#CC2020' : '#AA5050';
+    ctx.lineWidth = expression === 'furious' ? 1.5 : 1;
     ctx.beginPath();
-    ctx.moveTo(cx - 30, cy - 32);
-    ctx.lineTo(cx - 24, cy - 24);
-    ctx.lineTo(cx - 28, cy - 18);
+    ctx.moveTo(cx - 14, headCY - 14);
+    ctx.lineTo(cx - 10, headCY - 10);
+    ctx.lineTo(cx - 12, headCY - 7);
     ctx.stroke();
-    // Right vein
     ctx.beginPath();
-    ctx.moveTo(cx + 30, cy - 32);
-    ctx.lineTo(cx + 24, cy - 24);
-    ctx.lineTo(cx + 28, cy - 18);
+    ctx.moveTo(cx + 14, headCY - 14);
+    ctx.lineTo(cx + 10, headCY - 10);
+    ctx.lineTo(cx + 12, headCY - 7);
     ctx.stroke();
   }
 
   if (expression === 'furious') {
-    // Red tint overlay
     ctx.fillStyle = 'rgba(180, 20, 10, 0.12)';
     ctx.fillRect(0, 0, s, s);
-    // Throbbing temple veins
-    ctx.strokeStyle = '#dd2020';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#CC2020';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(cx - 48, cy - 8);
-    ctx.lineTo(cx - 44, cy - 2);
-    ctx.lineTo(cx - 46, cy + 4);
+    ctx.moveTo(cx - headRX + 1, headCY - 1);
+    ctx.lineTo(cx - headRX + 3, headCY + 3);
+    ctx.lineTo(cx - headRX + 1, headCY + 6);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(cx + 48, cy - 8);
-    ctx.lineTo(cx + 44, cy - 2);
-    ctx.lineTo(cx + 46, cy + 4);
+    ctx.moveTo(cx + headRX - 1, headCY - 1);
+    ctx.lineTo(cx + headRX - 3, headCY + 3);
+    ctx.lineTo(cx + headRX - 1, headCY + 6);
     ctx.stroke();
   }
 
   if (expression === 'dead') {
-    // Extra bruises
     ctx.fillStyle = 'rgba(80, 30, 100, 0.4)';
-    ctx.beginPath(); ctx.arc(cx - 24, cy, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 28, cy + 4, 6, 0, Math.PI * 2); ctx.fill();
-    // Crack lines
+    ctx.beginPath(); ctx.arc(cx - 12, headCY + 2, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 14, headCY + 4, 4, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(50, 25, 15, 0.5)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(cx - 16, cy - 26);
-    ctx.lineTo(cx - 10, cy - 12);
-    ctx.lineTo(cx - 14, cy);
+    ctx.moveTo(cx - 8, headCY - 16);
+    ctx.lineTo(cx - 4, headCY - 6);
+    ctx.lineTo(cx - 6, headCY + 2);
     ctx.stroke();
   }
-
-  // Head outline
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(cx - 42, cy - 36);
-  ctx.lineTo(cx + 42, cy - 36);
-  ctx.lineTo(cx + 50, cy - 20);
-  ctx.lineTo(cx + 52, cy - 4);
-  ctx.lineTo(cx + 50, cy + 12);
-  ctx.lineTo(cx + 46, cy + 26);
-  ctx.lineTo(cx + 40, cy + 36);
-  ctx.lineTo(cx + 24, cy + 40);
-  ctx.lineTo(cx, cy + 42);
-  ctx.lineTo(cx - 24, cy + 40);
-  ctx.lineTo(cx - 40, cy + 36);
-  ctx.lineTo(cx - 46, cy + 26);
-  ctx.lineTo(cx - 50, cy + 12);
-  ctx.lineTo(cx - 52, cy - 4);
-  ctx.lineTo(cx - 50, cy - 20);
-  ctx.closePath();
-  ctx.stroke();
 
   scene.textures.addCanvas(key, c);
 }
 
+
 function _generateBossProjectileTextures(scene) {
-  // ── Projectile 0: broken plank / stick ──
+  // All projectile textures are 2x bigger (32px canvas) with bright outlines
+  // ── Projectile 0: broken plank / stick (2x bigger) ──
   if (!scene.textures.exists('boss_projectile_0')) {
-    const s = 16;
+    const s = 32;
     const c = document.createElement('canvas');
     c.width = s; c.height = s;
     const ctx = c.getContext('2d');
     ctx.save();
     ctx.translate(s / 2, s / 2);
     ctx.rotate(0.3);
-    ctx.fillStyle = '#8a6a3a';
-    ctx.fillRect(-7, -2, 14, 4);
-    ctx.strokeStyle = '#6a4a2a';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(6, 0); ctx.stroke();
+    // Bright outline glow
+    ctx.shadowColor = '#ffaa00';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = '#ba8a4a';
+    ctx.fillRect(-14, -4, 28, 8);
+    ctx.shadowBlur = 0;
+    // Wood grain
+    ctx.strokeStyle = '#8a5a2a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(12, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-10, -2); ctx.lineTo(10, -2); ctx.stroke();
     // Splintered ends
-    ctx.fillStyle = '#a07a4a';
-    ctx.beginPath(); ctx.moveTo(7, -2); ctx.lineTo(8, 0); ctx.lineTo(7, 2); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-7, -2); ctx.lineTo(-8, 0); ctx.lineTo(-7, 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c09a5a';
+    ctx.beginPath(); ctx.moveTo(14, -4); ctx.lineTo(16, 0); ctx.lineTo(14, 4); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-14, -4); ctx.lineTo(-16, 0); ctx.lineTo(-14, 4); ctx.closePath(); ctx.fill();
     // Nail
-    ctx.fillStyle = '#888888';
-    ctx.fillRect(2, -4, 1, 2);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillRect(4, -8, 2, 4);
+    // Bright outline
+    ctx.strokeStyle = '#ffcc44';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-14, -4, 28, 8);
     ctx.restore();
     scene.textures.addCanvas('boss_projectile_0', c);
   }
 
-  // ── Projectile 1: brick fragment ──
+  // ── Projectile 1: brick fragment (2x bigger) ──
   if (!scene.textures.exists('boss_projectile_1')) {
-    const s = 16;
+    const s = 32;
     const c = document.createElement('canvas');
     c.width = s; c.height = s;
     const ctx = c.getContext('2d');
     ctx.save();
     ctx.translate(s / 2, s / 2);
     ctx.rotate(-0.2);
-    // Irregular brick chunk
-    ctx.fillStyle = '#9a5a3a';
+    // Bright outline glow
+    ctx.shadowColor = '#ff6600';
+    ctx.shadowBlur = 4;
+    // Irregular brick chunk (doubled coords)
+    ctx.fillStyle = '#ba6a4a';
     ctx.beginPath();
-    ctx.moveTo(-5, -4);
-    ctx.lineTo(4, -5);
-    ctx.lineTo(6, -2);
-    ctx.lineTo(5, 4);
-    ctx.lineTo(-3, 5);
-    ctx.lineTo(-6, 2);
+    ctx.moveTo(-10, -8);
+    ctx.lineTo(8, -10);
+    ctx.lineTo(12, -4);
+    ctx.lineTo(10, 8);
+    ctx.lineTo(-6, 10);
+    ctx.lineTo(-12, 4);
     ctx.closePath();
     ctx.fill();
+    ctx.shadowBlur = 0;
     // Mortar edge
-    ctx.fillStyle = '#c0a880';
+    ctx.fillStyle = '#d0b890';
     ctx.beginPath();
-    ctx.moveTo(-6, 2); ctx.lineTo(-5, -4); ctx.lineTo(-3, -3); ctx.lineTo(-4, 1); ctx.closePath();
+    ctx.moveTo(-12, 4); ctx.lineTo(-10, -8); ctx.lineTo(-6, -6); ctx.lineTo(-8, 2); ctx.closePath();
     ctx.fill();
     // Texture cracks
-    ctx.strokeStyle = '#6a3a1a';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath(); ctx.moveTo(-2, -3); ctx.lineTo(1, 3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(2, -4); ctx.lineTo(4, 1); ctx.stroke();
+    ctx.strokeStyle = '#7a4a2a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-4, -6); ctx.lineTo(2, 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, -8); ctx.lineTo(8, 2); ctx.stroke();
+    // Bright outline
+    ctx.strokeStyle = '#ff8844';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-10, -8); ctx.lineTo(8, -10); ctx.lineTo(12, -4);
+    ctx.lineTo(10, 8); ctx.lineTo(-6, 10); ctx.lineTo(-12, 4);
+    ctx.closePath();
+    ctx.stroke();
     ctx.restore();
     scene.textures.addCanvas('boss_projectile_1', c);
   }
 
-  // ── Projectile 2: glass shard ──
+  // ── Projectile 2: glass shard (2x bigger) ──
   if (!scene.textures.exists('boss_projectile_2')) {
-    const s = 16;
+    const s = 32;
     const c = document.createElement('canvas');
     c.width = s; c.height = s;
     const ctx = c.getContext('2d');
     ctx.save();
     ctx.translate(s / 2, s / 2);
     ctx.rotate(0.5);
-    // Jagged glass triangle
-    ctx.fillStyle = 'rgba(160, 200, 220, 0.7)';
+    // Bright outline glow
+    ctx.shadowColor = '#88ccff';
+    ctx.shadowBlur = 5;
+    // Jagged glass triangle (doubled coords)
+    ctx.fillStyle = 'rgba(180, 220, 240, 0.8)';
     ctx.beginPath();
-    ctx.moveTo(0, -6);
-    ctx.lineTo(5, 4);
-    ctx.lineTo(-1, 6);
-    ctx.lineTo(-4, 1);
+    ctx.moveTo(0, -12);
+    ctx.lineTo(10, 8);
+    ctx.lineTo(-2, 12);
+    ctx.lineTo(-8, 2);
     ctx.closePath();
     ctx.fill();
+    ctx.shadowBlur = 0;
     // Highlight / reflection
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(-1, -3); ctx.lineTo(2, 2); ctx.stroke();
-    // Sharp edge outline
-    ctx.strokeStyle = 'rgba(100, 140, 160, 0.8)';
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-2, -6); ctx.lineTo(4, 4); ctx.stroke();
+    // Bright edge outline
+    ctx.strokeStyle = '#aaddff';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(0, -6); ctx.lineTo(5, 4); ctx.lineTo(-1, 6); ctx.lineTo(-4, 1); ctx.closePath();
+    ctx.moveTo(0, -12); ctx.lineTo(10, 8); ctx.lineTo(-2, 12); ctx.lineTo(-8, 2); ctx.closePath();
     ctx.stroke();
     ctx.restore();
     scene.textures.addCanvas('boss_projectile_2', c);
   }
 
-  // ── Projectile 3: metal pipe piece ──
+  // ── Projectile 3: metal pipe piece (2x bigger) ──
   if (!scene.textures.exists('boss_projectile_3')) {
-    const s = 16;
+    const s = 32;
     const c = document.createElement('canvas');
     c.width = s; c.height = s;
     const ctx = c.getContext('2d');
     ctx.save();
     ctx.translate(s / 2, s / 2);
     ctx.rotate(-0.4);
-    // Pipe cylinder
-    ctx.fillStyle = '#707078';
-    ctx.fillRect(-7, -2, 14, 4);
+    // Bright outline glow
+    ctx.shadowColor = '#aaaacc';
+    ctx.shadowBlur = 4;
+    // Pipe cylinder (doubled coords)
+    ctx.fillStyle = '#808088';
+    ctx.fillRect(-14, -4, 28, 8);
+    ctx.shadowBlur = 0;
     // Pipe highlight (rounded feel)
-    ctx.fillStyle = '#9090a0';
-    ctx.fillRect(-6, -2, 12, 1);
+    ctx.fillStyle = '#a0a0b0';
+    ctx.fillRect(-12, -4, 24, 2);
     // Pipe shadow
-    ctx.fillStyle = '#505058';
-    ctx.fillRect(-6, 1, 12, 1);
-    // Rusty spots
-    ctx.fillStyle = '#8a5a30';
-    ctx.fillRect(-3, -1, 2, 2);
-    ctx.fillRect(3, 0, 2, 1);
-    // Bent/broken end
     ctx.fillStyle = '#606068';
+    ctx.fillRect(-12, 2, 24, 2);
+    // Rusty spots
+    ctx.fillStyle = '#aa7a40';
+    ctx.fillRect(-6, -2, 4, 4);
+    ctx.fillRect(6, 0, 4, 2);
+    // Bent/broken end
+    ctx.fillStyle = '#707078';
     ctx.beginPath();
-    ctx.moveTo(7, -2); ctx.lineTo(8, -3); ctx.lineTo(8, 3); ctx.lineTo(7, 2); ctx.closePath();
+    ctx.moveTo(14, -4); ctx.lineTo(16, -6); ctx.lineTo(16, 6); ctx.lineTo(14, 4); ctx.closePath();
     ctx.fill();
     // Thread grooves
-    ctx.strokeStyle = '#585860';
-    ctx.lineWidth = 0.4;
-    ctx.beginPath(); ctx.moveTo(-6, -2); ctx.lineTo(-6, 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-5, -2); ctx.lineTo(-5, 2); ctx.stroke();
+    ctx.strokeStyle = '#686870';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-12, -4); ctx.lineTo(-12, 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-10, -4); ctx.lineTo(-10, 4); ctx.stroke();
+    // Bright outline
+    ctx.strokeStyle = '#ccccee';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-14, -4, 28, 8);
     ctx.restore();
     scene.textures.addCanvas('boss_projectile_3', c);
   }
 
-  // Also create the legacy 'boss_projectile' as alias for projectile 0
+  // Also create the legacy 'boss_projectile' as alias for projectile 0 (2x bigger)
   if (!scene.textures.exists('boss_projectile')) {
-    const s = 16;
+    const s = 32;
     const c = document.createElement('canvas');
     c.width = s; c.height = s;
     const ctx = c.getContext('2d');
     ctx.save();
     ctx.translate(s / 2, s / 2);
     ctx.rotate(0.3);
-    ctx.fillStyle = '#8a6a3a';
-    ctx.fillRect(-7, -2, 14, 4);
-    ctx.strokeStyle = '#6a4a2a';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(6, 0); ctx.stroke();
-    ctx.fillStyle = '#a07a4a';
-    ctx.beginPath(); ctx.moveTo(7, -2); ctx.lineTo(8, 0); ctx.lineTo(7, 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#888888';
-    ctx.fillRect(2, -4, 1, 2);
+    ctx.shadowColor = '#ffaa00';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = '#ba8a4a';
+    ctx.fillRect(-14, -4, 28, 8);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#8a5a2a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(12, 0); ctx.stroke();
+    ctx.fillStyle = '#c09a5a';
+    ctx.beginPath(); ctx.moveTo(14, -4); ctx.lineTo(16, 0); ctx.lineTo(14, 4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillRect(4, -8, 2, 4);
+    ctx.strokeStyle = '#ffcc44';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-14, -4, 28, 8);
     ctx.restore();
     scene.textures.addCanvas('boss_projectile', c);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOSS PEEK TEXTURE — only eyebrows + eyes above armchair
+// The visual signature of "Angry Eyebrows" hiding behind cover
+// ═══════════════════════════════════════════════════════════════
+function _generateBossPeekTexture(scene) {
+  if (scene.textures.exists('ts_boss4_peek')) return;
+
+  const w = 128, h = 48;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const cx = w / 2; // 64
+
+  // Skin tone strip (top of forehead/hair visible)
+  const skinBase = '#C4956A';
+  ctx.fillStyle = skinBase;
+  ctx.beginPath();
+  ctx.ellipse(cx, 4, 22, 10, 0, 0, Math.PI);
+  ctx.fill();
+
+  // Short gray hair on very top
+  ctx.fillStyle = '#8A8A8A';
+  ctx.beginPath();
+  ctx.ellipse(cx, 2, 20, 8, 0, Math.PI, 0, true);
+  ctx.fill();
+
+  // ── THICK EYEBROWS (the star of the show) ──
+  const browY = 14;
+  const browColor = '#2A2A2A';
+  const browH = 6;
+  const browW = 18;
+  const browGap = 3;
+  const browAngle = 0.16;
+
+  ctx.fillStyle = browColor;
+  // Left eyebrow
+  ctx.beginPath();
+  ctx.moveTo(cx - browGap / 2 - browW, browY - browH / 2 - browAngle * browW / 2);
+  ctx.lineTo(cx - browGap / 2, browY - browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx - browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx - browGap / 2 - browW, browY + browH / 2 - browAngle * browW / 2);
+  ctx.closePath();
+  ctx.fill();
+  // Right eyebrow
+  ctx.beginPath();
+  ctx.moveTo(cx + browGap / 2 + browW, browY - browH / 2 - browAngle * browW / 2);
+  ctx.lineTo(cx + browGap / 2, browY - browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx + browGap / 2, browY + browH / 2 + browAngle * browW / 2 + 1);
+  ctx.lineTo(cx + browGap / 2 + browW, browY + browH / 2 - browAngle * browW / 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Brow hair strands
+  ctx.strokeStyle = browColor;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 10; i++) {
+    const t = i / 10;
+    const lx = cx - browGap / 2 - browW + t * browW;
+    const ly = browY + (t - 0.5) * browAngle * browW;
+    ctx.beginPath();
+    ctx.moveTo(lx, ly - browH / 2);
+    ctx.lineTo(lx + (Math.random() - 0.5) * 2, ly + browH / 2 + Math.random());
+    ctx.stroke();
+    const rx = cx + browGap / 2 + t * browW;
+    const ry = browY + (0.5 - t) * browAngle * browW;
+    ctx.beginPath();
+    ctx.moveTo(rx, ry - browH / 2);
+    ctx.lineTo(rx + (Math.random() - 0.5) * 2, ry + browH / 2 + Math.random());
+    ctx.stroke();
+  }
+
+  // Brow shadow
+  ctx.fillStyle = 'rgba(20, 15, 10, 0.3)';
+  ctx.fillRect(cx - browGap / 2 - browW, browY + browH / 2, browW, 2);
+  ctx.fillRect(cx + browGap / 2, browY + browH / 2, browW, 2);
+
+  // ── EYES (squinting, intense, peeking) ──
+  const eyeY = browY + browH + 4;
+  for (const side of [-1, 1]) {
+    const ex = cx + side * 10;
+    // Narrow slit
+    ctx.fillStyle = '#E8E4D8';
+    ctx.beginPath();
+    ctx.moveTo(ex - 6, eyeY);
+    ctx.quadraticCurveTo(ex, eyeY - 2, ex + 6, eyeY);
+    ctx.quadraticCurveTo(ex, eyeY + 1.5, ex - 6, eyeY);
+    ctx.closePath();
+    ctx.fill();
+    // Iris
+    ctx.fillStyle = '#1A1A1A';
+    ctx.beginPath();
+    ctx.arc(ex, eyeY, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Highlight
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(ex + 0.5, eyeY - 1, 1, 1);
+    // Outline
+    ctx.strokeStyle = '#1a0a05';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(ex - 6, eyeY);
+    ctx.quadraticCurveTo(ex, eyeY - 2, ex + 6, eyeY);
+    ctx.quadraticCurveTo(ex, eyeY + 1.5, ex - 6, eyeY);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // Nose bridge hint (just the very top)
+  ctx.fillStyle = '#A07850';
+  ctx.fillRect(cx - 2, eyeY + 2, 4, 6);
+
+  scene.textures.addCanvas('ts_boss4_peek', c);
 }
 
 function _generateDroneBulletTexture(scene) {
@@ -718,49 +937,83 @@ function _generateDroneMissileTexture(scene) {
 
 function _generateCrosshairTexture(scene) {
   if (scene.textures.exists('drone_crosshair')) return;
-  const s = 48;
+  const s = 72; // 50% bigger canvas (was 48)
   const c = document.createElement('canvas');
   c.width = s; c.height = s;
   const ctx = c.getContext('2d');
   const cx = s / 2, cy = s / 2;
 
-  // Outer circle
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
-  ctx.lineWidth = 1.5;
+  // Outer glow ring
+  ctx.strokeStyle = 'rgba(0, 255, 204, 0.25)';
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Outer circle - bright
+  ctx.strokeStyle = 'rgba(0, 255, 204, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 27, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // White outline for contrast
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 29, 0, Math.PI * 2);
   ctx.stroke();
 
   // Inner circle
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.8)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(0, 255, 204, 0.9)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 9, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Crosshair lines
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.7)';
-  ctx.lineWidth = 1;
+  // Crosshair lines - thicker, brighter
+  ctx.strokeStyle = 'rgba(0, 255, 204, 0.85)';
+  ctx.lineWidth = 2;
   // Top
-  ctx.beginPath(); ctx.moveTo(cx, cy - 22); ctx.lineTo(cx, cy - 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy - 32); ctx.lineTo(cx, cy - 12); ctx.stroke();
   // Bottom
-  ctx.beginPath(); ctx.moveTo(cx, cy + 8); ctx.lineTo(cx, cy + 22); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy + 12); ctx.lineTo(cx, cy + 32); ctx.stroke();
   // Left
-  ctx.beginPath(); ctx.moveTo(cx - 22, cy); ctx.lineTo(cx - 8, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 32, cy); ctx.lineTo(cx - 12, cy); ctx.stroke();
   // Right
-  ctx.beginPath(); ctx.moveTo(cx + 8, cy); ctx.lineTo(cx + 22, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 12, cy); ctx.lineTo(cx + 32, cy); ctx.stroke();
 
-  // Center dot
-  ctx.fillStyle = 'rgba(0, 229, 255, 0.9)';
+  // White crosshair shadow for contrast
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(cx, cy - 32); ctx.lineTo(cx, cy - 12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy + 12); ctx.lineTo(cx, cy + 32); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 32, cy); ctx.lineTo(cx - 12, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 12, cy); ctx.lineTo(cx + 32, cy); ctx.stroke();
+
+  // Re-draw bright crosshair on top of shadow
+  ctx.strokeStyle = 'rgba(0, 255, 204, 0.85)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy - 32); ctx.lineTo(cx, cy - 12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy + 12); ctx.lineTo(cx, cy + 32); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 32, cy); ctx.lineTo(cx - 12, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 12, cy); ctx.lineTo(cx + 32, cy); ctx.stroke();
+
+  // Center dot - bigger, brighter
+  ctx.fillStyle = 'rgba(255, 255, 255, 1.0)';
   ctx.beginPath();
-  ctx.arc(cx, cy, 1.5, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0, 255, 204, 0.9)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2, 0, Math.PI * 2);
   ctx.fill();
 
-  // Corner brackets
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
-  ctx.lineWidth = 1;
-  const bc = 20; // bracket corner distance
-  const bl = 6;  // bracket length
+  // Corner brackets - bigger, brighter
+  ctx.strokeStyle = 'rgba(0, 255, 204, 0.6)';
+  ctx.lineWidth = 1.5;
+  const bc = 30; // bracket corner distance (was 20)
+  const bl = 9;  // bracket length (was 6)
   // Top-left
   ctx.beginPath(); ctx.moveTo(cx - bc, cy - bc + bl); ctx.lineTo(cx - bc, cy - bc); ctx.lineTo(cx - bc + bl, cy - bc); ctx.stroke();
   // Top-right
@@ -833,7 +1086,7 @@ export default class DroneScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#000000');
 
     // Controls overlay
-    showControlsOverlay(this, 'ARROWS: Move | Z: Shoot | SPACE: Enter Window | ESC: Pause');
+    showControlsOverlay(this, 'ARROWS: Move | SPACE: Shoot | X: Missile | SHIFT: Dash | ESC: Pause');
 
     // Generate textures
     createDroneSprite(this);
@@ -851,6 +1104,7 @@ export default class DroneScene extends Phaser.Scene {
     _generateBossTexture(this, 'ts_boss4_furious', 'furious');
     _generateBossTexture(this, 'ts_boss4_dead', 'dead');
     _generateBossProjectileTextures(this);
+    _generateBossPeekTexture(this);
     _generateDroneBulletTexture(this);
     _generateDroneMissileTexture(this);
     _generateCrosshairTexture(this);
@@ -916,7 +1170,7 @@ export default class DroneScene extends Phaser.Scene {
 
     if (this.phase === 'city') {
       this.hudPhase.setText('CITY INFILTRATION');
-      this.hudObjective.setText('FIND THE TARGET BUILDING');
+      this.hudObjective.setText('NAVIGATE TO THE GLOWING WINDOW');
       this.hudTimer.setText('');
     } else if (this.phase === 'boss') {
       this.hudPhase.setText('HIDEOUT');
@@ -1005,155 +1259,59 @@ export default class DroneScene extends Phaser.Scene {
     MusicManager.get().playLevel4Music('command');
 
     this._city = {
-      scrollSpeed: CITY_SCROLL_SPEED,
-      droneSpeed: CITY_DRONE_SPEED,
-      totalLength: CITY_LENGTH,
-      scrollX: 0,
-      buildings: [],
-      rubble: [],
-      cables: [],
-      craters: [],
-      dustParticles: [],
-      enemyDrones: [],
-      enemyBullets: [],
-      playerBullets: [],
-      windowTarget: null,
-      promptShown: false,
-      enterReady: false,
       transitioning: false,
       gfx: this.add.graphics().setDepth(1),
       objects: [],
       invulnTimer: 0,
-      shootCooldown: 0,
+      // Wind state
+      windAngle: Math.random() * Math.PI * 2,
+      windTargetAngle: Math.random() * Math.PI * 2,
+      windStrength: WIND_STRENGTH_MIN + Math.random() * (WIND_STRENGTH_MAX - WIND_STRENGTH_MIN),
+      windChangeTimer: WIND_CHANGE_INTERVAL,
+      // Debris
+      debris: [],
+      debrisSpawnTimer: 0,
+      // Floating dust particles
+      dustParticles: [],
+      // Building cracks (pre-generated for visual variety)
+      cracks: [],
     };
     const city = this._city;
 
-    // Street center Y
-    const streetCenterY = 270;
-    const streetHalfH = 100; // half-height of the navigable street
-    const topBuildingBottom = streetCenterY - streetHalfH; // Y=170
-    const bottomBuildingTop = streetCenterY + streetHalfH; // Y=370
-
-    // Generate buildings along horizontal axis
-    const numBuildings = 24;
-    for (let i = 0; i < numBuildings; i++) {
-      const bx = 200 + i * (CITY_LENGTH - 400) / numBuildings;
-      const bw = 120 + Math.random() * 80;
-
-      // Top building (hanging from top)
-      const topH = 100 + Math.random() * 100;
-      city.buildings.push({
-        x: bx, y: 0, w: bw, h: topH + (topBuildingBottom - topH > 0 ? 0 : topBuildingBottom),
-        bottomEdge: topBuildingBottom,
-        side: 'top',
-        damage: Math.random(),
-        variant: Math.random() > 0.5 ? 0 : 1,
-        color: Math.random() > 0.5 ? 0x8A8A8A : 0xB09870,
-      });
-
-      // Bottom building (from bottomBuildingTop downward)
-      const botH = 100 + Math.random() * 100;
-      city.buildings.push({
-        x: bx + (Math.random() - 0.5) * 40, y: bottomBuildingTop, w: bw - 10 + Math.random() * 20,
-        h: Math.min(botH, H - bottomBuildingTop),
-        side: 'bottom',
-        damage: Math.random(),
-        variant: Math.random() > 0.5 ? 0 : 1,
-        color: Math.random() > 0.5 ? 0x8A8A8A : 0xC4A060,
-      });
-    }
-
-    // Rubble on the street
-    for (let i = 0; i < 60; i++) {
-      city.rubble.push({
-        x: 100 + Math.random() * (CITY_LENGTH - 200),
-        y: topBuildingBottom + 10 + Math.random() * (bottomBuildingTop - topBuildingBottom - 20),
-        w: 4 + Math.random() * 12,
-        h: 3 + Math.random() * 8,
-        color: Math.random() > 0.5 ? 0x6A6A6A : 0x5A4A3A,
-      });
-    }
-
-    // Destroyed car shapes
-    for (let i = 0; i < 8; i++) {
-      city.rubble.push({
-        x: 300 + i * (CITY_LENGTH / 9),
-        y: bottomBuildingTop - 25 + Math.random() * 15,
-        w: 35 + Math.random() * 15,
-        h: 15 + Math.random() * 8,
-        color: 0x3A3530,
-        isCar: true,
-      });
-    }
-
-    // Hanging cables between buildings
-    for (let i = 0; i < 15; i++) {
-      const cx = 200 + Math.random() * (CITY_LENGTH - 400);
-      city.cables.push({
-        x1: cx, y1: topBuildingBottom - 5 + Math.random() * 15,
-        x2: cx + 30 + Math.random() * 80, y2: topBuildingBottom + Math.random() * 30,
-        sag: 15 + Math.random() * 25,
-      });
-    }
-
-    // Craters on the ground
-    for (let i = 0; i < 10; i++) {
-      city.craters.push({
-        x: 200 + Math.random() * (CITY_LENGTH - 400),
-        y: streetCenterY + Math.random() * 60 - 30,
-        rx: 15 + Math.random() * 20,
-        ry: 6 + Math.random() * 8,
-      });
-    }
-
-    // Dust particles
-    for (let i = 0; i < 40; i++) {
+    // Pre-generate ambient dust
+    for (let i = 0; i < 25; i++) {
       city.dustParticles.push({
-        x: Math.random() * CITY_LENGTH,
-        y: 50 + Math.random() * (H - 100),
-        speed: 5 + Math.random() * 15,
-        size: 1 + Math.random() * 2.5,
-        alpha: 0.1 + Math.random() * 0.2,
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 6,
+        size: 1 + Math.random() * 2,
+        alpha: 0.08 + Math.random() * 0.12,
       });
     }
 
-    // Target building at ~80% of city length
-    const targetX = CITY_LENGTH * 0.8;
-    city.windowTarget = {
-      x: targetX,
-      y: streetCenterY - 30,
-      w: 30, h: 40,
-      buildingX: targetX - 30,
-      buildingY: bottomBuildingTop,
-      buildingW: 150,
-      buildingH: H - bottomBuildingTop,
-    };
-
-    // Enemy drones (4 total, spawned at intervals)
-    const enemyCount = 4;
-    for (let i = 0; i < enemyCount; i++) {
-      const ex = 600 + i * (CITY_LENGTH - 800) / enemyCount;
-      city.enemyDrones.push({
-        x: ex,
-        y: topBuildingBottom + 30 + Math.random() * (bottomBuildingTop - topBuildingBottom - 60),
-        hp: 2,
-        speed: 40 + Math.random() * 30,
-        dir: Math.random() > 0.5 ? 1 : -1,
-        patrolMinY: topBuildingBottom + 15,
-        patrolMaxY: bottomBuildingTop - 15,
-        detectRange: 180,
-        alerted: false,
-        shootCooldown: 0,
-        dead: false,
-      });
+    // Pre-generate building crack lines for the destroyed building
+    for (let i = 0; i < 12; i++) {
+      const cx = 700 + Math.random() * 220;
+      const cy = 20 + Math.random() * 500;
+      const segments = 2 + Math.floor(Math.random() * 3);
+      const pts = [{ x: cx, y: cy }];
+      for (let s = 0; s < segments; s++) {
+        const last = pts[pts.length - 1];
+        pts.push({
+          x: last.x + (Math.random() - 0.5) * 30,
+          y: last.y + 10 + Math.random() * 30,
+        });
+      }
+      city.cracks.push(pts);
     }
 
-    // Player drone position (left side of screen)
-    this.droneX = 100;
-    this.droneY = streetCenterY;
+    // Player drone starts on the LEFT
+    this.droneX = 150;
+    this.droneY = 270;
 
     // Controls instruction
-    this.instrText.setText('ARROWS: Move | Z: Shoot | SPACE: Enter Window');
+    this.instrText.setText('ARROWS: Navigate to the glowing window');
     this.instrText.setAlpha(1);
     this.instrBg.setAlpha(0.7);
     this.time.delayedCall(4000, () => {
@@ -1167,15 +1325,25 @@ export default class DroneScene extends Phaser.Scene {
     const city = this._city;
     if (!city || city.transitioning) return;
 
-    const streetCenterY = 270;
-    const streetHalfH = 100;
-    const topBuildingBottom = streetCenterY - streetHalfH;
-    const bottomBuildingTop = streetCenterY + streetHalfH;
+    // --- Wind system ---
+    city.windChangeTimer -= dt;
+    if (city.windChangeTimer <= 0) {
+      city.windChangeTimer = WIND_CHANGE_INTERVAL + (Math.random() - 0.5) * 1.0;
+      city.windTargetAngle = Math.random() * Math.PI * 2;
+      city.windStrength = WIND_STRENGTH_MIN + Math.random() * (WIND_STRENGTH_MAX - WIND_STRENGTH_MIN);
+    }
+    // Smoothly interpolate wind angle toward target
+    const angleDiff = city.windTargetAngle - city.windAngle;
+    city.windAngle += angleDiff * dt * 1.5;
 
-    // Auto-scroll rightward
-    city.scrollX += city.scrollSpeed * dt;
+    const windDx = Math.cos(city.windAngle) * city.windStrength;
+    const windDy = Math.sin(city.windAngle) * city.windStrength;
 
-    // Player movement (4 directions)
+    // Apply wind drift to drone
+    this.droneX += windDx * dt;
+    this.droneY += windDy * dt;
+
+    // --- Player movement (counteracts wind) ---
     let dx = 0, dy = 0;
     if (this.keys.left.isDown) dx -= 1;
     if (this.keys.right.isDown) dx += 1;
@@ -1183,168 +1351,89 @@ export default class DroneScene extends Phaser.Scene {
     if (this.keys.down.isDown) dy += 1;
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     dx /= len; dy /= len;
+    this.droneX += dx * CITY_DRONE_SPEED * dt;
+    this.droneY += dy * CITY_DRONE_SPEED * dt;
 
-    this.droneX += dx * city.droneSpeed * dt;
-    this.droneY += dy * city.droneSpeed * dt;
-
-    // Clamp to street bounds
-    const margin = 18;
+    // Clamp drone to screen
+    const margin = 15;
     this.droneX = Math.max(margin, Math.min(W - margin, this.droneX));
-    this.droneY = Math.max(topBuildingBottom + margin, Math.min(bottomBuildingTop - margin, this.droneY));
+    this.droneY = Math.max(margin, Math.min(H - margin, this.droneY));
 
     // Invulnerability timer
     if (city.invulnTimer > 0) city.invulnTimer -= dt;
 
-    // Shoot cooldown
-    if (city.shootCooldown > 0) city.shootCooldown -= dt;
-
-    // Z key shoots forward (rightward) — cyan bullets
-    if (this.keys.z.isDown && city.shootCooldown <= 0) {
-      city.shootCooldown = 0.2;
-      city.playerBullets.push({
-        x: this.droneX + city.scrollX + 15,
-        y: this.droneY,
-        vx: 400,
-        life: 2,
+    // --- Debris spawning ---
+    city.debrisSpawnTimer -= dt;
+    if (city.debrisSpawnTimer <= 0) {
+      city.debrisSpawnTimer = 1.0 / DEBRIS_SPAWN_RATE + (Math.random() - 0.5) * 0.3;
+      // Spawn near the building area (right side)
+      const spawnX = 620 + Math.random() * 300;
+      city.debris.push({
+        x: spawnX,
+        y: -10,
+        w: 6 + Math.random() * 8,
+        h: 3 + Math.random() * 4,
+        vy: DEBRIS_FALL_SPEED_MIN + Math.random() * (DEBRIS_FALL_SPEED_MAX - DEBRIS_FALL_SPEED_MIN),
+        vx: (Math.random() - 0.5) * 20,
+        rotation: Math.random() * Math.PI,
+        rotSpeed: (Math.random() - 0.5) * 4,
+        color: Math.random() > 0.5 ? 0x7A7068 : 0x6A5A4A,
       });
-      SoundManager.get().playPlayerShoot();
     }
 
-    // Update dust particles
-    for (const d of city.dustParticles) {
-      d.x += d.speed * dt;
-      d.y += Math.sin(d.x * 0.01) * 0.3;
-      if (d.x > city.scrollX + W + 50) {
-        d.x = city.scrollX - 50;
-      }
-    }
+    // Update debris
+    for (let i = city.debris.length - 1; i >= 0; i--) {
+      const d = city.debris[i];
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      d.rotation += d.rotSpeed * dt;
 
-    // Update enemy drones
-    for (const e of city.enemyDrones) {
-      if (e.dead) continue;
-
-      // Patrol vertically
-      e.y += e.speed * e.dir * dt;
-      if (e.y <= e.patrolMinY) { e.y = e.patrolMinY; e.dir = 1; }
-      if (e.y >= e.patrolMaxY) { e.y = e.patrolMaxY; e.dir = -1; }
-
-      // Screen position of enemy
-      const eScreenX = e.x - city.scrollX;
-      const eScreenY = e.y;
-
-      // Detection
-      const distToPlayer = Math.sqrt(
-        (eScreenX - this.droneX) ** 2 + (eScreenY - this.droneY) ** 2
-      );
-      e.alerted = distToPlayer < e.detectRange && eScreenX > -50 && eScreenX < W + 50;
-
-      // Shoot if alerted
-      if (e.alerted) {
-        e.shootCooldown -= dt;
-        if (e.shootCooldown <= 0) {
-          e.shootCooldown = 1.0 + Math.random() * 0.5;
-          const angle = Math.atan2(this.droneY - eScreenY, this.droneX - eScreenX);
-          city.enemyBullets.push({
-            x: e.x,
-            y: e.y,
-            vx: Math.cos(angle) * 200,
-            vy: Math.sin(angle) * 200,
-            life: 3,
-          });
-          SoundManager.get().playPlayerShoot();
-        }
-      }
-    }
-
-    // Update player bullets (world coordinates)
-    for (let i = city.playerBullets.length - 1; i >= 0; i--) {
-      const b = city.playerBullets[i];
-      b.x += b.vx * dt;
-      b.life -= dt;
-
-      // Check hit on enemy drones
-      for (const e of city.enemyDrones) {
-        if (e.dead) continue;
-        const bdx = b.x - e.x;
-        const bdy = b.y - e.y;
-        if (Math.sqrt(bdx * bdx + bdy * bdy) < 20) {
-          e.hp--;
-          if (e.hp <= 0) {
-            e.dead = true;
-            this.enemiesKilled++;
-            this.score += 300;
-          }
-          city.playerBullets.splice(i, 1);
-          break;
-        }
-      }
-
-      if (b.life <= 0 || b.x > city.scrollX + W + 100) {
-        city.playerBullets.splice(i, 1);
-      }
-    }
-
-    // Update enemy bullets (world coordinates)
-    for (let i = city.enemyBullets.length - 1; i >= 0; i--) {
-      const b = city.enemyBullets[i];
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.life -= dt;
-
-      // Screen position
-      const bScreenX = b.x - city.scrollX;
-      const bScreenY = b.y;
-
-      // Hit player?
-      const bdx = bScreenX - this.droneX;
-      const bdy = bScreenY - this.droneY;
-      if (Math.sqrt(bdx * bdx + bdy * bdy) < 14 && city.invulnTimer <= 0) {
-        this._takeDamage(1);
-        city.invulnTimer = 1.0;
-        city.enemyBullets.splice(i, 1);
+      // Remove if off screen
+      if (d.y > H + 20) {
+        city.debris.splice(i, 1);
         continue;
       }
 
-      if (b.life <= 0 || bScreenX < -50 || bScreenX > W + 50 || bScreenY < -50 || bScreenY > H + 50) {
-        city.enemyBullets.splice(i, 1);
+      // Check collision with drone
+      if (city.invulnTimer <= 0) {
+        const ddx = d.x - this.droneX;
+        const ddy = d.y - this.droneY;
+        const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (dist < DRONE_SIZE + 6) {
+          // Hit: lose 1 HP and bounce back
+          this._takeDamage(1);
+          city.invulnTimer = 1.0;
+          // Bounce drone away from debris
+          const bAngle = Math.atan2(this.droneY - d.y, this.droneX - d.x);
+          this.droneX += Math.cos(bAngle) * DEBRIS_BOUNCE_DIST;
+          this.droneY += Math.sin(bAngle) * DEBRIS_BOUNCE_DIST;
+          this.droneX = Math.max(margin, Math.min(W - margin, this.droneX));
+          this.droneY = Math.max(margin, Math.min(H - margin, this.droneY));
+          city.debris.splice(i, 1);
+          continue;
+        }
       }
     }
 
-    // Check proximity to target window
-    if (city.windowTarget) {
-      const tw = city.windowTarget;
-      const twScreenX = tw.x - city.scrollX;
-      const twScreenY = tw.y;
-      const twDx = this.droneX - twScreenX;
-      const twDy = this.droneY - twScreenY;
-      const twDist = Math.sqrt(twDx * twDx + twDy * twDy);
-
-      if (twDist < 60) {
-        if (!city.promptShown) {
-          city.promptShown = true;
-          city.enterReady = true;
-          this.instrText.setText('PRESS SPACE TO ENTER');
-          this.instrText.setAlpha(1);
-          this.instrBg.setAlpha(0.7);
-        }
-      } else {
-        if (city.promptShown && !city.transitioning) {
-          city.promptShown = false;
-          city.enterReady = false;
-          this.instrText.setAlpha(0);
-          this.instrBg.setAlpha(0);
-        }
-      }
-
-      // Enter the window
-      if (city.enterReady && Phaser.Input.Keyboard.JustDown(this.keys.space)) {
-        this._cityEnterWindow();
-        return;
-      }
+    // Update dust particles (drift with wind)
+    for (const p of city.dustParticles) {
+      p.x += (p.vx + windDx * 0.3) * dt;
+      p.y += (p.vy + windDy * 0.3) * dt;
+      if (p.x < -10) p.x = W + 5;
+      if (p.x > W + 10) p.x = -5;
+      if (p.y < -10) p.y = H + 5;
+      if (p.y > H + 10) p.y = -5;
     }
 
-    // Failsafe: if scrolled past city length, auto-transition
-    if (city.scrollX >= CITY_LENGTH) {
+    // --- Window detection ---
+    const wCenterX = WINDOW_X + WINDOW_SIZE / 2;
+    const wCenterY = WINDOW_Y + WINDOW_SIZE / 2;
+    const distToWindow = Math.sqrt(
+      (this.droneX - wCenterX) ** 2 + (this.droneY - wCenterY) ** 2
+    );
+
+    if (distToWindow < WINDOW_SIZE * 0.6) {
+      // Drone overlaps window zone -- transition!
       this._cityEnterWindow();
       return;
     }
@@ -1358,238 +1447,262 @@ export default class DroneScene extends Phaser.Scene {
     const gfx = city.gfx;
     gfx.clear();
 
-    const offX = city.scrollX;
-    const streetCenterY = 270;
-    const streetHalfH = 100;
-    const topBuildingBottom = streetCenterY - streetHalfH;
-    const bottomBuildingTop = streetCenterY + streetHalfH;
-
-    // Daytime sky background
-    gfx.fillStyle(0x87CEEB);
+    // --- Daytime sky ---
+    gfx.fillStyle(0x5588cc);
     gfx.fillRect(0, 0, W, H);
+    gfx.fillStyle(0x88bbee, 0.4);
+    gfx.fillRect(0, H * 0.5, W, H * 0.5);
+    // Dust haze
+    gfx.fillStyle(0xC8B890, 0.06);
+    gfx.fillRect(0, H * 0.55, W, H * 0.45);
 
-    // Warm sun glow (upper right)
-    gfx.fillStyle(0xFFF0C8, 0.2);
-    gfx.fillCircle(W * 0.85, H * 0.12, 120);
+    // Sun glow (upper left)
+    gfx.fillStyle(0xFFF0C8, 0.25);
+    gfx.fillCircle(120, 60, 80);
     gfx.fillStyle(0xFFF0C8, 0.1);
-    gfx.fillCircle(W * 0.85, H * 0.12, 200);
+    gfx.fillCircle(120, 60, 160);
 
-    // Street surface (asphalt gray)
-    gfx.fillStyle(0x6A6A6A);
-    gfx.fillRect(0, topBuildingBottom, W, bottomBuildingTop - topBuildingBottom);
+    // --- Ground (dark rubble) ---
+    gfx.fillStyle(0x5A5550);
+    gfx.fillRect(0, H - 50, W, 50);
+    gfx.fillStyle(0x4A4540, 0.5);
+    gfx.fillRect(0, H - 55, W, 8);
 
-    // Street center dashed line
-    gfx.lineStyle(1, 0x8A8A8A, 0.4);
-    for (let sx = -((offX * 1.0) % 40); sx < W; sx += 40) {
-      gfx.beginPath();
-      gfx.moveTo(sx, streetCenterY);
-      gfx.lineTo(sx + 20, streetCenterY);
-      gfx.strokePath();
-    }
-
-    // Draw craters
-    for (const cr of city.craters) {
-      const sx = cr.x - offX;
-      if (sx > W + 30 || sx < -30) continue;
-      gfx.fillStyle(0x4A4A4A, 0.4);
-      gfx.fillEllipse(sx, cr.y, cr.rx * 2, cr.ry * 2);
-    }
-
-    // Draw buildings
-    for (const b of city.buildings) {
-      const sx = b.x - offX;
-      if (sx > W + 200 || sx + b.w < -200) continue;
-
-      // Building body
-      gfx.fillStyle(b.color);
-      if (b.side === 'top') {
-        gfx.fillRect(sx, 0, b.w, topBuildingBottom);
-      } else {
-        gfx.fillRect(sx, bottomBuildingTop, b.w, H - bottomBuildingTop);
-      }
-
-      // Building outline
-      gfx.lineStyle(1, 0x5A5A5A, 0.5);
-      if (b.side === 'top') {
-        gfx.strokeRect(sx, 0, b.w, topBuildingBottom);
-      } else {
-        gfx.strokeRect(sx, bottomBuildingTop, b.w, H - bottomBuildingTop);
-      }
-
-      // Windows
-      const startY = b.side === 'top' ? 15 : bottomBuildingTop + 15;
-      const endY = b.side === 'top' ? topBuildingBottom - 15 : H - 15;
-      const cols = Math.floor(b.w / 30);
-      for (let wc = 0; wc < cols; wc++) {
-        for (let wy = startY; wy + 20 < endY; wy += 35) {
-          const wx = sx + 10 + wc * 30;
-          if (wx > W + 10 || wx < -20) continue;
-          // Some blown out, some intact
-          const hash = (Math.floor(b.x) * 7 + wc * 13 + Math.floor(wy) * 3) % 5;
-          if (hash === 0) {
-            // Blown out - dark interior
-            gfx.fillStyle(0x2A2520, 0.8);
-            gfx.fillRect(wx, wy, 18, 22);
-          } else {
-            // Dark window
-            gfx.fillStyle(0x1A1A22, 0.7);
-            gfx.fillRect(wx, wy, 18, 22);
-            gfx.lineStyle(1, 0x6A6A6A, 0.4);
-            gfx.strokeRect(wx, wy, 18, 22);
-          }
+    // --- Distant buildings (left background) ---
+    const distBldgs = [
+      { x: 20, w: 80, h: 280 },
+      { x: 110, w: 60, h: 200 },
+      { x: 180, w: 70, h: 340 },
+      { x: 260, w: 55, h: 180 },
+      { x: 320, w: 90, h: 260 },
+      { x: 420, w: 65, h: 220 },
+      { x: 500, w: 75, h: 300 },
+      { x: 580, w: 50, h: 160 },
+    ];
+    for (const b of distBldgs) {
+      const by = H - 50 - b.h;
+      gfx.fillStyle(0x6A6A70, 0.5);
+      gfx.fillRect(b.x, by, b.w, b.h);
+      gfx.lineStyle(1, 0x5A5A60, 0.3);
+      gfx.strokeRect(b.x, by, b.w, b.h);
+      // Windows (small dark rectangles)
+      for (let wy = by + 15; wy + 12 < H - 55; wy += 25) {
+        for (let wx = b.x + 8; wx + 10 < b.x + b.w - 5; wx += 18) {
+          gfx.fillStyle(0x1A1A22, 0.4);
+          gfx.fillRect(wx, wy, 10, 12);
         }
       }
+    }
 
-      // Damage: missing wall sections on some buildings
-      if (b.damage > 0.6) {
-        const holeX = sx + b.w * 0.3 + Math.sin(b.x) * 20;
-        const holeY = b.side === 'top' ? topBuildingBottom - 40 : bottomBuildingTop + 10;
-        gfx.fillStyle(0x2A2218, 0.7);
-        gfx.fillRect(holeX, holeY, 30 + b.damage * 20, 25);
+    // --- Destroyed building (right side, foreground) ---
+    const bldgX = 680;
+    const bldgW = 260;
+    const bldgTop = 10;
+
+    // Main structure
+    gfx.fillStyle(0x6A6058);
+    gfx.fillRect(bldgX, bldgTop, bldgW, H - bldgTop - 50);
+
+    // Darker inner structure
+    gfx.fillStyle(0x5A5048, 0.8);
+    gfx.fillRect(bldgX + 8, bldgTop + 8, bldgW - 16, H - bldgTop - 66);
+
+    // Jagged top edge (destroyed)
+    gfx.fillStyle(0x5588cc); // sky color to "erase" top
+    const jaggedPts = [
+      bldgX, bldgTop,
+      bldgX + 20, bldgTop + 12,
+      bldgX + 50, bldgTop - 5,
+      bldgX + 80, bldgTop + 18,
+      bldgX + 120, bldgTop + 5,
+      bldgX + 160, bldgTop + 22,
+      bldgX + 200, bldgTop + 8,
+      bldgX + 230, bldgTop + 15,
+      bldgX + bldgW, bldgTop,
+      bldgX + bldgW, 0,
+      bldgX, 0,
+    ];
+    gfx.beginPath();
+    gfx.moveTo(jaggedPts[0], jaggedPts[1]);
+    for (let j = 2; j < jaggedPts.length; j += 2) {
+      gfx.lineTo(jaggedPts[j], jaggedPts[j + 1]);
+    }
+    gfx.closePath();
+    gfx.fillPath();
+
+    // Building windows (dark, some blown out)
+    for (let wy = bldgTop + 40; wy + 25 < H - 60; wy += 50) {
+      for (let wx = bldgX + 20; wx + 22 < bldgX + bldgW - 10; wx += 45) {
+        // Skip the target window area
+        if (wx >= WINDOW_X - 5 && wx <= WINDOW_X + WINDOW_SIZE + 5 &&
+            wy >= WINDOW_Y - 5 && wy <= WINDOW_Y + WINDOW_SIZE + 5) continue;
+
+        const hash = (wx * 7 + wy * 13) % 5;
+        if (hash === 0) {
+          // Blown out
+          gfx.fillStyle(0x2A2218, 0.8);
+          gfx.fillRect(wx, wy, 22, 28);
+          // Jagged glass remains
+          gfx.lineStyle(1, 0x8A8A90, 0.3);
+          gfx.beginPath();
+          gfx.moveTo(wx, wy); gfx.lineTo(wx + 5, wy + 8);
+          gfx.strokePath();
+          gfx.beginPath();
+          gfx.moveTo(wx + 22, wy); gfx.lineTo(wx + 17, wy + 6);
+          gfx.strokePath();
+        } else {
+          gfx.fillStyle(0x1A1A22, 0.6);
+          gfx.fillRect(wx, wy, 22, 28);
+          gfx.lineStyle(1, 0x5A5A5A, 0.3);
+          gfx.strokeRect(wx, wy, 22, 28);
+        }
       }
     }
 
-    // Draw rubble and cars
-    for (const r of city.rubble) {
-      const sx = r.x - offX;
-      if (sx > W + 20 || sx < -20) continue;
-      gfx.fillStyle(r.color, 0.7);
-      if (r.isCar) {
-        // Car body
-        gfx.fillRect(sx, r.y, r.w, r.h);
-        // Car top
-        gfx.fillStyle(0x2A2520, 0.6);
-        gfx.fillRect(sx + 5, r.y - 8, r.w - 10, 8);
-        // Burn marks
-        gfx.fillStyle(0x0A0805, 0.3);
-        gfx.fillEllipse(sx + r.w / 2, r.y + r.h / 2, r.w * 0.6, r.h * 0.8);
-      } else {
-        gfx.fillRect(sx - r.w / 2, r.y - r.h / 2, r.w, r.h);
-      }
-    }
-
-    // Draw cables
-    gfx.lineStyle(1.5, 0x4A4A4A, 0.5);
-    for (const c of city.cables) {
-      const sx1 = c.x1 - offX;
-      const sx2 = c.x2 - offX;
-      if (sx1 > W + 30 && sx2 > W + 30) continue;
-      if (sx1 < -30 && sx2 < -30) continue;
-      const midX = (sx1 + sx2) / 2;
-      const midY = (c.y1 + c.y2) / 2 + c.sag;
+    // Building cracks
+    gfx.lineStyle(1.5, 0x4A4038, 0.4);
+    for (const crack of city.cracks) {
+      if (crack.length < 2) continue;
       gfx.beginPath();
-      gfx.moveTo(sx1, c.y1);
-      gfx.lineTo(midX, midY);
-      gfx.lineTo(sx2, c.y2);
+      gfx.moveTo(crack[0].x, crack[0].y);
+      for (let c = 1; c < crack.length; c++) {
+        gfx.lineTo(crack[c].x, crack[c].y);
+      }
       gfx.strokePath();
     }
 
-    // Draw target building with glowing window
-    if (city.windowTarget) {
-      const tw = city.windowTarget;
-      const tsx = tw.x - offX;
-      if (tsx > -50 && tsx < W + 50) {
-        // Pulsing glow
-        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
-        const alpha = 0.2 + pulse * 0.3;
+    // Building edge shadow (left side)
+    gfx.fillStyle(0x000000, 0.15);
+    gfx.fillRect(bldgX, bldgTop, 6, H - bldgTop - 50);
 
-        // Window outer glow
-        gfx.fillStyle(0xFFD700, alpha * 0.3);
-        gfx.fillRect(tsx - 20, tw.y - 25, 70, 90);
-        // Window body
-        gfx.fillStyle(0xFFD700, alpha);
-        gfx.fillRect(tsx, tw.y, tw.w, tw.h);
-        // Inner bright
-        gfx.fillStyle(0xFFDD66, alpha * 0.8);
-        gfx.fillRect(tsx + 4, tw.y + 4, tw.w - 8, tw.h - 8);
-        // Outer halo
-        gfx.lineStyle(3, 0xFFAA22, alpha * 0.5);
-        gfx.strokeRect(tsx - 5, tw.y - 5, tw.w + 10, tw.h + 10);
-      }
+    // --- Glowing window (target) ---
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+    const wAlpha = 0.3 + pulse * 0.4;
+
+    // Outer warm glow
+    gfx.fillStyle(0xFFD700, wAlpha * 0.15);
+    gfx.fillRect(WINDOW_X - 15, WINDOW_Y - 15, WINDOW_SIZE + 30, WINDOW_SIZE + 30);
+    // Middle glow
+    gfx.fillStyle(0xFFD700, wAlpha * 0.4);
+    gfx.fillRect(WINDOW_X - 5, WINDOW_Y - 5, WINDOW_SIZE + 10, WINDOW_SIZE + 10);
+    // Window body
+    gfx.fillStyle(0xFFDD44, wAlpha);
+    gfx.fillRect(WINDOW_X, WINDOW_Y, WINDOW_SIZE, WINDOW_SIZE);
+    // Bright center
+    gfx.fillStyle(0xFFEE88, wAlpha * 0.8);
+    gfx.fillRect(WINDOW_X + 8, WINDOW_Y + 8, WINDOW_SIZE - 16, WINDOW_SIZE - 16);
+    // Border outline
+    gfx.lineStyle(2, 0xFFAA22, wAlpha * 0.6);
+    gfx.strokeRect(WINDOW_X - 2, WINDOW_Y - 2, WINDOW_SIZE + 4, WINDOW_SIZE + 4);
+
+    // --- Falling debris ---
+    for (const d of city.debris) {
+      gfx.save();
+      gfx.fillStyle(d.color, 0.85);
+      // Simple rotated rectangle approximation
+      const cx = d.x;
+      const cy = d.y;
+      const hw = d.w / 2;
+      const hh = d.h / 2;
+      const cos = Math.cos(d.rotation);
+      const sin = Math.sin(d.rotation);
+      gfx.beginPath();
+      gfx.moveTo(cx + cos * (-hw) - sin * (-hh), cy + sin * (-hw) + cos * (-hh));
+      gfx.lineTo(cx + cos * hw - sin * (-hh), cy + sin * hw + cos * (-hh));
+      gfx.lineTo(cx + cos * hw - sin * hh, cy + sin * hw + cos * hh);
+      gfx.lineTo(cx + cos * (-hw) - sin * hh, cy + sin * (-hw) + cos * hh);
+      gfx.closePath();
+      gfx.fillPath();
     }
 
-    // Draw dust particles
-    for (const d of city.dustParticles) {
-      const sx = d.x - offX;
-      if (sx < -10 || sx > W + 10) continue;
-      gfx.fillStyle(0xC8B890, d.alpha);
-      gfx.fillCircle(sx, d.y, d.size);
+    // --- Dust particles ---
+    for (const p of city.dustParticles) {
+      gfx.fillStyle(0xC8B890, p.alpha);
+      gfx.fillCircle(p.x, p.y, p.size);
     }
 
-    // Draw enemy drones
-    for (const e of city.enemyDrones) {
-      if (e.dead) continue;
-      const esx = e.x - offX;
-      if (esx > W + 30 || esx < -30) continue;
+    // --- Wind direction indicator (top-right corner) ---
+    const windAngle = this._city.windAngle;
+    const indicX = W - 50;
+    const indicY = 80;
+    // Background circle
+    gfx.fillStyle(0x000000, 0.3);
+    gfx.fillCircle(indicX, indicY, 18);
+    gfx.lineStyle(1, 0xffffff, 0.3);
+    gfx.strokeCircle(indicX, indicY, 18);
+    // Arrow
+    const arrowLen = 12;
+    const arrowTipX = indicX + Math.cos(windAngle) * arrowLen;
+    const arrowTipY = indicY + Math.sin(windAngle) * arrowLen;
+    gfx.lineStyle(2, 0x88ccff, 0.8);
+    gfx.beginPath();
+    gfx.moveTo(indicX, indicY);
+    gfx.lineTo(arrowTipX, arrowTipY);
+    gfx.strokePath();
+    // Arrowhead
+    const headAngle1 = windAngle + Math.PI * 0.8;
+    const headAngle2 = windAngle - Math.PI * 0.8;
+    gfx.beginPath();
+    gfx.moveTo(arrowTipX, arrowTipY);
+    gfx.lineTo(arrowTipX + Math.cos(headAngle1) * 5, arrowTipY + Math.sin(headAngle1) * 5);
+    gfx.strokePath();
+    gfx.beginPath();
+    gfx.moveTo(arrowTipX, arrowTipY);
+    gfx.lineTo(arrowTipX + Math.cos(headAngle2) * 5, arrowTipY + Math.sin(headAngle2) * 5);
+    gfx.strokePath();
+    // "WIND" label
+    // (drawn via text object would be better, but we use gfx-only for consistency)
 
-      // Red quad-rotor shape
-      const droneColor = e.alerted ? 0xFF2222 : 0xCC4444;
-      gfx.fillStyle(droneColor, 0.9);
-      // Body
-      gfx.fillRect(esx - 6, e.y - 6, 12, 12);
-      // Arms and rotors
-      const armLen = 12;
-      gfx.lineStyle(2, droneColor, 0.7);
-      for (let a = 0; a < 4; a++) {
-        const angle = a * Math.PI / 2 + Math.PI / 4;
-        const ax = esx + Math.cos(angle) * armLen;
-        const ay = e.y + Math.sin(angle) * armLen;
-        gfx.beginPath();
-        gfx.moveTo(esx, e.y);
-        gfx.lineTo(ax, ay);
-        gfx.strokePath();
-        gfx.fillStyle(droneColor, 0.4);
-        gfx.fillCircle(ax, ay, 5);
-      }
-      // Eye
-      gfx.fillStyle(e.alerted ? 0xFFFF00 : 0xFF8844, 1);
-      gfx.fillCircle(esx, e.y, 2);
-    }
-
-    // Draw enemy bullets
-    for (const b of city.enemyBullets) {
-      const bsx = b.x - offX;
-      if (bsx < -10 || bsx > W + 10) continue;
-      gfx.fillStyle(0xFF4444, 0.9);
-      gfx.fillCircle(bsx, b.y, 3);
-      gfx.fillStyle(0xFF2222, 0.3);
-      gfx.fillCircle(bsx - b.vx * 0.015, b.y - b.vy * 0.015, 2);
-    }
-
-    // Draw player bullets
-    for (const b of city.playerBullets) {
-      const bsx = b.x - offX;
-      if (bsx < -10 || bsx > W + 10) continue;
-      gfx.fillStyle(0x00E5FF, 0.9);
-      gfx.fillCircle(bsx, b.y, 3);
-      gfx.fillStyle(0x00AACC, 0.4);
-      gfx.fillCircle(bsx - 8, b.y, 2);
-    }
-
-    // Draw player drone
+    // --- Player drone (BRIGHT, LARGE, visible against any background) ---
     const flashOn = city.invulnTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
     if (!flashOn) {
-      gfx.fillStyle(0x00CCFF, 0.9);
-      gfx.fillCircle(this.droneX, this.droneY, 8);
-      gfx.fillStyle(0x0088CC, 0.8);
-      gfx.fillCircle(this.droneX, this.droneY, 4);
-      // Propeller arms
-      gfx.lineStyle(2, 0x00AADD, 0.7);
+      const dx = this.droneX;
+      const dy = this.droneY;
+
+      // Outer glow halo (large, visible)
+      gfx.fillStyle(0x00ffcc, 0.10);
+      gfx.fillCircle(dx, dy, 36);
+      gfx.fillStyle(0x00ffcc, 0.06);
+      gfx.fillCircle(dx, dy, 48);
+
+      // White outline ring for contrast
+      gfx.lineStyle(2.5, 0xffffff, 0.85);
+      gfx.strokeCircle(dx, dy, 14);
+
+      // Main body - bright cyan/green
+      gfx.fillStyle(0x00ffcc, 0.95);
+      gfx.fillCircle(dx, dy, 12);
+      // Inner core - green-lime
+      gfx.fillStyle(0x88ff00, 0.9);
+      gfx.fillCircle(dx, dy, 6);
+      // Center bright dot
+      gfx.fillStyle(0xffffff, 1.0);
+      gfx.fillCircle(dx, dy, 2.5);
+
+      // Propeller arms (spinning, 50% bigger)
+      gfx.lineStyle(2.5, 0x00ffcc, 0.8);
       for (let a = 0; a < 4; a++) {
         const angle = a * Math.PI / 2 + Date.now() / 200;
+        const tipX = dx + Math.cos(angle) * 18;
+        const tipY = dy + Math.sin(angle) * 18;
         gfx.beginPath();
-        gfx.moveTo(this.droneX, this.droneY);
-        gfx.lineTo(this.droneX + Math.cos(angle) * 12, this.droneY + Math.sin(angle) * 12);
+        gfx.moveTo(dx, dy);
+        gfx.lineTo(tipX, tipY);
         gfx.strokePath();
+
+        // Blinking LED lights on propeller tips
+        const ledPulse = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(Date.now() / 150 + a * 1.5));
+        gfx.fillStyle(0xffffff, ledPulse);
+        gfx.fillCircle(tipX, tipY, 3);
+        gfx.fillStyle(0x00ffcc, ledPulse * 0.5);
+        gfx.fillCircle(tipX, tipY, 5);
       }
-      // Glow
-      gfx.fillStyle(0x00CCFF, 0.15);
-      gfx.fillCircle(this.droneX, this.droneY, 18);
     }
   }
 
   _cityEnterWindow() {
     const city = this._city;
+    if (!city || city.transitioning) return;
     city.transitioning = true;
     this.instrText.setAlpha(0);
     this.instrBg.setAlpha(0);
@@ -1660,12 +1773,9 @@ export default class DroneScene extends Phaser.Scene {
       if (obj && obj.destroy) obj.destroy();
     }
     city.objects = [];
-    city.buildings = [];
-    city.rubble = [];
-    city.cables = [];
-    city.enemyDrones = [];
-    city.enemyBullets = [];
-    city.playerBullets = [];
+    city.debris = [];
+    city.dustParticles = [];
+    city.cracks = [];
     this._city = null;
   }
   _startBossTransition() {
@@ -1714,24 +1824,25 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   // ═════════════════════════════════════════════════════════════
-  // BOSS FIGHT: THE WARDEN (single scene)
+  // BOSS FIGHT: THE WARDEN (top-down destroyed room)
   // ═════════════════════════════════════════════════════════════
   _startBossFight() {
     this.phase = 'boss';
     MusicManager.get().playLevel4Music('command');
 
-    // Increase drone HP for the boss fight
+    // Drone HP for boss fight
     this.droneHP = this.dm.isHard() ? 4 : 6;
     this.droneMaxHP = this.droneHP;
 
-    // Command room background (front-view destroyed daytime interior)
-    this.commandBg = this.add.image(W / 2, H / 2, 'command_room').setDepth(0);
+    // Graphics layer for room rendering
+    this.roomGfx = this.add.graphics().setDepth(0);
 
-    // Drone/crosshair setup — since we look FROM the drone's POV, show a crosshair reticle
+    // Generate room debris layout (static, drawn each frame)
+    this._generateRoomDebris();
+
+    // Drone position (starts center-bottom of room)
     this.droneX = W / 2;
     this.droneY = H - 100;
-    this.droneSprite = this.add.image(this.droneX, this.droneY, 'drone_crosshair').setDepth(25);
-    this.droneSprite.setDisplaySize(48, 48);
 
     // Drone combat state
     this.droneBullets = [];
@@ -1742,100 +1853,159 @@ export default class DroneScene extends Phaser.Scene {
     this.dodgeCooldown = 0;
     this.dodgeActive = false;
     this.dodgeTimer = 0;
+    this.dodgeDirX = 0;
+    this.dodgeDirY = 0;
 
-    // Boss state (front-facing perspective)
+    // Boss state
     this.bossMaxHP = Math.ceil(BOSS_BASE_HP * this.dm.bossHPMult());
     this.bossHP = this.bossMaxHP;
     this.bossDefeated = false;
     this.bossX = ARMCHAIR_X;
-    this.bossY = ARMCHAIR_Y - 60; // starts behind armchair
-    this.bossVx = 0;
-    this.bossFury = false;
+    this.bossY = ARMCHAIR_Y;
+    this.bossVisible = false;
+    this.bossActive = false;
+    this.bossPhase = 1;
+    this.bossState = 'hiding';
+    this.bossStateTimer = BOSS_P1_HIDE_MIN + Math.random() * (BOSS_P1_HIDE_MAX - BOSS_P1_HIDE_MIN);
+    this.bossPeekScale = 0.4;
     this.bossExpression = 'normal';
-    this.bossActive = false; // not active until entrance finishes
+    this.bossTargetX = 0;
+    this.bossTargetY = 0;
 
-    // Boss attack timers
-    this.bossThrowTimer = BOSS_THROW_INTERVAL_MIN + Math.random() * (BOSS_THROW_INTERVAL_MAX - BOSS_THROW_INTERVAL_MIN);
-    this.bossThrowBurstCount = 0;
-    this.bossThrowBurstTimer = 0;
-    this.bossMoveDirTimer = 0;
+    // Phase 3 charge state
+    this.bossChargeTimer = BOSS_P3_CHARGE_INTERVAL;
+    this.bossCharging = false;
+    this.bossChargeDirX = 0;
+    this.bossChargeDirY = 0;
+    this.bossChargeElapsed = 0;
 
-    // Boss projectiles (thrown objects that fly toward camera)
+    // Phase 2 throw timer
+    this.bossThrowTimer = BOSS_P2_THROW_INTERVAL;
+
+    // Boss projectiles
     this.bossProjectiles = [];
 
-    // Boss sprite — placed behind armchair initially
-    this.bossSprite = this.add.image(this.bossX, this.bossY, 'ts_boss4_normal').setDepth(10);
-    this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+    // Floor crack marks from phase 3 throws
+    this.floorCracks = [];
 
-    // Boss HP bar (full width, top of screen, scrollFactor 0)
+    // Armchair state (can become a projectile in phase 2)
+    this.armchairX = ARMCHAIR_X;
+    this.armchairY = ARMCHAIR_Y;
+    this.armchairInPlace = true;
+    this.armchairProjectile = null; // when pushed as projectile
+
+    // Boss sprite — starts hidden with peek texture (eyebrows+eyes above armchair)
+    this.bossSprite = this.add.image(this.armchairX, this.armchairY - ARMCHAIR_H / 2 - 10, 'ts_boss4_peek').setDepth(10);
+    this.bossSprite.setDisplaySize(64, 24);
+    this.bossSprite.setAlpha(1);
+
+    // Boss HP bar
     this._createBossHPBar();
 
-    // Single armchair (individual seat, not sofa) — the ONLY cover in the room
-    this.armchairSprite = this.add.image(ARMCHAIR_X, ARMCHAIR_Y, 'armchair').setDepth(12);
-    this.armchairSprite.setDisplaySize(100, 100);
-
-    // Boss cover state machine — 3-state cycle around the single armchair
-    // States: 'behind_cover' -> 'peeking' -> 'throwing' -> 'behind_cover'
-    this.bossCoverState = 'behind_cover';  // boss starts hidden behind armchair
-    this.bossCoverTimer = 1.5 + Math.random() * 1.5; // first peek in 1.5-3s
-    this.bossPeekTimer = 0;
-    this.bossPeekSide = 1; // 1 = right side, -1 = left side (alternates)
-
-    // Phase 2 / Phase 3 state flags
-    this.bossPhase2 = false; // 50% HP — faster pace, 2 throws per peek
-    this.bossPhase3 = false; // 20% HP — very fast, 3 throws, melee charges
-    this.bossChargeTimer = 0;    // phase 3: time left in current charge burst
-    this.bossPauseTimer = 0;     // phase 3: time left in pause between charges
-    this.bossCharging = false;   // phase 3: currently charging?
-    this.bossWeaponSprite = null; // phase 3: pipe weapon sprite
-
-    // Fury particles array (red dots floating up around boss when furious)
-    this.furyParticles = [];
-    this.furySpawnTimer = 0;
-
-    // Ambient dust particles (semi-transparent, slowly drifting in the room)
-    this.ambientDustParticles = [];
-    this._spawnAmbientDust();
-
-    // Falling rubble particles from ceiling (small rectangles dropping slowly)
-    this.fallingRubble = [];
-    this._spawnFallingRubble();
+    // HUD elements
+    this._createBossHUD();
 
     // Instructions
-    this.instrText.setText('ARROWS aim — Z shoot — X missile — SHIFT dodge — Eliminate the target!');
+    this.instrText.setText('ARROWS: Move | SPACE: Shoot | SHIFT: Dash | X: Missile');
     this.instrText.setColor('#ff8800');
-
-    // Dodge cooldown HUD indicator (bottom-left)
-    this.dodgeHudLabel = this.add.text(20, H - 55, 'SHIFT', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#00ccff',
-    }).setDepth(52).setScrollFactor(0);
-    this.dodgeHudBg = this.add.rectangle(62, H - 50, 40, 6, 0x222222).setDepth(51).setScrollFactor(0);
-    this.dodgeHudFill = this.add.rectangle(62, H - 50, 40, 6, 0x00ccff).setDepth(52).setScrollFactor(0);
+    this.instrText.setAlpha(1);
+    this.instrBg.setAlpha(0.7);
+    this.time.delayedCall(4000, () => {
+      if (this.phase === 'boss') {
+        this.tweens.add({ targets: [this.instrText, this.instrBg], alpha: 0, duration: 800 });
+      }
+    });
 
     // Start boss entrance
     this._bossEntrance();
+  }
+
+  _generateRoomDebris() {
+    // Pre-generate static debris positions for the destroyed room
+    this.roomDebris = [];
+    for (let i = 0; i < 10; i++) {
+      this.roomDebris.push({
+        x: ROOM_LEFT + 60 + Math.random() * (ROOM_RIGHT - ROOM_LEFT - 120),
+        y: ROOM_TOP + 60 + Math.random() * (ROOM_BOTTOM - ROOM_TOP - 120),
+        w: 8 + Math.random() * 16,
+        h: 6 + Math.random() * 12,
+        rotation: Math.random() * Math.PI,
+        shade: 0.3 + Math.random() * 0.3,
+      });
+    }
+    // Overturned table on left side
+    this.roomTable = { x: 160, y: 200, w: 70, h: 30, rotation: 0.35 };
+    // Broken chairs
+    this.roomChairs = [];
+    for (let i = 0; i < 4; i++) {
+      this.roomChairs.push({
+        x: 100 + Math.random() * 300,
+        y: 100 + Math.random() * 350,
+        size: 12 + Math.random() * 8,
+        rotation: Math.random() * Math.PI * 2,
+      });
+    }
+    // Hanging cables from ceiling (start points at top)
+    this.roomCables = [];
+    for (let i = 0; i < 3; i++) {
+      const cx = 200 + i * 250 + (Math.random() - 0.5) * 80;
+      const segments = [];
+      let sy = ROOM_TOP;
+      for (let s = 0; s < 6; s++) {
+        sy += 15 + Math.random() * 20;
+        segments.push({ x: cx + (Math.random() - 0.5) * 30, y: sy });
+      }
+      this.roomCables.push({ startX: cx, segments });
+    }
+    // Glass fragments (tiny bright dots)
+    this.roomGlass = [];
+    for (let i = 0; i < 20; i++) {
+      this.roomGlass.push({
+        x: ROOM_LEFT + 50 + Math.random() * (ROOM_RIGHT - ROOM_LEFT - 100),
+        y: ROOM_TOP + 50 + Math.random() * (ROOM_BOTTOM - ROOM_TOP - 100),
+        size: 1 + Math.random() * 2,
+      });
+    }
   }
 
   _createBossHPBar() {
     const barW = W - 100;
     const barH = 16;
     const barX = 50;
-    const barY = 65;
+    const barY = 10;
 
-    // Background
     this.bossHPBarBg = this.add.rectangle(barX + barW / 2, barY + barH / 2, barW, barH, 0x222222)
       .setDepth(51).setScrollFactor(0);
     this.bossHPBarBg.setStrokeStyle(1, 0x444444);
 
-    // Fill
     this.bossHPBarFill = this.add.rectangle(barX + 1, barY + 1, barW - 2, barH - 2, 0xff0000)
       .setDepth(52).setScrollFactor(0).setOrigin(0, 0);
 
-    // Label
     this.bossHPBarLabel = this.add.text(W / 2, barY - 2, 'THE WARDEN', {
       fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
       shadow: { offsetX: 0, offsetY: 0, color: '#ff4444', blur: 6, fill: true },
     }).setOrigin(0.5, 1).setDepth(53).setScrollFactor(0);
+  }
+
+  _createBossHUD() {
+    // Drone HP (bottom-left)
+    this.droneHPLabel = this.add.text(20, H - 30, '', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#00e5ff',
+    }).setDepth(52).setScrollFactor(0);
+
+    // Dash cooldown indicator (bottom-left, above HP)
+    this.dodgeHudLabel = this.add.text(20, H - 55, 'DASH', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#00ccff',
+    }).setDepth(52).setScrollFactor(0);
+    this.dodgeHudBg = this.add.rectangle(62, H - 50, 40, 6, 0x222222).setDepth(51).setScrollFactor(0);
+    this.dodgeHudFill = this.add.rectangle(62, H - 50, 40, 6, 0x00ccff).setDepth(52).setScrollFactor(0);
+
+    // Missile cooldown indicator (bottom-left, above dash)
+    this.missileHudLabel = this.add.text(20, H - 75, 'MISSILE', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#ff4444',
+    }).setDepth(52).setScrollFactor(0);
+    this.missileHudBg = this.add.rectangle(72, H - 70, 40, 6, 0x222222).setDepth(51).setScrollFactor(0);
+    this.missileHudFill = this.add.rectangle(72, H - 70, 40, 6, 0xff4444).setDepth(52).setScrollFactor(0);
   }
 
   _updateBossHPBar() {
@@ -1844,35 +2014,28 @@ export default class DroneScene extends Phaser.Scene {
     const ratio = Math.max(0, this.bossHP / this.bossMaxHP);
     this.bossHPBarFill.width = (barW - 2) * ratio;
 
-    // Color changes based on HP
     let color;
-    if (ratio > 0.6) {
-      color = 0xff0000; // red
-    } else if (ratio > 0.3) {
-      color = 0xff8800; // orange
-    } else {
-      color = 0x880000; // dark red
-    }
+    if (ratio > 0.6) color = 0xff0000;
+    else if (ratio > 0.3) color = 0xff8800;
+    else color = 0x880000;
     this.bossHPBarFill.setFillStyle(color);
   }
 
   _bossEntrance() {
     this.bossActive = false;
-
-    // Boss emerges from behind armchair (stands up from cover)
     SoundManager.get().playBossEntrance();
 
-    // Start behind armchair, then stand up
+    // Boss starts behind armchair, small and hidden
     this.bossX = ARMCHAIR_X;
-    const startY = ARMCHAIR_Y;
-    const targetY = BOSS_AREA_TOP + (BOSS_AREA_BOTTOM - BOSS_AREA_TOP) * 0.4;
+    this.bossY = ARMCHAIR_Y;
 
     if (this.bossSprite) {
-      this.bossSprite.setPosition(this.bossX, startY);
+      this.bossSprite.setPosition(this.bossX, this.bossY);
       this.bossSprite.setAlpha(0.3);
-      this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.5, BOSS_DISPLAY * 0.5);
+      this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
     }
 
+    // Dramatic entrance: boss rises from behind armchair
     this.tweens.add({
       targets: { val: 0 },
       val: 1,
@@ -1880,20 +2043,23 @@ export default class DroneScene extends Phaser.Scene {
       ease: 'Back.easeOut',
       onUpdate: (tween) => {
         const t = tween.getValue();
-        this.bossY = Phaser.Math.Linear(startY, targetY, t);
         if (this.bossSprite) {
-          this.bossSprite.setPosition(this.bossX, this.bossY);
           this.bossSprite.setAlpha(0.3 + 0.7 * t);
-          const size = Phaser.Math.Linear(BOSS_DISPLAY * 0.5, BOSS_DISPLAY, t);
+          const size = Phaser.Math.Linear(BOSS_DISPLAY * 0.4, BOSS_DISPLAY, t);
           this.bossSprite.setDisplaySize(size, size);
         }
       },
       onComplete: () => {
-        // Screen shake on reveal
         this.cameras.main.shake(400, 0.025);
         SoundManager.get().playBossShockwave();
 
-        // "THE WARDEN" text appears dramatically
+        // Reset boss to hiding state behind armchair
+        this.bossPeekScale = 0.4;
+        if (this.bossSprite) {
+          this.bossSprite.setAlpha(0.5);
+          this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
+        }
+
         const nameText = this.add.text(W / 2, H / 2, 'THE WARDEN', {
           fontFamily: 'monospace', fontSize: '40px', color: '#ff4444',
           shadow: { offsetX: 0, offsetY: 0, color: '#ff4444', blur: 20, fill: true },
@@ -1907,9 +2073,7 @@ export default class DroneScene extends Phaser.Scene {
           hold: 1500,
           onComplete: () => {
             nameText.destroy();
-            // Boss becomes active after entrance
             this.bossActive = true;
-            this._pickBossMoveDirection();
           },
         });
       },
@@ -1917,60 +2081,44 @@ export default class DroneScene extends Phaser.Scene {
   }
 
 
-
-
-  // ── Boss state machine: hide-peek-throw cycle behind single armchair ──
+  // ═════════════════════════════════════════════════════════════
+  // BOSS UPDATE: Top-down state machine
+  // ═════════════════════════════════════════════════════════════
   _updateBoss(dt) {
     if (!this.bossActive || this.bossDefeated) return;
 
-    // ── Phase transitions ──
     const hpRatio = this.bossHP / this.bossMaxHP;
 
-    // Phase 2 activation at 50% HP (angry — faster pace, 2 throws)
-    if (!this.bossPhase2 && hpRatio <= BOSS_PHASE2_THRESHOLD) {
-      this.bossPhase2 = true;
-      SoundManager.get().playBossRoar();
-      this.cameras.main.shake(250, 0.018);
-
-      // Flash boss
-      if (this.bossSprite) {
-        this.tweens.add({
-          targets: this.bossSprite, alpha: 0.3, duration: 80, yoyo: true, repeat: 4,
-        });
-      }
-    }
-
-    // Phase 3 activation at 20% HP (furious — very fast, 3 throws, melee charges)
-    if (!this.bossPhase3 && hpRatio <= BOSS_PHASE3_THRESHOLD) {
-      this.bossPhase3 = true;
+    // Phase transitions
+    const prevPhase = this.bossPhase;
+    if (hpRatio <= BOSS_PHASE3_THRESHOLD && this.bossPhase < 3) {
+      this.bossPhase = 3;
+      this.bossState = 'moving';
+      this.bossStateTimer = 0;
+      this.bossChargeTimer = BOSS_P3_CHARGE_INTERVAL;
       this.bossCharging = false;
-      this.bossPauseTimer = 0.5; // brief pause before first charge
       SoundManager.get().playBossRoar();
       this.cameras.main.shake(400, 0.03);
-
-      // Equip pipe weapon
-      if (!this.bossWeaponSprite && this.bossSprite) {
-        this.bossWeaponSprite = this.add.image(this.bossX + 30, this.bossY + 15, 'boss_pipe_weapon').setDepth(11);
-        this.bossWeaponSprite.setDisplaySize(32, 8);
-      }
-
-      // Flash boss red
       if (this.bossSprite) {
-        this.tweens.add({
-          targets: this.bossSprite, alpha: 0.2, duration: 60, yoyo: true, repeat: 8,
-        });
+        this.tweens.add({ targets: this.bossSprite, alpha: 0.2, duration: 60, yoyo: true, repeat: 8 });
+      }
+    } else if (hpRatio <= BOSS_PHASE2_THRESHOLD && this.bossPhase < 2) {
+      this.bossPhase = 2;
+      this.bossState = 'moving';
+      this.bossStateTimer = 0;
+      this.bossThrowTimer = BOSS_P2_THROW_INTERVAL;
+      this._pickBossMoveTarget();
+      SoundManager.get().playBossRoar();
+      this.cameras.main.shake(250, 0.018);
+      if (this.bossSprite) {
+        this.tweens.add({ targets: this.bossSprite, alpha: 0.3, duration: 80, yoyo: true, repeat: 4 });
       }
     }
 
-    // ── Phase 3: Melee charge behavior (boss rushes from behind armchair) ──
-    if (this.bossPhase3) {
-      this._updateBossPhase3(dt);
-    }
-
-    // ── Expression changes ──
+    // Expression changes
     let newExpr;
-    if (hpRatio > 0.5) newExpr = 'normal';
-    else if (hpRatio > BOSS_PHASE3_THRESHOLD) newExpr = 'angry';
+    if (this.bossPhase === 1) newExpr = 'normal';
+    else if (this.bossPhase === 2) newExpr = 'angry';
     else newExpr = 'furious';
 
     if (newExpr !== this.bossExpression) {
@@ -1979,286 +2127,298 @@ export default class DroneScene extends Phaser.Scene {
       if (this.bossSprite && this.textures.exists(texKey)) {
         this.bossSprite.setTexture(texKey);
       }
-      if (newExpr === 'furious' && !this.bossFury) {
-        this.bossFury = true;
-        SoundManager.get().playBossRoar();
-        this.cameras.main.shake(300, 0.02);
-      }
     }
 
-    // ── Cover behavior: hide-peek-throw cycle (only when NOT in phase 3 charge) ──
-    if (!this.bossPhase3 || !this.bossCharging) {
-      this._updateBossArmchairCover(dt);
+    // Phase-specific logic
+    switch (this.bossPhase) {
+      case 1: this._updateBossPhase1(dt); break;
+      case 2: this._updateBossPhase2(dt); break;
+      case 3: this._updateBossPhase3(dt); break;
     }
 
-    // ── Update pipe weapon position (phase 3) ──
-    if (this.bossWeaponSprite) {
-      const weapDir = this.bossVx >= 0 ? 1 : -1;
-      this.bossWeaponSprite.setPosition(this.bossX + weapDir * 30, this.bossY + 15);
-      this.bossWeaponSprite.setFlipX(weapDir < 0);
-      if (this.bossCharging) {
-        this.bossWeaponSprite.rotation += dt * 8 * weapDir;
-      } else {
-        this.bossWeaponSprite.rotation = weapDir > 0 ? 0.3 : -0.3;
-      }
+    // Update boss sprite position
+    if (this.bossSprite) {
+      this.bossSprite.setPosition(this.bossX, this.bossY);
     }
 
-    // ── Update projectiles (thrown objects flying toward camera) ──
+    // Update projectiles
     this._updateBossProjectiles(dt);
 
-    // ── Fury red particles ──
-    this._updateFuryParticles(dt);
+    // Update armchair projectile if in flight
+    this._updateArmchairProjectile(dt);
 
-    // ── Ambient dust ──
-    this._updateAmbientDust(dt);
-
-    // ── Falling rubble ──
-    this._updateFallingRubble(dt);
-
-    // ── Update HP bar ──
+    // Update HP bar
     this._updateBossHPBar();
   }
 
-  // ── Armchair cover state machine: behind_cover -> peeking -> throwing -> behind_cover ──
-  _updateBossArmchairCover(dt) {
-    const behindY = ARMCHAIR_Y - 60;  // boss hidden behind armchair
-    const peekY = ARMCHAIR_Y - 90;    // boss head visible above armchair
+  // ── Phase 1: hiding -> peeking -> throwing -> hiding ──
+  // When hiding, only EYEBROWS + EYES peek above armchair (signature visual)
+  _updateBossPhase1(dt) {
+    this.bossStateTimer -= dt;
 
-    switch (this.bossCoverState) {
-      case 'behind_cover':
-        this.bossCoverTimer -= dt;
-
-        // Boss hidden behind armchair — only show keffiyeh/hat peeking slightly
-        this.bossX = ARMCHAIR_X;
-        this.bossY = behindY;
+    switch (this.bossState) {
+      case 'hiding':
+        // NOT vulnerable, but peek texture shows eyebrows+eyes above armchair
+        this.bossVisible = false;
+        this.bossX = this.armchairX;
+        this.bossY = this.armchairY - ARMCHAIR_H / 2 - 10;
         if (this.bossSprite) {
-          this.bossSprite.setPosition(this.bossX, this.bossY);
-          this.bossSprite.setAlpha(0.2); // barely visible behind chair
-          this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
+          this.bossSprite.setTexture('ts_boss4_peek');
+          this.bossSprite.setDisplaySize(64, 24);
+          this.bossSprite.setAlpha(1);
         }
-
-        // Timer expires: peek out
-        if (this.bossCoverTimer <= 0) {
-          this.bossCoverState = 'peeking';
-          // Peek duration: player can shoot during this window
-          this.bossPeekTimer = 0.5;
-          // Alternate peek side
-          this.bossPeekSide = -this.bossPeekSide;
-          this.bossY = peekY;
-          if (this.bossSprite) {
-            this.bossSprite.setAlpha(1);
-            this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
-            // Offset slightly to the peek side
-            this.bossX = ARMCHAIR_X + this.bossPeekSide * 30;
-            this.bossSprite.setPosition(this.bossX, this.bossY);
-          }
-          // "SHOOT NOW!" hint
-          const hint = this.add.text(ARMCHAIR_X, ARMCHAIR_Y - 110, 'SHOOT NOW!', {
-            fontFamily: 'monospace', fontSize: '11px', color: '#00ff66',
-          }).setOrigin(0.5).setDepth(20);
-          this.tweens.add({ targets: hint, alpha: 0, duration: 800, onComplete: () => hint.destroy() });
+        if (this.bossStateTimer <= 0) {
+          this.bossState = 'peeking';
+          this.bossStateTimer = BOSS_P1_PEEK_DUR;
+          this.bossVisible = true;
         }
         break;
 
-      case 'peeking':
-        this.bossPeekTimer -= dt;
+      case 'peeking': {
+        // Boss rises from armchair — peek → full sprite, becomes vulnerable
+        this.bossVisible = true;
+        const riseProgress = Math.min(1, (BOSS_P1_PEEK_DUR - this.bossStateTimer) / BOSS_P1_PEEK_RISE);
+        this.bossX = this.armchairX;
+        this.bossY = this.armchairY - ARMCHAIR_H / 2 - 10 - 30 * riseProgress;
+
         if (this.bossSprite) {
-          this.bossSprite.setPosition(this.bossX, this.bossY);
+          if (riseProgress < 0.4) {
+            // Still peek texture, growing
+            this.bossSprite.setTexture('ts_boss4_peek');
+            const peekScale = 1 + riseProgress * 1.5;
+            this.bossSprite.setDisplaySize(64 * peekScale, 24 * peekScale);
+          } else {
+            // Switch to full texture, scale up
+            this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
+            const fullProgress = (riseProgress - 0.4) / 0.6;
+            const scale = 0.5 + 0.5 * fullProgress;
+            this.bossSprite.setDisplaySize(BOSS_DISPLAY * scale, BOSS_DISPLAY * scale);
+          }
+          this.bossSprite.setAlpha(1);
         }
 
-        // After peek delay: transition to throwing
-        if (this.bossPeekTimer <= 0) {
-          this.bossCoverState = 'throwing';
-          // Determine throw count based on phase
-          let throwCount = 1;
-          if (this.bossPhase3) throwCount = 3;
-          else if (this.bossPhase2) throwCount = 2;
-
-          // Throw objects with staggered timing
+        if (this.bossStateTimer <= 0) {
+          this.bossState = 'throwing';
+          this.bossStateTimer = 0.3;
           this._bossThrowObject();
-          for (let t = 1; t < throwCount; t++) {
-            this.time.delayedCall(t * 150, () => {
-              if (this.bossActive && !this.bossDefeated) this._bossThrowObject();
-            });
-          }
-
-          // Brief throwing animation time before retreating
-          this.bossCoverTimer = 0.3 + throwCount * 0.15;
         }
         break;
+      }
 
       case 'throwing':
-        this.bossCoverTimer -= dt;
+        // Full sprite, full size, throws object, then hides
+        this.bossVisible = true;
         if (this.bossSprite) {
-          this.bossSprite.setPosition(this.bossX, this.bossY);
+          this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
+          this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+          this.bossSprite.setAlpha(1);
         }
-
-        // After throw animation: retreat behind armchair
-        if (this.bossCoverTimer <= 0) {
-          this.bossCoverState = 'behind_cover';
-          this.bossY = behindY;
-          this.bossX = ARMCHAIR_X;
-
-          // Set hide duration based on phase
-          if (this.bossPhase3) {
-            this.bossCoverTimer = 0.5 + Math.random() * 0.5; // very fast (0.5-1s)
-          } else if (this.bossPhase2) {
-            this.bossCoverTimer = 1.0 + Math.random() * 0.5; // faster (1-1.5s)
-          } else {
-            this.bossCoverTimer = 2.0 + Math.random() * 1.0; // normal (2-3s)
-          }
-
-          // Boss becomes invulnerable again once behind armchair
-          if (this.bossSprite) {
-            this.bossSprite.setAlpha(0.2);
-            this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
-            this.bossSprite.setPosition(this.bossX, this.bossY);
-          }
+        if (this.bossStateTimer <= 0) {
+          this.bossState = 'hiding';
+          this.bossStateTimer = BOSS_P1_HIDE_MIN + Math.random() * (BOSS_P1_HIDE_MAX - BOSS_P1_HIDE_MIN);
         }
         break;
     }
   }
 
-  // ── Phase 3: Melee charge logic (boss rushes from armchair toward drone) ──
-  _updateBossPhase3(dt) {
-    if (this.bossCharging) {
-      // Charging toward drone position
-      this.bossChargeTimer -= dt;
+  // ── Phase 2: moving & throwing, occasionally pushes armchair ──
+  _updateBossPhase2(dt) {
+    this.bossVisible = true;
+    if (this.bossSprite) {
+      this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+      this.bossSprite.setAlpha(1);
+    }
 
-      const dxToDrone = this.droneX - this.bossX;
-      const dyToDrone = this.droneY - this.bossY;
-      const distToDrone = Math.sqrt(dxToDrone * dxToDrone + dyToDrone * dyToDrone);
+    // Movement toward target position
+    const dx = this.bossTargetX - this.bossX;
+    const dy = this.bossTargetY - this.bossY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 5) {
+      this.bossX += (dx / dist) * BOSS_P2_SPEED * dt;
+      this.bossY += (dy / dist) * BOSS_P2_SPEED * dt;
+    } else {
+      this._pickBossMoveTarget();
+    }
 
-      if (distToDrone > 5) {
-        this.bossX += (dxToDrone / distToDrone) * BOSS_SPEED_PHASE3 * dt;
-        this.bossY += (dyToDrone / distToDrone) * BOSS_SPEED_PHASE3 * dt;
+    // Keep in room bounds
+    this.bossX = Phaser.Math.Clamp(this.bossX, ROOM_LEFT + 60, ROOM_RIGHT - 60);
+    this.bossY = Phaser.Math.Clamp(this.bossY, ROOM_TOP + 60, ROOM_BOTTOM - 60);
+
+    // Throw timer
+    this.bossThrowTimer -= dt;
+    if (this.bossThrowTimer <= 0) {
+      this.bossThrowTimer = BOSS_P2_THROW_INTERVAL;
+      this._bossThrowObject(BOSS_P2_PROJ_SIZE);
+
+      // 20% chance to push armchair
+      if (this.armchairInPlace && Math.random() < BOSS_P2_ARMCHAIR_CHANCE) {
+        this._bossPushArmchair();
       }
+    }
+  }
+
+  // ── Phase 3: desperate mode ──
+  _updateBossPhase3(dt) {
+    this.bossVisible = true;
+    if (this.bossSprite) {
+      this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+      this.bossSprite.setAlpha(1);
+    }
+
+    // Charge logic
+    if (this.bossCharging) {
+      this.bossChargeElapsed += dt;
+      this.bossX += this.bossChargeDirX * BOSS_P3_CHARGE_SPEED * dt;
+      this.bossY += this.bossChargeDirY * BOSS_P3_CHARGE_SPEED * dt;
 
       // Keep in bounds
-      this.bossX = Phaser.Math.Clamp(this.bossX, BOSS_AREA_LEFT, BOSS_AREA_RIGHT);
-      this.bossY = Phaser.Math.Clamp(this.bossY, BOSS_AREA_TOP, H - 60);
+      this.bossX = Phaser.Math.Clamp(this.bossX, ROOM_LEFT + 50, ROOM_RIGHT - 50);
+      this.bossY = Phaser.Math.Clamp(this.bossY, ROOM_TOP + 50, ROOM_BOTTOM - 50);
 
-      // Check contact with drone — heavy melee damage
+      // Check collision with drone during charge
       if (this.droneInvulnTimer <= 0) {
         const contactDist = Phaser.Math.Distance.Between(this.bossX, this.bossY, this.droneX, this.droneY);
-        if (contactDist < 50) {
-          this._takeDamage(BOSS_PHASE3_CHARGE_DMG);
-          this.droneInvulnTimer = 1.5;
+        if (contactDist < 45) {
+          this._takeDamage(BOSS_CHARGE_DMG);
+          this.droneInvulnTimer = 1.0;
           SoundManager.get().playBossShockwave();
           this.cameras.main.shake(300, 0.025);
         }
       }
 
-      // Update sprite
-      if (this.bossSprite) {
-        this.bossSprite.setAlpha(1);
-        this.bossSprite.setPosition(this.bossX, this.bossY);
-        this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.1, BOSS_DISPLAY * 1.1);
-      }
-
-      // Charge finished — run back behind armchair
-      if (this.bossChargeTimer <= 0) {
+      // End charge after duration
+      if (this.bossChargeElapsed >= BOSS_P3_CHARGE_DURATION) {
         this.bossCharging = false;
-        this.bossPauseTimer = 1.0; // 1s pause between charges
-        this.bossCoverState = 'behind_cover';
-        this.bossCoverTimer = 0.5 + Math.random() * 0.5;
-        if (this.bossSprite) {
-          this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
-        }
+        this.bossChargeTimer = BOSS_P3_CHARGE_INTERVAL;
+        this._pickBossMoveTarget();
       }
     } else {
-      // Pause between charges — retreating behind armchair
-      this.bossPauseTimer -= dt;
-
-      // Move back toward armchair
-      const retreatX = ARMCHAIR_X;
-      const retreatY = ARMCHAIR_Y - 60;
-      const dx = retreatX - this.bossX;
-      const dy = retreatY - this.bossY;
+      // Normal movement
+      const dx = this.bossTargetX - this.bossX;
+      const dy = this.bossTargetY - this.bossY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 5) {
-        this.bossX += (dx / dist) * 80 * dt;
-        this.bossY += (dy / dist) * 80 * dt;
+        this.bossX += (dx / dist) * BOSS_P3_SPEED * dt;
+        this.bossY += (dy / dist) * BOSS_P3_SPEED * dt;
+      } else {
+        this._pickBossMoveTarget();
       }
 
-      if (this.bossPauseTimer <= 0) {
-        // Start a new charge
+      // Keep in bounds
+      this.bossX = Phaser.Math.Clamp(this.bossX, ROOM_LEFT + 50, ROOM_RIGHT - 50);
+      this.bossY = Phaser.Math.Clamp(this.bossY, ROOM_TOP + 50, ROOM_BOTTOM - 50);
+
+      // Charge timer
+      this.bossChargeTimer -= dt;
+      if (this.bossChargeTimer <= 0) {
+        // Start charge toward drone
         this.bossCharging = true;
-        this.bossChargeTimer = 2.0;
+        this.bossChargeElapsed = 0;
+        const cdx = this.droneX - this.bossX;
+        const cdy = this.droneY - this.bossY;
+        const cDist = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
+        this.bossChargeDirX = cdx / cDist;
+        this.bossChargeDirY = cdy / cDist;
         SoundManager.get().playBossRoar();
-        // Boss becomes fully visible during charge
         if (this.bossSprite) {
-          this.bossSprite.setAlpha(1);
-          this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.1, BOSS_DISPLAY * 1.1);
+          this.bossSprite.setDisplaySize(BOSS_DISPLAY * 1.15, BOSS_DISPLAY * 1.15);
         }
       }
     }
+
+    // Throw timer (every 1 second in phase 3)
+    this.bossThrowTimer -= dt;
+    if (this.bossThrowTimer <= 0) {
+      this.bossThrowTimer = BOSS_P3_THROW_INTERVAL;
+      this._bossThrowObject(BOSS_P3_PROJ_SIZE);
+    }
   }
 
-  _bossThrowObject() {
+  _pickBossMoveTarget() {
+    this.bossTargetX = ROOM_LEFT + 80 + Math.random() * (ROOM_RIGHT - ROOM_LEFT - 160);
+    this.bossTargetY = ROOM_TOP + 80 + Math.random() * (ROOM_BOTTOM - ROOM_TOP - 160);
+  }
+
+  // ── Boss throws an object toward the drone ──
+  _bossThrowObject(projSize) {
     if (!this.bossSprite) return;
     SoundManager.get().playBossLaser();
 
-    // Show throwing arm animation
-    const armStartX = this.bossX;
-    const armStartY = this.bossY + 15;
-    const armTargetX = this.droneX;
-    const armTargetY = this.droneY;
-    const armAngle = Math.atan2(armTargetY - armStartY, armTargetX - armStartX);
-    const armLen = 28;
-
-    const armGfx = this.add.graphics().setDepth(11);
-    armGfx.lineStyle(5, 0x7a5030, 1);
-    armGfx.beginPath();
-    armGfx.moveTo(armStartX, armStartY);
-    armGfx.lineTo(armStartX + Math.cos(armAngle) * armLen, armStartY + Math.sin(armAngle) * armLen);
-    armGfx.strokePath();
-    armGfx.fillStyle(0x906040, 1);
-    armGfx.fillCircle(armStartX + Math.cos(armAngle) * armLen, armStartY + Math.sin(armAngle) * armLen, 4);
-
-    this.tweens.add({
-      targets: armGfx,
-      alpha: 0,
-      duration: 300,
-      delay: 50,
-      onComplete: () => armGfx.destroy(),
-    });
-
-    // Create projectile
+    const size = projSize || 32;
     const startX = this.bossX;
-    const startY = this.bossY + 30;
-    const spread = this.bossCoverState === 'peeking' || this.bossCoverState === 'throwing' ? 50 : 80;
+    const startY = this.bossY;
+    const spread = 40;
     const targetX = this.droneX + (Math.random() - 0.5) * spread;
-    const targetY = this.droneY + (Math.random() - 0.5) * 30;
+    const targetY = this.droneY + (Math.random() - 0.5) * spread;
 
     const projIdx = Math.floor(Math.random() * 4);
     const projTex = 'boss_projectile_' + projIdx;
     const texKey = this.textures.exists(projTex) ? projTex : 'boss_projectile';
+    const projTypes = ['plank', 'brick', 'concrete', 'bottle', 'chair'];
+    const projType = projTypes[Math.floor(Math.random() * projTypes.length)];
 
     const proj = this.add.image(startX, startY, texKey).setDepth(18);
-    proj.setDisplaySize(8, 8);
+    proj.setDisplaySize(size, size);
 
     const dx = targetX - startX;
     const dy = targetY - startY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const speed = BOSS_THROW_SPEED;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
     this.bossProjectiles.push({
       sprite: proj,
       x: startX,
       y: startY,
-      vx: (dx / dist) * speed,
-      vy: (dy / dist) * speed,
-      startX: startX,
-      startY: startY,
-      targetX: targetX,
-      targetY: targetY,
-      totalDist: dist,
-      traveled: 0,
+      vx: (dx / dist) * BOSS_THROW_SPEED,
+      vy: (dy / dist) * BOSS_THROW_SPEED,
+      size: size,
+      type: projType,
       alive: true,
     });
   }
 
+  // ── Boss pushes the armchair as a projectile toward drone ──
+  _bossPushArmchair() {
+    if (!this.armchairInPlace) return;
+    this.armchairInPlace = false;
+    SoundManager.get().playBossShockwave();
+
+    const dx = this.droneX - this.armchairX;
+    const dy = this.droneY - this.armchairY;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    this.armchairProjectile = {
+      x: this.armchairX,
+      y: this.armchairY,
+      vx: (dx / dist) * 150,
+      vy: (dy / dist) * 150,
+      alive: true,
+    };
+  }
+
+  _updateArmchairProjectile(dt) {
+    const ap = this.armchairProjectile;
+    if (!ap || !ap.alive) return;
+
+    ap.x += ap.vx * dt;
+    ap.y += ap.vy * dt;
+
+    // Out of bounds
+    if (ap.x < -100 || ap.x > W + 100 || ap.y < -100 || ap.y > H + 100) {
+      ap.alive = false;
+      return;
+    }
+
+    // Hit drone
+    if (this.droneInvulnTimer <= 0) {
+      const dist = Phaser.Math.Distance.Between(ap.x, ap.y, this.droneX, this.droneY);
+      if (dist < 45) {
+        ap.alive = false;
+        this._takeDamage(BOSS_THROW_DMG);
+        this.droneInvulnTimer = 1.0;
+      }
+    }
+  }
+
+  // ── Update boss projectiles ──
   _updateBossProjectiles(dt) {
     for (let i = this.bossProjectiles.length - 1; i >= 0; i--) {
       const p = this.bossProjectiles[i];
@@ -2270,27 +2430,31 @@ export default class DroneScene extends Phaser.Scene {
 
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      const moveDist = Math.sqrt(p.vx * p.vx + p.vy * p.vy) * dt;
-      p.traveled += moveDist;
       p.sprite.setPosition(p.x, p.y);
-      p.sprite.rotation += 5 * dt;
-
-      // Depth scaling: starts small (8px at boss), grows to 28px at drone
-      const progress = Math.min(1, p.traveled / p.totalDist);
-      const size = Phaser.Math.Linear(8, 28, progress);
-      p.sprite.setDisplaySize(size, size);
+      p.sprite.rotation += 5 * dt; // rotation tween
 
       // Out of bounds
       if (p.x < -30 || p.x > W + 30 || p.y < -30 || p.y > H + 30) {
+        // Phase 3: leave crack mark where projectile lands
+        if (this.bossPhase === 3) {
+          this.floorCracks.push({
+            x: Phaser.Math.Clamp(p.x, ROOM_LEFT + 10, ROOM_RIGHT - 10),
+            y: Phaser.Math.Clamp(p.y, ROOM_TOP + 10, ROOM_BOTTOM - 10),
+          });
+        }
         this._projectileBreakEffect(p.x, p.y);
         p.alive = false;
         continue;
       }
 
-      // Hit drone/crosshair
-      if (this.droneInvulnTimer <= 0) {
+      // Hit drone
+      if (this.droneInvulnTimer <= 0 && !this.dodgeActive) {
         const dist = Phaser.Math.Distance.Between(p.x, p.y, this.droneX, this.droneY);
-        if (dist < 28) {
+        if (dist < 25) {
+          // Phase 3: leave crack mark
+          if (this.bossPhase === 3) {
+            this.floorCracks.push({ x: p.x, y: p.y });
+          }
           this._projectileBreakEffect(p.x, p.y);
           p.alive = false;
           this._takeDamage(BOSS_THROW_DMG);
@@ -2320,88 +2484,6 @@ export default class DroneScene extends Phaser.Scene {
     }
   }
 
-  // ── Ambient dust particles ──
-  _spawnAmbientDust() {
-    for (let i = 0; i < 12; i++) {
-      const px = 150 + Math.random() * (W - 300);
-      const py = ROOM_BACK_Y + 20 + Math.random() * (ARMCHAIR_Y - ROOM_BACK_Y - 20);
-      const size = 1.5 + Math.random() * 3;
-      const alpha = 0.06 + Math.random() * 0.12;
-      const particle = this.add.circle(px, py, size, 0xaaa898, alpha).setDepth(8);
-      const driftVx = (Math.random() - 0.5) * 12;
-      const driftVy = -3 - Math.random() * 6;
-      this.ambientDustParticles.push({ sprite: particle, x: px, y: py, vx: driftVx, vy: driftVy });
-    }
-  }
-
-  _updateAmbientDust(dt) {
-    for (const d of this.ambientDustParticles) {
-      d.x += d.vx * dt;
-      d.y += d.vy * dt;
-      if (d.y < ROOM_BACK_Y) {
-        d.y = ARMCHAIR_Y - 10;
-        d.x = 150 + Math.random() * (W - 300);
-      }
-      if (d.x < 140) d.x = W - 160;
-      if (d.x > W - 140) d.x = 160;
-      d.sprite.setPosition(d.x, d.y);
-    }
-  }
-
-  // ── Falling rubble particles from ceiling ──
-  _spawnFallingRubble() {
-    this.fallingRubble = [];
-    for (let i = 0; i < 6; i++) {
-      const px = 160 + Math.random() * (W - 320);
-      const py = ROOM_BACK_Y + Math.random() * 20;
-      const size = 2 + Math.random() * 4;
-      const particle = this.add.rectangle(px, py, size, size * 0.6, 0x8a7a60, 0.3).setDepth(8);
-      this.fallingRubble.push({
-        sprite: particle, x: px, y: py,
-        vy: 8 + Math.random() * 12,
-        vx: (Math.random() - 0.5) * 4,
-        rotation: Math.random() * 0.1,
-      });
-    }
-  }
-
-  _updateFallingRubble(dt) {
-    for (const r of this.fallingRubble) {
-      r.x += r.vx * dt;
-      r.y += r.vy * dt;
-      r.sprite.rotation += r.rotation * dt;
-      r.sprite.setPosition(r.x, r.y);
-      // Reset when below visible area
-      if (r.y > H - 20) {
-        r.y = ROOM_BACK_Y + Math.random() * 10;
-        r.x = 160 + Math.random() * (W - 320);
-      }
-    }
-  }
-
-  // ── Fury red particles ──
-  _updateFuryParticles(dt) {
-    if (!this.bossFury || this.bossDefeated) return;
-
-    this.furySpawnTimer -= dt;
-    if (this.furySpawnTimer <= 0) {
-      this.furySpawnTimer = 0.08 + Math.random() * 0.06;
-      const px = this.bossX + (Math.random() - 0.5) * 60;
-      const py = this.bossY + (Math.random() - 0.5) * 50;
-      const size = 1 + Math.random() * 2.5;
-      const redShade = Math.floor(180 + Math.random() * 75);
-      const color = Phaser.Display.Color.GetColor(redShade, 10 + Math.floor(Math.random() * 30), 0);
-      const particle = this.add.circle(px, py, size, color, 0.6 + Math.random() * 0.3).setDepth(11);
-      this.tweens.add({
-        targets: particle,
-        y: py - 30 - Math.random() * 20,
-        alpha: 0,
-        duration: 500 + Math.random() * 400,
-        onComplete: () => particle.destroy(),
-      });
-    }
-  }
-
   // ── Boss damage visual effects ──
   _bossDamageEffects() {
     const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.12).setDepth(45).setScrollFactor(0);
@@ -2415,7 +2497,7 @@ export default class DroneScene extends Phaser.Scene {
       const color = colors[Math.floor(Math.random() * colors.length)];
       const debris = this.add.circle(px, py, size, color, 0.9).setDepth(22);
       const vx = (Math.random() - 0.5) * 120;
-      const vy = -20 - Math.random() * 80;
+      const vy = (Math.random() - 0.5) * 120;
       this.tweens.add({
         targets: debris,
         x: px + vx * 0.5,
@@ -2427,24 +2509,16 @@ export default class DroneScene extends Phaser.Scene {
     }
   }
 
-
-  // ── Drone combat (Z = shoot, X = missile) — front-facing perspective ──
-  // Bullets go INTO the room (start big, shrink as they travel toward boss)
+  // ═════════════════════════════════════════════════════════════
+  // DRONE COMBAT (top-down: SPACE shoot, X missile, SHIFT dash)
+  // ═════════════════════════════════════════════════════════════
   _updateDroneCombat(dt) {
     this.droneShootTimer -= dt;
     this.droneMissileTimer -= dt;
-    if (this.droneInvulnTimer > 0) {
-      this.droneInvulnTimer -= dt;
-      // Blink crosshair during invulnerability
-      if (this.droneSprite) {
-        this.droneSprite.setAlpha(Math.sin(this.droneInvulnTimer * 20) > 0 ? 1 : 0.3);
-      }
-    } else {
-      if (this.droneSprite) this.droneSprite.setAlpha(1);
-    }
+    if (this.droneInvulnTimer > 0) this.droneInvulnTimer -= dt;
 
-    // Z = shoot bullet
-    if (this.keys.z.isDown && this.droneShootTimer <= 0) {
+    // SPACE = shoot bullet toward boss
+    if (this.keys.space.isDown && this.droneShootTimer <= 0) {
       this.droneShootTimer = DRONE_SHOOT_COOLDOWN;
       this._droneShootBullet();
     }
@@ -2455,7 +2529,7 @@ export default class DroneScene extends Phaser.Scene {
       this._droneShootMissile();
     }
 
-    // Update drone bullets (traveling into room with shrink effect)
+    // Update drone bullets
     for (let i = this.droneBullets.length - 1; i >= 0; i--) {
       const b = this.droneBullets[i];
       if (!b.alive) {
@@ -2466,50 +2540,25 @@ export default class DroneScene extends Phaser.Scene {
 
       b.x += b.vx * dt;
       b.y += b.vy * dt;
-      const moveDist = Math.sqrt(b.vx * b.vx + b.vy * b.vy) * dt;
-      b.traveled += moveDist;
       b.sprite.setPosition(b.x, b.y);
 
-      // Depth scaling: starts large (10px), shrinks to 4px as it travels into room
-      const progress = Math.min(1, b.traveled / b.totalDist);
-      const size = Phaser.Math.Linear(10, 4, progress);
-      b.sprite.setDisplaySize(size, size);
-      // Also reduce alpha slightly for depth feeling
-      b.sprite.setAlpha(Phaser.Math.Linear(1, 0.6, progress));
-
-      // Out of bounds (past back wall)
-      if (b.y < ROOM_BACK_Y - 10 || b.x < 100 || b.x > W - 100) {
+      // Out of bounds
+      if (b.x < ROOM_LEFT || b.x > ROOM_RIGHT || b.y < ROOM_TOP || b.y > ROOM_BOTTOM) {
         b.alive = false;
         continue;
       }
 
-      // Hit boss
-      if (this.bossActive && !this.bossDefeated) {
+      // Hit boss (only when visible)
+      if (this.bossActive && !this.bossDefeated && this.bossVisible) {
         const dist = Phaser.Math.Distance.Between(b.x, b.y, this.bossX, this.bossY);
-        const hitRadius = this.bossCoverState === 'behind_cover' ? BOSS_DISPLAY * 0.2 : BOSS_DISPLAY / 2.5;
-        if (dist < hitRadius) {
+        if (dist < BOSS_DISPLAY / 2.2) {
           b.alive = false;
-          if (this.bossCoverState === 'behind_cover') {
-            // Bullet hits armchair — visual spark, no damage to boss
-            const spark = this.add.circle(b.x, b.y, 4, 0xffcc00, 0.9).setDepth(25);
-            this.tweens.add({ targets: spark, alpha: 0, scaleX: 2, scaleY: 2, duration: 200, onComplete: () => spark.destroy() });
-          } else {
-            this._damageBoss(b.damage);
-          }
-        }
-      }
-
-      // Hit armchair (indestructible — absorbs shots with spark effect)
-      if (b.alive && this.armchairSprite) {
-        if (b.y > ARMCHAIR_Y - 45 && b.y < ARMCHAIR_Y + 50 && Math.abs(b.x - ARMCHAIR_X) < 80) {
-          b.alive = false;
-          const spark = this.add.circle(b.x, b.y, 4, 0xffcc00, 0.9).setDepth(25);
-          this.tweens.add({ targets: spark, alpha: 0, scaleX: 2, scaleY: 2, duration: 200, onComplete: () => spark.destroy() });
+          this._damageBoss(b.damage);
         }
       }
     }
 
-    // Update drone missiles (homing, travel into room)
+    // Update drone missiles (homing toward boss)
     for (let i = this.droneMissiles.length - 1; i >= 0; i--) {
       const m = this.droneMissiles[i];
       if (!m.alive) {
@@ -2519,8 +2568,8 @@ export default class DroneScene extends Phaser.Scene {
         continue;
       }
 
-      // Missiles home toward boss
-      if (this.bossActive && !this.bossDefeated && this.bossSprite) {
+      // Home toward boss
+      if (this.bossActive && !this.bossDefeated) {
         const angle = Math.atan2(this.bossY - m.y, this.bossX - m.x);
         const currentAngle = Math.atan2(m.vy, m.vx);
         const diff = angle - currentAngle;
@@ -2532,29 +2581,21 @@ export default class DroneScene extends Phaser.Scene {
 
       m.x += m.vx * dt;
       m.y += m.vy * dt;
-      const moveDist = Math.sqrt(m.vx * m.vx + m.vy * m.vy) * dt;
-      m.traveled += moveDist;
       m.sprite.setPosition(m.x, m.y);
       m.sprite.rotation = Math.atan2(m.vy, m.vx) - Math.PI / 2;
 
-      // Depth scaling for missile (starts 16px, shrinks to 8px)
-      const progress = Math.min(1, m.traveled / m.totalDist);
-      const size = Phaser.Math.Linear(16, 8, progress);
-      m.sprite.setDisplaySize(size, size);
-
-      // Trail effect
+      // Trail
       if (m.trail) {
-        m.trail.setPosition(m.x, m.y + 6);
-        m.trail.setScale(Phaser.Math.Linear(1, 0.4, progress));
+        m.trail.setPosition(m.x, m.y);
       }
 
       // Out of bounds
-      if (m.x < 80 || m.x > W - 80 || m.y < ROOM_BACK_Y - 20 || m.y > H + 20) {
+      if (m.x < ROOM_LEFT - 20 || m.x > ROOM_RIGHT + 20 || m.y < ROOM_TOP - 20 || m.y > ROOM_BOTTOM + 20) {
         m.alive = false;
         continue;
       }
 
-      // Hit boss
+      // Hit boss (missiles hit even when hiding)
       if (this.bossActive && !this.bossDefeated) {
         const dist = Phaser.Math.Distance.Between(m.x, m.y, this.bossX, this.bossY);
         if (dist < BOSS_DISPLAY / 2) {
@@ -2568,46 +2609,27 @@ export default class DroneScene extends Phaser.Scene {
           });
         }
       }
-
-      // Missiles hit armchair (indestructible — absorbs with explosion)
-      if (m.alive && this.armchairSprite) {
-        if (m.y > ARMCHAIR_Y - 48 && m.y < ARMCHAIR_Y + 55 && Math.abs(m.x - ARMCHAIR_X) < 85) {
-          m.alive = false;
-          SoundManager.get().playExplosion();
-          const blast = this.add.circle(m.x, m.y, 10, 0xff4400, 0.8).setDepth(22);
-          this.tweens.add({
-            targets: blast, scaleX: 3, scaleY: 3, alpha: 0, duration: 400,
-            onComplete: () => blast.destroy(),
-          });
-        }
-      }
     }
   }
 
   _droneShootBullet() {
-    // Bullet fires from crosshair position INTO the room (toward boss)
-    // Calculate direction toward the boss area (or straight into room if boss dead)
     const startX = this.droneX;
     const startY = this.droneY;
-    // Aim toward center back of room, influenced by crosshair position
-    const targetY = ROOM_BACK_Y + 20;
-    // The bullet converges toward center as it travels into the room
-    const targetX = Phaser.Math.Linear(startX, W / 2, 0.3);
+    // Shoot toward the boss position
+    const targetX = this.bossX;
+    const targetY = this.bossY;
 
     const dx = targetX - startX;
     const dy = targetY - startY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-    const bullet = this.add.image(startX, startY, 'drone_bullet').setDepth(19);
-    bullet.setDisplaySize(10, 10);
+    const bullet = this.add.circle(startX, startY, DRONE_BULLET_RADIUS, 0x00e5ff, 1).setDepth(19);
     this.droneBullets.push({
       sprite: bullet,
       x: startX,
       y: startY,
       vx: (dx / dist) * DRONE_BULLET_SPEED,
       vy: (dy / dist) * DRONE_BULLET_SPEED,
-      totalDist: dist,
-      traveled: 0,
       damage: BOSS_BULLET_DMG,
       alive: true,
     });
@@ -2617,26 +2639,23 @@ export default class DroneScene extends Phaser.Scene {
     SoundManager.get().playBossLaser();
     const startX = this.droneX;
     const startY = this.droneY;
+    const targetX = this.bossX;
+    const targetY = this.bossY;
 
-    const missile = this.add.image(startX, startY, 'drone_missile').setDepth(19);
-    missile.setDisplaySize(16, 16);
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-    // Trail glow
+    const missile = this.add.circle(startX, startY, DRONE_MISSILE_RADIUS, 0xff4444, 1).setDepth(19);
     const trail = this.add.circle(startX, startY, 4, 0xff8800, 0.5).setDepth(18);
-
-    // Initial velocity into the room (upward)
-    const targetY = ROOM_BACK_Y + 40;
-    const totalDist = Math.abs(startY - targetY);
 
     this.droneMissiles.push({
       sprite: missile,
       trail: trail,
       x: startX,
       y: startY,
-      vx: 0,
-      vy: -DRONE_MISSILE_SPEED,
-      totalDist: totalDist,
-      traveled: 0,
+      vx: (dx / dist) * DRONE_MISSILE_SPEED,
+      vy: (dy / dist) * DRONE_MISSILE_SPEED,
       damage: BOSS_MISSILE_DMG,
       alive: true,
     });
@@ -2657,12 +2676,11 @@ export default class DroneScene extends Phaser.Scene {
       });
     }
 
-    // Screen flash + debris particles around hit point
     this._bossDamageEffects();
 
     // Damage number popup
     const dmgText = this.add.text(this.bossX + (Math.random() - 0.5) * 40, this.bossY - 50, `-${amount}`, {
-      fontFamily: 'monospace', fontSize: '16px', color: amount >= 10 ? '#ff4444' : '#ffffff',
+      fontFamily: 'monospace', fontSize: '16px', color: amount >= 5 ? '#ff4444' : '#ffffff',
       shadow: { offsetX: 0, offsetY: 0, color: '#000000', blur: 3, fill: true },
     }).setOrigin(0.5).setDepth(55);
     this.tweens.add({
@@ -2672,7 +2690,6 @@ export default class DroneScene extends Phaser.Scene {
 
     this.score += amount * 50;
 
-    // Boss defeated
     if (this.bossHP <= 0) {
       this.bossHP = 0;
       this._updateBossHPBar();
@@ -2680,25 +2697,270 @@ export default class DroneScene extends Phaser.Scene {
     }
   }
 
-  // ── Boss Death Animation ──
+  // ═════════════════════════════════════════════════════════════
+  // ROOM RENDERING (top-down destroyed room, drawn each frame)
+  // ═════════════════════════════════════════════════════════════
+  _drawRoom() {
+    const gfx = this.roomGfx;
+    if (!gfx) return;
+    gfx.clear();
+
+    // 1. Floor background (concrete)
+    gfx.fillStyle(0x888880);
+    gfx.fillRect(ROOM_LEFT, ROOM_TOP, ROOM_RIGHT - ROOM_LEFT, ROOM_BOTTOM - ROOM_TOP);
+
+    // Floor cracks (static pattern)
+    gfx.lineStyle(1, 0x666660, 0.5);
+    const crackSeeds = [
+      [120, 150, 180, 160, 220, 190],
+      [400, 100, 430, 130, 460, 110],
+      [600, 350, 630, 380, 610, 420],
+      [300, 400, 340, 420, 320, 460],
+      [750, 200, 770, 240, 800, 220],
+    ];
+    for (const c of crackSeeds) {
+      gfx.beginPath();
+      gfx.moveTo(c[0], c[1]);
+      gfx.lineTo(c[2], c[3]);
+      gfx.lineTo(c[4], c[5]);
+      gfx.strokePath();
+    }
+
+    // Dynamic floor cracks from phase 3 impacts
+    gfx.lineStyle(1.5, 0x555550, 0.6);
+    for (const crack of this.floorCracks) {
+      gfx.beginPath();
+      gfx.moveTo(crack.x - 8, crack.y - 5);
+      gfx.lineTo(crack.x, crack.y);
+      gfx.lineTo(crack.x + 6, crack.y + 7);
+      gfx.strokePath();
+      gfx.beginPath();
+      gfx.moveTo(crack.x - 4, crack.y + 5);
+      gfx.lineTo(crack.x, crack.y);
+      gfx.lineTo(crack.x + 8, crack.y - 3);
+      gfx.strokePath();
+    }
+
+    // 2. Walls (darker, 4 sides)
+    const wallColor = 0x666658;
+    // Top wall
+    gfx.fillStyle(wallColor);
+    gfx.fillRect(0, 0, W, ROOM_TOP);
+    // Bottom wall
+    gfx.fillRect(0, ROOM_BOTTOM, W, H - ROOM_BOTTOM);
+    // Left wall
+    gfx.fillRect(0, 0, ROOM_LEFT, H);
+    // Right wall
+    gfx.fillRect(ROOM_RIGHT, 0, W - ROOM_RIGHT, H);
+
+    // Wall cracks (drawn as lines on walls)
+    gfx.lineStyle(1.5, 0x555548, 0.6);
+    // Top wall cracks
+    gfx.beginPath(); gfx.moveTo(200, 5); gfx.lineTo(220, 20); gfx.lineTo(210, 35); gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(600, 8); gfx.lineTo(580, 25); gfx.lineTo(590, 38); gfx.strokePath();
+    // Left wall cracks
+    gfx.beginPath(); gfx.moveTo(5, 200); gfx.lineTo(20, 220); gfx.lineTo(8, 240); gfx.strokePath();
+    // Right wall cracks
+    gfx.beginPath(); gfx.moveTo(W - 5, 300); gfx.lineTo(W - 20, 320); gfx.lineTo(W - 8, 340); gfx.strokePath();
+    // Bottom wall cracks
+    gfx.beginPath(); gfx.moveTo(400, H - 5); gfx.lineTo(420, H - 20); gfx.lineTo(410, H - 35); gfx.strokePath();
+
+    // 3. Hole in top wall (collapsed ceiling) - bright sky visible
+    gfx.fillStyle(0x88bbee);
+    gfx.fillRect(350, 0, 200, ROOM_TOP);
+    // Sky gradient edge
+    gfx.fillStyle(0xaaccee, 0.5);
+    gfx.fillRect(340, 0, 12, ROOM_TOP);
+    gfx.fillRect(548, 0, 12, ROOM_TOP);
+
+    // 4. Light patches on floor from broken windows (yellowish, alpha 0.3)
+    gfx.fillStyle(0xeeee88, 0.15);
+    gfx.fillRect(100, 120, 120, 80);
+    gfx.fillStyle(0xeeee88, 0.12);
+    gfx.fillRect(700, 350, 100, 70);
+    gfx.fillStyle(0xeeeeaa, 0.1);
+    gfx.fillRect(400, 80, 90, 60);
+
+    // 5. Scattered debris (gray irregular shapes)
+    for (const d of this.roomDebris) {
+      const gray = Math.floor(0x60 + d.shade * 0x40);
+      const col = Phaser.Display.Color.GetColor(gray, gray, gray - 8);
+      gfx.fillStyle(col, 0.7);
+      gfx.save();
+      // Draw rotated rectangle approximation
+      const cx = d.x, cy = d.y;
+      const hw = d.w / 2, hh = d.h / 2;
+      const cos = Math.cos(d.rotation), sin = Math.sin(d.rotation);
+      gfx.beginPath();
+      gfx.moveTo(cx + cos * (-hw) - sin * (-hh), cy + sin * (-hw) + cos * (-hh));
+      gfx.lineTo(cx + cos * hw - sin * (-hh), cy + sin * hw + cos * (-hh));
+      gfx.lineTo(cx + cos * hw - sin * hh, cy + sin * hw + cos * hh);
+      gfx.lineTo(cx + cos * (-hw) - sin * hh, cy + sin * (-hw) + cos * hh);
+      gfx.closePath();
+      gfx.fillPath();
+    }
+
+    // 6. Overturned table (left side)
+    const t = this.roomTable;
+    gfx.fillStyle(0x6a5040, 0.8);
+    const tcos = Math.cos(t.rotation), tsin = Math.sin(t.rotation);
+    const thw = t.w / 2, thh = t.h / 2;
+    gfx.beginPath();
+    gfx.moveTo(t.x + tcos * (-thw) - tsin * (-thh), t.y + tsin * (-thw) + tcos * (-thh));
+    gfx.lineTo(t.x + tcos * thw - tsin * (-thh), t.y + tsin * thw + tcos * (-thh));
+    gfx.lineTo(t.x + tcos * thw - tsin * thh, t.y + tsin * thw + tcos * thh);
+    gfx.lineTo(t.x + tcos * (-thw) - tsin * thh, t.y + tsin * (-thw) + tcos * thh);
+    gfx.closePath();
+    gfx.fillPath();
+    // Table leg sticking up
+    gfx.lineStyle(3, 0x5a4030, 0.7);
+    gfx.beginPath();
+    gfx.moveTo(t.x - 20, t.y - 10);
+    gfx.lineTo(t.x - 28, t.y - 30);
+    gfx.strokePath();
+
+    // 7. Broken chairs
+    for (const ch of this.roomChairs) {
+      gfx.fillStyle(0x5a4a38, 0.6);
+      const ccos = Math.cos(ch.rotation), csin = Math.sin(ch.rotation);
+      const hs = ch.size / 2;
+      gfx.beginPath();
+      gfx.moveTo(ch.x + ccos * (-hs) - csin * (-hs * 0.6), ch.y + csin * (-hs) + ccos * (-hs * 0.6));
+      gfx.lineTo(ch.x + ccos * hs - csin * (-hs * 0.6), ch.y + csin * hs + ccos * (-hs * 0.6));
+      gfx.lineTo(ch.x + ccos * (hs * 0.5) - csin * (hs * 0.6), ch.y + csin * (hs * 0.5) + ccos * (hs * 0.6));
+      gfx.lineTo(ch.x + ccos * (-hs * 0.7) - csin * (hs * 0.4), ch.y + csin * (-hs * 0.7) + ccos * (hs * 0.4));
+      gfx.closePath();
+      gfx.fillPath();
+    }
+
+    // 8. Hanging cables from ceiling
+    for (const cable of this.roomCables) {
+      gfx.lineStyle(2, 0x333333, 0.5);
+      gfx.beginPath();
+      gfx.moveTo(cable.startX, ROOM_TOP);
+      for (const seg of cable.segments) {
+        gfx.lineTo(seg.x, seg.y);
+      }
+      gfx.strokePath();
+      // Dangling end spark
+      const lastSeg = cable.segments[cable.segments.length - 1];
+      if (Math.random() > 0.95) {
+        gfx.fillStyle(0xffcc00, 0.6);
+        gfx.fillCircle(lastSeg.x, lastSeg.y, 2);
+      }
+    }
+
+    // 9. Glass fragments (tiny bright dots)
+    for (const g of this.roomGlass) {
+      const glint = 0.2 + 0.3 * Math.sin(Date.now() / 500 + g.x);
+      gfx.fillStyle(0xffffff, glint);
+      gfx.fillCircle(g.x, g.y, g.size);
+    }
+
+    // 10. Armchair (if still in place)
+    if (this.armchairInPlace) {
+      gfx.fillStyle(0x4a3020);
+      gfx.fillRect(this.armchairX - ARMCHAIR_W / 2, this.armchairY - ARMCHAIR_H / 2, ARMCHAIR_W, ARMCHAIR_H);
+      // Armrest details
+      gfx.fillStyle(0x3a2515);
+      gfx.fillRect(this.armchairX - ARMCHAIR_W / 2, this.armchairY - ARMCHAIR_H / 2, ARMCHAIR_W, 8);
+      gfx.fillRect(this.armchairX - ARMCHAIR_W / 2, this.armchairY + ARMCHAIR_H / 2 - 8, ARMCHAIR_W, 8);
+      // Cushion
+      gfx.fillStyle(0x5a3828, 0.6);
+      gfx.fillRect(this.armchairX - 25, this.armchairY - 15, 50, 30);
+    }
+
+    // Armchair projectile (sliding across floor)
+    if (this.armchairProjectile && this.armchairProjectile.alive) {
+      const ap = this.armchairProjectile;
+      gfx.fillStyle(0x4a3020, 0.8);
+      gfx.fillRect(ap.x - ARMCHAIR_W / 2, ap.y - ARMCHAIR_H / 2, ARMCHAIR_W, ARMCHAIR_H);
+    }
+
+    // 11. Boss sprite is rendered via Phaser image (not graphics), managed in update
+
+    // 12. Projectiles are rendered via Phaser images, managed in update
+
+    // 13. Drone (bright cyan, 50% bigger with LED lights)
+    const droneFlash = this.droneInvulnTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
+    if (!droneFlash) {
+      const dx = this.droneX;
+      const dy = this.droneY;
+
+      // Outer glow halo
+      gfx.fillStyle(0x00ffcc, 0.10);
+      gfx.fillCircle(dx, dy, 28);
+      gfx.fillStyle(0x00ffcc, 0.05);
+      gfx.fillCircle(dx, dy, 38);
+
+      // White outline ring
+      gfx.lineStyle(2.5, 0xffffff, 0.85);
+      gfx.strokeCircle(dx, dy, 16);
+
+      // Main body - bright cyan
+      gfx.fillStyle(0x00ffcc, 0.95);
+      gfx.fillCircle(dx, dy, 14);
+      // Inner core
+      gfx.fillStyle(0x88ff00, 0.9);
+      gfx.fillCircle(dx, dy, 7);
+      // Center dot
+      gfx.fillStyle(0xffffff, 1.0);
+      gfx.fillCircle(dx, dy, 3);
+
+      // Propeller arms (spinning, 50% bigger)
+      gfx.lineStyle(2.5, 0x00ffcc, 0.8);
+      for (let a = 0; a < 4; a++) {
+        const angle = a * Math.PI / 2 + Date.now() / 200;
+        const tipX = dx + Math.cos(angle) * 22;
+        const tipY = dy + Math.sin(angle) * 22;
+        gfx.beginPath();
+        gfx.moveTo(dx, dy);
+        gfx.lineTo(tipX, tipY);
+        gfx.strokePath();
+
+        // LED lights on propeller tips
+        const ledPulse = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(Date.now() / 150 + a * 1.5));
+        gfx.fillStyle(0xffffff, ledPulse);
+        gfx.fillCircle(tipX, tipY, 3);
+        gfx.fillStyle(0x00ffcc, ledPulse * 0.5);
+        gfx.fillCircle(tipX, tipY, 5);
+      }
+    }
+
+    // 14. Dash trail effect during dodge
+    if (this.dodgeActive) {
+      gfx.fillStyle(0x00ccff, 0.15);
+      gfx.fillCircle(this.droneX - this.dodgeDirX * 30, this.droneY - this.dodgeDirY * 30, 20);
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // BOSS DEATH
+  // ═════════════════════════════════════════════════════════════
   _bossDeathAnimation() {
     this.bossDefeated = true;
     this.bossActive = false;
 
-    // Hide weapon sprite if present (phase 3)
-    if (this.bossWeaponSprite) {
-      this.bossWeaponSprite.destroy();
-      this.bossWeaponSprite = null;
+    // Stop all projectiles
+    for (const p of this.bossProjectiles) {
+      if (p.sprite) p.sprite.destroy();
+    }
+    this.bossProjectiles = [];
+    if (this.armchairProjectile) this.armchairProjectile.alive = false;
+
+    // Dead texture
+    if (this.bossSprite && this.textures.exists('ts_boss4_dead')) {
+      this.bossSprite.setTexture('ts_boss4_dead');
     }
 
-    // Ensure boss is fully visible (in case killed while behind cover)
+    // Ensure boss is fully visible
     if (this.bossSprite) {
       this.bossSprite.setAlpha(1);
       this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
     }
 
-    // 1. Boss trembles rapidly (position oscillation)
-    const trembleEvent = this.time.addEvent({
+    // 1. Boss trembles
+    this.time.addEvent({
       delay: 50,
       repeat: 30,
       callback: () => {
@@ -2709,78 +2971,26 @@ export default class DroneScene extends Phaser.Scene {
       },
     });
 
-    // 2. Dead expression (spiral eyes) after tremble
+    // 2. Scale down and fade (falls)
     this.time.delayedCall(1500, () => {
-      if (this.bossSprite && this.textures.exists('ts_boss4_dead')) {
-        this.bossSprite.setTexture('ts_boss4_dead');
-        this.bossSprite.setPosition(this.bossX, this.bossY);
-      }
-    });
-
-    // 3. Falls backward (rotation tween)
-    this.time.delayedCall(2000, () => {
       if (this.bossSprite) {
         SoundManager.get().playBossShockwave();
         this.tweens.add({
           targets: this.bossSprite,
-          rotation: Math.PI / 2,
-          y: this.bossY + 40,
+          scaleX: 0.8 * (BOSS_DISPLAY / 128),
+          scaleY: 0.8 * (BOSS_DISPLAY / 128),
+          alpha: 0.6,
           duration: 800,
           ease: 'Quad.easeIn',
         });
       }
     });
 
-    // 4. Large explosion with particles
-    this.time.delayedCall(3000, () => {
-      SoundManager.get().playExplosion();
-      this.cameras.main.shake(800, 0.04);
-
-      // Multiple explosion circles
-      for (let i = 0; i < 12; i++) {
-        const ex = this.bossX + (Math.random() - 0.5) * 80;
-        const ey = this.bossY + (Math.random() - 0.5) * 80;
-        const r = 10 + Math.random() * 25;
-        const color = [0xff4400, 0xff8800, 0xffcc00][Math.floor(Math.random() * 3)];
-        const fireball = this.add.circle(ex, ey, r, color, 0.9).setDepth(25);
-        this.tweens.add({
-          targets: fireball,
-          scaleX: 2 + Math.random() * 2,
-          scaleY: 2 + Math.random() * 2,
-          alpha: 0,
-          duration: 800 + Math.random() * 600,
-          delay: i * 80,
-          onComplete: () => fireball.destroy(),
-        });
-      }
-
-      // Particles
-      for (let i = 0; i < 20; i++) {
-        const px = this.bossX + (Math.random() - 0.5) * 40;
-        const py = this.bossY + (Math.random() - 0.5) * 40;
-        const particle = this.add.circle(px, py, 2 + Math.random() * 3, 0xffcc00, 1).setDepth(26);
-        const vx = (Math.random() - 0.5) * 300;
-        const vy = (Math.random() - 0.5) * 300;
-        this.tweens.add({
-          targets: particle,
-          x: px + vx,
-          y: py + vy,
-          alpha: 0,
-          duration: 600 + Math.random() * 400,
-          onComplete: () => particle.destroy(),
-        });
-      }
-
-      // Hide boss sprite
-      if (this.bossSprite) {
-        this.bossSprite.setVisible(false);
-      }
-    });
-
-    // 5. "THE WARDEN ELIMINATED" gold text
-    this.time.delayedCall(4000, () => {
-      const victoryText = this.add.text(W / 2, H / 2, 'THE WARDEN ELIMINATED', {
-        fontFamily: 'monospace', fontSize: '30px', color: '#FFD700',
+    // 3. "THE WARDEN IS DOWN" text (gold, centered, glow)
+    this.time.delayedCall(2500, () => {
+      const victoryText = this.add.text(W / 2, H / 2, 'THE WARDEN IS DOWN', {
+        fontFamily: 'monospace', fontSize: '32px', color: '#FFD700',
+        fontStyle: 'bold',
         shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 16, fill: true },
       }).setOrigin(0.5).setDepth(55).setScrollFactor(0).setAlpha(0);
 
@@ -2793,15 +3003,14 @@ export default class DroneScene extends Phaser.Scene {
       this.score += 3000;
     });
 
-    // 6. Camera holds briefly, then show victory
-    this.time.delayedCall(6500, () => {
+    // 4. After 2 seconds: show victory screen
+    this.time.delayedCall(4500, () => {
       this._cleanupBoss();
       this._showVictory();
     });
   }
 
   _bossFightEnd(playerWon) {
-    // Called when drone dies during boss fight
     if (!playerWon) {
       this.phase = 'dead';
       this.time.delayedCall(1500, () => {
@@ -2811,58 +3020,53 @@ export default class DroneScene extends Phaser.Scene {
     }
   }
 
+  // ═════════════════════════════════════════════════════════════
+  // BOSS FIGHT MAIN UPDATE
+  // ═════════════════════════════════════════════════════════════
   _updateBossFight(dt) {
     if (this.phase !== 'boss') return;
-    if (this.bossDefeated) return; // death animation is running via timed events
+
+    // Draw room each frame (background + drone + static objects)
+    this._drawRoom();
+
+    if (this.bossDefeated) return; // death animation running via timed events
 
     // Dodge cooldown
     if (this.dodgeCooldown > 0) this.dodgeCooldown -= dt;
 
-    // Dodge active — quick lateral dash
+    // Dodge active
     if (this.dodgeActive) {
       this.dodgeTimer -= dt;
       if (this.dodgeTimer <= 0) {
         this.dodgeActive = false;
-        if (this.droneSprite) this.droneSprite.setAlpha(1);
       }
     }
 
-    // SHIFT = dodge (quick dash to the side, brief invulnerability) — also accept C for backwards compat
-    const dodgePressed = Phaser.Input.Keyboard.JustDown(this.keys.shift) || Phaser.Input.Keyboard.JustDown(this.keys.c);
+    // SHIFT = dash (100px in current movement direction, 1s cooldown, 0.15s invuln)
+    const dodgePressed = Phaser.Input.Keyboard.JustDown(this.keys.shift);
     if (dodgePressed && this.dodgeCooldown <= 0 && !this.dodgeActive) {
-      this.dodgeCooldown = 1.0; // 1s cooldown
+      this.dodgeCooldown = DRONE_DASH_COOLDOWN;
       this.dodgeActive = true;
-      this.dodgeTimer = 0.25; // 250ms dodge window
-      this.droneInvulnTimer = 0.35; // brief invulnerability
-      // Dash in the direction the player is pressing, or away from center
+      this.dodgeTimer = DRONE_DASH_DURATION;
+      this.droneInvulnTimer = DRONE_DASH_DURATION;
+
       let dashDirX = 0, dashDirY = 0;
       if (this.keys.left.isDown) dashDirX = -1;
       else if (this.keys.right.isDown) dashDirX = 1;
       if (this.keys.up.isDown) dashDirY = -1;
       else if (this.keys.down.isDown) dashDirY = 1;
-      // Default: dash away from center horizontally
       if (dashDirX === 0 && dashDirY === 0) {
-        dashDirX = (this.droneX < W / 2) ? 1 : -1;
+        dashDirX = (this.droneX < W / 2) ? -1 : 1;
       }
-      const dashDist = 130;
       const mag = Math.sqrt(dashDirX * dashDirX + dashDirY * dashDirY) || 1;
-      this.droneX = Phaser.Math.Clamp(this.droneX + (dashDirX / mag) * dashDist, 30, W - 30);
-      this.droneY = Phaser.Math.Clamp(this.droneY + (dashDirY / mag) * dashDist, 90, H - 30);
-      // Visual feedback
-      if (this.droneSprite) {
-        this.droneSprite.setAlpha(0.4);
-        this.droneSprite.setPosition(this.droneX, this.droneY);
-      }
-      // Dodge trail effect
-      const trailX = this.droneX - (dashDirX / mag) * dashDist * 0.5;
-      const trailY = this.droneY - (dashDirY / mag) * dashDist * 0.5;
-      const trail = this.add.circle(trailX, trailY, 16, 0x00ccff, 0.3).setDepth(24);
-      this.tweens.add({ targets: trail, alpha: 0, scaleX: 2, scaleY: 0.3, duration: 300, onComplete: () => trail.destroy() });
-      // Sound cue
+      this.dodgeDirX = dashDirX / mag;
+      this.dodgeDirY = dashDirY / mag;
+      this.droneX = Phaser.Math.Clamp(this.droneX + this.dodgeDirX * DRONE_DASH_DIST, ROOM_LEFT + 20, ROOM_RIGHT - 20);
+      this.droneY = Phaser.Math.Clamp(this.droneY + this.dodgeDirY * DRONE_DASH_DIST, ROOM_TOP + 20, ROOM_BOTTOM - 20);
       SoundManager.get().playStep();
     }
 
-    // Crosshair/drone movement (free movement across screen — represents aiming)
+    // Drone movement (arrow keys, 200 px/s)
     if (!this.dodgeActive) {
       let dx = 0, dy = 0;
       if (this.keys.left.isDown) dx -= 1;
@@ -2875,18 +3079,28 @@ export default class DroneScene extends Phaser.Scene {
         this.droneY += (dy / len) * BOSS_DRONE_SPEED * dt;
       }
     }
-    // Crosshair can move across entire screen
-    this.droneX = Phaser.Math.Clamp(this.droneX, 30, W - 30);
-    this.droneY = Phaser.Math.Clamp(this.droneY, 90, H - 30);
-    if (this.droneSprite) this.droneSprite.setPosition(this.droneX, this.droneY);
+    // Clamp drone to room bounds
+    this.droneX = Phaser.Math.Clamp(this.droneX, ROOM_LEFT + 15, ROOM_RIGHT - 15);
+    this.droneY = Phaser.Math.Clamp(this.droneY, ROOM_TOP + 15, ROOM_BOTTOM - 15);
 
-    // Update dodge cooldown HUD indicator
+    // HUD updates
     if (this.dodgeHudFill) {
       const ready = this.dodgeCooldown <= 0;
-      const pct = ready ? 1 : Math.max(0, 1 - (this.dodgeCooldown / 1.0));
+      const pct = ready ? 1 : Math.max(0, 1 - (this.dodgeCooldown / DRONE_DASH_COOLDOWN));
       this.dodgeHudFill.setScale(pct, 1);
       this.dodgeHudFill.setFillStyle(ready ? 0x00ccff : 0x555555);
       if (this.dodgeHudLabel) this.dodgeHudLabel.setColor(ready ? '#00ccff' : '#555555');
+    }
+    if (this.missileHudFill) {
+      const ready = this.droneMissileTimer <= 0;
+      const pct = ready ? 1 : Math.max(0, 1 - (this.droneMissileTimer / DRONE_MISSILE_COOLDOWN));
+      this.missileHudFill.setScale(pct, 1);
+      this.missileHudFill.setFillStyle(ready ? 0xff4444 : 0x555555);
+      if (this.missileHudLabel) this.missileHudLabel.setColor(ready ? '#ff4444' : '#555555');
+    }
+    if (this.droneHPLabel) {
+      this.droneHPLabel.setText(`DRONE HP: ${Math.max(0, this.droneHP)}/${this.droneMaxHP}`);
+      this.droneHPLabel.setColor(this.droneHP <= 1 ? '#ff4444' : '#00e5ff');
     }
 
     // Boss logic
@@ -2894,14 +3108,13 @@ export default class DroneScene extends Phaser.Scene {
 
     // Drone combat
     this._updateDroneCombat(dt);
-
-    // No contact damage in front-facing perspective (boss is inside room, drone is outside)
   }
 
+  // ═════════════════════════════════════════════════════════════
+  // CLEANUP
+  // ═════════════════════════════════════════════════════════════
   _cleanupBoss() {
-    // Cleanup all boss fight objects
-    if (this.commandBg) { this.commandBg.destroy(); this.commandBg = null; }
-    if (this.droneSprite) { this.droneSprite.destroy(); this.droneSprite = null; }
+    if (this.roomGfx) { this.roomGfx.destroy(); this.roomGfx = null; }
     if (this.bossSprite) { this.bossSprite.destroy(); this.bossSprite = null; }
 
     // HP bar
@@ -2910,42 +3123,34 @@ export default class DroneScene extends Phaser.Scene {
     if (this.bossHPBarLabel) { this.bossHPBarLabel.destroy(); this.bossHPBarLabel = null; }
 
     // Projectiles
-    for (const p of this.bossProjectiles) { if (p.sprite) p.sprite.destroy(); }
-    this.bossProjectiles = [];
+    if (this.bossProjectiles) {
+      for (const p of this.bossProjectiles) { if (p.sprite) p.sprite.destroy(); }
+      this.bossProjectiles = [];
+    }
 
-    // Cover indicator
-    if (this.coverIndicator) { this.coverIndicator.destroy(); this.coverIndicator = null; }
-
-    // Armchair
-    if (this.armchairSprite) { this.armchairSprite.destroy(); this.armchairSprite = null; }
-
-    // Phase 3 weapon
-    if (this.bossWeaponSprite) { this.bossWeaponSprite.destroy(); this.bossWeaponSprite = null; }
-
-    // Dodge HUD
+    // HUD elements
     if (this.dodgeHudLabel) { this.dodgeHudLabel.destroy(); this.dodgeHudLabel = null; }
     if (this.dodgeHudBg) { this.dodgeHudBg.destroy(); this.dodgeHudBg = null; }
     if (this.dodgeHudFill) { this.dodgeHudFill.destroy(); this.dodgeHudFill = null; }
+    if (this.missileHudLabel) { this.missileHudLabel.destroy(); this.missileHudLabel = null; }
+    if (this.missileHudBg) { this.missileHudBg.destroy(); this.missileHudBg = null; }
+    if (this.missileHudFill) { this.missileHudFill.destroy(); this.missileHudFill = null; }
+    if (this.droneHPLabel) { this.droneHPLabel.destroy(); this.droneHPLabel = null; }
 
     // Drone bullets
-    for (const b of this.droneBullets) { if (b.sprite) b.sprite.destroy(); }
-    this.droneBullets = [];
+    if (this.droneBullets) {
+      for (const b of this.droneBullets) { if (b.sprite) b.sprite.destroy(); }
+      this.droneBullets = [];
+    }
 
     // Drone missiles
-    for (const m of this.droneMissiles) {
-      if (m.sprite) m.sprite.destroy();
-      if (m.trail) m.trail.destroy();
+    if (this.droneMissiles) {
+      for (const m of this.droneMissiles) {
+        if (m.sprite) m.sprite.destroy();
+        if (m.trail) m.trail.destroy();
+      }
+      this.droneMissiles = [];
     }
-    this.droneMissiles = [];
-
-    // Ambient dust
-    if (this.ambientDustParticles) {
-      for (const d of this.ambientDustParticles) { if (d.sprite) d.sprite.destroy(); }
-      this.ambientDustParticles = [];
-    }
-
-    // Fury particles (any remaining are cleaned by tweens, but clear array)
-    this.furyParticles = [];
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -3043,6 +3248,7 @@ export default class DroneScene extends Phaser.Scene {
   shutdown() {
     if (this._endScreen) this._endScreen.destroy();
     this._cleanupCityIntro();
+    this._cleanupBoss();
     this._stopAmbient();
     this.tweens.killAll();
     this.time.removeAllEvents();
