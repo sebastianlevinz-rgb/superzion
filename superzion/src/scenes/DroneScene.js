@@ -250,8 +250,8 @@ function _generateBossTexture(scene, key, expression) {
   // Center neck
   ctx.fillStyle = kefW;
   ctx.beginPath();
-  ctx.moveTo(cx - 9, neckTop - 1);
-  ctx.lineTo(cx + 9, neckTop - 1);
+  ctx.moveTo(cx - 9, neckTop + 2);
+  ctx.lineTo(cx + 9, neckTop + 2);
   ctx.lineTo(cx + 6, shoulderY + 8);
   ctx.lineTo(cx - 6, shoulderY + 8);
   ctx.closePath();
@@ -265,7 +265,7 @@ function _generateBossTexture(scene, key, expression) {
   // Diagonal crosshatch pattern on left drape
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(cx - 8, neckTop);
+  ctx.moveTo(cx - 8, neckTop + 4);
   ctx.lineTo(cx - 28, shoulderY + 3);
   ctx.lineTo(cx - 30, shoulderY + 22);
   ctx.lineTo(cx - 22, shoulderY + 26);
@@ -292,7 +292,7 @@ function _generateBossTexture(scene, key, expression) {
   // Diagonal crosshatch pattern on right drape
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(cx + 8, neckTop);
+  ctx.moveTo(cx + 8, neckTop + 4);
   ctx.lineTo(cx + 28, shoulderY + 3);
   ctx.lineTo(cx + 30, shoulderY + 22);
   ctx.lineTo(cx + 22, shoulderY + 26);
@@ -319,8 +319,8 @@ function _generateBossTexture(scene, key, expression) {
   // Crosshatch on center neckpiece
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(cx - 9, neckTop - 1);
-  ctx.lineTo(cx + 9, neckTop - 1);
+  ctx.moveTo(cx - 9, neckTop + 4);
+  ctx.lineTo(cx + 9, neckTop + 4);
   ctx.lineTo(cx + 6, shoulderY + 8);
   ctx.lineTo(cx - 6, shoulderY + 8);
   ctx.closePath();

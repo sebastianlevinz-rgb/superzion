@@ -626,7 +626,7 @@ export function createAngryEyebrowsParade(scene) {
     // Diagonal crosshatch on left drape
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(cx - 6, neckTop);
+    ctx.moveTo(cx - 6, neckTop + 4);
     ctx.lineTo(cx - 20, shoulderY + 3);
     ctx.lineTo(cx - 22, shoulderY + 18);
     ctx.lineTo(cx - 16, shoulderY + 22);
@@ -653,7 +653,7 @@ export function createAngryEyebrowsParade(scene) {
     // Diagonal crosshatch on right drape
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(cx + 6, neckTop);
+    ctx.moveTo(cx + 6, neckTop + 4);
     ctx.lineTo(cx + 20, shoulderY + 3);
     ctx.lineTo(cx + 22, shoulderY + 18);
     ctx.lineTo(cx + 16, shoulderY + 22);
@@ -680,8 +680,8 @@ export function createAngryEyebrowsParade(scene) {
     // Crosshatch on center neckpiece
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(cx - 7, neckTop - 1);
-    ctx.lineTo(cx + 7, neckTop - 1);
+    ctx.moveTo(cx - 7, neckTop + 4);
+    ctx.lineTo(cx + 7, neckTop + 4);
     ctx.lineTo(cx + 5, shoulderY + 6);
     ctx.lineTo(cx - 5, shoulderY + 6);
     ctx.closePath();

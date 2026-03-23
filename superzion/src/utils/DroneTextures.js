@@ -2073,7 +2073,7 @@ export function drawBoss4AngryEyebrows(expression = 'normal') {
   // Diagonal crosshatch pattern on left drape
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(cx - 14, neckTop);
+  ctx.moveTo(cx - 14, neckTop + 6);
   ctx.lineTo(cx - 54, shoulderY + 6);
   ctx.lineTo(cx - 58, shoulderY + 42);
   ctx.lineTo(cx - 42, shoulderY + 52);
@@ -2100,7 +2100,7 @@ export function drawBoss4AngryEyebrows(expression = 'normal') {
   // Diagonal crosshatch pattern on right drape
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(cx + 14, neckTop);
+  ctx.moveTo(cx + 14, neckTop + 6);
   ctx.lineTo(cx + 54, shoulderY + 6);
   ctx.lineTo(cx + 58, shoulderY + 42);
   ctx.lineTo(cx + 42, shoulderY + 52);
@@ -2127,8 +2127,8 @@ export function drawBoss4AngryEyebrows(expression = 'normal') {
   // Crosshatch on center neckpiece
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(cx - 16, neckTop - 2);
-  ctx.lineTo(cx + 16, neckTop - 2);
+  ctx.moveTo(cx - 16, neckTop + 6);
+  ctx.lineTo(cx + 16, neckTop + 6);
   ctx.lineTo(cx + 12, shoulderY + 16);
   ctx.lineTo(cx - 12, shoulderY + 16);
   ctx.closePath();
