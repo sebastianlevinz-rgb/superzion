@@ -1,3 +1,5 @@
+import { drawSuperZionSide } from './SuperZionRenderer.js';
+
 // ═══════════════════════════════════════════════════════════════
 // CinematicTextures — Shared procedural textures for cinematics
 // ═══════════════════════════════════════════════════════════════
@@ -19,198 +21,14 @@ function px(ctx, x, y, c) { ctx.fillStyle = c; ctx.fillRect(x, y, 1, 1); }
 function rect(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
 
 // ── 1. SuperZion side-view character (64×96) ────────────────────
-// HERO REDESIGN: Aviator sunglasses, V-shaped build, tactical vest,
-// gold Star of David, silenced pistol, slicked-back hair, combat boots
+// Uses centralized SuperZionRenderer for consistent character appearance
 export function createSuperZionCinematic(scene) {
   if (scene.textures.exists('cin_superzion')) return;
   const c = document.createElement('canvas');
   c.width = 64; c.height = 96;
   const ctx = c.getContext('2d');
-
-  // Head (side view) — Mediterranean skin tone #C49A6C
-  ctx.fillStyle = '#C49A6C';
-  ctx.beginPath(); ctx.arc(32, 16, 9, 0, Math.PI * 2); ctx.fill();
-
-  // Angular jawline
-  ctx.beginPath();
-  ctx.moveTo(24, 18);
-  ctx.quadraticCurveTo(28, 24, 32, 25);
-  ctx.quadraticCurveTo(36, 24, 40, 18);
-  ctx.fillStyle = '#b08657';
-  ctx.fill();
-
-  // Slicked-back HAIR with pompadour volume — bezierCurveTo
-  ctx.fillStyle = '#1A1A1A';
-  ctx.beginPath(); ctx.ellipse(32, 9, 9, 4, 0, Math.PI, 0); ctx.fill();
-  // Pompadour volume — higher in front
-  ctx.beginPath();
-  ctx.moveTo(24, 10);
-  ctx.bezierCurveTo(26, 4, 36, 3, 40, 9);
-  ctx.bezierCurveTo(41, 11, 23, 11, 24, 10);
-  ctx.closePath();
-  ctx.fill();
-  // Side hair — arcs hugging head
-  ctx.beginPath(); ctx.arc(23, 12, 2.5, Math.PI * 0.7, Math.PI * 1.7); ctx.fill();
-  ctx.beginPath(); ctx.arc(41, 12, 2.5, Math.PI * 1.3, Math.PI * 0.3); ctx.fill();
-  // Hair streaks
-  ctx.strokeStyle = '#222222';
-  ctx.lineWidth = 0.5;
-  for (let i = -2; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.moveTo(32 + i * 2.5, 5);
-    ctx.bezierCurveTo(32 + i * 2.8, 7, 32 + i * 3.2, 9, 32 + i * 3.5, 11);
-    ctx.stroke();
-  }
-
-  // Thick straight eyebrows ABOVE sunglasses
-  ctx.strokeStyle = '#1A1A1A';
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = 'butt';
-  ctx.beginPath(); ctx.moveTo(28, 12); ctx.lineTo(33, 11.5); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(35, 11.5); ctx.lineTo(40, 12); ctx.stroke();
-
-  // AVIATOR SUNGLASSES — side view (one visible lens)
-  ctx.fillStyle = '#0A0A0A';
-  ctx.beginPath(); ctx.ellipse(37, 14.5, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#333333';
-  ctx.lineWidth = 0.6;
-  ctx.stroke();
-  // Temple arm
-  ctx.beginPath(); ctx.moveTo(34, 14.5); ctx.lineTo(24, 13); ctx.stroke();
-  // Reflection
-  ctx.strokeStyle = 'rgba(180, 220, 255, 0.4)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(35, 13.5); ctx.lineTo(39, 15); ctx.stroke();
-
-  // Nose
-  ctx.fillStyle = '#b08657';
-  ctx.beginPath();
-  ctx.moveTo(39, 14);
-  ctx.quadraticCurveTo(41, 17, 39, 18);
-  ctx.fill();
-
-  // Serious mouth — straight line with frown corners
-  ctx.strokeStyle = '#6a4030';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath(); ctx.moveTo(35, 20); ctx.lineTo(39, 20); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(35, 20); ctx.lineTo(34, 20.5); ctx.stroke();
-
-  // Ear
-  ctx.fillStyle = '#C49A6C';
-  ctx.beginPath(); ctx.ellipse(23, 15, 1.5, 3, 0, 0, Math.PI * 2); ctx.fill();
-
-  // V-SHAPED Torso — wider shoulders, narrower waist
-  ctx.fillStyle = PAL.tac1;
-  ctx.beginPath();
-  ctx.moveTo(20, 26);                              // top-left shoulder
-  ctx.bezierCurveTo(19, 30, 23, 42, 26, 50);      // left side curves in
-  ctx.lineTo(38, 50);                              // waist bottom
-  ctx.bezierCurveTo(41, 42, 45, 30, 44, 26);      // right side curves in
-  ctx.closePath();
-  ctx.fill();
-
-  // Shoulder pads — rounded protectors
-  ctx.fillStyle = PAL.tac4;
-  ctx.beginPath(); ctx.ellipse(22, 28, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(42, 28, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-
-  // Tactical vest overlay
-  ctx.fillStyle = '#3A3A3A';
-  ctx.beginPath();
-  ctx.moveTo(24, 28);
-  ctx.bezierCurveTo(23, 34, 25, 42, 27, 48);
-  ctx.lineTo(37, 48);
-  ctx.bezierCurveTo(39, 42, 41, 34, 40, 28);
-  ctx.closePath();
-  ctx.fill();
-
-  // Vest straps — curved lines
-  ctx.strokeStyle = PAL.vest1;
-  ctx.lineWidth = 2.5;
-  ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(27, 28); ctx.quadraticCurveTo(26, 36, 27, 48); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(37, 28); ctx.quadraticCurveTo(38, 36, 37, 48); ctx.stroke();
-
-  // Vest pouches
-  ctx.fillStyle = PAL.vest0;
-  ctx.beginPath(); ctx.ellipse(29, 36, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(35, 36, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
-
-  // ★ STAR OF DAVID — gold metallic, EXACT CENTER of torso ★
-  const sx = 32, sy = 38; // vertical midpoint of torso (26 to 50)
-  ctx.fillStyle = '#FFD700';
-  ctx.strokeStyle = '#B8860B';
-  ctx.lineWidth = 0.7;
-  const starR = 4;
-  // Upward triangle
-  ctx.beginPath();
-  ctx.moveTo(sx, sy - starR); ctx.lineTo(sx + starR * 0.87, sy + starR * 0.5); ctx.lineTo(sx - starR * 0.87, sy + starR * 0.5);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  // Downward triangle
-  ctx.beginPath();
-  ctx.moveTo(sx, sy + starR); ctx.lineTo(sx + starR * 0.87, sy - starR * 0.5); ctx.lineTo(sx - starR * 0.87, sy - starR * 0.5);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-
-  // Belt — rounded capsule
-  ctx.fillStyle = PAL.blk1;
-  ctx.beginPath(); ctx.roundRect(23, 48, 18, 4, 2); ctx.fill();
-  // Belt buckle — gold
-  ctx.fillStyle = PAL.gld3;
-  ctx.beginPath(); ctx.roundRect(29, 48, 6, 4, 1); ctx.fill();
-
-  // Arms — ellipses
-  ctx.fillStyle = PAL.tac2;
-  ctx.save();
-  ctx.translate(18, 37);
-  ctx.beginPath(); ctx.ellipse(0, 0, 4, 10, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  ctx.save();
-  ctx.translate(46, 37);
-  ctx.beginPath(); ctx.ellipse(0, 0, 4, 10, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-
-  // Gloves — black
-  ctx.fillStyle = PAL.blk2;
-  ctx.beginPath(); ctx.ellipse(18, 47, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(46, 47, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-
-  // Silenced pistol in right hand
-  ctx.fillStyle = '#0e0e0e';
-  ctx.beginPath(); ctx.ellipse(50, 47, 3, 1.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#333333';
-  ctx.beginPath(); ctx.ellipse(54, 47, 2, 0.8, 0, 0, Math.PI * 2); ctx.fill();
-
-  // Legs — tapered with bezier
-  ctx.fillStyle = PAL.tac0;
-  ctx.beginPath();
-  ctx.moveTo(25, 52);
-  ctx.bezierCurveTo(24, 60, 23, 68, 24, 76);
-  ctx.lineTo(31, 76);
-  ctx.bezierCurveTo(32, 68, 31, 60, 31, 52);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(33, 52);
-  ctx.bezierCurveTo(33, 60, 33, 68, 33, 76);
-  ctx.lineTo(39, 76);
-  ctx.bezierCurveTo(40, 68, 40, 60, 39, 52);
-  ctx.closePath();
-  ctx.fill();
-
-  // Knee pads
-  ctx.fillStyle = PAL.blk2;
-  ctx.beginPath(); ctx.roundRect(24, 61, 7, 4, 2); ctx.fill();
-  ctx.beginPath(); ctx.roundRect(33, 61, 7, 4, 2); ctx.fill();
-
-  // TACTICAL BOOTS — wider than ankles, thick sole
-  ctx.fillStyle = PAL.blk0;
-  ctx.beginPath(); ctx.roundRect(21, 76, 12, 8, [3, 3, 4, 4]); ctx.fill();
-  ctx.beginPath(); ctx.roundRect(32, 76, 12, 8, [3, 3, 4, 4]); ctx.fill();
-  // Thick soles — visibly wider
-  ctx.fillStyle = '#080808';
-  ctx.beginPath(); ctx.roundRect(20, 82, 14, 4, [0, 0, 2, 2]); ctx.fill();
-  ctx.beginPath(); ctx.roundRect(31, 82, 14, 4, [0, 0, 2, 2]); ctx.fill();
-
+  // Scale 1.75 fits 48-unit character (84px) within 96px tall canvas
+  drawSuperZionSide(ctx, 32, 48, 1.75, 'right', { showGun: true });
   scene.textures.addCanvas('cin_superzion', c);
 }
 
@@ -722,88 +540,36 @@ export function createCliffBackground(scene) {
 }
 
 // ── 8. SuperZion on cliff silhouette (128×128) ─────────────────
+// Uses centralized SuperZionRenderer for the figure silhouette
 export function createSuperZionOnCliff(scene) {
   if (scene.textures.exists('cin_superzion_cliff')) return;
   const c = document.createElement('canvas');
   c.width = 128; c.height = 128;
   const ctx = c.getContext('2d');
 
-  // Figure silhouette against sunset
-  const sil = '#0a0804';
-  ctx.fillStyle = sil;
+  // Draw the character using the centralized renderer at scale 2.0
+  // (48*2 = 96px tall, centered in 128px canvas)
+  drawSuperZionSide(ctx, 64, 64, 2.0, 'right', { showGun: true });
 
-  // Head — arc
-  ctx.beginPath(); ctx.arc(64, 28, 10, 0, Math.PI * 2); ctx.fill();
-  // Slicked-back hair with pompadour volume silhouette
-  ctx.beginPath();
-  ctx.moveTo(54, 22);
-  ctx.bezierCurveTo(56, 14, 70, 13, 74, 20);
-  ctx.bezierCurveTo(75, 23, 53, 23, 54, 22);
-  ctx.closePath();
-  ctx.fill();
-
-  // Body — bezier trapezoid (broader shoulders, tapered waist)
-  ctx.fillStyle = sil;
-  ctx.beginPath();
-  ctx.moveTo(51, 38);                               // top-left shoulder
-  ctx.bezierCurveTo(50, 48, 52, 58, 54, 68);       // left side curves in
-  ctx.lineTo(74, 68);                               // waist/hip bottom
-  ctx.bezierCurveTo(76, 58, 78, 48, 77, 38);       // right side curves in
-  ctx.closePath();
-  ctx.fill();
-
-  // Arms — rounded ellipse shapes (wind-blown pose)
-  ctx.fillStyle = sil;
-  // Left arm — angled outward
-  ctx.save();
-  ctx.translate(42, 47);
-  ctx.rotate(-0.15);
-  ctx.beginPath(); ctx.ellipse(0, 0, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  // Right arm — reaching slightly forward/out
-  ctx.save();
-  ctx.translate(83, 45);
-  ctx.rotate(0.1);
-  ctx.beginPath(); ctx.ellipse(0, 0, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-
-  // Legs — tapered silhouette shapes
-  ctx.fillStyle = sil;
-  // Left leg
-  ctx.beginPath();
-  ctx.moveTo(54, 68);
-  ctx.bezierCurveTo(53, 78, 52, 88, 53, 100);
-  ctx.lineTo(62, 100);
-  ctx.bezierCurveTo(63, 88, 63, 78, 63, 68);
-  ctx.closePath();
-  ctx.fill();
-  // Right leg
-  ctx.beginPath();
-  ctx.moveTo(65, 68);
-  ctx.bezierCurveTo(65, 78, 65, 88, 65, 100);
-  ctx.lineTo(74, 100);
-  ctx.bezierCurveTo(76, 88, 75, 78, 74, 68);
-  ctx.closePath();
-  ctx.fill();
-
-  // Boots — rounded silhouette shapes
-  ctx.fillStyle = sil;
-  ctx.beginPath(); ctx.roundRect(51, 99, 13, 7, [2, 2, 4, 4]); ctx.fill();
-  ctx.beginPath(); ctx.roundRect(63, 99, 13, 7, [2, 2, 4, 4]); ctx.fill();
+  // Overlay dark silhouette tint to create sunset backlit effect
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.fillStyle = '#0a0804';
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.globalCompositeOperation = 'source-over';
 
   // Wind-blown gear strap
-  ctx.strokeStyle = sil;
+  ctx.strokeStyle = '#0a0804';
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(77, 50);
-  ctx.quadraticCurveTo(90, 46, 97, 52);
+  ctx.moveTo(95, 58);
+  ctx.quadraticCurveTo(108, 54, 115, 60);
   ctx.stroke();
 
-  // Subtle gold Star of David glow on chest — moved up to sy=46
+  // Subtle gold Star of David glow on chest
   ctx.strokeStyle = 'rgba(218,165,32,0.4)';
   ctx.lineWidth = 0.8;
-  const sx = 64, sy = 46;
+  const sx = 64, sy = 52;
   ctx.beginPath();
   ctx.moveTo(sx, sy - 5); ctx.lineTo(sx + 5, sy + 3); ctx.lineTo(sx - 5, sy + 3); ctx.closePath();
   ctx.stroke();

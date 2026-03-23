@@ -1,3 +1,5 @@
+import { drawSuperZionTopDown } from './SuperZionRenderer.js';
+
 // ===================================================================
 // BombermanTextures — ALL tile, character, HUD, decoration & boss textures
 // for the top-down Bomberman scene (32x32 grid)
@@ -1556,14 +1558,13 @@ export function generateBombermanTextures(scene) {
   scene.textures.addCanvas('bm_pu_speed', drawPowerup('speed'));
   scene.textures.addCanvas('bm_pu_key', drawPowerup('key'));
 
-  // ── Player character (4 dirs x 2 frames) ──
-  const playerOpts = { bodyColor: '#222222', headColor: '#D2956A', kippah: true, starOD: true };
+  // ── Player character (4 dirs x 2 frames) — centralized SuperZionRenderer ──
   for (const dir of ['up', 'down', 'left', 'right']) {
     for (const frame of [0, 1]) {
-      scene.textures.addCanvas(
-        `bm_player_${dir}_${frame}`,
-        drawCharacter(dir, frame, playerOpts)
-      );
+      const c = mc(T, T);
+      const ctx = c.getContext('2d');
+      drawSuperZionTopDown(ctx, T / 2, T / 2, T / 16, dir, frame);
+      scene.textures.addCanvas(`bm_player_${dir}_${frame}`, c);
     }
   }
 
