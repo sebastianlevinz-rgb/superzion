@@ -1531,128 +1531,157 @@ export function createArmchairTexture(scene) {
   const ctx = c.getContext('2d');
   const cx = s / 2, cy = s / 2;
 
-  // Shadow at base (drawn first, behind everything)
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+  // Main color palette — olive green military armchair
+  const mainColor = '#556B2F';
+  const darkColor = '#3B4A20';
+  const lightColor = '#6B8A3A';
+  const legColor = '#2A1A0A';
+
+  // Shadow at base
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 50, 45, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + 48, 46, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // HIGH WINGBACK — tall back with prominent "wings" on each side
-  // Main back panel
-  ctx.fillStyle = '#3a2a1a';
+  // ── 4 SHORT LEGS (drawn first, behind everything) ──
+  ctx.fillStyle = legColor;
+  // Front-left leg
+  ctx.fillRect(cx - 38, cy + 34, 7, 14);
+  // Front-right leg
+  ctx.fillRect(cx + 31, cy + 34, 7, 14);
+  // Back-left leg
+  ctx.fillRect(cx - 34, cy + 30, 6, 12);
+  // Back-right leg
+  ctx.fillRect(cx + 28, cy + 30, 6, 12);
+
+  // ── TALL WIDE BACKREST ──
+  // Main backrest panel (wide, tall, with rounded top using arcs)
+  ctx.fillStyle = mainColor;
   ctx.beginPath();
-  ctx.moveTo(cx - 38, cy - 48);
-  ctx.quadraticCurveTo(cx - 42, cy - 56, cx - 28, cy - 56);
-  ctx.lineTo(cx + 28, cy - 56);
-  ctx.quadraticCurveTo(cx + 42, cy - 56, cx + 38, cy - 48);
+  ctx.moveTo(cx - 38, cy - 5);
+  ctx.lineTo(cx - 38, cy - 44);
+  // Rounded top corners
+  ctx.quadraticCurveTo(cx - 38, cy - 54, cx - 28, cy - 54);
+  ctx.lineTo(cx + 28, cy - 54);
+  ctx.quadraticCurveTo(cx + 38, cy - 54, cx + 38, cy - 44);
   ctx.lineTo(cx + 38, cy - 5);
-  ctx.lineTo(cx - 38, cy - 5);
   ctx.closePath();
   ctx.fill();
 
-  // Wing extensions (curved side panels that wrap forward)
-  // Left wing
-  ctx.fillStyle = '#3a2a1a';
+  // Backrest padding highlight (slightly lighter oval)
+  ctx.fillStyle = lightColor;
   ctx.beginPath();
-  ctx.moveTo(cx - 38, cy - 48);
-  ctx.quadraticCurveTo(cx - 52, cy - 42, cx - 50, cy - 30);
-  ctx.lineTo(cx - 48, cy - 10);
-  ctx.lineTo(cx - 38, cy - 5);
-  ctx.lineTo(cx - 38, cy - 48);
-  ctx.closePath();
-  ctx.fill();
-  // Right wing
-  ctx.beginPath();
-  ctx.moveTo(cx + 38, cy - 48);
-  ctx.quadraticCurveTo(cx + 52, cy - 42, cx + 50, cy - 30);
-  ctx.lineTo(cx + 48, cy - 10);
-  ctx.lineTo(cx + 38, cy - 5);
-  ctx.lineTo(cx + 38, cy - 48);
-  ctx.closePath();
+  ctx.ellipse(cx, cy - 28, 28, 20, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Back cushion padding highlight (lighter leather)
-  ctx.fillStyle = '#4a3a28';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy - 28, 26, 18, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Tufted button details on back
-  ctx.fillStyle = '#3a2a1a';
-  const tufts = [[-8, -32], [8, -32], [-12, -22], [0, -20], [12, -22]];
-  for (const [tx, ty] of tufts) {
+  // Capitone / tufted fabric: vertical lines on backrest
+  ctx.strokeStyle = darkColor;
+  ctx.lineWidth = 1.2;
+  for (let vx = cx - 24; vx <= cx + 24; vx += 8) {
     ctx.beginPath();
-    ctx.arc(cx + tx, cy + ty, 2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(vx, cy - 50);
+    ctx.quadraticCurveTo(vx + (Math.random() - 0.5) * 3, cy - 30, vx, cy - 8);
+    ctx.stroke();
   }
 
-  // Seat cushion (thick, prominent)
-  ctx.fillStyle = '#3a2a1a';
+  // Tufted button dots (diamond pattern like classic capitone)
+  ctx.fillStyle = darkColor;
+  const tuftRows = [
+    [[-16, -42], [0, -42], [16, -42]],
+    [[-8, -32], [8, -32]],
+    [[-16, -22], [0, -22], [16, -22]],
+    [[-8, -12], [8, -12]],
+  ];
+  for (const row of tuftRows) {
+    for (const [tx, ty] of row) {
+      ctx.beginPath();
+      ctx.arc(cx + tx, cy + ty, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ── SEAT CUSHION (thick, padded, rounded) ──
+  ctx.fillStyle = mainColor;
   ctx.beginPath();
-  ctx.moveTo(cx - 40, cy - 5);
-  ctx.lineTo(cx + 40, cy - 5);
+  ctx.moveTo(cx - 42, cy - 5);
+  ctx.quadraticCurveTo(cx - 44, cy + 4, cx - 42, cy + 12);
   ctx.lineTo(cx + 42, cy + 12);
-  ctx.lineTo(cx - 42, cy + 12);
+  ctx.quadraticCurveTo(cx + 44, cy + 4, cx + 42, cy - 5);
   ctx.closePath();
   ctx.fill();
 
-  // Seat padding highlight (rounded cushion feel)
-  ctx.fillStyle = '#4a3a28';
+  // Seat cushion highlight (rounded puffy look)
+  ctx.fillStyle = lightColor;
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 3, 30, 10, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + 3, 32, 10, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Left armrest (thick, padded)
-  ctx.fillStyle = '#3a2a1a';
+  // Seat crease line (where back meets seat)
+  ctx.strokeStyle = darkColor;
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(cx - 42, cy - 28);
-  ctx.lineTo(cx - 50, cy - 25);
+  ctx.moveTo(cx - 36, cy - 4);
+  ctx.quadraticCurveTo(cx, cy - 2, cx + 36, cy - 4);
+  ctx.stroke();
+
+  // ── LEFT ARMREST (padded, rounded top) ──
+  ctx.fillStyle = mainColor;
+  ctx.beginPath();
+  ctx.moveTo(cx - 42, cy - 30);
+  // Rounded armrest top
+  ctx.quadraticCurveTo(cx - 54, cy - 32, cx - 52, cy - 24);
   ctx.lineTo(cx - 50, cy + 12);
   ctx.lineTo(cx - 40, cy + 12);
+  ctx.lineTo(cx - 40, cy - 28);
   ctx.closePath();
   ctx.fill();
-  // Armrest top pad
-  ctx.fillStyle = '#4a3828';
-  ctx.fillRect(cx - 51, cy - 28, 10, 5);
-
-  // Right armrest
-  ctx.fillStyle = '#3a2a1a';
+  // Armrest top pad (rounded)
+  ctx.fillStyle = lightColor;
   ctx.beginPath();
-  ctx.moveTo(cx + 42, cy - 28);
-  ctx.lineTo(cx + 50, cy - 25);
+  ctx.ellipse(cx - 47, cy - 28, 8, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── RIGHT ARMREST (padded, rounded top) ──
+  ctx.fillStyle = mainColor;
+  ctx.beginPath();
+  ctx.moveTo(cx + 42, cy - 30);
+  ctx.quadraticCurveTo(cx + 54, cy - 32, cx + 52, cy - 24);
   ctx.lineTo(cx + 50, cy + 12);
   ctx.lineTo(cx + 40, cy + 12);
+  ctx.lineTo(cx + 40, cy - 28);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = '#4a3828';
-  ctx.fillRect(cx + 41, cy - 28, 10, 5);
+  // Armrest top pad (rounded)
+  ctx.fillStyle = lightColor;
+  ctx.beginPath();
+  ctx.ellipse(cx + 47, cy - 28, 8, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Front panel below seat (skirt)
-  ctx.fillStyle = '#3a2a1a';
-  ctx.fillRect(cx - 40, cy + 12, 80, 18);
+  // ── FRONT SKIRT below seat ──
+  ctx.fillStyle = mainColor;
+  ctx.beginPath();
+  ctx.moveTo(cx - 42, cy + 12);
+  ctx.lineTo(cx + 42, cy + 12);
+  ctx.lineTo(cx + 40, cy + 34);
+  ctx.lineTo(cx - 40, cy + 34);
+  ctx.closePath();
+  ctx.fill();
 
-  // Front panel texture (darker bands)
-  ctx.fillStyle = '#2a1a0a';
-  ctx.fillRect(cx - 38, cy + 16, 76, 2);
-  ctx.fillRect(cx - 38, cy + 22, 76, 2);
+  // Front panel decorative band
+  ctx.fillStyle = darkColor;
+  ctx.fillRect(cx - 38, cy + 18, 76, 2);
+  ctx.fillRect(cx - 38, cy + 28, 76, 2);
 
-  // Legs (short, sturdy — dark wood)
-  ctx.fillStyle = '#2A1A0A';
-  ctx.fillRect(cx - 35, cy + 30, 8, 16);
-  ctx.fillRect(cx + 27, cy + 30, 8, 16);
-  // Center brace
-  ctx.fillRect(cx - 5, cy + 30, 10, 14);
-
-  // Worn/torn leather patches (visible wear)
-  ctx.fillStyle = 'rgba(80, 60, 35, 0.3)';
-  ctx.fillRect(cx - 15, cy - 18, 10, 6);
+  // ── Worn fabric patches (subtle) ──
+  ctx.fillStyle = 'rgba(80, 90, 50, 0.25)';
+  ctx.fillRect(cx - 15, cy - 20, 10, 6);
   ctx.fillRect(cx + 8, cy + 4, 8, 5);
-  ctx.fillRect(cx - 20, cy - 40, 6, 8);
 
-  // Subtle leather texture lines
-  ctx.strokeStyle = 'rgba(30, 20, 10, 0.15)';
+  // ── Fabric texture: horizontal stitching lines ──
+  ctx.strokeStyle = 'rgba(40, 50, 20, 0.12)';
   ctx.lineWidth = 0.5;
-  for (let i = 0; i < 8; i++) {
-    const ly = cy - 48 + i * 10;
+  for (let i = 0; i < 6; i++) {
+    const ly = cy - 48 + i * 12;
     ctx.beginPath();
     ctx.moveTo(cx - 30, ly);
     ctx.lineTo(cx + 30, ly);
@@ -1662,7 +1691,7 @@ export function createArmchairTexture(scene) {
   scene.textures.addCanvas('armchair', c);
 }
 
-// ── Armchair side texture (90x120) — large wingback side profile ──
+// ── Armchair side texture (90x120) — olive green side profile ──
 export function createArmchairSideTexture(scene) {
   if (scene.textures.exists('armchair_side')) return;
 
@@ -1671,90 +1700,108 @@ export function createArmchairSideTexture(scene) {
   c.width = sw; c.height = sh;
   const ctx = c.getContext('2d');
 
+  const mainColor = '#556B2F';
+  const darkColor = '#3B4A20';
+  const lightColor = '#6B8A3A';
+  const legColor = '#2A1A0A';
+
   // Shadow at base
   ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
   ctx.beginPath();
   ctx.ellipse(45, sh - 10, 35, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // HIGH WINGBACK — tall back with wing extension
-  ctx.fillStyle = '#3a2a1a';
-  ctx.beginPath();
-  ctx.moveTo(10, 10);
-  ctx.quadraticCurveTo(5, 2, 15, 2);
-  ctx.lineTo(30, 2);
-  ctx.quadraticCurveTo(38, 5, 35, 18);
-  ctx.lineTo(35, 55);
-  ctx.lineTo(10, 55);
-  ctx.closePath();
-  ctx.fill();
+  // Legs (drawn first, behind chair body)
+  ctx.fillStyle = legColor;
+  ctx.fillRect(14, 86, 6, 16);
+  ctx.fillRect(60, 84, 6, 18);
 
-  // Wing curve (forward-facing wing panel from back)
-  ctx.fillStyle = '#3a2a1a';
-  ctx.beginPath();
-  ctx.moveTo(10, 10);
-  ctx.quadraticCurveTo(2, 15, 4, 30);
-  ctx.lineTo(6, 50);
-  ctx.lineTo(10, 55);
-  ctx.lineTo(10, 10);
-  ctx.closePath();
-  ctx.fill();
-
-  // Back cushion shading
-  ctx.fillStyle = '#4a3a28';
-  ctx.beginPath();
-  ctx.ellipse(22, 28, 8, 18, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Seat depth (side view)
-  ctx.fillStyle = '#3a2a1a';
+  // TALL BACKREST (rounded top)
+  ctx.fillStyle = mainColor;
   ctx.beginPath();
   ctx.moveTo(10, 55);
-  ctx.lineTo(65, 52);
-  ctx.lineTo(68, 68);
+  ctx.lineTo(10, 14);
+  ctx.quadraticCurveTo(10, 2, 22, 2);
+  ctx.lineTo(30, 2);
+  ctx.quadraticCurveTo(38, 4, 36, 16);
+  ctx.lineTo(36, 55);
+  ctx.closePath();
+  ctx.fill();
+
+  // Back cushion shading (lighter padded area)
+  ctx.fillStyle = lightColor;
+  ctx.beginPath();
+  ctx.ellipse(22, 28, 9, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Capitone vertical lines on back
+  ctx.strokeStyle = darkColor;
+  ctx.lineWidth = 1;
+  for (let vx = 14; vx <= 30; vx += 8) {
+    ctx.beginPath();
+    ctx.moveTo(vx, 6);
+    ctx.quadraticCurveTo(vx + 1, 28, vx, 52);
+    ctx.stroke();
+  }
+
+  // Tufted buttons on back
+  ctx.fillStyle = darkColor;
+  const sideTufts = [[18, 14], [26, 14], [22, 28], [18, 42], [26, 42]];
+  for (const [tx, ty] of sideTufts) {
+    ctx.beginPath();
+    ctx.arc(tx, ty, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // SEAT (side view — thick padded cushion)
+  ctx.fillStyle = mainColor;
+  ctx.beginPath();
+  ctx.moveTo(10, 55);
+  ctx.lineTo(66, 52);
+  ctx.quadraticCurveTo(70, 58, 68, 68);
   ctx.lineTo(10, 70);
   ctx.closePath();
   ctx.fill();
 
   // Seat cushion highlight
-  ctx.fillStyle = '#4a3a28';
+  ctx.fillStyle = lightColor;
   ctx.beginPath();
   ctx.ellipse(38, 60, 22, 6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Armrest (side profile — thick padded)
-  ctx.fillStyle = '#3a2a1a';
+  // ARMREST (side profile — thick, padded, rounded)
+  ctx.fillStyle = mainColor;
   ctx.beginPath();
-  ctx.moveTo(6, 32);
-  ctx.lineTo(62, 28);
-  ctx.lineTo(64, 36);
-  ctx.lineTo(6, 40);
+  ctx.moveTo(8, 32);
+  ctx.quadraticCurveTo(4, 28, 8, 26);
+  ctx.lineTo(64, 24);
+  ctx.quadraticCurveTo(68, 26, 66, 30);
+  ctx.lineTo(66, 38);
+  ctx.lineTo(8, 42);
   ctx.closePath();
   ctx.fill();
-  // Armrest pad top
-  ctx.fillStyle = '#4a3828';
-  ctx.fillRect(6, 28, 58, 4);
+  // Armrest top pad (rounded)
+  ctx.fillStyle = lightColor;
+  ctx.beginPath();
+  ctx.ellipse(36, 26, 28, 3, -0.03, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Front panel
-  ctx.fillStyle = '#3a2a1a';
+  // Front skirt
+  ctx.fillStyle = mainColor;
   ctx.beginPath();
   ctx.moveTo(62, 52);
   ctx.lineTo(68, 68);
-  ctx.lineTo(68, 82);
-  ctx.lineTo(62, 82);
+  ctx.lineTo(68, 86);
+  ctx.lineTo(62, 86);
   ctx.closePath();
   ctx.fill();
 
-  // Skirt
-  ctx.fillStyle = '#3a2a1a';
-  ctx.fillRect(10, 70, 58, 14);
-  ctx.fillStyle = '#2a1a0a';
-  ctx.fillRect(12, 74, 54, 2);
-
-  // Legs
-  ctx.fillStyle = '#2A1A0A';
-  ctx.fillRect(14, 84, 6, 18);
-  ctx.fillRect(58, 82, 6, 20);
+  // Bottom skirt
+  ctx.fillStyle = mainColor;
+  ctx.fillRect(10, 70, 58, 16);
+  // Decorative band
+  ctx.fillStyle = darkColor;
+  ctx.fillRect(12, 76, 54, 2);
 
   scene.textures.addCanvas('armchair_side', c);
 }

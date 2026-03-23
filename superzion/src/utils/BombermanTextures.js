@@ -608,33 +608,54 @@ function drawCharacter(dir, frame, opts = {}) {
   // ── Face (eyes and mouth) — only visible from front and sides ──
   if (dir === 'down') {
     if (isPlayer) {
-      // Eyebrows — short arched curves, black, lineWidth 2
+      // Thick straight eyebrows ABOVE sunglasses — serious look
       ctx.strokeStyle = '#1A1A1A';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'butt';
       ctx.beginPath();
-      ctx.moveTo(cx - 5, cy - 9);
-      ctx.quadraticCurveTo(cx - 3, cy - 10.5, cx - 1, cy - 9);
+      ctx.moveTo(cx - 5.5, cy - 9);
+      ctx.lineTo(cx - 0.5, cy - 9.5);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(cx + 1, cy - 9);
-      ctx.quadraticCurveTo(cx + 3, cy - 10.5, cx + 5, cy - 9);
+      ctx.moveTo(cx + 0.5, cy - 9.5);
+      ctx.lineTo(cx + 5.5, cy - 9);
       ctx.stroke();
-      // Detailed player eyes — small ellipses with dark iris
-      ctx.fillStyle = '#eeeee8';
+      // AVIATOR SUNGLASSES — dark ovals covering eyes (THE defining feature)
+      // Left lens
+      ctx.fillStyle = '#0A0A0A';
       ctx.beginPath();
-      ctx.ellipse(cx - 3, cy - 7.5, 1.5, 1.3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx - 3, cy - 7.5, 2.5, 1.5, 0, 0, Math.PI * 2);
       ctx.fill();
+      // Right lens
       ctx.beginPath();
-      ctx.ellipse(cx + 3, cy - 7.5, 1.5, 1.3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 3, cy - 7.5, 2.5, 1.5, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#0e0e0e';
+      // Frame — thin dark gray
+      ctx.strokeStyle = '#333333';
+      ctx.lineWidth = 0.6;
       ctx.beginPath();
-      ctx.arc(cx - 3, cy - 7.5, 0.7, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.ellipse(cx - 3, cy - 7.5, 2.5, 1.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.beginPath();
-      ctx.arc(cx + 3, cy - 7.5, 0.7, 0, Math.PI * 2);
-      ctx.fill();
-      // Mouth — subtle horizontal line
+      ctx.ellipse(cx + 3, cy - 7.5, 2.5, 1.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Nose bridge
+      ctx.beginPath();
+      ctx.moveTo(cx - 0.5, cy - 7.5);
+      ctx.lineTo(cx + 0.5, cy - 7.5);
+      ctx.stroke();
+      // Reflection on lenses (cyan/white diagonal)
+      ctx.strokeStyle = 'rgba(180, 220, 255, 0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx - 4.5, cy - 8);
+      ctx.lineTo(cx - 1.5, cy - 7);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + 1.5, cy - 8);
+      ctx.lineTo(cx + 4.5, cy - 7);
+      ctx.stroke();
+      // Mouth — serious straight line
       ctx.strokeStyle = '#6a4030';
       ctx.lineWidth = 0.8;
       ctx.beginPath();
@@ -658,38 +679,91 @@ function drawCharacter(dir, frame, opts = {}) {
       ctx.stroke();
     }
   } else if (dir === 'left') {
-    ctx.fillStyle = '#222';
-    ctx.beginPath();
-    ctx.ellipse(cx - 4, cy - 7, 1.2, 1.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#444';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.arc(cx - 1.5, cy - 3.5, 1.2, 0.1, Math.PI - 0.1);
-    ctx.stroke();
+    if (isPlayer) {
+      // Side sunglasses — single dark oval
+      ctx.fillStyle = '#0A0A0A';
+      ctx.beginPath();
+      ctx.ellipse(cx - 3.5, cy - 7.5, 2.5, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#333333';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+      // Reflection
+      ctx.strokeStyle = 'rgba(180, 220, 255, 0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, cy - 8);
+      ctx.lineTo(cx - 2, cy - 7);
+      ctx.stroke();
+      // Serious mouth
+      ctx.strokeStyle = '#6a4030';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx - 3, cy - 3.5);
+      ctx.lineTo(cx, cy - 3.5);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.ellipse(cx - 4, cy - 7, 1.2, 1.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.arc(cx - 1.5, cy - 3.5, 1.2, 0.1, Math.PI - 0.1);
+      ctx.stroke();
+    }
   } else if (dir === 'right') {
-    ctx.fillStyle = '#222';
-    ctx.beginPath();
-    ctx.ellipse(cx + 4, cy - 7, 1.2, 1.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#444';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.arc(cx + 1.5, cy - 3.5, 1.2, 0.1, Math.PI - 0.1);
-    ctx.stroke();
+    if (isPlayer) {
+      // Side sunglasses — single dark oval
+      ctx.fillStyle = '#0A0A0A';
+      ctx.beginPath();
+      ctx.ellipse(cx + 3.5, cy - 7.5, 2.5, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#333333';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+      // Reflection
+      ctx.strokeStyle = 'rgba(180, 220, 255, 0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx + 2, cy - 8);
+      ctx.lineTo(cx + 5, cy - 7);
+      ctx.stroke();
+      // Serious mouth
+      ctx.strokeStyle = '#6a4030';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 3.5);
+      ctx.lineTo(cx + 3, cy - 3.5);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.ellipse(cx + 4, cy - 7, 1.2, 1.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.arc(cx + 1.5, cy - 3.5, 1.2, 0.1, Math.PI - 0.1);
+      ctx.stroke();
+    }
   }
   // 'up' — no face visible
 
-  // ── Slicked-back hair (Mossad agent style — NO kippah) ──
+  // ── Slicked-back hair (professional, groomed — NO kippah) ──
   if (kippah) {
     ctx.fillStyle = '#1A1A1A';
     // Hair swept backward — rounded cap using arcs
     ctx.beginPath();
     ctx.ellipse(cx, cy - 11, 7.5, 4, 0, Math.PI, 0);
     ctx.fill();
-    // Hair volume on top (higher in front for slight quiff)
+    // Hair volume on top — higher in front (subtle pompadour)
     ctx.beginPath();
-    ctx.ellipse(cx - 1, cy - 12.5, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx - 6, cy - 12);
+    ctx.bezierCurveTo(cx - 4, cy - 16, cx + 3, cy - 16.5, cx + 6, cy - 12);
+    ctx.bezierCurveTo(cx + 7, cy - 10, cx - 7, cy - 10, cx - 6, cy - 12);
+    ctx.closePath();
     ctx.fillStyle = '#1A1A1A';
     ctx.fill();
     // Side hair — small arcs hugging the head
@@ -705,8 +779,8 @@ function drawCharacter(dir, frame, opts = {}) {
     ctx.lineWidth = 0.4;
     for (let i = -2; i <= 2; i++) {
       ctx.beginPath();
-      ctx.moveTo(cx + i * 2, cy - 14);
-      ctx.bezierCurveTo(cx + i * 2.2, cy - 12, cx + i * 2.8, cy - 10, cx + i * 3, cy - 9);
+      ctx.moveTo(cx + i * 2, cy - 15);
+      ctx.bezierCurveTo(cx + i * 2.2, cy - 13, cx + i * 2.8, cy - 11, cx + i * 3, cy - 9);
       ctx.stroke();
     }
   }

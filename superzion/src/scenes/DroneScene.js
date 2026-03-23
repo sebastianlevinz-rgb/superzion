@@ -1924,9 +1924,14 @@ export default class DroneScene extends Phaser.Scene {
     this.armchairInPlace = true;
     this.armchairProjectile = null; // when pushed as projectile
 
-    // Boss sprite — starts hidden with peek texture (eyebrows+eyes above armchair)
-    this.bossSprite = this.add.image(this.armchairX, this.armchairY - ARMCHAIR_H / 2 - 10, 'ts_boss4_peek').setDepth(10);
-    this.bossSprite.setDisplaySize(64, 24);
+    // Armchair sprite (separate from boss — used for depth layering)
+    this.armchairSprite = this.add.image(this.armchairX, this.armchairY, 'armchair').setDepth(12);
+    this.armchairSprite.setDisplaySize(ARMCHAIR_W, ARMCHAIR_H);
+
+    // Boss sprite — starts hidden BEHIND armchair (depth 8 < armchair 12)
+    // Position boss so only top of head (hair/eyebrows/eyes) peeks above backrest
+    this.bossSprite = this.add.image(this.armchairX, this.armchairY, 'ts_boss4_normal').setDepth(8);
+    this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
     this.bossSprite.setAlpha(1);
 
     // Boss HP bar
@@ -1965,9 +1970,9 @@ export default class DroneScene extends Phaser.Scene {
     }
     // Overturned table on left side
     this.roomTable = { x: 160, y: 200, w: 70, h: 30, rotation: 0.35 };
-    // Broken chairs
+    // Broken chairs (scattered on floor)
     this.roomChairs = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
       this.roomChairs.push({
         x: 100 + Math.random() * 300,
         y: 100 + Math.random() * 350,
@@ -1977,6 +1982,7 @@ export default class DroneScene extends Phaser.Scene {
     }
     // Hanging cables from ceiling (start points at top)
     this.roomCables = [];
+    const cableColors = [0xCC3333, 0x33AA33, 0x3333CC];
     for (let i = 0; i < 3; i++) {
       const cx = 200 + i * 250 + (Math.random() - 0.5) * 80;
       const segments = [];
@@ -1985,7 +1991,7 @@ export default class DroneScene extends Phaser.Scene {
         sy += 15 + Math.random() * 20;
         segments.push({ x: cx + (Math.random() - 0.5) * 30, y: sy });
       }
-      this.roomCables.push({ startX: cx, segments });
+      this.roomCables.push({ startX: cx, segments, color: cableColors[i] });
     }
     // Glass fragments (tiny bright dots)
     this.roomGlass = [];
@@ -1996,6 +2002,84 @@ export default class DroneScene extends Phaser.Scene {
         size: 1 + Math.random() * 2,
       });
     }
+    // Small rubble pieces on floor
+    this.roomRubble = [];
+    for (let i = 0; i < 18; i++) {
+      this.roomRubble.push({
+        x: ROOM_LEFT + 50 + Math.random() * (ROOM_RIGHT - ROOM_LEFT - 100),
+        y: ROOM_TOP + 50 + Math.random() * (ROOM_BOTTOM - ROOM_TOP - 100),
+        r: 2 + Math.random() * 3,
+        isRect: Math.random() > 0.5,
+        w: 3 + Math.random() * 5,
+        h: 2 + Math.random() * 4,
+        shade: 0x50 + Math.floor(Math.random() * 0x30),
+      });
+    }
+    // Damp patches on floor
+    this.roomDamp = [];
+    for (let i = 0; i < 5; i++) {
+      this.roomDamp.push({
+        x: ROOM_LEFT + 80 + Math.random() * (ROOM_RIGHT - ROOM_LEFT - 160),
+        y: ROOM_TOP + 80 + Math.random() * (ROOM_BOTTOM - ROOM_TOP - 160),
+        rx: 10 + Math.random() * 20,
+        ry: 8 + Math.random() * 15,
+      });
+    }
+    // Bullet impact craters on walls
+    this.wallCraters = [
+      { x: 120, y: 15, r: 5 },
+      { x: 350, y: 22, r: 7 },
+      { x: 680, y: 12, r: 4 },
+      { x: 820, y: 18, r: 6 },
+      { x: 15, y: 180, r: 5 },
+      { x: 20, y: 320, r: 6 },
+      { x: W - 15, y: 200, r: 5 },
+      { x: W - 18, y: 380, r: 7 },
+    ];
+    // Soot/burn marks
+    this.wallSoot = [
+      { x: 250, y: 10, w: 40, h: 25 },
+      { x: 550, y: 5, w: 50, h: 30 },
+      { x: 8, y: 250, w: 25, h: 40 },
+      { x: W - 30, y: 280, w: 25, h: 35 },
+    ];
+    // Sandbag barricades
+    this.sandbags = [
+      { x: ROOM_LEFT + 80, y: ROOM_BOTTOM - 60 },
+      { x: ROOM_RIGHT - 100, y: ROOM_TOP + 80 },
+    ];
+    // Military supply crates
+    this.supplyCrates = [
+      { x: ROOM_LEFT + 60, y: ROOM_TOP + 70, w: 28, h: 22, color: 0x4a6a3a },
+      { x: ROOM_RIGHT - 80, y: ROOM_BOTTOM - 70, w: 32, h: 24, color: 0x6a5030 },
+    ];
+    // Scattered papers/documents on floor
+    this.papers = [];
+    for (let i = 0; i < 8; i++) {
+      this.papers.push({
+        x: ROOM_LEFT + 80 + Math.random() * (ROOM_RIGHT - ROOM_LEFT - 160),
+        y: ROOM_TOP + 80 + Math.random() * (ROOM_BOTTOM - ROOM_TOP - 160),
+        w: 6 + Math.random() * 8,
+        h: 8 + Math.random() * 6,
+        rotation: Math.random() * Math.PI * 2,
+        isBeige: Math.random() > 0.5,
+      });
+    }
+    // Map pinned to wall (top wall)
+    this.wallMap = { x: 700, y: 6, w: 36, h: 28 };
+    // Radio equipment on crate
+    this.radioEquip = { x: ROOM_RIGHT - 74, y: ROOM_BOTTOM - 82, w: 18, h: 12 };
+    // Mattress in corner
+    this.mattress = { x: ROOM_LEFT + 60, y: ROOM_BOTTOM - 50, w: 50, h: 28 };
+    // Light beams through wall holes
+    this.lightBeams = [
+      { x: 370, y: 0, w: 60, endY: 160, angle: 0.15 },
+      { x: 520, y: 0, w: 40, endY: 120, angle: -0.1 },
+    ];
+    // Flickering light state
+    this.flickerTimer = 0;
+    this.flickerState = 1.0;
+    this.flickerInterval = 5 + Math.random() * 2;
   }
 
   _createBossHPBar() {
@@ -2055,17 +2139,18 @@ export default class DroneScene extends Phaser.Scene {
     this.bossActive = false;
     SoundManager.get().playBossEntrance();
 
-    // Boss starts behind armchair, small and hidden
+    // Boss starts behind armchair (depth 8, armchair depth 12)
     this.bossX = ARMCHAIR_X;
     this.bossY = ARMCHAIR_Y;
 
     if (this.bossSprite) {
       this.bossSprite.setPosition(this.bossX, this.bossY);
       this.bossSprite.setAlpha(0.3);
+      this.bossSprite.setDepth(8);
       this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
     }
 
-    // Dramatic entrance: boss rises from behind armchair
+    // Dramatic entrance: boss rises from behind armchair to above it
     this.tweens.add({
       targets: { val: 0 },
       val: 1,
@@ -2077,17 +2162,21 @@ export default class DroneScene extends Phaser.Scene {
           this.bossSprite.setAlpha(0.3 + 0.7 * t);
           const size = Phaser.Math.Linear(BOSS_DISPLAY * 0.4, BOSS_DISPLAY, t);
           this.bossSprite.setDisplaySize(size, size);
+          // Rise above armchair during entrance
+          this.bossSprite.setDepth(t > 0.5 ? 15 : 8);
+          this.bossSprite.y = this.bossY - 40 * t;
         }
       },
       onComplete: () => {
         this.cameras.main.shake(400, 0.025);
         SoundManager.get().playBossShockwave();
 
-        // Reset boss to hiding state behind armchair
+        // Reset boss to hiding state behind armchair (depth 8)
         this.bossPeekScale = 0.4;
         if (this.bossSprite) {
-          this.bossSprite.setAlpha(0.5);
-          this.bossSprite.setDisplaySize(BOSS_DISPLAY * 0.4, BOSS_DISPLAY * 0.4);
+          this.bossSprite.setAlpha(1);
+          this.bossSprite.setDepth(8);
+          this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
         }
 
         const nameText = this.add.text(W / 2, H / 2, 'ANGRY EYEBROWS', {
@@ -2193,19 +2282,28 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   // ── Phase 1: hiding -> peeking -> throwing -> hiding ──
-  // When hiding, only EYEBROWS + EYES peek above armchair (signature visual)
+  // When hiding: boss is BEHIND armchair (depth 8 < armchair 12),
+  // positioned so only hair/eyebrows/eyes peek above the backrest.
+  // When attacking: boss rises UP (depth 15, IN FRONT of armchair).
   _updateBossPhase1(dt) {
     this.bossStateTimer -= dt;
 
     switch (this.bossState) {
       case 'hiding':
-        // NOT vulnerable, but peek texture shows eyebrows+eyes above armchair
+        // NOT vulnerable — boss behind armchair, only top of head visible
         this.bossVisible = false;
         this.bossX = this.armchairX;
-        this.bossY = this.armchairY - ARMCHAIR_H / 2 - 10;
+        // Position boss so the top ~20% (hair/brows/eyes) peeks above armchair backrest
+        // The armchair top edge is at armchairY - ARMCHAIR_H/2 = 280 - 30 = 250
+        // Boss sprite center is placed so that the top portion shows above
+        this.bossY = this.armchairY + ARMCHAIR_H * 0.15;
+        // Slight X tracking toward player (eyes follow drone)
+        const trackOffsetX = Math.sign(this.droneX - this.armchairX) * 3;
+        this.bossX = this.armchairX + trackOffsetX;
         if (this.bossSprite) {
-          this.bossSprite.setTexture('ts_boss4_peek');
-          this.bossSprite.setDisplaySize(64, 24);
+          this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
+          this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+          this.bossSprite.setDepth(8); // BEHIND armchair (depth 12)
           this.bossSprite.setAlpha(1);
         }
         if (this.bossStateTimer <= 0) {
@@ -2216,48 +2314,66 @@ export default class DroneScene extends Phaser.Scene {
         break;
 
       case 'peeking': {
-        // Boss rises from armchair — peek → full sprite, becomes vulnerable
+        // Boss rises from behind armchair — becomes vulnerable
         this.bossVisible = true;
         const riseProgress = Math.min(1, (BOSS_P1_PEEK_DUR - this.bossStateTimer) / BOSS_P1_PEEK_RISE);
         this.bossX = this.armchairX;
-        this.bossY = this.armchairY - ARMCHAIR_H / 2 - 10 - 30 * riseProgress;
+        // Rise from behind-armchair position to fully above
+        const hideY = this.armchairY + ARMCHAIR_H * 0.15;
+        const attackY = this.armchairY - ARMCHAIR_H / 2 - BOSS_DISPLAY * 0.4;
+        this.bossY = hideY + (attackY - hideY) * riseProgress;
 
         if (this.bossSprite) {
-          if (riseProgress < 0.4) {
-            // Still peek texture, growing
-            this.bossSprite.setTexture('ts_boss4_peek');
-            const peekScale = 1 + riseProgress * 1.5;
-            this.bossSprite.setDisplaySize(64 * peekScale, 24 * peekScale);
-          } else {
-            // Switch to full texture, scale up
-            this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
-            const fullProgress = (riseProgress - 0.4) / 0.6;
-            const scale = 0.5 + 0.5 * fullProgress;
-            this.bossSprite.setDisplaySize(BOSS_DISPLAY * scale, BOSS_DISPLAY * scale);
-          }
+          this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
+          this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+          // Transition depth: switch to IN FRONT when risen enough
+          this.bossSprite.setDepth(riseProgress > 0.5 ? 15 : 8);
           this.bossSprite.setAlpha(1);
         }
 
         if (this.bossStateTimer <= 0) {
           this.bossState = 'throwing';
-          this.bossStateTimer = 0.3;
-          this._bossThrowObject();
+          this.bossStateTimer = 0.8; // 0.5s wind-up + 0.3s throw
+          this._bossWindUp = true;
+          this._bossWindUpTimer = 0.5;
         }
         break;
       }
 
       case 'throwing':
-        // Full sprite, full size, throws object, then hides
+        // Full sprite, full size, IN FRONT of armchair
         this.bossVisible = true;
+        this.bossY = this.armchairY - ARMCHAIR_H / 2 - BOSS_DISPLAY * 0.4;
         if (this.bossSprite) {
           this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
           this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+          this.bossSprite.setDepth(15); // IN FRONT of armchair
           this.bossSprite.setAlpha(1);
         }
+
+        // Wind-up animation: arm raises 0.5s before throw
+        if (this._bossWindUp) {
+          this._bossWindUpTimer -= dt;
+          // Slight tilt during wind-up
+          if (this.bossSprite) {
+            this.bossSprite.setRotation(Math.sin(this._bossWindUpTimer * 12) * 0.08);
+          }
+          if (this._bossWindUpTimer <= 0) {
+            this._bossWindUp = false;
+            this._bossThrowObject();
+            if (this.bossSprite) this.bossSprite.setRotation(0);
+          }
+        }
+
         if (this.bossStateTimer <= 0) {
+          // Sink back behind armchair
           this.bossState = 'hiding';
-          // Consistent hide duration (rhythmic, not random)
+          // Consistent hide duration
           this.bossStateTimer = BOSS_P1_HIDE_MIN + 0.25; // always 1.75s
+          if (this.bossSprite) {
+            this.bossSprite.setDepth(8); // back BEHIND armchair
+            this.bossSprite.setRotation(0);
+          }
         }
         break;
     }
@@ -2269,6 +2385,7 @@ export default class DroneScene extends Phaser.Scene {
     if (this.bossSprite) {
       this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
       this.bossSprite.setAlpha(1);
+      this.bossSprite.setDepth(15); // Always in front during phase 2
     }
 
     // Movement toward target position
@@ -2307,6 +2424,7 @@ export default class DroneScene extends Phaser.Scene {
     if (this.bossSprite) {
       this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
       this.bossSprite.setAlpha(1);
+      this.bossSprite.setDepth(15); // Always in front during phase 3
     }
 
     // Charge logic
@@ -2509,6 +2627,11 @@ export default class DroneScene extends Phaser.Scene {
     if (!this.armchairInPlace) return;
     this.armchairInPlace = false;
     SoundManager.get().playBossShockwave();
+
+    // Hide the armchair sprite (it's now a flying projectile drawn in _drawRoom)
+    if (this.armchairSprite) {
+      this.armchairSprite.setVisible(false);
+    }
 
     const dx = this.droneX - this.armchairX;
     const dy = this.droneY - this.armchairY;
@@ -2846,18 +2969,31 @@ export default class DroneScene extends Phaser.Scene {
     if (!gfx) return;
     gfx.clear();
 
-    // 1. Floor background (concrete)
-    gfx.fillStyle(0x888880);
+    // ═══════════════════════════════════════════
+    // 1. FLOOR (cracked concrete/tile base)
+    // ═══════════════════════════════════════════
+    gfx.fillStyle(0x777770);
     gfx.fillRect(ROOM_LEFT, ROOM_TOP, ROOM_RIGHT - ROOM_LEFT, ROOM_BOTTOM - ROOM_TOP);
 
-    // Floor cracks (static pattern)
-    gfx.lineStyle(1, 0x666660, 0.5);
+    // Tile grid (subtle)
+    gfx.lineStyle(0.5, 0x666660, 0.25);
+    for (let tx = ROOM_LEFT; tx < ROOM_RIGHT; tx += 40) {
+      gfx.beginPath(); gfx.moveTo(tx, ROOM_TOP); gfx.lineTo(tx, ROOM_BOTTOM); gfx.strokePath();
+    }
+    for (let ty = ROOM_TOP; ty < ROOM_BOTTOM; ty += 40) {
+      gfx.beginPath(); gfx.moveTo(ROOM_LEFT, ty); gfx.lineTo(ROOM_RIGHT, ty); gfx.strokePath();
+    }
+
+    // Floor cracks (dark crack lines)
+    gfx.lineStyle(1, 0x555548, 0.6);
     const crackSeeds = [
       [120, 150, 180, 160, 220, 190],
       [400, 100, 430, 130, 460, 110],
       [600, 350, 630, 380, 610, 420],
       [300, 400, 340, 420, 320, 460],
       [750, 200, 770, 240, 800, 220],
+      [200, 300, 230, 320, 210, 350],
+      [500, 250, 540, 260, 520, 290],
     ];
     for (const c of crackSeeds) {
       gfx.beginPath();
@@ -2865,6 +3001,23 @@ export default class DroneScene extends Phaser.Scene {
       gfx.lineTo(c[2], c[3]);
       gfx.lineTo(c[4], c[5]);
       gfx.strokePath();
+    }
+
+    // Damp patches (slightly darker areas)
+    for (const dp of this.roomDamp) {
+      gfx.fillStyle(0x606058, 0.3);
+      gfx.fillEllipse(dp.x, dp.y, dp.rx * 2, dp.ry * 2);
+    }
+
+    // Small rubble pieces
+    for (const rb of this.roomRubble) {
+      const col = Phaser.Display.Color.GetColor(rb.shade, rb.shade, rb.shade - 8);
+      gfx.fillStyle(col, 0.7);
+      if (rb.isRect) {
+        gfx.fillRect(rb.x, rb.y, rb.w, rb.h);
+      } else {
+        gfx.fillCircle(rb.x, rb.y, rb.r);
+      }
     }
 
     // Dynamic floor cracks from phase 3 impacts
@@ -2882,39 +3035,123 @@ export default class DroneScene extends Phaser.Scene {
       gfx.strokePath();
     }
 
-    // 2. Walls (darker, 4 sides)
+    // Scattered papers/documents on floor
+    for (const p of this.papers) {
+      const pcolor = p.isBeige ? 0xd8d0b8 : 0xe8e4dc;
+      gfx.fillStyle(pcolor, 0.7);
+      const pcos = Math.cos(p.rotation), psin = Math.sin(p.rotation);
+      const phw = p.w / 2, phh = p.h / 2;
+      gfx.beginPath();
+      gfx.moveTo(p.x + pcos * (-phw) - psin * (-phh), p.y + psin * (-phw) + pcos * (-phh));
+      gfx.lineTo(p.x + pcos * phw - psin * (-phh), p.y + psin * phw + pcos * (-phh));
+      gfx.lineTo(p.x + pcos * phw - psin * phh, p.y + psin * phw + pcos * phh);
+      gfx.lineTo(p.x + pcos * (-phw) - psin * phh, p.y + psin * (-phw) + pcos * phh);
+      gfx.closePath();
+      gfx.fillPath();
+    }
+
+    // ═══════════════════════════════════════════
+    // 2. WALLS (concrete with damage)
+    // ═══════════════════════════════════════════
     const wallColor = 0x666658;
-    // Top wall
     gfx.fillStyle(wallColor);
     gfx.fillRect(0, 0, W, ROOM_TOP);
-    // Bottom wall
     gfx.fillRect(0, ROOM_BOTTOM, W, H - ROOM_BOTTOM);
-    // Left wall
     gfx.fillRect(0, 0, ROOM_LEFT, H);
-    // Right wall
     gfx.fillRect(ROOM_RIGHT, 0, W - ROOM_RIGHT, H);
 
-    // Wall cracks (drawn as lines on walls)
+    // Wall cracks
     gfx.lineStyle(1.5, 0x555548, 0.6);
-    // Top wall cracks
     gfx.beginPath(); gfx.moveTo(200, 5); gfx.lineTo(220, 20); gfx.lineTo(210, 35); gfx.strokePath();
     gfx.beginPath(); gfx.moveTo(600, 8); gfx.lineTo(580, 25); gfx.lineTo(590, 38); gfx.strokePath();
-    // Left wall cracks
     gfx.beginPath(); gfx.moveTo(5, 200); gfx.lineTo(20, 220); gfx.lineTo(8, 240); gfx.strokePath();
-    // Right wall cracks
     gfx.beginPath(); gfx.moveTo(W - 5, 300); gfx.lineTo(W - 20, 320); gfx.lineTo(W - 8, 340); gfx.strokePath();
-    // Bottom wall cracks
     gfx.beginPath(); gfx.moveTo(400, H - 5); gfx.lineTo(420, H - 20); gfx.lineTo(410, H - 35); gfx.strokePath();
 
-    // 3. Hole in top wall (collapsed ceiling) - bright sky visible
+    // Bullet impact craters on walls
+    for (const cr of this.wallCraters) {
+      gfx.fillStyle(0x333330, 0.6);
+      gfx.fillCircle(cr.x, cr.y, cr.r);
+      gfx.fillStyle(0x444440, 0.4);
+      gfx.fillCircle(cr.x, cr.y, cr.r * 0.6);
+      // Crater ring
+      gfx.lineStyle(0.8, 0x555548, 0.5);
+      gfx.strokeCircle(cr.x, cr.y, cr.r + 1);
+    }
+
+    // Soot/burn marks
+    for (const soot of this.wallSoot) {
+      gfx.fillStyle(0x2a2a24, 0.2);
+      gfx.fillEllipse(soot.x + soot.w / 2, soot.y + soot.h / 2, soot.w, soot.h);
+      gfx.fillStyle(0x1a1a16, 0.15);
+      gfx.fillEllipse(soot.x + soot.w / 2 + 3, soot.y + soot.h / 2 + 2, soot.w * 0.6, soot.h * 0.6);
+    }
+
+    // Map pinned to top wall
+    const wm = this.wallMap;
+    gfx.fillStyle(0xd0c8a0, 0.8);
+    gfx.fillRect(wm.x, wm.y, wm.w, wm.h);
+    // Map lines (colored routes)
+    gfx.lineStyle(1, 0xcc3333, 0.6);
+    gfx.beginPath(); gfx.moveTo(wm.x + 5, wm.y + 8); gfx.lineTo(wm.x + 20, wm.y + 15); gfx.lineTo(wm.x + 32, wm.y + 10); gfx.strokePath();
+    gfx.lineStyle(1, 0x3333cc, 0.5);
+    gfx.beginPath(); gfx.moveTo(wm.x + 8, wm.y + 20); gfx.lineTo(wm.x + 25, wm.y + 22); gfx.strokePath();
+    // Map pins
+    gfx.fillStyle(0xff0000, 0.8);
+    gfx.fillCircle(wm.x + 20, wm.y + 15, 2);
+    gfx.fillCircle(wm.x + 10, wm.y + 8, 1.5);
+
+    // ═══════════════════════════════════════════
+    // 3. HOLE IN TOP WALL (collapsed ceiling)
+    // ═══════════════════════════════════════════
     gfx.fillStyle(0x88bbee);
     gfx.fillRect(350, 0, 200, ROOM_TOP);
-    // Sky gradient edge
     gfx.fillStyle(0xaaccee, 0.5);
     gfx.fillRect(340, 0, 12, ROOM_TOP);
     gfx.fillRect(548, 0, 12, ROOM_TOP);
 
-    // 4. Light patches on floor from broken windows (yellowish, alpha 0.3)
+    // Light beams through wall holes (angled triangles)
+    for (const beam of this.lightBeams) {
+      gfx.fillStyle(0xeeeebb, 0.08);
+      gfx.beginPath();
+      gfx.moveTo(beam.x, ROOM_TOP);
+      gfx.lineTo(beam.x + beam.w, ROOM_TOP);
+      gfx.lineTo(beam.x + beam.w + beam.angle * beam.endY, beam.endY);
+      gfx.lineTo(beam.x + beam.angle * beam.endY, beam.endY);
+      gfx.closePath();
+      gfx.fillPath();
+      // Inner brighter core
+      gfx.fillStyle(0xffffcc, 0.04);
+      gfx.beginPath();
+      gfx.moveTo(beam.x + 10, ROOM_TOP);
+      gfx.lineTo(beam.x + beam.w - 10, ROOM_TOP);
+      gfx.lineTo(beam.x + beam.w - 10 + beam.angle * beam.endY * 0.7, beam.endY * 0.7);
+      gfx.lineTo(beam.x + 10 + beam.angle * beam.endY * 0.7, beam.endY * 0.7);
+      gfx.closePath();
+      gfx.fillPath();
+    }
+
+    // ═══════════════════════════════════════════
+    // 4. FLICKERING FLUORESCENT LIGHT
+    // ═══════════════════════════════════════════
+    this.flickerTimer += 0.016; // approx dt
+    if (this.flickerTimer >= this.flickerInterval) {
+      this.flickerTimer = 0;
+      this.flickerInterval = 5 + Math.random() * 2;
+      // Quick flicker: toggle off then on
+      this.flickerState = 0.3;
+      this.time.delayedCall(80, () => { this.flickerState = 1.0; });
+      this.time.delayedCall(160, () => { this.flickerState = 0.4; });
+      this.time.delayedCall(260, () => { this.flickerState = 1.0; });
+    }
+    // Fluorescent tube on ceiling (top wall center)
+    gfx.fillStyle(0xffffff, 0.6 * this.flickerState);
+    gfx.fillRect(420, 2, 80, 6);
+    // Light glow on floor
+    gfx.fillStyle(0xeeee88, 0.06 * this.flickerState);
+    gfx.fillRect(380, ROOM_TOP, 160, 100);
+
+    // Light patches from broken windows
     gfx.fillStyle(0xeeee88, 0.15);
     gfx.fillRect(100, 120, 120, 80);
     gfx.fillStyle(0xeeee88, 0.12);
@@ -2922,26 +3159,28 @@ export default class DroneScene extends Phaser.Scene {
     gfx.fillStyle(0xeeeeaa, 0.1);
     gfx.fillRect(400, 80, 90, 60);
 
-    // 5. Scattered debris (gray irregular shapes)
+    // ═══════════════════════════════════════════
+    // 5. FURNITURE & OBJECTS (non-interactive decoration)
+    // ═══════════════════════════════════════════
+
+    // Scattered debris (gray irregular shapes)
     for (const d of this.roomDebris) {
       const gray = Math.floor(0x60 + d.shade * 0x40);
       const col = Phaser.Display.Color.GetColor(gray, gray, gray - 8);
       gfx.fillStyle(col, 0.7);
-      gfx.save();
-      // Draw rotated rectangle approximation
-      const cx = d.x, cy = d.y;
+      const dcx = d.x, dcy = d.y;
       const hw = d.w / 2, hh = d.h / 2;
       const cos = Math.cos(d.rotation), sin = Math.sin(d.rotation);
       gfx.beginPath();
-      gfx.moveTo(cx + cos * (-hw) - sin * (-hh), cy + sin * (-hw) + cos * (-hh));
-      gfx.lineTo(cx + cos * hw - sin * (-hh), cy + sin * hw + cos * (-hh));
-      gfx.lineTo(cx + cos * hw - sin * hh, cy + sin * hw + cos * hh);
-      gfx.lineTo(cx + cos * (-hw) - sin * hh, cy + sin * (-hw) + cos * hh);
+      gfx.moveTo(dcx + cos * (-hw) - sin * (-hh), dcy + sin * (-hw) + cos * (-hh));
+      gfx.lineTo(dcx + cos * hw - sin * (-hh), dcy + sin * hw + cos * (-hh));
+      gfx.lineTo(dcx + cos * hw - sin * hh, dcy + sin * hw + cos * hh);
+      gfx.lineTo(dcx + cos * (-hw) - sin * hh, dcy + sin * (-hw) + cos * hh);
       gfx.closePath();
       gfx.fillPath();
     }
 
-    // 6. Overturned table (left side)
+    // Overturned table (left side, brown rectangle on its side with legs)
     const t = this.roomTable;
     gfx.fillStyle(0x6a5040, 0.8);
     const tcos = Math.cos(t.rotation), tsin = Math.sin(t.rotation);
@@ -2953,14 +3192,12 @@ export default class DroneScene extends Phaser.Scene {
     gfx.lineTo(t.x + tcos * (-thw) - tsin * thh, t.y + tsin * (-thw) + tcos * thh);
     gfx.closePath();
     gfx.fillPath();
-    // Table leg sticking up
+    // Table legs sticking up
     gfx.lineStyle(3, 0x5a4030, 0.7);
-    gfx.beginPath();
-    gfx.moveTo(t.x - 20, t.y - 10);
-    gfx.lineTo(t.x - 28, t.y - 30);
-    gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(t.x - 20, t.y - 10); gfx.lineTo(t.x - 28, t.y - 30); gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(t.x + 10, t.y - 8); gfx.lineTo(t.x + 16, t.y - 26); gfx.strokePath();
 
-    // 7. Broken chairs
+    // Broken chairs on floor
     for (const ch of this.roomChairs) {
       gfx.fillStyle(0x5a4a38, 0.6);
       const ccos = Math.cos(ch.rotation), csin = Math.sin(ch.rotation);
@@ -2972,57 +3209,127 @@ export default class DroneScene extends Phaser.Scene {
       gfx.lineTo(ch.x + ccos * (-hs * 0.7) - csin * (hs * 0.4), ch.y + csin * (-hs * 0.7) + ccos * (hs * 0.4));
       gfx.closePath();
       gfx.fillPath();
+      // Chair leg
+      gfx.lineStyle(2, 0x5a4a38, 0.5);
+      gfx.beginPath(); gfx.moveTo(ch.x, ch.y); gfx.lineTo(ch.x + ccos * hs * 0.8, ch.y + csin * hs * 0.8); gfx.strokePath();
     }
 
-    // 8. Hanging cables from ceiling
+    // Sandbag barricades (beige ovals piled up)
+    for (const sb of this.sandbags) {
+      // Bottom row (2 bags)
+      gfx.fillStyle(0xb8a880, 0.8);
+      gfx.fillEllipse(sb.x - 10, sb.y + 6, 24, 12);
+      gfx.fillEllipse(sb.x + 14, sb.y + 6, 24, 12);
+      // Top row (1 bag)
+      gfx.fillStyle(0xc0b090, 0.8);
+      gfx.fillEllipse(sb.x + 2, sb.y - 6, 22, 10);
+      // Bag texture lines
+      gfx.lineStyle(0.5, 0x8a7a60, 0.4);
+      gfx.beginPath(); gfx.moveTo(sb.x - 18, sb.y + 6); gfx.lineTo(sb.x - 2, sb.y + 6); gfx.strokePath();
+      gfx.beginPath(); gfx.moveTo(sb.x + 6, sb.y + 6); gfx.lineTo(sb.x + 22, sb.y + 6); gfx.strokePath();
+    }
+
+    // Military supply crates
+    for (const cr of this.supplyCrates) {
+      gfx.fillStyle(cr.color, 0.85);
+      gfx.fillRect(cr.x, cr.y, cr.w, cr.h);
+      // Crate edge highlight
+      gfx.fillStyle(0xffffff, 0.1);
+      gfx.fillRect(cr.x, cr.y, cr.w, 3);
+      // Stencil marks (X pattern)
+      gfx.lineStyle(1.5, 0xddddaa, 0.4);
+      gfx.beginPath();
+      gfx.moveTo(cr.x + 4, cr.y + 4);
+      gfx.lineTo(cr.x + cr.w - 4, cr.y + cr.h - 4);
+      gfx.strokePath();
+      gfx.beginPath();
+      gfx.moveTo(cr.x + cr.w - 4, cr.y + 4);
+      gfx.lineTo(cr.x + 4, cr.y + cr.h - 4);
+      gfx.strokePath();
+      // Crate edge dark
+      gfx.lineStyle(1, 0x222220, 0.4);
+      gfx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+    }
+
+    // Radio equipment on crate
+    const radio = this.radioEquip;
+    gfx.fillStyle(0x333340, 0.85);
+    gfx.fillRect(radio.x, radio.y, radio.w, radio.h);
+    // Antenna line
+    gfx.lineStyle(1, 0x666666, 0.7);
+    gfx.beginPath(); gfx.moveTo(radio.x + 14, radio.y); gfx.lineTo(radio.x + 18, radio.y - 16); gfx.strokePath();
+    // Blinking red dot
+    const blinkOn = Math.floor(Date.now() / 600) % 2 === 0;
+    if (blinkOn) {
+      gfx.fillStyle(0xff0000, 0.9);
+      gfx.fillCircle(radio.x + 4, radio.y + 3, 2);
+    }
+    // Dials
+    gfx.fillStyle(0x888888, 0.5);
+    gfx.fillCircle(radio.x + 10, radio.y + 6, 2);
+
+    // Mattress in corner
+    const mat = this.mattress;
+    gfx.fillStyle(0x8a8878, 0.6);
+    gfx.fillRect(mat.x, mat.y, mat.w, mat.h);
+    // Green blanket shape on mattress
+    gfx.fillStyle(0x4a6a3a, 0.5);
+    gfx.beginPath();
+    gfx.moveTo(mat.x + 5, mat.y + 3);
+    gfx.lineTo(mat.x + mat.w - 10, mat.y + 5);
+    gfx.lineTo(mat.x + mat.w - 5, mat.y + mat.h - 3);
+    gfx.lineTo(mat.x + 8, mat.y + mat.h - 5);
+    gfx.closePath();
+    gfx.fillPath();
+    // Pillow
+    gfx.fillStyle(0xc0b8a0, 0.5);
+    gfx.fillEllipse(mat.x + 12, mat.y + mat.h / 2, 16, 10);
+
+    // ═══════════════════════════════════════════
+    // 6. HANGING CABLES FROM CEILING
+    // ═══════════════════════════════════════════
     for (const cable of this.roomCables) {
-      gfx.lineStyle(2, 0x333333, 0.5);
+      gfx.lineStyle(2, cable.color || 0x333333, 0.5);
       gfx.beginPath();
       gfx.moveTo(cable.startX, ROOM_TOP);
       for (const seg of cable.segments) {
         gfx.lineTo(seg.x, seg.y);
       }
       gfx.strokePath();
-      // Dangling end spark
+      // Dangling end spark (occasional yellow)
       const lastSeg = cable.segments[cable.segments.length - 1];
-      if (Math.random() > 0.95) {
-        gfx.fillStyle(0xffcc00, 0.6);
+      if (Math.random() > 0.92) {
+        gfx.fillStyle(0xffcc00, 0.7);
         gfx.fillCircle(lastSeg.x, lastSeg.y, 2);
+        gfx.fillStyle(0xffee44, 0.3);
+        gfx.fillCircle(lastSeg.x, lastSeg.y, 5);
       }
     }
 
-    // 9. Glass fragments (tiny bright dots)
+    // Glass fragments (tiny bright dots)
     for (const g of this.roomGlass) {
       const glint = 0.2 + 0.3 * Math.sin(Date.now() / 500 + g.x);
       gfx.fillStyle(0xffffff, glint);
       gfx.fillCircle(g.x, g.y, g.size);
     }
 
-    // 10. Armchair (if still in place)
-    if (this.armchairInPlace) {
-      gfx.fillStyle(0x4a3020);
-      gfx.fillRect(this.armchairX - ARMCHAIR_W / 2, this.armchairY - ARMCHAIR_H / 2, ARMCHAIR_W, ARMCHAIR_H);
-      // Armrest details
-      gfx.fillStyle(0x3a2515);
-      gfx.fillRect(this.armchairX - ARMCHAIR_W / 2, this.armchairY - ARMCHAIR_H / 2, ARMCHAIR_W, 8);
-      gfx.fillRect(this.armchairX - ARMCHAIR_W / 2, this.armchairY + ARMCHAIR_H / 2 - 8, ARMCHAIR_W, 8);
-      // Cushion
-      gfx.fillStyle(0x5a3828, 0.6);
-      gfx.fillRect(this.armchairX - 25, this.armchairY - 15, 50, 30);
-    }
-
-    // Armchair projectile (sliding across floor)
+    // ═══════════════════════════════════════════
+    // 10. ARMCHAIR (sprite-based) + projectile
+    // ═══════════════════════════════════════════
+    // Armchair is rendered as Phaser sprite (this.armchairSprite) with depth 12
+    // Only the projectile version is drawn via graphics:
     if (this.armchairProjectile && this.armchairProjectile.alive) {
       const ap = this.armchairProjectile;
-      gfx.fillStyle(0x4a3020, 0.8);
+      gfx.fillStyle(0x556B2F, 0.8);
       gfx.fillRect(ap.x - ARMCHAIR_W / 2, ap.y - ARMCHAIR_H / 2, ARMCHAIR_W, ARMCHAIR_H);
     }
 
-    // 11. Boss sprite is rendered via Phaser image (not graphics), managed in update
+    // 11. Boss sprite rendered via Phaser image (managed in update)
+    // 12. Projectiles rendered via Phaser images (managed in update)
 
-    // 12. Projectiles are rendered via Phaser images, managed in update
-
-    // 13. Drone (bright cyan, 50% bigger with LED lights)
+    // ═══════════════════════════════════════════
+    // 13. DRONE (bright cyan, 50% bigger with LED lights)
+    // ═══════════════════════════════════════════
     const droneFlash = this.droneInvulnTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
     if (!droneFlash) {
       const dx = this.droneX;
@@ -3257,6 +3564,7 @@ export default class DroneScene extends Phaser.Scene {
   _cleanupBoss() {
     if (this.roomGfx) { this.roomGfx.destroy(); this.roomGfx = null; }
     if (this.bossSprite) { this.bossSprite.destroy(); this.bossSprite = null; }
+    if (this.armchairSprite) { this.armchairSprite.destroy(); this.armchairSprite = null; }
 
     // HP bar
     if (this.bossHPBarBg) { this.bossHPBarBg.destroy(); this.bossHPBarBg = null; }

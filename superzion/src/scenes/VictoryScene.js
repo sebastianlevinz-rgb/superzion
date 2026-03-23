@@ -396,8 +396,9 @@ export default class VictoryScene extends BaseCinematicScene {
   }
 
   /**
-   * Forward-facing SuperZion with visible face, smile, Star of David.
-   * Drawn at 2x scale for imposing presence.
+   * Forward-facing SuperZion HERO with aviator sunglasses, V-shaped build,
+   * tactical vest, gold Star of David, slicked-back hair. Imposing presence.
+   * Drawn at 2x scale.
    */
   _drawForwardHero() {
     const gfx = this.add.graphics().setDepth(5);
@@ -405,77 +406,150 @@ export default class VictoryScene extends BaseCinematicScene {
     const cx = 0, baseY = 0;
     const s = 2; // Scale factor
 
-    // === LEGS ===
-    gfx.fillStyle(0x1a1a2a, 1);
-    gfx.fillRect(cx - 14 * s, baseY + 12 * s, 14 * s, 42 * s); // left leg
-    gfx.fillRect(cx + 0 * s, baseY + 12 * s, 14 * s, 42 * s);  // right leg
+    // === LEGS — firm combat stance ===
+    gfx.fillStyle(0x1a1a1a, 1);
+    gfx.fillRect(cx - 14 * s, baseY + 12 * s, 12 * s, 42 * s); // left leg
+    gfx.fillRect(cx + 2 * s, baseY + 12 * s, 12 * s, 42 * s);  // right leg
 
-    // === BOOTS ===
+    // === TACTICAL BOOTS — wider than ankles, thick sole ===
     gfx.fillStyle(0x0e0e0e, 1);
-    gfx.fillRect(cx - 16 * s, baseY + 52 * s, 16 * s, 8 * s);  // left boot
-    gfx.fillRect(cx + 0 * s, baseY + 52 * s, 16 * s, 8 * s);   // right boot
+    gfx.fillRect(cx - 16 * s, baseY + 52 * s, 16 * s, 7 * s);  // left boot
+    gfx.fillRect(cx + 0 * s, baseY + 52 * s, 16 * s, 7 * s);   // right boot
+    // Thick soles
+    gfx.fillStyle(0x080808, 1);
+    gfx.fillRect(cx - 17 * s, baseY + 58 * s, 18 * s, 3 * s);
+    gfx.fillRect(cx - 1 * s, baseY + 58 * s, 18 * s, 3 * s);
 
-    // === TORSO ===
-    gfx.fillStyle(0x1a1a2a, 1);
-    gfx.fillRect(cx - 18 * s, baseY - 24 * s, 36 * s, 48 * s);
+    // === V-SHAPED TORSO — wide shoulders, narrow waist ===
+    gfx.fillStyle(0x1a1a1a, 1);
+    // Draw trapezoid shape with triangles for V-taper
+    gfx.fillRect(cx - 14 * s, baseY - 20 * s, 28 * s, 44 * s);
+    // Extra shoulder width
+    gfx.fillRect(cx - 22 * s, baseY - 24 * s, 44 * s, 8 * s);
+
+    // === TACTICAL VEST — dark gray with details ===
+    gfx.fillStyle(0x3a3a3a, 1);
+    gfx.fillRect(cx - 13 * s, baseY - 18 * s, 26 * s, 36 * s);
+    // Vest straps
+    gfx.fillStyle(0x444448, 1);
+    gfx.fillRect(cx - 11 * s, baseY - 18 * s, 3 * s, 34 * s);
+    gfx.fillRect(cx + 8 * s, baseY - 18 * s, 3 * s, 34 * s);
+    // Vest pockets
+    gfx.fillStyle(0x4e4e52, 1);
+    gfx.fillRect(cx - 9 * s, baseY - 8 * s, 7 * s, 6 * s);
+    gfx.fillRect(cx + 2 * s, baseY - 8 * s, 7 * s, 6 * s);
+
+    // === SHOULDER PADS — rounded protectors ===
+    gfx.fillStyle(0x3a3a3a, 1);
+    gfx.fillEllipse(cx - 20 * s, baseY - 22 * s, 10 * s, 7 * s);
+    gfx.fillEllipse(cx + 20 * s, baseY - 22 * s, 10 * s, 7 * s);
 
     // === BELT ===
-    gfx.fillStyle(0x333340, 1);
-    gfx.fillRect(cx - 19 * s, baseY + 20 * s, 38 * s, 5 * s);
+    gfx.fillStyle(0x1a1a1a, 1);
+    gfx.fillRect(cx - 15 * s, baseY + 20 * s, 30 * s, 5 * s);
     // Belt buckle (gold)
     gfx.fillStyle(0xFFD700, 0.8);
     gfx.fillRect(cx - 3 * s, baseY + 21 * s, 6 * s, 3 * s);
 
-    // === SHOULDERS ===
-    gfx.fillStyle(0x1a1a2a, 1);
-    gfx.fillRect(cx - 22 * s, baseY - 26 * s, 44 * s, 8 * s);
-
     // === ARMS ===
-    gfx.fillStyle(0x1a1a2a, 1);
-    gfx.fillRect(cx - 28 * s, baseY - 22 * s, 12 * s, 34 * s); // left arm
-    gfx.fillRect(cx + 16 * s, baseY - 22 * s, 12 * s, 34 * s); // right arm
+    gfx.fillStyle(0x1a1a1a, 1);
+    gfx.fillRect(cx - 28 * s, baseY - 20 * s, 10 * s, 34 * s); // left arm
+    gfx.fillRect(cx + 18 * s, baseY - 20 * s, 10 * s, 34 * s); // right arm
 
-    // === HANDS ===
-    gfx.fillStyle(0xd2a679, 1);
-    gfx.fillCircle(cx - 22 * s, baseY + 14 * s, 5 * s); // left hand
-    gfx.fillCircle(cx + 22 * s, baseY + 14 * s, 5 * s); // right hand
+    // === GLOVED HANDS ===
+    gfx.fillStyle(0x222222, 1);
+    gfx.fillCircle(cx - 23 * s, baseY + 16 * s, 5 * s); // left hand
+    gfx.fillCircle(cx + 23 * s, baseY + 16 * s, 5 * s); // right hand
 
     // === NECK ===
-    gfx.fillStyle(0xd2a679, 1);
+    gfx.fillStyle(0xC49A6C, 1);
     gfx.fillRect(cx - 5 * s, baseY - 30 * s, 10 * s, 6 * s);
 
-    // === HEAD ===
-    // Skin face
-    gfx.fillStyle(0xd2a679, 1);
+    // === HEAD — Mediterranean skin ===
+    gfx.fillStyle(0xC49A6C, 1);
     gfx.fillCircle(cx, baseY - 42 * s, 16 * s);
     // Shadow skin undertone on left side
-    gfx.fillStyle(0xc49668, 0.4);
+    gfx.fillStyle(0xb08657, 0.4);
     gfx.fillRect(cx - 14 * s, baseY - 52 * s, 8 * s, 18 * s);
     // Highlight on right side
-    gfx.fillStyle(0xe0b689, 0.3);
+    gfx.fillStyle(0xd4aa7c, 0.3);
     gfx.fillRect(cx + 6 * s, baseY - 52 * s, 8 * s, 18 * s);
+    // Angular jawline
+    gfx.fillStyle(0xb08657, 0.5);
+    gfx.fillTriangle(
+      cx - 12 * s, baseY - 32 * s,
+      cx, baseY - 26 * s,
+      cx + 12 * s, baseY - 32 * s
+    );
 
-    // === HAIR ===
-    gfx.fillStyle(0x0a0a0a, 1);
-    gfx.fillEllipse(cx, baseY - 54 * s, 30 * s, 14 * s);
+    // === SLICKED-BACK HAIR with pompadour ===
+    gfx.fillStyle(0x1a1a1a, 1);
+    gfx.fillEllipse(cx, baseY - 56 * s, 32 * s, 14 * s);
+    // Pompadour volume — higher in front
+    gfx.fillEllipse(cx - 2 * s, baseY - 58 * s, 28 * s, 10 * s);
 
-    // === EYES ===
-    // Eye whites
-    gfx.fillStyle(0xeeeee8, 1);
-    gfx.fillRect(cx - 7 * s, baseY - 44 * s, 5 * s, 3 * s);  // left eye
-    gfx.fillRect(cx + 2 * s, baseY - 44 * s, 5 * s, 3 * s);  // right eye
-    // Irises
-    gfx.fillStyle(0x3a2818, 1);
-    gfx.fillRect(cx - 5 * s, baseY - 44 * s, 3 * s, 3 * s);  // left iris
-    gfx.fillRect(cx + 4 * s, baseY - 44 * s, 3 * s, 3 * s);  // right iris
+    // === THICK STRAIGHT EYEBROWS above sunglasses ===
+    gfx.fillStyle(0x1a1a1a, 1);
+    gfx.fillRect(cx - 10 * s, baseY - 47 * s, 8 * s, 2 * s);
+    gfx.fillRect(cx + 2 * s, baseY - 47 * s, 8 * s, 2 * s);
 
-    // === SMILE ===
-    gfx.lineStyle(2, 0xc49668, 0.8);
+    // === AVIATOR SUNGLASSES — the defining feature ===
+    // Left lens — dark oval
+    gfx.fillStyle(0x0A0A0A, 1);
+    gfx.fillEllipse(cx - 6 * s, baseY - 43 * s, 10 * s, 5 * s);
+    // Right lens
+    gfx.fillEllipse(cx + 6 * s, baseY - 43 * s, 10 * s, 5 * s);
+    // Frame — thin dark gray outlines
+    gfx.lineStyle(1, 0x333333, 1);
     gfx.beginPath();
-    gfx.arc(cx, baseY - 36 * s, 6 * s, Phaser.Math.DegToRad(10), Phaser.Math.DegToRad(170), false);
+    gfx.arc(cx - 6 * s, baseY - 43 * s, 5 * s, 0, Math.PI * 2);
+    gfx.strokePath();
+    gfx.beginPath();
+    gfx.arc(cx + 6 * s, baseY - 43 * s, 5 * s, 0, Math.PI * 2);
+    gfx.strokePath();
+    // Nose bridge
+    gfx.lineStyle(1.5, 0x333333, 1);
+    gfx.beginPath();
+    gfx.moveTo(cx - 1 * s, baseY - 43 * s);
+    gfx.lineTo(cx + 1 * s, baseY - 43 * s);
+    gfx.strokePath();
+    // Reflections — diagonal cyan/white lines
+    gfx.lineStyle(1.5, 0xB4DCFF, 0.4);
+    gfx.beginPath();
+    gfx.moveTo(cx - 9 * s, baseY - 44 * s);
+    gfx.lineTo(cx - 3 * s, baseY - 42 * s);
+    gfx.strokePath();
+    gfx.beginPath();
+    gfx.moveTo(cx + 3 * s, baseY - 44 * s);
+    gfx.lineTo(cx + 9 * s, baseY - 42 * s);
     gfx.strokePath();
 
-    // === STAR OF DAVID on chest ===
+    // === NOSE ===
+    gfx.fillStyle(0xb08657, 0.6);
+    gfx.fillTriangle(
+      cx - 1 * s, baseY - 40 * s,
+      cx, baseY - 36 * s,
+      cx + 1 * s, baseY - 40 * s
+    );
+
+    // === SERIOUS MOUTH — straight line, no smile ===
+    gfx.lineStyle(2, 0x6a4030, 0.8);
+    gfx.beginPath();
+    gfx.moveTo(cx - 5 * s, baseY - 34 * s);
+    gfx.lineTo(cx + 5 * s, baseY - 34 * s);
+    gfx.strokePath();
+    // Slight frown corners
+    gfx.lineStyle(1, 0x6a4030, 0.6);
+    gfx.beginPath();
+    gfx.moveTo(cx - 5 * s, baseY - 34 * s);
+    gfx.lineTo(cx - 6 * s, baseY - 33 * s);
+    gfx.strokePath();
+    gfx.beginPath();
+    gfx.moveTo(cx + 5 * s, baseY - 34 * s);
+    gfx.lineTo(cx + 6 * s, baseY - 33 * s);
+    gfx.strokePath();
+
+    // === STAR OF DAVID on chest — gold metallic ===
     const starR = 12 * s;
     const starCY = baseY - 4 * s;
     // Golden glow behind star
@@ -494,6 +568,20 @@ export default class VictoryScene extends BaseCinematicScene {
       cx - starR * 0.866, starCY - starR * 0.5,
       cx + starR * 0.866, starCY - starR * 0.5
     );
+    // Dark gold border on star
+    gfx.lineStyle(1.5, 0xB8860B, 1);
+    gfx.beginPath();
+    gfx.moveTo(cx, starCY - starR);
+    gfx.lineTo(cx - starR * 0.866, starCY + starR * 0.5);
+    gfx.lineTo(cx + starR * 0.866, starCY + starR * 0.5);
+    gfx.closePath();
+    gfx.strokePath();
+    gfx.beginPath();
+    gfx.moveTo(cx, starCY + starR);
+    gfx.lineTo(cx - starR * 0.866, starCY - starR * 0.5);
+    gfx.lineTo(cx + starR * 0.866, starCY - starR * 0.5);
+    gfx.closePath();
+    gfx.strokePath();
 
     // === WARM GOLDEN RIM LIGHTING on right side ===
     const glowGfx = this.add.graphics().setDepth(4);

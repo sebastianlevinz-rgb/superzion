@@ -253,13 +253,13 @@ export default class MusicManager {
       generator(this.ctx.currentTime);
       this.loopTimer = setTimeout(() => scheduleNext(), loopDuration * 1000 - 100);
     };
-    // Delay to let fade finish, then set volume and start
+    // Minimal delay — start music almost immediately (50ms to let stop() cancel previous nodes)
     setTimeout(() => {
       if (this._loopId !== myId) return;
       this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
       this.musicGain.gain.setValueAtTime(vol, this.ctx.currentTime);
       scheduleNext();
-    }, 350);
+    }, 50);
   }
 
   setMuted(muted) {
@@ -390,6 +390,12 @@ export default class MusicManager {
   // Pad: detuned sawtooths with lowpass
   _pad(t, freq, dur, vol = 0.06) {
     const voices = [0, 5, -5, 7, -7]; // detune cents
+    // Cap fade-in at 0.5s so pads are audible immediately, even for long loops
+    const fadeIn = Math.min(dur * 0.2, 0.5);
+    const fadeOut = Math.min(dur * 0.3, 1.0);
+    const voiceVol = vol / voices.length;
+    // Start from a small non-zero gain so sound is instant, then ramp to full
+    const startVol = voiceVol * 0.3;
     for (const detune of voices) {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -399,9 +405,9 @@ export default class MusicManager {
       osc.detune.value = detune;
       filter.type = 'lowpass';
       filter.frequency.value = freq * 3;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(vol / voices.length, t + dur * 0.2);
-      gain.gain.setValueAtTime(vol / voices.length, t + dur * 0.7);
+      gain.gain.setValueAtTime(startVol, t);
+      gain.gain.linearRampToValueAtTime(voiceVol, t + fadeIn);
+      gain.gain.setValueAtTime(voiceVol, t + dur - fadeOut);
       gain.gain.linearRampToValueAtTime(0, t + dur);
       osc.connect(filter); filter.connect(gain); gain.connect(this.musicGain);
       osc.start(t); osc.stop(t + dur + 0.1);
@@ -460,51 +466,112 @@ export default class MusicManager {
   }
 
   // ═════════════════════════════════════════════════════════════
-  // MENU MUSIC — Atmospheric trance, Am, mysterious
+  // MENU MUSIC — Calm epic retro melody, Am pentatonic, 100 BPM
+  // No percussion — pure melody + pads + arpeggio
   // ═════════════════════════════════════════════════════════════
 
   playMenuMusic() {
-    const bpm = 130;
+    const bpm = 72; // Slow, epic
     const beat = 60 / bpm;
-    const barLen = beat * 4;
-    const loopLen = barLen * 8; // 8 bars
+    const loopLen = beat * 26; // ~21.7 seconds
 
     this._startLoop('menu', loopLen, (startT) => {
       const t = startT;
-      // Am chord tones: A3, C4, E4
-      // Pad: Am chord sustained
-      this._pad(t, NOTE.A3, loopLen, 0.05);
-      this._pad(t, NOTE.C4, loopLen, 0.04);
-      this._pad(t, NOTE.E4, loopLen, 0.035);
 
-      // Soft kick every beat
-      for (let i = 0; i < 32; i++) {
-        this._kick(t + i * beat, 0.1);
-      }
-
-      // Arpeggio in Am: A4 C5 E5 A5 E5 C5
-      const arpNotes = [NOTE.A4, NOTE.C5, NOTE.E5, NOTE.A5, NOTE.E5, NOTE.C5];
-      const arpStep = beat / 2;
-      for (let bar = 0; bar < 8; bar++) {
-        for (let i = 0; i < 8; i++) {
-          const note = arpNotes[i % arpNotes.length];
-          this._arp(t + bar * barLen + i * arpStep, note, arpStep * 0.8, 0.04);
-        }
-      }
-
-      // Sub bass: A2 whole notes
-      for (let bar = 0; bar < 8; bar++) {
+      // LAYER 1: Pad/drone — C3 + G3 fifths, triangle, warm
+      const padNotes = [130.81, 196.00]; // C3, G3
+      for (const freq of padNotes) {
         const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
         const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = NOTE.A2;
-        gain.gain.setValueAtTime(0.08, t + bar * barLen);
-        gain.gain.setValueAtTime(0.08, t + (bar + 1) * barLen - 0.05);
-        gain.gain.linearRampToValueAtTime(0.06, t + (bar + 1) * barLen);
-        osc.connect(gain); gain.connect(this.musicGain);
-        osc.start(t + bar * barLen); osc.stop(t + (bar + 1) * barLen);
-        this._nodes.push(osc, gain);
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        filter.type = 'lowpass';
+        filter.frequency.value = 800;
+        gain.gain.setValueAtTime(0.07, t);
+        gain.gain.setValueAtTime(0.07, t + loopLen - 0.5);
+        gain.gain.linearRampToValueAtTime(0.05, t + loopLen);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.musicGain);
+        osc.start(t);
+        osc.stop(t + loopLen);
+        this._nodes.push(osc, filter, gain);
       }
+
+      // LAYER 2: Epic melody — square wave, C minor, slow notes
+      // C4, Eb4, G4(long), F4, Eb4, D4, C4(long), pause, Bb3, C4, Eb4(long), D4, C4(long), pause
+      const melody = [
+        { freq: 261.63, dur: 1.2 },  // C4
+        { freq: 311.13, dur: 1.2 },  // Eb4
+        { freq: 392.00, dur: 1.5 },  // G4
+        { freq: 349.23, dur: 1.0 },  // F4
+        { freq: 311.13, dur: 1.0 },  // Eb4
+        { freq: 293.66, dur: 0.8 },  // D4
+        { freq: 261.63, dur: 2.0 },  // C4
+        { freq: 0,      dur: 1.5 },  // pause
+        { freq: 233.08, dur: 1.0 },  // Bb3
+        { freq: 261.63, dur: 1.0 },  // C4
+        { freq: 311.13, dur: 1.5 },  // Eb4
+        { freq: 293.66, dur: 1.2 },  // D4
+        { freq: 261.63, dur: 2.5 },  // C4
+        { freq: 0,      dur: 2.0 },  // pause
+      ];
+
+      let offset = 0;
+      for (const note of melody) {
+        if (note.freq > 0) {
+          const osc = this.ctx.createOscillator();
+          const filter = this.ctx.createBiquadFilter();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.value = note.freq;
+          filter.type = 'lowpass';
+          filter.frequency.value = 2000;
+          // Smooth envelope: attack 0.05s, sustain, release 0.3s
+          gain.gain.setValueAtTime(0, t + offset);
+          gain.gain.linearRampToValueAtTime(0.09, t + offset + 0.05);
+          gain.gain.setValueAtTime(0.09, t + offset + note.dur - 0.3);
+          gain.gain.linearRampToValueAtTime(0, t + offset + note.dur);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.musicGain);
+          osc.start(t + offset);
+          osc.stop(t + offset + note.dur + 0.01);
+          this._nodes.push(osc, filter, gain);
+        }
+        offset += note.dur;
+      }
+
+      // LAYER 3: Subtle triangle arpeggio — C minor triad broken
+      const arpStep = 0.25;
+      const arpNotes = [261.63, 311.13, 392.00, 311.13]; // C4,Eb4,G4,Eb4
+      for (let i = 0; i < Math.floor(loopLen / arpStep); i++) {
+        const arpT = t + i * arpStep;
+        if (arpT >= t + loopLen - 0.5) break;
+        const freq = arpNotes[i % arpNotes.length];
+        this._arp(arpT, freq, arpStep * 0.7, 0.04, 'triangle');
+      }
+
+      // LAYER 4: Bass — sine, C2, deep
+      const bass = this.ctx.createOscillator();
+      const bassFilter = this.ctx.createBiquadFilter();
+      const bassGain = this.ctx.createGain();
+      bass.type = 'sine';
+      bass.frequency.value = 65.41; // C2
+      bassFilter.type = 'lowpass';
+      bassFilter.frequency.value = 400;
+      bassGain.gain.setValueAtTime(0.10, t);
+      bassGain.gain.setValueAtTime(0.10, t + loopLen - 0.5);
+      bassGain.gain.linearRampToValueAtTime(0.06, t + loopLen);
+      bass.connect(bassFilter);
+      bassFilter.connect(bassGain);
+      bassGain.connect(this.musicGain);
+      bass.start(t);
+      bass.stop(t + loopLen);
+      this._nodes.push(bass, bassFilter, bassGain);
+
+      // NO KICKS, NO HI-HATS, NO SNARES, NO NOISE BURSTS
     }, 0.4);
   }
 
@@ -539,6 +606,65 @@ export default class MusicManager {
         this._arp(t + i * arpStep, note, arpStep * 0.6, 0.045, 'sine');
       }
     }, 0.55);
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // CINEMATIC DRONE — Ambient drone for briefing screens
+  // No percussion, minimal: beating sine drones + subtle radar beep
+  // ═════════════════════════════════════════════════════════════
+
+  playCinematicDrone() {
+    this._init();
+    if (!this.ctx || !this.musicGain) return;
+    this.stop(0.3);
+    this._loopId++;
+    const myId = this._loopId;
+    this.currentTrack = 'cinematic_drone';
+
+    setTimeout(() => {
+      if (this._loopId !== myId) return;
+      this._cleanupNodes();
+      this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.musicGain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+
+      const t = this.ctx.currentTime;
+
+      // Beating sine drones: C2 + slightly detuned
+      for (const freq of [65.41, 66.00]) {
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        filter.type = 'lowpass';
+        filter.frequency.value = 200;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.08, t + 1);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.musicGain);
+        osc.start(t);
+        osc.stop(t + 120);
+        this._nodes.push(osc, filter, gain);
+      }
+
+      // Subtle radar beep every 3 seconds
+      for (let i = 0; i < 40; i++) {
+        const beepT = t + i * 3;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 1200;
+        gain.gain.setValueAtTime(0, beepT);
+        gain.gain.linearRampToValueAtTime(0.03, beepT + 0.01);
+        gain.gain.linearRampToValueAtTime(0, beepT + 0.05);
+        osc.connect(gain);
+        gain.connect(this.musicGain);
+        osc.start(beepT);
+        osc.stop(beepT + 0.06);
+        this._nodes.push(osc, gain);
+      }
+    }, 350);
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -702,8 +828,8 @@ export default class MusicManager {
       // D minor: D F A
       const intensity = phase === 'bombing' ? 1.0 : phase === 'flight' ? 0.7 : 0.4;
 
-      // Kick pattern
-      const kickVol = 0.15 + intensity * 0.2;
+      // Kick pattern (capped at 0.25 to prevent distortion)
+      const kickVol = Math.min(0.15 + intensity * 0.15, 0.25);
       for (let i = 0; i < 32; i++) {
         this._kick(t + i * beat, kickVol);
       }
@@ -877,9 +1003,9 @@ export default class MusicManager {
       }
 
       if (isAggressive) {
-        // Hard kicks and bass
+        // Hard kicks and bass (capped at 0.25)
         for (let i = 0; i < 32; i++) {
-          this._kick(t + i * beat, 0.3);
+          this._kick(t + i * beat, 0.25);
           if (i % 2 === 1) this._hihat(t + i * beat, 0.05);
         }
         for (let i = 0; i < 64; i++) {
@@ -896,9 +1022,9 @@ export default class MusicManager {
           this._clap(t + bar * barLen + 3 * beat, 0.05);
         }
       } else if (isBombing) {
-        // Climax: everything
+        // Climax: everything (kicks capped at 0.25)
         for (let i = 0; i < 32; i++) {
-          this._kick(t + i * beat, 0.35);
+          this._kick(t + i * beat, 0.25);
         }
         for (let i = 0; i < 64; i++) {
           this._hihat(t + i * beat / 2, 0.04);
@@ -940,9 +1066,9 @@ export default class MusicManager {
       const t = startT;
 
       // D minor root — darkest key
-      // Kick: HARD, every beat (sidechain feel via volume pumping)
+      // Kick: HARD, every beat (capped at 0.25 to prevent distortion)
       for (let i = 0; i < 32; i++) {
-        this._kick(t + i * beat, 0.35);
+        this._kick(t + i * beat, 0.25);
       }
 
       // Acid distorted bassline
@@ -1051,6 +1177,9 @@ export default class MusicManager {
     osc.frequency.setValueAtTime(200, t);
     osc.frequency.exponentialRampToValueAtTime(30, t + 4);
 
+    const disintLP = this.ctx.createBiquadFilter();
+    disintLP.type = 'lowpass';
+    disintLP.frequency.value = 1500;
     if (dist) {
       const curve = new Float32Array(256);
       for (let i = 0; i < 256; i++) {
@@ -1058,9 +1187,9 @@ export default class MusicManager {
         curve[i] = (Math.PI + 50) * x / (Math.PI + 50 * Math.abs(x));
       }
       dist.curve = curve;
-      osc.connect(dist); dist.connect(gain);
+      osc.connect(dist); dist.connect(disintLP); disintLP.connect(gain);
     } else {
-      osc.connect(gain);
+      osc.connect(disintLP); disintLP.connect(gain);
     }
 
     gain.gain.setValueAtTime(0.15, t);
@@ -1158,15 +1287,8 @@ export default class MusicManager {
         this._lead(bar3 + i * beat, melody[i], beat * 0.85, 0.05);
       }
 
-      // Soft kick enters every 2 beats
-      for (let i = 0; i < 4; i++) {
-        this._kick(bar3 + i * beat * 2, 0.08);
-      }
-
-      // Light hi-hats at eighth notes
-      for (let i = 0; i < 16; i++) {
-        this._hihat(bar3 + i * beat / 2, 0.02);
-      }
+      // No percussion in bars 3-4 — let the melody breathe
+      // Drums enter later for gradual build to climax
 
       // ── Bars 5-6: Triumphant rise ─────────────────────────
       const bar5 = t + barLen * 4;
@@ -1177,9 +1299,9 @@ export default class MusicManager {
       this._pad(bar5, NOTE.A4, barLen * 2, 0.04);
       this._pad(bar5, NOTE.A3, barLen * 2, 0.035);
 
-      // Full kick on every beat
-      for (let i = 0; i < 8; i++) {
-        this._kick(bar5 + i * beat, 0.18);
+      // Gentle kick every 2 beats — building, not pounding
+      for (let i = 0; i < 4; i++) {
+        this._kick(bar5 + i * beat * 2, 0.1);
       }
 
       // Acid bass enters: D3 -> A3 -> Gb3 -> D3 progression
@@ -1195,15 +1317,10 @@ export default class MusicManager {
         this._lead(bar5 + i * beat, melodyRise[i], beat * 0.85, 0.06);
       }
 
-      // Claps on beats 2 and 4
+      // Soft claps on beats 2 and 4 — lighter than climax
       for (let bar = 0; bar < 2; bar++) {
-        this._clap(bar5 + bar * barLen + beat, 0.05);
-        this._clap(bar5 + bar * barLen + beat * 3, 0.05);
-      }
-
-      // Open hats on offbeats
-      for (let i = 0; i < 8; i++) {
-        this._openHat(bar5 + beat / 2 + i * beat, 0.025);
+        this._clap(bar5 + bar * barLen + beat, 0.03);
+        this._clap(bar5 + bar * barLen + beat * 3, 0.03);
       }
 
       // Ascending arp run: D4 Gb4 A4 D5 Gb5 A5 (sixteenth notes, fast)
@@ -1311,31 +1428,37 @@ export default class MusicManager {
       const F2 = NOTE.F3 / 2;   // ~87.3 Hz
       const Bb3 = NOTE.Bb3;     // 233.08 Hz
 
-      // 1. GRAVE DRUMS — heavy slow kicks on beats 1 and 3
+      // 1. GRAVE THUMPS — deep sine pulses on beats 1 and 3 (cinematic-safe, no percussion)
       for (let bar = 0; bar < 4; bar++) {
         const barStart = t + bar * barLen;
-        // Beat 1 — heavy kick
-        this._kick(barStart, 0.4);
-        // Beat 3 — heavy kick
-        this._kick(barStart + beat * 2, 0.4);
-
-        // Sub-boom: ultra-low 60Hz sine with slow decay on beats 1 and 3
+        // Deep sine thumps (replaces kicks for cinematic context)
         for (const offset of [0, beat * 2]) {
-          const boom = this.ctx.createOscillator();
-          const boomGain = this.ctx.createGain();
-          boom.type = 'sine';
-          boom.frequency.value = 60;
-          const bt = barStart + offset;
-          boomGain.gain.setValueAtTime(0.12, bt);
-          boomGain.gain.exponentialRampToValueAtTime(0.001, bt + beat * 1.5);
-          boom.connect(boomGain); boomGain.connect(this.musicGain);
-          boom.start(bt); boom.stop(bt + beat * 1.5);
-          this._nodes.push(boom, boomGain);
+          const thump = this.ctx.createOscillator();
+          const thumpGain = this.ctx.createGain();
+          thump.type = 'sine';
+          thump.frequency.setValueAtTime(80, barStart + offset);
+          thump.frequency.exponentialRampToValueAtTime(30, barStart + offset + 0.3);
+          thumpGain.gain.setValueAtTime(0.12, barStart + offset);
+          thumpGain.gain.exponentialRampToValueAtTime(0.001, barStart + offset + 0.4);
+          thump.connect(thumpGain); thumpGain.connect(this.musicGain);
+          thump.start(barStart + offset); thump.stop(barStart + offset + 0.4);
+          this._nodes.push(thump, thumpGain);
         }
 
-        // Military snare on beat 4 of every other bar
+        // Textural noise accent on beat 4 of every other bar (replaces snare)
         if (bar % 2 === 1) {
-          this._snare(barStart + beat * 3, 0.08);
+          const sBuf = this._createNoiseBuffer(0.1);
+          const sSrc = this.ctx.createBufferSource();
+          sSrc.buffer = sBuf;
+          const sLP = this.ctx.createBiquadFilter();
+          sLP.type = 'lowpass'; sLP.frequency.value = 600;
+          const sGain = this.ctx.createGain();
+          const sT = barStart + beat * 3;
+          sGain.gain.setValueAtTime(0.04, sT);
+          sGain.gain.exponentialRampToValueAtTime(0.001, sT + 0.1);
+          sSrc.connect(sLP); sLP.connect(sGain); sGain.connect(this.musicGain);
+          sSrc.start(sT); sSrc.stop(sT + 0.1);
+          this._nodes.push(sSrc, sLP, sGain);
         }
       }
 

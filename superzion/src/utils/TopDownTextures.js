@@ -9,36 +9,81 @@ function makeCanvas(w, h) {
 }
 
 // ── Player sprites (16×20) — 4 directions × 2 frames ─────────
+// HERO REDESIGN: Tactical vest, aviator sunglasses (dark band), slicked hair
 function drawPlayer(ctx, dir, frame) {
   ctx.clearRect(0, 0, 16, 20);
 
-  // Body (dark grey suit)
-  ctx.fillStyle = '#2a2a2a';
-  ctx.fillRect(4, 6, 8, 10); // torso
-
-  // Head
+  // Body (black tactical suit)
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(4, 6, 8, 10); // torso base
+  // Tactical vest overlay
   ctx.fillStyle = '#3a3a3a';
+  ctx.fillRect(5, 7, 6, 8);
+
+  // Head — Mediterranean skin tone
+  ctx.fillStyle = '#C49A6C';
   ctx.beginPath();
   ctx.arc(8, 5, 4, 0, Math.PI * 2);
   ctx.fill();
 
-  // Green goggles/lenses
-  ctx.fillStyle = '#33FF33';
+  // Slicked-back black hair
+  ctx.fillStyle = '#1A1A1A';
+  ctx.beginPath();
+  ctx.ellipse(8, 2, 4.5, 2.5, 0, Math.PI, 0);
+  ctx.fill();
+  // Hair volume pompadour
+  ctx.beginPath();
+  ctx.ellipse(7.5, 1.5, 4, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // AVIATOR SUNGLASSES — dark band across face (visible at 16px)
   if (dir === 'down') {
-    ctx.fillRect(5, 3, 2, 2);
-    ctx.fillRect(9, 3, 2, 2);
+    // Two dark ovals covering eyes
+    ctx.fillStyle = '#0A0A0A';
+    ctx.beginPath(); ctx.ellipse(6, 4.5, 1.8, 1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(10, 4.5, 1.8, 1, 0, 0, Math.PI * 2); ctx.fill();
+    // Frame bridge
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(7.5, 4.5); ctx.lineTo(8.5, 4.5); ctx.stroke();
+    // Reflection pixel
+    ctx.fillStyle = 'rgba(180, 220, 255, 0.4)';
+    ctx.fillRect(5, 4, 1, 1);
+    ctx.fillRect(9, 4, 1, 1);
+    // Serious mouth
+    ctx.strokeStyle = '#6a4030';
+    ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.moveTo(7, 7); ctx.lineTo(9, 7); ctx.stroke();
   } else if (dir === 'up') {
-    // Back of head, no goggles
-    ctx.fillStyle = '#2a2a2a';
-    ctx.fillRect(5, 3, 6, 3);
+    // Back of head — just hair
+    ctx.fillStyle = '#1A1A1A';
+    ctx.fillRect(4, 3, 8, 3);
   } else if (dir === 'left') {
-    ctx.fillRect(3, 3, 2, 2);
+    // Side sunglasses — single dark oval
+    ctx.fillStyle = '#0A0A0A';
+    ctx.beginPath(); ctx.ellipse(5, 4.5, 1.8, 1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(180, 220, 255, 0.4)';
+    ctx.fillRect(4, 4, 1, 1);
   } else {
-    ctx.fillRect(11, 3, 2, 2);
+    ctx.fillStyle = '#0A0A0A';
+    ctx.beginPath(); ctx.ellipse(11, 4.5, 1.8, 1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(180, 220, 255, 0.4)';
+    ctx.fillRect(11, 4, 1, 1);
   }
 
-  // Legs with walk animation
-  ctx.fillStyle = '#222222';
+  // Gold Star of David on chest (tiny but visible)
+  ctx.fillStyle = '#FFD700';
+  // Tiny up triangle
+  ctx.beginPath();
+  ctx.moveTo(8, 9); ctx.lineTo(6.5, 11); ctx.lineTo(9.5, 11); ctx.closePath();
+  ctx.fill();
+  // Tiny down triangle
+  ctx.beginPath();
+  ctx.moveTo(8, 12); ctx.lineTo(6.5, 10); ctx.lineTo(9.5, 10); ctx.closePath();
+  ctx.fill();
+
+  // Legs with walk animation — black tactical pants
+  ctx.fillStyle = '#1a1a1a';
   if (dir === 'down' || dir === 'up') {
     const offset = frame === 1 ? 2 : 0;
     ctx.fillRect(5 - offset, 16, 3, 4);
@@ -48,12 +93,31 @@ function drawPlayer(ctx, dir, frame) {
     ctx.fillRect(6, 16 - offset, 4, 4);
     if (frame === 1) ctx.fillRect(6, 16 + 1, 4, 3);
   }
+  // Boots — slightly wider, dark
+  ctx.fillStyle = '#0e0e0e';
+  if (dir === 'down' || dir === 'up') {
+    const offset = frame === 1 ? 2 : 0;
+    ctx.fillRect(4 - offset, 19, 4, 1);
+    ctx.fillRect(7 + offset, 19, 4, 1);
+  } else {
+    ctx.fillRect(5, 19, 5, 1);
+  }
 
-  // Briefcase (right hand side)
-  ctx.fillStyle = '#5C4033';
-  if (dir === 'right') ctx.fillRect(12, 10, 4, 3);
-  else if (dir === 'left') ctx.fillRect(0, 10, 4, 3);
-  else ctx.fillRect(12, 10, 3, 3);
+  // Silenced pistol (right hand side)
+  ctx.fillStyle = '#0e0e0e';
+  if (dir === 'right') {
+    ctx.fillRect(12, 10, 3, 1.5);
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(14, 10, 2, 1);
+  } else if (dir === 'left') {
+    ctx.fillRect(0, 10, 3, 1.5);
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(0, 10, 2, 1);
+  } else {
+    ctx.fillRect(12, 10, 2, 2);
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(12, 10, 1, 3);
+  }
 }
 
 // ── Guard sprites (16×20) — 4 directions × 2 frames ──────────

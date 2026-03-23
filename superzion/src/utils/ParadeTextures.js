@@ -452,158 +452,379 @@ export function createTurboTurbanParade(scene) {
 export function createAngryEyebrowsParade(scene) {
   staticSprite(scene, 'parade_angryeyebrows', (ctx, w, h) => {
     const cx = w / 2, by = h - 4;
-    // Legs (military pants) — tapered ellipses
-    ctx.fillStyle = '#1a1a1a';
+    const skinBase = '#C4956A';
+    const skinDark = '#A07850';
+
+    // ── Layout (CABEZÓN: ~40% head, ~60% body) ──
+    // Head center ~35% from top, large elongated oval
+    const headCY = by - 88;
+    const headRX = 18;       // wide oval head
+    const headRY = 22;       // elongated tall
+    const neckTop = headCY + headRY;
+    const shoulderY = neckTop + 6;
+    const torsoBottom = by - 20;
+    const legBottom = by;
+
+    // ═══════════════════════════════════════════
+    // LEGS (dark pants)
+    // ═══════════════════════════════════════════
+    ctx.fillStyle = '#1E1E30';
     ctx.beginPath();
-    ctx.ellipse(cx - 5.5, by - 19, 3.5, 13, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 5, by - 10, 3.5, 10, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 5.5, by - 17, 3.5, 11, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 5, by - 10, 3.5, 10, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Combat boots — rounded arc-based shapes
-    ctx.fillStyle = '#2a1810';
+    // Shoes
+    ctx.fillStyle = '#0A0A14';
     ctx.beginPath();
-    ctx.ellipse(cx - 5.5, by - 3, 5, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 5, by - 1, 5, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 5.5, by - 3, 5, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 5, by - 1, 5, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Military body — bezier trapezoid
-    ctx.fillStyle = '#222222';
+
+    // ═══════════════════════════════════════════
+    // TORSO (dark suit)
+    // ═══════════════════════════════════════════
+    const suitColor = '#1A1A2E';
+    ctx.fillStyle = suitColor;
     ctx.beginPath();
-    ctx.moveTo(cx - 13, by - 58);
-    ctx.bezierCurveTo(cx - 15, by - 50, cx - 15, by - 36, cx - 13, by - 30);
-    ctx.lineTo(cx + 13, by - 30);
-    ctx.bezierCurveTo(cx + 15, by - 36, cx + 15, by - 50, cx + 13, by - 58);
+    ctx.moveTo(cx - 18, shoulderY);
+    ctx.lineTo(cx + 18, shoulderY);
+    ctx.lineTo(cx + 15, torsoBottom);
+    ctx.lineTo(cx - 15, torsoBottom);
     ctx.closePath();
     ctx.fill();
-    // Vest/harness — curved shape
-    ctx.fillStyle = '#5a5a60';
+
+    // Shoulder pads
+    ctx.fillStyle = '#222238';
     ctx.beginPath();
-    ctx.moveTo(cx - 11, by - 56);
-    ctx.bezierCurveTo(cx - 12, by - 48, cx - 12, by - 38, cx - 11, by - 32);
-    ctx.lineTo(cx + 11, by - 32);
-    ctx.bezierCurveTo(cx + 12, by - 38, cx + 12, by - 48, cx + 11, by - 56);
+    ctx.moveTo(cx - 22, shoulderY);
+    ctx.lineTo(cx - 14, shoulderY - 3);
+    ctx.lineTo(cx + 14, shoulderY - 3);
+    ctx.lineTo(cx + 22, shoulderY);
+    ctx.lineTo(cx + 20, shoulderY + 5);
+    ctx.lineTo(cx - 20, shoulderY + 5);
     ctx.closePath();
     ctx.fill();
-    // Chest pouches — small rounded rects via arc corners
-    ctx.fillStyle = '#4a4a50';
+
+    // Lapels
+    ctx.fillStyle = '#3A3A4E';
     ctx.beginPath();
-    ctx.ellipse(cx - 7, by - 45.5, 3.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx - 4, shoulderY);
+    ctx.lineTo(cx - 10, shoulderY + 3);
+    ctx.lineTo(cx - 6, shoulderY + 18);
+    ctx.lineTo(cx - 1, shoulderY + 15);
+    ctx.closePath();
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 7, by - 45.5, 3.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx + 4, shoulderY);
+    ctx.lineTo(cx + 10, shoulderY + 3);
+    ctx.lineTo(cx + 6, shoulderY + 18);
+    ctx.lineTo(cx + 1, shoulderY + 15);
+    ctx.closePath();
     ctx.fill();
-    // Arms (left straight, right raised) — ellipses
-    ctx.fillStyle = '#222222';
+
+    // Buttons
+    ctx.fillStyle = '#0A0A1A';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(cx, shoulderY + 16 + i * 5, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ── Arms (suit sleeves, fists) ──
+    ctx.fillStyle = suitColor;
+    // Left arm
     ctx.beginPath();
-    ctx.ellipse(cx - 17, by - 45, 3, 11, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 22, shoulderY + 12, 3, 10, 0.1, 0, Math.PI * 2);
     ctx.fill();
-    // Raised right arm with fist
+    // Right arm (slightly raised)
     ctx.save();
-    ctx.translate(cx + 17, by - 46);
-    ctx.rotate(-0.8);
-    ctx.fillStyle = '#222222';
+    ctx.translate(cx + 22, shoulderY + 8);
+    ctx.rotate(-0.5);
+    ctx.fillStyle = suitColor;
     ctx.beginPath();
     ctx.ellipse(0, 0, 3, 10, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#7a5030';
+    // Fist
+    ctx.fillStyle = skinBase;
     ctx.beginPath();
-    ctx.ellipse(0, -12, 3.5, 2.5, 0, 0, Math.PI * 2); // fist
+    ctx.ellipse(0, -12, 3, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    // Left hand — small ellipse
-    ctx.fillStyle = '#7a5030';
+    // Left hand
+    ctx.fillStyle = skinBase;
     ctx.beginPath();
-    ctx.ellipse(cx - 17, by - 34, 3, 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 22, shoulderY + 23, 3, 2, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Neck (thick) — ellipse
-    ctx.fillStyle = '#7a5030';
+
+    // ═══════════════════════════════════════════
+    // KEFIA ON SHOULDERS (checkered white/dark)
+    // ═══════════════════════════════════════════
+    const kefW = '#E8E8E8';
+    const kefD = '#3A3A3A';
+
+    // Left drape
+    ctx.fillStyle = kefW;
     ctx.beginPath();
-    ctx.ellipse(cx, by - 60, 5, 2.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Head (angular, scarred) — keep military shape, soften corners with curves
-    ctx.fillStyle = '#7a5030';
-    ctx.beginPath();
-    ctx.moveTo(cx - 10, by - 64);
-    ctx.quadraticCurveTo(cx - 12, by - 64, cx - 12, by - 66);
-    ctx.lineTo(cx + 12, by - 66);
-    ctx.quadraticCurveTo(cx + 12, by - 64, cx + 10, by - 64);
-    ctx.lineTo(cx + 13, by - 74);
-    ctx.quadraticCurveTo(cx + 14, by - 74, cx + 12, by - 84);
-    ctx.lineTo(cx - 12, by - 84);
-    ctx.quadraticCurveTo(cx - 14, by - 74, cx - 13, by - 74);
+    ctx.moveTo(cx - 6, neckTop);
+    ctx.lineTo(cx - 20, shoulderY + 3);
+    ctx.lineTo(cx - 22, shoulderY + 18);
+    ctx.lineTo(cx - 16, shoulderY + 22);
+    ctx.lineTo(cx - 6, shoulderY + 14);
+    ctx.lineTo(cx - 1, shoulderY + 4);
     ctx.closePath();
     ctx.fill();
-    // Scars
-    ctx.strokeStyle = '#5a3018';
-    ctx.lineWidth = 1.5;
+    // Right drape
     ctx.beginPath();
-    ctx.moveTo(cx - 8, by - 82);
-    ctx.lineTo(cx - 4, by - 70);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx + 6, by - 80);
-    ctx.lineTo(cx + 8, by - 72);
-    ctx.stroke();
-    // Massive eyebrows
-    ctx.fillStyle = '#0a0804';
-    ctx.beginPath();
-    ctx.moveTo(cx - 14, by - 80);
-    ctx.lineTo(cx - 2, by - 76);
-    ctx.lineTo(cx - 2, by - 78);
-    ctx.lineTo(cx - 14, by - 83);
+    ctx.moveTo(cx + 6, neckTop);
+    ctx.lineTo(cx + 20, shoulderY + 3);
+    ctx.lineTo(cx + 22, shoulderY + 18);
+    ctx.lineTo(cx + 16, shoulderY + 22);
+    ctx.lineTo(cx + 6, shoulderY + 14);
+    ctx.lineTo(cx + 1, shoulderY + 4);
     ctx.closePath();
     ctx.fill();
+
+    // Center neckpiece
+    ctx.fillStyle = kefW;
     ctx.beginPath();
-    ctx.moveTo(cx + 14, by - 80);
-    ctx.lineTo(cx + 2, by - 76);
-    ctx.lineTo(cx + 2, by - 78);
-    ctx.lineTo(cx + 14, by - 83);
+    ctx.moveTo(cx - 7, neckTop - 1);
+    ctx.lineTo(cx + 7, neckTop - 1);
+    ctx.lineTo(cx + 5, shoulderY + 6);
+    ctx.lineTo(cx - 5, shoulderY + 6);
     ctx.closePath();
     ctx.fill();
-    // Eyes (narrow, hateful)
-    ctx.fillStyle = '#eee8d0';
-    ctx.fillRect(cx - 9, by - 78, 6, 3);
-    ctx.fillRect(cx + 3, by - 78, 6, 3);
-    ctx.fillStyle = '#331100';
-    ctx.fillRect(cx - 7, by - 77, 2, 2);
-    ctx.fillRect(cx + 5, by - 77, 2, 2);
-    // Nose
-    ctx.fillStyle = '#6a4020';
-    ctx.fillRect(cx - 2, by - 75, 4, 5);
-    // Snarling mouth
-    ctx.fillStyle = '#2a0a05';
-    ctx.fillRect(cx - 6, by - 68, 12, 3);
-    ctx.fillStyle = '#ddd8c0';
-    for (let t = -2; t <= 2; t++) ctx.fillRect(cx + t * 3, by - 68, 2, 2);
-    // Keffiyeh (tan headwrap)
-    ctx.fillStyle = '#8a8070';
+
+    // Hanging ends
+    ctx.fillStyle = kefW;
+    ctx.fillRect(cx - 4, shoulderY + 6, 3, 14);
+    ctx.fillRect(cx + 1, shoulderY + 6, 3, 14);
+
+    // Checkered pattern on drapes
+    ctx.fillStyle = kefD;
+    for (let py = shoulderY + 1; py < shoulderY + 20; py += 4) {
+      for (let px = cx - 20; px < cx - 2; px += 4) {
+        if ((Math.floor(px / 4) + Math.floor(py / 4)) % 2 === 0) {
+          ctx.fillRect(px, py, 2, 2);
+        }
+      }
+    }
+    for (let py = shoulderY + 1; py < shoulderY + 20; py += 4) {
+      for (let px = cx + 2; px < cx + 20; px += 4) {
+        if ((Math.floor(px / 4) + Math.floor(py / 4)) % 2 === 0) {
+          ctx.fillRect(px, py, 2, 2);
+        }
+      }
+    }
+    // Pattern on ends
+    for (let py = shoulderY + 8; py < shoulderY + 18; py += 3) {
+      ctx.fillRect(cx - 3, py, 1.5, 1.5);
+      ctx.fillRect(cx + 2, py, 1.5, 1.5);
+    }
+
+    // ═══════════════════════════════════════════
+    // NECK (short, thick)
+    // ═══════════════════════════════════════════
+    ctx.fillStyle = skinDark;
+    ctx.fillRect(cx - 6, neckTop - 1, 12, shoulderY - neckTop + 3);
+
+    // ═══════════════════════════════════════════
+    // HEAD (elongated oval — CABEZÓN)
+    // ═══════════════════════════════════════════
+    ctx.fillStyle = skinBase;
     ctx.beginPath();
-    ctx.moveTo(cx - 16, by - 84);
-    ctx.lineTo(cx + 16, by - 84);
-    ctx.lineTo(cx + 18, by - 96);
-    ctx.lineTo(cx + 14, by - 102);
-    ctx.lineTo(cx - 14, by - 102);
-    ctx.lineTo(cx - 18, by - 96);
-    ctx.closePath();
+    ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Keffiyeh drapes
-    ctx.fillStyle = '#7a7060';
-    ctx.fillRect(cx - 18, by - 86, 6, 16);
-    ctx.fillRect(cx + 12, by - 86, 6, 16);
-    // Crosshatch pattern
-    ctx.strokeStyle = '#6a6055';
+
+    // Subtle outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
     ctx.lineWidth = 0.8;
-    for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Ears
+    ctx.fillStyle = skinBase;
+    ctx.beginPath(); ctx.ellipse(cx - headRX - 1, headCY + 3, 2.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + headRX + 1, headCY + 3, 2.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // ═══════════════════════════════════════════
+    // SHORT GRAY HAIR (receding hairline)
+    // ═══════════════════════════════════════════
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(cx, headCY, headRX, headRY, 0, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Thin hair top
+    ctx.fillStyle = '#8A8A8A';
+    ctx.beginPath();
+    ctx.ellipse(cx, headCY - 3, headRX - 1, headRY - 2, 0, Math.PI, 0, true);
+    ctx.fill();
+
+    // Side hair thicker (entradas)
+    ctx.fillStyle = '#7A7A7A';
+    ctx.beginPath(); ctx.arc(cx - 12, headCY - 12, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 12, headCY - 12, 7, 0, Math.PI * 2); ctx.fill();
+
+    // Receding center forehead
+    ctx.fillStyle = skinBase;
+    ctx.beginPath();
+    ctx.ellipse(cx, headCY - 10, 10, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair texture strands
+    ctx.strokeStyle = '#6A6A6A';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 16; i++) {
+      const hx = cx + (Math.random() - 0.5) * 30;
+      const hy = headCY - headRY + 3 + Math.random() * 10;
+      const dx2 = ((hx - cx) / headRX) ** 2;
+      const dy2 = ((hy - headCY) / headRY) ** 2;
+      if (dx2 + dy2 < 0.9) {
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(hx + (Math.random() - 0.5) * 2, hy - 1 - Math.random() * 2);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    // ═══════════════════════════════════════════
+    // EYEBROWS — THICK, PROMINENT (signature)
+    // ═══════════════════════════════════════════
+    const browY = headCY - 3;
+    const browColor = '#2A2A2A';
+    const browH = 4;
+    const browBW = 13;
+    const browGap = 2;
+    const browAngle = 0.16;
+
+    ctx.fillStyle = browColor;
+    // Left eyebrow
+    ctx.beginPath();
+    ctx.moveTo(cx - browGap / 2 - browBW, browY - browH / 2 - browAngle * browBW / 2);
+    ctx.lineTo(cx - browGap / 2, browY - browH / 2 + browAngle * browBW / 2 + 1);
+    ctx.lineTo(cx - browGap / 2, browY + browH / 2 + browAngle * browBW / 2 + 1);
+    ctx.lineTo(cx - browGap / 2 - browBW, browY + browH / 2 - browAngle * browBW / 2);
+    ctx.closePath();
+    ctx.fill();
+    // Right eyebrow
+    ctx.beginPath();
+    ctx.moveTo(cx + browGap / 2 + browBW, browY - browH / 2 - browAngle * browBW / 2);
+    ctx.lineTo(cx + browGap / 2, browY - browH / 2 + browAngle * browBW / 2 + 1);
+    ctx.lineTo(cx + browGap / 2, browY + browH / 2 + browAngle * browBW / 2 + 1);
+    ctx.lineTo(cx + browGap / 2 + browBW, browY + browH / 2 - browAngle * browBW / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Brow hair strands
+    ctx.strokeStyle = browColor;
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 8; i++) {
+      const t = i / 8;
+      const lx = cx - browGap / 2 - browBW + t * browBW;
+      const ly = browY + (t - 0.5) * browAngle * browBW;
       ctx.beginPath();
-      ctx.moveTo(cx - 14 + i * 6, by - 100);
-      ctx.lineTo(cx - 10 + i * 6, by - 86);
+      ctx.moveTo(lx, ly - browH / 2);
+      ctx.lineTo(lx + (Math.random() - 0.5) * 2, ly + browH / 2 + Math.random());
+      ctx.stroke();
+      const rx = cx + browGap / 2 + t * browBW;
+      const ry = browY + (0.5 - t) * browAngle * browBW;
+      ctx.beginPath();
+      ctx.moveTo(rx, ry - browH / 2);
+      ctx.lineTo(rx + (Math.random() - 0.5) * 2, ry + browH / 2 + Math.random());
       ctx.stroke();
     }
-    // Black agal (rope band)
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(cx - 15, by - 86, 30, 3);
+
+    // Brow shadow
+    ctx.fillStyle = 'rgba(20, 15, 10, 0.3)';
+    ctx.fillRect(cx - browGap / 2 - browBW, browY + browH / 2, browBW, 2);
+    ctx.fillRect(cx + browGap / 2, browY + browH / 2, browBW, 2);
+
+    // ═══════════════════════════════════════════
+    // EYES (small, squinting, intense)
+    // ═══════════════════════════════════════════
+    const eyeY = browY + browH + 3;
+    const eyeSpacing = 8;
+    for (const side of [-1, 1]) {
+      const ex = cx + side * eyeSpacing;
+      // Narrow slit
+      ctx.fillStyle = '#E8E4D8';
+      ctx.beginPath();
+      ctx.moveTo(ex - 4, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY - 2, ex + 4, eyeY);
+      ctx.quadraticCurveTo(ex, eyeY + 1, ex - 4, eyeY);
+      ctx.closePath();
+      ctx.fill();
+      // Dark iris
+      ctx.fillStyle = '#1A1A1A';
+      ctx.beginPath();
+      ctx.arc(ex, eyeY, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Highlight
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(ex + 0.5, eyeY - 0.5, 0.8, 0.8);
+    }
+
+    // ═══════════════════════════════════════════
+    // NOSE (large, trapezoidal)
+    // ═══════════════════════════════════════════
+    const noseTop = eyeY + 2;
+    const noseBot = headCY + 9;
+    ctx.fillStyle = '#A07850';
+    ctx.beginPath();
+    ctx.moveTo(cx - 1.5, noseTop);
+    ctx.lineTo(cx + 1.5, noseTop);
+    ctx.lineTo(cx + 4, noseBot - 1);
+    ctx.lineTo(cx - 4, noseBot - 1);
+    ctx.closePath();
+    ctx.fill();
+    // Nostrils
+    ctx.fillStyle = '#3A2A1A';
+    ctx.beginPath(); ctx.arc(cx - 2.5, noseBot, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 2.5, noseBot, 1, 0, Math.PI * 2); ctx.fill();
+
+    // ═══════════════════════════════════════════
+    // MOUTH (thin frown)
+    // ═══════════════════════════════════════════
+    const mouthY = noseBot + 4;
+    ctx.fillStyle = '#8A6A4A';
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, mouthY);
+    ctx.quadraticCurveTo(cx, mouthY + 1.5, cx + 8, mouthY - 1);
+    ctx.quadraticCurveTo(cx, mouthY + 2.5, cx - 8, mouthY);
+    ctx.closePath();
+    ctx.fill();
+
+    // ═══════════════════════════════════════════
+    // BEARD (gray, short, compact)
+    // ═══════════════════════════════════════════
+    ctx.fillStyle = '#7A7A7A';
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, mouthY);
+    ctx.quadraticCurveTo(cx - 16, mouthY + 5, cx - 12, headCY + headRY - 1);
+    ctx.quadraticCurveTo(cx - 6, headCY + headRY + 3, cx, headCY + headRY + 2);
+    ctx.quadraticCurveTo(cx + 6, headCY + headRY + 3, cx + 12, headCY + headRY - 1);
+    ctx.quadraticCurveTo(cx + 16, mouthY + 5, cx + 14, mouthY);
+    ctx.lineTo(cx + 8, mouthY + 2);
+    ctx.lineTo(cx, mouthY + 3);
+    ctx.lineTo(cx - 8, mouthY + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Beard texture
+    ctx.fillStyle = '#5A5A5A';
+    for (let i = 0; i < 20; i++) {
+      const bx = cx + (Math.random() - 0.5) * 24;
+      const bby = mouthY + 2 + Math.random() * (headCY + headRY - mouthY + 2);
+      if (Math.random() > Math.abs(bx - cx) / 18) {
+        ctx.fillRect(bx, bby, 0.6 + Math.random() * 0.4, 0.8 + Math.random());
+      }
+    }
   }, 64, 110);
 }
 
@@ -1514,54 +1735,58 @@ export function createSuperZionParade(scene) {
     ctx.ellipse(cx, by - 84.5, 5, 3.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // ── HEAD (detailed, organic — oval taller than wide) ──
+    // ── HEAD (detailed, organic — oval, Mediterranean skin #C49A6C) ──
     const hx = cx, hy = by - 104;
     // Face shape — oval
-    ctx.fillStyle = '#D2956A';
+    ctx.fillStyle = '#C49A6C';
     ctx.beginPath();
     ctx.ellipse(hx, hy, 14, 17, 0, 0, Math.PI * 2);
     ctx.fill();
     // Forehead highlight
-    ctx.fillStyle = '#e0b080';
+    ctx.fillStyle = '#d4aa7c';
     ctx.beginPath();
     ctx.ellipse(hx, hy - 8, 10, 5, 0, 0, Math.PI * 2);
     ctx.fill();
     // Cheekbone shading
-    ctx.fillStyle = '#c4926a';
+    ctx.fillStyle = '#b08657';
     ctx.beginPath();
     ctx.ellipse(hx - 11, hy, 3, 6, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
     ctx.ellipse(hx + 11, hy, 3, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Jawline — curved
+    // Angular jawline — defined, not round
     ctx.beginPath();
     ctx.moveTo(hx - 12, hy + 6);
-    ctx.quadraticCurveTo(hx - 8, hy + 16, hx, hy + 17);
-    ctx.quadraticCurveTo(hx + 8, hy + 16, hx + 12, hy + 6);
-    ctx.fillStyle = '#c4926a';
+    ctx.lineTo(hx - 6, hy + 15);
+    ctx.lineTo(hx, hy + 17);
+    ctx.lineTo(hx + 6, hy + 15);
+    ctx.lineTo(hx + 12, hy + 6);
+    ctx.fillStyle = '#b08657';
     ctx.fill();
-    // Chin
+    // Angular chin
     ctx.beginPath();
-    ctx.ellipse(hx, hy + 14, 5, 3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#b08050';
+    ctx.moveTo(hx - 5, hy + 12);
+    ctx.lineTo(hx, hy + 17);
+    ctx.lineTo(hx + 5, hy + 12);
+    ctx.fillStyle = '#a07a50';
     ctx.fill();
 
-    // ── Slicked-back hair — black #1A1A1A, bezierCurveTo for volume ──
+    // ── Slicked-back HAIR with pompadour volume ──
     ctx.fillStyle = '#1A1A1A';
     // Main hair cap
     ctx.beginPath();
     ctx.ellipse(hx, hy - 15, 14, 6, 0, Math.PI, 0);
     ctx.fill();
-    // Hair volume on top — higher in front (slight quiff), tapering back
+    // Pompadour — higher in front, bezierCurveTo
     ctx.beginPath();
     ctx.moveTo(hx - 12, hy - 14);
-    ctx.bezierCurveTo(hx - 10, hy - 22, hx + 6, hy - 23, hx + 12, hy - 16);
+    ctx.bezierCurveTo(hx - 10, hy - 24, hx + 6, hy - 25, hx + 12, hy - 16);
     ctx.bezierCurveTo(hx + 13, hy - 14, hx - 13, hy - 13, hx - 12, hy - 14);
     ctx.closePath();
     ctx.fillStyle = '#1A1A1A';
     ctx.fill();
-    // Side hair covering sides, face visible
+    // Side hair
     ctx.fillStyle = '#1A1A1A';
     ctx.beginPath();
     ctx.arc(hx - 14, hy - 8, 3.5, Math.PI * 0.7, Math.PI * 1.7);
@@ -1569,13 +1794,13 @@ export function createSuperZionParade(scene) {
     ctx.beginPath();
     ctx.arc(hx + 14, hy - 8, 3.5, Math.PI * 1.3, Math.PI * 0.3);
     ctx.fill();
-    // Hair streaks (bezierCurveTo for slick look)
+    // Hair streaks (bezierCurveTo for groomed look)
     ctx.strokeStyle = '#222222';
     ctx.lineWidth = 0.8;
     for (let i = -4; i <= 4; i++) {
       ctx.beginPath();
-      ctx.moveTo(hx + i * 2.5, hy - 21);
-      ctx.bezierCurveTo(hx + i * 2.8, hy - 18, hx + i * 3.2, hy - 15, hx + i * 3.5, hy - 12);
+      ctx.moveTo(hx + i * 2.5, hy - 23);
+      ctx.bezierCurveTo(hx + i * 2.8, hy - 19, hx + i * 3.2, hy - 15, hx + i * 3.5, hy - 12);
       ctx.stroke();
     }
     // Hairline arc
@@ -1585,55 +1810,69 @@ export function createSuperZionParade(scene) {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // ── Eyes — organic ovals with iris/pupil ──
+    // ── Thick straight EYEBROWS above sunglasses ──
     const eyeY = hy - 2;
-    // Sclera
-    ctx.fillStyle = '#eeeee8';
-    ctx.beginPath();
-    ctx.ellipse(hx - 5, eyeY + 1, 4.5, 2.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(hx + 5, eyeY + 1, 4.5, 2.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Iris
-    ctx.fillStyle = '#3a2818';
-    ctx.beginPath();
-    ctx.arc(hx - 4.5, eyeY + 1, 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(hx + 4.5, eyeY + 1, 2, 0, Math.PI * 2);
-    ctx.fill();
-    // Pupil
-    ctx.fillStyle = '#0e0e0e';
-    ctx.beginPath();
-    ctx.arc(hx - 4.5, eyeY + 1, 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(hx + 4.5, eyeY + 1, 1, 0, Math.PI * 2);
-    ctx.fill();
-    // Eye highlight
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(hx - 6, eyeY, 0.7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(hx + 3.5, eyeY, 0.7, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Eyebrows — short quadraticCurveTo arched lines, black #1A1A1A, lineWidth 2
     ctx.strokeStyle = '#1A1A1A';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'butt';
     ctx.beginPath();
     ctx.moveTo(hx - 10, eyeY - 3);
-    ctx.quadraticCurveTo(hx - 5, eyeY - 6, hx - 1, eyeY - 3);
+    ctx.lineTo(hx - 1, eyeY - 4.5);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(hx + 1, eyeY - 3);
-    ctx.quadraticCurveTo(hx + 5, eyeY - 6, hx + 10, eyeY - 3);
+    ctx.moveTo(hx + 1, eyeY - 4.5);
+    ctx.lineTo(hx + 10, eyeY - 3);
+    ctx.stroke();
+
+    // ── AVIATOR SUNGLASSES — the defining feature ──
+    // Left lens — dark oval
+    ctx.fillStyle = '#0A0A0A';
+    ctx.beginPath();
+    ctx.ellipse(hx - 5.5, eyeY + 1, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Right lens
+    ctx.beginPath();
+    ctx.ellipse(hx + 5.5, eyeY + 1, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Frame — dark gray
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(hx - 5.5, eyeY + 1, 5, 3, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(hx + 5.5, eyeY + 1, 5, 3, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Nose bridge
+    ctx.beginPath();
+    ctx.moveTo(hx - 1, eyeY + 1);
+    ctx.quadraticCurveTo(hx, eyeY - 0.5, hx + 1, eyeY + 1);
+    ctx.stroke();
+    // Diagonal reflection lines (cyan/white)
+    ctx.strokeStyle = 'rgba(180, 220, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(hx - 9, eyeY);
+    ctx.lineTo(hx - 2, eyeY + 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hx + 2, eyeY);
+    ctx.lineTo(hx + 9, eyeY + 2);
+    ctx.stroke();
+    // Temple arms
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(hx - 10.5, eyeY + 1);
+    ctx.lineTo(hx - 14, eyeY - 1);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hx + 10.5, eyeY + 1);
+    ctx.lineTo(hx + 14, eyeY - 1);
     ctx.stroke();
 
     // Nose — organic curve
-    ctx.fillStyle = '#c4926a';
+    ctx.fillStyle = '#b08657';
     ctx.beginPath();
     ctx.moveTo(hx - 1.5, hy - 1);
     ctx.quadraticCurveTo(hx, hy + 5, hx + 1.5, hy - 1);
@@ -1647,16 +1886,26 @@ export function createSuperZionParade(scene) {
     ctx.arc(hx + 2, hy + 4, 1, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mouth — thin curved line
+    // Mouth — SERIOUS expression, straight with slight frown
     ctx.strokeStyle = '#6a4030';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(hx - 4, hy + 7);
-    ctx.quadraticCurveTo(hx, hy + 8, hx + 4, hy + 7);
+    ctx.lineTo(hx + 4, hy + 7);
+    ctx.stroke();
+    // Frown corners
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(hx - 4, hy + 7);
+    ctx.lineTo(hx - 5, hy + 8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hx + 4, hy + 7);
+    ctx.lineTo(hx + 5, hy + 8);
     ctx.stroke();
 
     // Ears — small ellipses
-    ctx.fillStyle = '#c4926a';
+    ctx.fillStyle = '#C49A6C';
     ctx.beginPath();
     ctx.ellipse(hx - 14.5, hy, 2, 4, 0, 0, Math.PI * 2);
     ctx.fill();

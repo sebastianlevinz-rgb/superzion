@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
-// SuperZion — Mossad Agent sprite (ORGANIC shapes)
-// Black tactical suit, no weapon. Slicked-back hair, golden Star of David on CHEST.
+// SuperZion — Elite Agent HERO sprite (COMPLETE REDESIGN)
+// Aviator sunglasses, V-shaped athletic build, tactical vest with
+// gold Star of David, silenced pistol, slicked-back hair, combat boots.
 // All body parts drawn with arc/bezier/ellipse — no fillRect for anatomy.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -8,12 +9,12 @@ const SIZE = 128;
 const MX = 64;
 
 const PAL = {
-  // Skin
-  skin0: '#8a6040', skin1: '#b08657', skin2: '#c49668',
-  skin3: '#d2a679', skin4: '#e0b689',
+  // Skin — Mediterranean tone
+  skin0: '#8a6040', skin1: '#b08657', skin2: '#C49A6C',
+  skin3: '#C49A6C', skin4: '#d4aa7c',
 
-  // Hair (jet black / very dark brown — slicked back)
-  hair0: '#0a0a0a', hair1: '#111110', hair2: '#1a1816', hair3: '#22201c',
+  // Hair (jet black, slicked back with volume)
+  hair0: '#1A1A1A', hair1: '#111110', hair2: '#1a1816', hair3: '#22201c',
 
   // Tactical suit (black / dark charcoal)
   tac0: '#1a1a1a', tac1: '#222222', tac2: '#2a2a2a',
@@ -26,19 +27,16 @@ const PAL = {
   // Black (boots, gloves, belt)
   blk0: '#121212', blk1: '#1a1a1a', blk2: '#222222', blk3: '#2a2a2a',
 
-  // Boots (near-black)
+  // Boots (near-black with thick sole)
   boot0: '#0e0e0e', boot1: '#141414', boot2: '#1a1a1a',
 
   // Gold — Star of David + belt buckle
-  gld0: '#806010', gld1: '#a07a18', gld2: '#c49520',
+  gld0: '#806010', gld1: '#B8860B', gld2: '#c49520',
   gld3: '#FFD700', gld4: '#eab530',
 
-  // Eyes
-  eyeWhite: '#eeeee8', eyeIris: '#3a2818', eyePupil: '#0e0e0e',
-  eyeGlow: '#ffffff',
-
-  // Stubble/beard shadow
-  stubble: 'rgba(30, 22, 16, 0.25)',
+  // Sunglasses
+  lensBlack: '#0A0A0A',
+  frame: '#333333',
 
   // Mouth
   mouthLine: '#6a4030',
@@ -67,30 +65,7 @@ function capsule(ctx, x, y, w, h, color) {
   ctx.fill();
 }
 
-/** Draw a vertically-shaded capsule (gradient top-to-bottom) */
-function shadedCapsule(ctx, x, y, w, h, colors) {
-  const grad = ctx.createLinearGradient(x, y, x, y + h);
-  const n = colors.length;
-  for (let i = 0; i < n; i++) {
-    grad.addColorStop(i / (n - 1), colors[i]);
-  }
-  ctx.fillStyle = grad;
-  const r = Math.min(w / 2, 3);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x, y + h, x, y + h - r, r);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.closePath();
-  ctx.fill();
-}
-
-// ── STAR OF DAVID — small, fine lines, gold only ────────────────
+// ── STAR OF DAVID — metallic gold, two overlapping triangles ────
 function drawStar(ctx, cx, cy, r) {
   const drawTri = (rotation, fill) => {
     ctx.beginPath();
@@ -105,21 +80,78 @@ function drawStar(ctx, cx, cy, r) {
     ctx.stroke();
   };
 
+  // Gold fill with dark gold border (same style as GameIntroScene metallic star)
   ctx.fillStyle = PAL.gld3;
   ctx.strokeStyle = PAL.gld1;
-  ctx.lineWidth = 0.7;
+  ctx.lineWidth = 0.8;
   drawTri(-Math.PI / 2, true);
   drawTri(Math.PI / 2, true);
 
+  // Bright edge highlight
   ctx.strokeStyle = PAL.gld4;
   ctx.lineWidth = 0.5;
   drawTri(-Math.PI / 2, false);
   drawTri(Math.PI / 2, false);
 }
 
+// ── SUNGLASSES — dark aviator lenses with reflection ────────────
+function drawSunglasses(ctx, hx, eyeY) {
+  // Frame — thin dark gray bridge and rims
+  ctx.strokeStyle = PAL.frame;
+  ctx.lineWidth = 1;
+
+  // Nose bridge
+  ctx.beginPath();
+  ctx.moveTo(hx - 2, eyeY + 0.5);
+  ctx.quadraticCurveTo(hx, eyeY - 0.5, hx + 2, eyeY + 0.5);
+  ctx.stroke();
+
+  // Left lens — dark oval
+  ctx.fillStyle = PAL.lensBlack;
+  ctx.beginPath();
+  ctx.ellipse(hx - 5.5, eyeY + 0.5, 4.5, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = PAL.frame;
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // Right lens — dark oval
+  ctx.fillStyle = PAL.lensBlack;
+  ctx.beginPath();
+  ctx.ellipse(hx + 5.5, eyeY + 0.5, 4.5, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Diagonal reflection line on left lens (cyan tint)
+  ctx.strokeStyle = 'rgba(180, 220, 255, 0.4)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(hx - 8, eyeY - 0.5);
+  ctx.lineTo(hx - 3, eyeY + 1.5);
+  ctx.stroke();
+
+  // Diagonal reflection line on right lens
+  ctx.beginPath();
+  ctx.moveTo(hx + 3, eyeY - 0.5);
+  ctx.lineTo(hx + 8, eyeY + 1.5);
+  ctx.stroke();
+
+  // Temple arms extending to sides
+  ctx.strokeStyle = PAL.frame;
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(hx - 10, eyeY + 0.5);
+  ctx.lineTo(hx - 12, eyeY - 1);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(hx + 10, eyeY + 0.5);
+  ctx.lineTo(hx + 12, eyeY - 1);
+  ctx.stroke();
+}
+
 // ── HEAD — fully organic ───────────────────────────────────────
 function drawHead(ctx, hx, hy) {
-  // --- Main face: oval ---
+  // --- Main face: oval --- Mediterranean skin tone
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(hx, hy + 1, 10, 12, 0, 0, Math.PI * 2);
@@ -149,51 +181,56 @@ function drawHead(ctx, hx, hy) {
   ctx.fill();
   ctx.restore();
 
-  // Jawline — curved arcs narrowing toward chin
+  // Jawline — angular, defined, narrowing toward chin
   ctx.beginPath();
   ctx.moveTo(hx - 9, hy + 5);
-  ctx.quadraticCurveTo(hx - 6, hy + 12, hx, hy + 13);
-  ctx.quadraticCurveTo(hx + 6, hy + 12, hx + 9, hy + 5);
+  ctx.quadraticCurveTo(hx - 5, hy + 12, hx, hy + 13);
+  ctx.quadraticCurveTo(hx + 5, hy + 12, hx + 9, hy + 5);
   ctx.fillStyle = PAL.skin2;
   ctx.fill();
 
-  // Chin — small oval
+  // Chin — angular, defined (not round)
   ctx.beginPath();
-  ctx.ellipse(hx, hy + 11, 4, 2.5, 0, 0, Math.PI * 2);
+  ctx.moveTo(hx - 4, hy + 10);
+  ctx.lineTo(hx, hy + 14);
+  ctx.lineTo(hx + 4, hy + 10);
   ctx.fillStyle = PAL.skin1;
   ctx.fill();
 
-  // --- Slicked-back hair (arcs, no pxRect) ---
+  // --- Slicked-back HAIR with volume (bezierCurveTo pompadour) ---
   // Main hair cap
   ctx.beginPath();
   ctx.ellipse(hx, hy - 10, 11, 5, 0, Math.PI, Math.PI * 2);
-  ctx.fillStyle = PAL.hair1;
+  ctx.fillStyle = PAL.hair0;
   ctx.fill();
 
-  // Hair volume on top
+  // Hair volume on top — higher in front (subtle pompadour)
   ctx.beginPath();
-  ctx.ellipse(hx, hy - 11, 10, 3.5, 0, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.hair1;
+  ctx.moveTo(hx - 10, hy - 11);
+  ctx.bezierCurveTo(hx - 7, hy - 17, hx + 5, hy - 18, hx + 10, hy - 12);
+  ctx.bezierCurveTo(hx + 11, hy - 10, hx - 11, hy - 10, hx - 10, hy - 11);
+  ctx.closePath();
+  ctx.fillStyle = PAL.hair0;
   ctx.fill();
 
-  // Hair streaks (thin bezier lines for slick look)
-  ctx.strokeStyle = PAL.hair0;
+  // Hair streaks (thin bezier lines for slick, groomed look)
+  ctx.strokeStyle = PAL.hair1;
   ctx.lineWidth = 0.6;
   for (let i = -3; i <= 3; i++) {
     ctx.beginPath();
-    ctx.moveTo(hx + i * 2.5 - 1, hy - 12);
-    ctx.quadraticCurveTo(hx + i * 3, hy - 9, hx + i * 3.5, hy - 7);
+    ctx.moveTo(hx + i * 2.5 - 1, hy - 15);
+    ctx.bezierCurveTo(hx + i * 2.8, hy - 12, hx + i * 3.2, hy - 9, hx + i * 3.5, hy - 7);
     ctx.stroke();
   }
 
   // Side hair (arcs hugging the head)
   ctx.beginPath();
   ctx.arc(hx - 10, hy - 6, 3, Math.PI * 0.8, Math.PI * 1.6);
-  ctx.fillStyle = PAL.hair1;
+  ctx.fillStyle = PAL.hair0;
   ctx.fill();
   ctx.beginPath();
   ctx.arc(hx + 10, hy - 6, 3, Math.PI * 1.4, Math.PI * 0.2);
-  ctx.fillStyle = PAL.hair1;
+  ctx.fillStyle = PAL.hair0;
   ctx.fill();
 
   // Hairline (soft arc)
@@ -203,59 +240,25 @@ function drawHead(ctx, hx, hy) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // --- Eyes: small ovals with pupils ---
+  // --- Thick straight EYEBROWS above sunglasses (serious look) ---
   const eyeY = hy - 2;
 
-  // Eyebrows — bezier curves (angled inward for serious look)
   ctx.strokeStyle = PAL.hair0;
-  ctx.lineWidth = 1.5;
-  // Left eyebrow
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'butt';
+  // Left eyebrow — straight, angled inward
   ctx.beginPath();
-  ctx.moveTo(hx - 8, eyeY - 3);
-  ctx.quadraticCurveTo(hx - 5, eyeY - 5, hx - 2, eyeY - 3);
+  ctx.moveTo(hx - 9, eyeY - 3);
+  ctx.lineTo(hx - 1, eyeY - 4);
   ctx.stroke();
-  // Right eyebrow
+  // Right eyebrow — straight, angled inward
   ctx.beginPath();
-  ctx.moveTo(hx + 2, eyeY - 3);
-  ctx.quadraticCurveTo(hx + 5, eyeY - 5, hx + 8, eyeY - 3);
+  ctx.moveTo(hx + 1, eyeY - 4);
+  ctx.lineTo(hx + 9, eyeY - 3);
   ctx.stroke();
 
-  // Left eye — oval sclera + iris + pupil
-  ctx.beginPath();
-  ctx.ellipse(hx - 5, eyeY + 0.5, 3.5, 1.8, 0, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.eyeWhite;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(hx - 4.5, eyeY + 0.5, 1.5, 1.5, 0, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.eyeIris;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(hx - 4.5, eyeY + 0.5, 0.8, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.eyePupil;
-  ctx.fill();
-  // Eye highlight
-  ctx.beginPath();
-  ctx.arc(hx - 5.5, eyeY - 0.2, 0.5, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.eyeGlow;
-  ctx.fill();
-
-  // Right eye
-  ctx.beginPath();
-  ctx.ellipse(hx + 5, eyeY + 0.5, 3.5, 1.8, 0, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.eyeWhite;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(hx + 4.5, eyeY + 0.5, 1.5, 1.5, 0, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.eyeIris;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(hx + 4.5, eyeY + 0.5, 0.8, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.eyePupil;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(hx + 3.5, eyeY - 0.2, 0.5, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.eyeGlow;
-  ctx.fill();
+  // --- AVIATOR SUNGLASSES --- (THE defining feature)
+  drawSunglasses(ctx, hx, eyeY);
 
   // --- Nose: organic curved shape ---
   ctx.beginPath();
@@ -273,36 +276,24 @@ function drawHead(ctx, hx, hy) {
   ctx.fillStyle = PAL.skin0;
   ctx.fill();
 
-  // Mouth — thin curved line
+  // Mouth — SERIOUS expression, straight/slightly frowning
   ctx.beginPath();
   ctx.moveTo(hx - 3, hy + 5);
-  ctx.quadraticCurveTo(hx, hy + 5.5, hx + 3, hy + 5);
+  ctx.quadraticCurveTo(hx, hy + 5.8, hx + 3, hy + 5);
   ctx.strokeStyle = PAL.mouthLine;
-  ctx.lineWidth = 0.8;
+  ctx.lineWidth = 1;
   ctx.stroke();
-
-  // --- Beard/stubble: gradient arc on jawline (NOT zigzag lines) ---
-  // Semi-transparent overlay following the jaw curve (CONCAVE — hugs jawline downward)
-  const beardGrad = ctx.createRadialGradient(hx, hy + 10, 1, hx, hy + 10, 10);
-  beardGrad.addColorStop(0, 'rgba(30, 22, 16, 0.30)');
-  beardGrad.addColorStop(0.6, 'rgba(30, 22, 16, 0.20)');
-  beardGrad.addColorStop(1, 'rgba(30, 22, 16, 0)');
-  ctx.fillStyle = beardGrad;
+  // Slight frown — downward corners
   ctx.beginPath();
-  ctx.moveTo(hx - 8, hy + 5);
-  ctx.quadraticCurveTo(hx - 5, hy + 13, hx, hy + 14);
-  ctx.quadraticCurveTo(hx + 5, hy + 13, hx + 8, hy + 5);
-  ctx.closePath();
-  ctx.fill();
-
-  // Second subtle layer for density variation (lower half only — concave arc)
-  const beardGrad2 = ctx.createRadialGradient(hx, hy + 10, 0, hx, hy + 10, 8);
-  beardGrad2.addColorStop(0, 'rgba(20, 14, 10, 0.15)');
-  beardGrad2.addColorStop(1, 'rgba(20, 14, 10, 0)');
-  ctx.fillStyle = beardGrad2;
+  ctx.moveTo(hx - 3, hy + 5);
+  ctx.lineTo(hx - 4, hy + 5.5);
+  ctx.strokeStyle = PAL.mouthLine;
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
   ctx.beginPath();
-  ctx.ellipse(hx, hy + 9, 7, 4, 0, 0, Math.PI);
-  ctx.fill();
+  ctx.moveTo(hx + 3, hy + 5);
+  ctx.lineTo(hx + 4, hy + 5.5);
+  ctx.stroke();
 
   // Ears — small ellipses
   ctx.beginPath();
@@ -322,9 +313,11 @@ function drawHead(ctx, hx, hy) {
   ctx.fillStyle = PAL.skin3;
   ctx.fill();
 
-  // Jaw shadow — soft arc
+  // Jaw shadow — soft arc (angular jaw)
   ctx.beginPath();
-  ctx.arc(hx, hy + 10, 6, 0, Math.PI);
+  ctx.moveTo(hx - 7, hy + 8);
+  ctx.lineTo(hx, hy + 12);
+  ctx.lineTo(hx + 7, hy + 8);
   ctx.strokeStyle = PAL.skin0;
   ctx.lineWidth = 0.8;
   ctx.stroke();
@@ -336,12 +329,11 @@ function drawHead(ctx, hx, hy) {
   ctx.fill();
 }
 
-// ── TORSO — curved trapezoid, organic vest ─────────────────────
+// ── TORSO — V-shaped, wide shoulders, narrow waist, tactical vest ──
 function drawTorso(ctx, tx, ty) {
-  const tw = 14, th = 24;
+  const tw = 16, th = 24; // wider shoulders for imposing build
 
-  // V-shaped torso — bezier trapezoid (wider at shoulders, narrower at waist)
-  // Tactical suit base
+  // V-shaped torso — bezier trapezoid (WIDE at shoulders, NARROW at waist)
   const suitGrad = ctx.createLinearGradient(tx, ty, tx, ty + th);
   suitGrad.addColorStop(0, PAL.tac4);
   suitGrad.addColorStop(0.3, PAL.tac3);
@@ -350,8 +342,8 @@ function drawTorso(ctx, tx, ty) {
   ctx.fillStyle = suitGrad;
   ctx.beginPath();
   ctx.moveTo(tx - tw, ty);
-  ctx.quadraticCurveTo(tx - tw - 1, ty + th * 0.3, tx - tw + 3, ty + th);
-  ctx.lineTo(tx + tw - 3, ty + th);
+  ctx.quadraticCurveTo(tx - tw - 1, ty + th * 0.3, tx - tw + 5, ty + th);
+  ctx.lineTo(tx + tw - 5, ty + th);
   ctx.quadraticCurveTo(tx + tw + 1, ty + th * 0.3, tx + tw, ty);
   ctx.closePath();
   ctx.fill();
@@ -361,17 +353,26 @@ function drawTorso(ctx, tx, ty) {
   ctx.ellipse(tx, ty + 1, 6, 2.5, 0, 0, Math.PI * 2);
   ctx.fillStyle = PAL.tac4;
   ctx.fill();
-  // Shoulder rounds
-  ctx.beginPath();
-  ctx.arc(tx - tw + 1, ty + 2, 3, 0, Math.PI * 2);
+
+  // Shoulder pads/protectors — rounded dark gray rectangles
   ctx.fillStyle = PAL.tac4;
+  ctx.beginPath();
+  ctx.ellipse(tx - tw + 2, ty + 2, 5, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(tx + tw - 1, ty + 2, 3, 0, Math.PI * 2);
-  ctx.fillStyle = PAL.tac4;
+  ctx.ellipse(tx + tw - 2, ty + 2, 5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Shoulder pad darker edge
+  ctx.beginPath();
+  ctx.ellipse(tx - tw + 2, ty + 3.5, 4, 1.5, 0, 0, Math.PI);
+  ctx.fillStyle = PAL.vest0;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(tx + tw - 2, ty + 3.5, 4, 1.5, 0, 0, Math.PI);
+  ctx.fillStyle = PAL.vest0;
   ctx.fill();
 
-  // Tactical vest — follows torso shape with gradient
+  // Tactical vest — follows torso shape with gradient, rounded edges
   const vestGrad = ctx.createLinearGradient(tx, ty + 4, tx, ty + th - 3);
   vestGrad.addColorStop(0, PAL.vest4);
   vestGrad.addColorStop(0.3, PAL.vest2);
@@ -379,14 +380,14 @@ function drawTorso(ctx, tx, ty) {
   vestGrad.addColorStop(1, PAL.vest0);
   ctx.fillStyle = vestGrad;
   ctx.beginPath();
-  ctx.moveTo(tx - 11, ty + 4);
-  ctx.quadraticCurveTo(tx - 12, ty + th * 0.4, tx - 9, ty + th - 3);
+  ctx.moveTo(tx - 12, ty + 4);
+  ctx.quadraticCurveTo(tx - 13, ty + th * 0.4, tx - 9, ty + th - 3);
   ctx.lineTo(tx + 9, ty + th - 3);
-  ctx.quadraticCurveTo(tx + 12, ty + th * 0.4, tx + 11, ty + 4);
+  ctx.quadraticCurveTo(tx + 13, ty + th * 0.4, tx + 12, ty + 4);
   ctx.closePath();
   ctx.fill();
 
-  // Stitching — organic curved lines instead of pixel dots
+  // Stitching — organic curved lines
   ctx.strokeStyle = PAL.vest0;
   ctx.lineWidth = 0.5;
   for (const xOff of [-7, -2, 3, 8]) {
@@ -401,7 +402,6 @@ function drawTorso(ctx, tx, ty) {
   // Utility pouches — rounded
   const drawPouch = (px, py) => {
     capsule(ctx, px, py, 6, 5, PAL.vest0);
-    // Pouch flap (curved top)
     ctx.beginPath();
     ctx.moveTo(px, py);
     ctx.quadraticCurveTo(px + 3, py - 1, px + 6, py);
@@ -410,7 +410,6 @@ function drawTorso(ctx, tx, ty) {
     ctx.closePath();
     ctx.fillStyle = PAL.vest3;
     ctx.fill();
-    // Pouch clasp
     ctx.beginPath();
     ctx.arc(px + 3, py + 3, 1, 0, Math.PI * 2);
     ctx.fillStyle = PAL.blk2;
@@ -428,7 +427,6 @@ function drawTorso(ctx, tx, ty) {
     ctx.strokeStyle = PAL.vest1;
     ctx.lineWidth = 2.5;
     ctx.stroke();
-    // Diagonal articulation at shoulder
     ctx.beginPath();
     ctx.moveTo(sx, ty + 3);
     ctx.quadraticCurveTo(sx + side * 2, ty + 5, sx + side * 3, ty + 6);
@@ -437,12 +435,12 @@ function drawTorso(ctx, tx, ty) {
     ctx.stroke();
   }
 
-  // ★ STAR OF DAVID — on CHEST (center of vest, above stomach) ★
-  drawStar(ctx, tx, ty + 9, 5);
+  // ★ STAR OF DAVID — EXACT CENTER of torso, gold metallic ★
+  const starCenterY = ty + th / 2; // exact vertical midpoint
+  drawStar(ctx, tx, starCenterY, 5);
 
   // Utility belt — rounded
   capsule(ctx, tx - tw, ty + th - 3, tw * 2, 3, PAL.blk1);
-  // Belt highlight
   ctx.beginPath();
   ctx.moveTo(tx - tw + 1, ty + th - 3);
   ctx.lineTo(tx + tw - 1, ty + th - 3);
@@ -464,7 +462,6 @@ function drawTorso(ctx, tx, ty) {
 
 // ── ARM — organic curved limb with rounded glove ────────────────
 function drawArm(ctx, ax, ay, len) {
-  // Upper arm — tapered capsule shape
   const armGrad = ctx.createLinearGradient(ax, ay, ax, ay + len - 4);
   armGrad.addColorStop(0, PAL.tac4);
   armGrad.addColorStop(0.3, PAL.tac3);
@@ -475,7 +472,7 @@ function drawArm(ctx, ax, ay, len) {
   ctx.ellipse(ax, ay + (len - 4) / 2, 3.5, (len - 4) / 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Shoulder cap (rounded top)
+  // Shoulder cap
   ctx.beginPath();
   ctx.arc(ax, ay + 1, 3, 0, Math.PI * 2);
   ctx.fillStyle = PAL.tac4;
@@ -497,11 +494,41 @@ function drawArm(ctx, ax, ay, len) {
   ctx.beginPath();
   ctx.ellipse(ax, gloveY + 2, 3.5, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Knuckle highlight
   ctx.beginPath();
   ctx.arc(ax, gloveY + 1, 1, 0, Math.PI * 2);
   ctx.fillStyle = PAL.blk3;
   ctx.fill();
+}
+
+// ── SILENCED PISTOL — in right hand ────────────────────────────
+function drawPistol(ctx, px, py, direction) {
+  // Pistol body — black
+  ctx.fillStyle = '#0e0e0e';
+  ctx.beginPath();
+  ctx.ellipse(px + direction * 3, py, 4, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Grip — darker
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.ellipse(px + direction * 1, py + 2, 1.5, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Silencer — elongated cylinder ahead of barrel
+  ctx.fillStyle = '#333333';
+  ctx.beginPath();
+  ctx.ellipse(px + direction * 7, py - 0.5, 3, 1.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Silencer tip
+  ctx.fillStyle = '#2a2a2a';
+  ctx.beginPath();
+  ctx.arc(px + direction * 10, py - 0.5, 1, 0, Math.PI * 2);
+  ctx.fill();
+  // Barrel highlight
+  ctx.strokeStyle = 'rgba(100,100,100,0.3)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(px + direction * 2, py - 1);
+  ctx.lineTo(px + direction * 9, py - 1);
+  ctx.stroke();
 }
 
 // ── LEGS — organic tapered limbs ────────────────────────────────
@@ -510,10 +537,10 @@ function drawLeg(ctx, lx, ly, h, side) {
   const cx = lx + w / 2;
   const thighH = Math.floor(h * 0.48);
   const kneeH = 3;
-  const bootH = 5;
+  const bootH = 6; // bigger, heavier boots
   const shinH = h - thighH - kneeH - bootH;
 
-  // Thigh — tapered ellipse
+  // Thigh — tapered
   const thighGrad = ctx.createLinearGradient(cx, ly, cx, ly + thighH);
   thighGrad.addColorStop(0, PAL.tac3);
   thighGrad.addColorStop(0.5, PAL.tac2);
@@ -549,12 +576,10 @@ function drawLeg(ctx, lx, ly, h, side) {
   // Knee pad — rounded capsule shape
   const kneeY = ly + thighH;
   capsule(ctx, lx, kneeY, w, kneeH, PAL.vest2);
-  // Knee highlight
   ctx.beginPath();
   ctx.ellipse(cx, kneeY + 0.5, 3, 0.8, 0, 0, Math.PI * 2);
   ctx.fillStyle = PAL.vest4;
   ctx.fill();
-  // Knee shadow
   ctx.beginPath();
   ctx.ellipse(cx, kneeY + kneeH - 0.5, 3, 0.5, 0, 0, Math.PI * 2);
   ctx.fillStyle = PAL.vest0;
@@ -575,18 +600,29 @@ function drawLeg(ctx, lx, ly, h, side) {
   ctx.closePath();
   ctx.fill();
 
-  // Boot — rounded with sole
+  // TACTICAL BOOTS — wider than ankles, thick sole, robust
   const bootY = shinY + shinH;
   const bootGrad = ctx.createLinearGradient(cx, bootY, cx, bootY + bootH);
   bootGrad.addColorStop(0, PAL.boot2);
-  bootGrad.addColorStop(0.4, PAL.boot1);
-  bootGrad.addColorStop(1, PAL.boot0);
+  bootGrad.addColorStop(0.3, PAL.boot1);
+  bootGrad.addColorStop(0.7, PAL.boot0);
+  bootGrad.addColorStop(1, '#080808');
   ctx.fillStyle = bootGrad;
   ctx.beginPath();
-  ctx.moveTo(lx, bootY);
-  ctx.quadraticCurveTo(lx - 0.5, bootY + bootH, lx, bootY + bootH);
-  ctx.lineTo(lx + w + 1, bootY + bootH);
-  ctx.quadraticCurveTo(lx + w + 1.5, bootY, lx + w, bootY);
+  ctx.moveTo(lx - 1, bootY);
+  ctx.quadraticCurveTo(lx - 1.5, bootY + bootH - 2, lx - 1, bootY + bootH - 2);
+  ctx.lineTo(lx + w + 2, bootY + bootH - 2);
+  ctx.quadraticCurveTo(lx + w + 2.5, bootY, lx + w + 1, bootY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Boot thick sole — visibly wider and heavier
+  ctx.fillStyle = '#080808';
+  ctx.beginPath();
+  ctx.moveTo(lx - 2, bootY + bootH - 2);
+  ctx.lineTo(lx + w + 3, bootY + bootH - 2);
+  ctx.lineTo(lx + w + 3, bootY + bootH);
+  ctx.quadraticCurveTo(cx, bootY + bootH + 1, lx - 2, bootY + bootH);
   ctx.closePath();
   ctx.fill();
 
@@ -599,14 +635,6 @@ function drawLeg(ctx, lx, ly, h, side) {
   ctx.arc(cx + 1.5, bootY + 1.5, 0.6, 0, Math.PI * 2);
   ctx.fillStyle = PAL.blk3;
   ctx.fill();
-
-  // Sole — rounded bottom edge
-  ctx.beginPath();
-  ctx.moveTo(lx, bootY + bootH);
-  ctx.quadraticCurveTo(cx, bootY + bootH + 1, lx + w + 1, bootY + bootH);
-  ctx.strokeStyle = PAL.boot0;
-  ctx.lineWidth = 1;
-  ctx.stroke();
 }
 
 // ── OUTLINE — draws a 1px dark silhouette around the character ──
@@ -675,7 +703,7 @@ function drawOperativeFrame(opts = {}) {
 
   // Left arm (behind body)
   ctx.save();
-  ctx.translate(MX - 15, torsoY + 2);
+  ctx.translate(MX - 17, torsoY + 2);
   ctx.rotate(-armSwing);
   drawArm(ctx, 0, 0, armLen);
   ctx.restore();
@@ -687,11 +715,13 @@ function drawOperativeFrame(opts = {}) {
   // Torso
   drawTorso(ctx, MX, torsoY);
 
-  // Right arm (in front)
+  // Right arm (in front) — with pistol
   ctx.save();
-  ctx.translate(MX + 14, torsoY + 2);
+  ctx.translate(MX + 16, torsoY + 2);
   ctx.rotate(armSwing);
   drawArm(ctx, 0, 0, armLen);
+  // Silenced pistol in right hand
+  drawPistol(ctx, 3, armLen - 2, 1);
   ctx.restore();
 
   // Head

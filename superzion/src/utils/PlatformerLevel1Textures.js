@@ -1098,41 +1098,41 @@ function drawRoofDome() {
 // PLAYER SPRITES (side-view, 64x64 each)
 // ===================================================================
 
-// COMPLETE REWRITE — organic Canvas 2D shapes, NO fillRect for anatomy
-// Skin #D2956A, Hair #1A1A1A, NO beard, NO kippah, pistol in right hand
+// HERO REDESIGN — Aviator sunglasses, V-shaped athletic build, tactical vest,
+// gold Star of David, silenced pistol, slicked-back pompadour, combat boots.
+// Skin #C49A6C, Hair #1A1A1A, NO beard, NO kippah
 function _drawPlayerBase(ctx, legPhase, armPhase, isJump) {
   const cx = 32, cy = 32;
 
-  // ── BOOTS — ellipse + arc for rounded shape with visible sole ──
+  // ── TACTICAL BOOTS — wider than ankles, thick visible sole ──
   ctx.fillStyle = '#0e0e0e';
   if (isJump) {
-    // Jump boots — compact
-    ctx.beginPath(); ctx.ellipse(cx - 4.5, cy + 21, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx + 4.5, cy + 21, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
-    // Rounded toe
-    ctx.beginPath(); ctx.arc(cx - 4.5, cy + 23, 3, 0, Math.PI); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 4.5, cy + 23, 3, 0, Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx - 4.5, cy + 21, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 4.5, cy + 21, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    // Thick sole
+    ctx.fillStyle = '#080808';
+    ctx.beginPath(); ctx.arc(cx - 4.5, cy + 23, 4, 0, Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 4.5, cy + 23, 4, 0, Math.PI); ctx.fill();
   } else {
     const offsets = [[-8, 0], [-10, 4], [-6, -4], [-4, 2]];
     const lo = offsets[legPhase] || [0, 0];
-    // Left boot
-    ctx.beginPath(); ctx.ellipse(cx + lo[0] + 3.5, cy + 25, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    // Left boot — wider than ankle
+    ctx.beginPath(); ctx.ellipse(cx + lo[0] + 3.5, cy + 25, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
     // Right boot
-    ctx.beginPath(); ctx.ellipse(cx + lo[0] + 13.5 + lo[1], cy + 25, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
-    // Boot soles — visible gray/brown (2-3px)
-    ctx.fillStyle = '#4a3a2a';
-    ctx.beginPath(); ctx.arc(cx + lo[0] + 3.5, cy + 27, 4, 0, Math.PI); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + lo[0] + 13.5 + lo[1], cy + 27, 4, 0, Math.PI); ctx.fill();
-    // Rounded toe with arc
+    ctx.beginPath(); ctx.ellipse(cx + lo[0] + 13.5 + lo[1], cy + 25, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    // Thick boot soles — visible, heavy
+    ctx.fillStyle = '#080808';
+    ctx.beginPath(); ctx.arc(cx + lo[0] + 3.5, cy + 27, 4.5, 0, Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + lo[0] + 13.5 + lo[1], cy + 27, 4.5, 0, Math.PI); ctx.fill();
+    // Boot top
     ctx.fillStyle = '#0e0e0e';
-    ctx.beginPath(); ctx.arc(cx + lo[0] + 3.5, cy + 27, 3, Math.PI, 0); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + lo[0] + 13.5 + lo[1], cy + 27, 3, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + lo[0] + 3.5, cy + 27, 3.5, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + lo[0] + 13.5 + lo[1], cy + 27, 3.5, Math.PI, 0); ctx.fill();
   }
 
-  // ── LEGS — black cargo pants with SHAPE (wider thigh, narrower knee/ankle) ──
+  // ── LEGS — black tactical pants, firm combat stance ──
   ctx.fillStyle = '#1a1a1a';
   if (isJump) {
-    // Left leg
     ctx.beginPath();
     ctx.moveTo(cx - 7, cy + 10);
     ctx.quadraticCurveTo(cx - 8.5, cy + 14, cx - 7, cy + 19);
@@ -1140,7 +1140,6 @@ function _drawPlayerBase(ctx, legPhase, armPhase, isJump) {
     ctx.quadraticCurveTo(cx + 0.5, cy + 14, cx - 1, cy + 10);
     ctx.closePath();
     ctx.fill();
-    // Right leg
     ctx.beginPath();
     ctx.moveTo(cx + 1, cy + 10);
     ctx.quadraticCurveTo(cx - 0.5, cy + 14, cx + 1, cy + 19);
@@ -1156,7 +1155,6 @@ function _drawPlayerBase(ctx, legPhase, armPhase, isJump) {
       [{ x: -6, h: 13 }, { x: 2, h: 13 }],
     ];
     const lp = legOff[legPhase] || legOff[0];
-    // Left leg — tapered with quadraticCurveTo
     ctx.beginPath();
     ctx.moveTo(cx + lp[0].x, cy + 8);
     ctx.quadraticCurveTo(cx + lp[0].x - 1, cy + 8 + lp[0].h * 0.4, cx + lp[0].x + 0.5, cy + 8 + lp[0].h);
@@ -1164,13 +1162,11 @@ function _drawPlayerBase(ctx, legPhase, armPhase, isJump) {
     ctx.quadraticCurveTo(cx + lp[0].x + 7, cy + 8 + lp[0].h * 0.4, cx + lp[0].x + 6, cy + 8);
     ctx.closePath();
     ctx.fill();
-    // Small cargo pocket detail on left leg
     ctx.fillStyle = '#222222';
     ctx.beginPath();
     ctx.ellipse(cx + lp[0].x + 3, cy + 12, 2, 1.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#1a1a1a';
-    // Right leg
     ctx.beginPath();
     ctx.moveTo(cx + lp[1].x, cy + 8);
     ctx.quadraticCurveTo(cx + lp[1].x - 1, cy + 8 + lp[1].h * 0.4, cx + lp[1].x + 0.5, cy + 8 + lp[1].h);
@@ -1180,8 +1176,7 @@ function _drawPlayerBase(ctx, legPhase, armPhase, isJump) {
     ctx.fill();
   }
 
-  // ── TORSO — bezierCurveTo for curved sides, WIDER at shoulders, NARROWER at waist ──
-  // Layer 1: black undershirt showing at V-neck
+  // ── V-SHAPED TORSO — wide shoulders, narrow waist ──
   ctx.fillStyle = '#1a1a1a';
   ctx.beginPath();
   ctx.moveTo(cx - 2, cy - 7);
@@ -1190,41 +1185,42 @@ function _drawPlayerBase(ctx, legPhase, armPhase, isJump) {
   ctx.lineTo(cx - 1, cy - 3);
   ctx.closePath();
   ctx.fill();
-  // Layer 2: dark tactical vest #2A2A2A with bezierCurveTo sides
-  ctx.fillStyle = '#2A2A2A';
+  // Dark tactical base — V-shape
+  ctx.fillStyle = '#1A1A1A';
   ctx.beginPath();
-  ctx.moveTo(cx - 9, cy - 8);
-  ctx.bezierCurveTo(cx - 10, cy - 4, cx - 9, cy + 4, cx - 7, cy + 10);
-  ctx.lineTo(cx + 7, cy + 10);
-  ctx.bezierCurveTo(cx + 9, cy + 4, cx + 10, cy - 4, cx + 9, cy - 8);
+  ctx.moveTo(cx - 10, cy - 8);
+  ctx.bezierCurveTo(cx - 11, cy - 4, cx - 9, cy + 4, cx - 6, cy + 10);
+  ctx.lineTo(cx + 6, cy + 10);
+  ctx.bezierCurveTo(cx + 9, cy + 4, cx + 11, cy - 4, cx + 10, cy - 8);
   ctx.closePath();
   ctx.fill();
 
-  // Vest overlay — slightly lighter #3A3A3A with ROUNDED edges
+  // Tactical vest overlay #3A3A3A
   ctx.fillStyle = '#3A3A3A';
   ctx.beginPath();
   ctx.moveTo(cx - 8, cy - 6);
-  ctx.bezierCurveTo(cx - 8.5, cy - 1, cx - 8, cy + 3, cx - 6, cy + 8);
-  ctx.lineTo(cx + 6, cy + 8);
+  ctx.bezierCurveTo(cx - 8.5, cy - 1, cx - 8, cy + 3, cx - 5, cy + 8);
+  ctx.lineTo(cx + 5, cy + 8);
   ctx.bezierCurveTo(cx + 8, cy + 3, cx + 8.5, cy - 1, cx + 8, cy - 6);
   ctx.closePath();
   ctx.fill();
 
-  // Two small chest pockets #4A4A4A
+  // Vest pockets
   ctx.fillStyle = '#4A4A4A';
   ctx.beginPath(); ctx.ellipse(cx - 4, cy - 2, 2.5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(cx + 4, cy - 2, 2.5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
 
-  // ── STAR OF DAVID — center of chest between pockets, golden #FFD700 ──
+  // Shoulder pads — rounded dark gray
+  ctx.fillStyle = '#3A3A3A';
+  ctx.beginPath(); ctx.ellipse(cx - 10, cy - 7, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 10, cy - 7, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ★ STAR OF DAVID — EXACT CENTER of vest, gold metallic ★
   starOfDavid(ctx, cx, cy + 1, 4, '#FFD700');
 
-  // ── ARMS — rounded shoulders with ellipse organic shapes ──
-  ctx.fillStyle = '#2A2A2A';
+  // ── ARMS — with shoulder caps ──
+  ctx.fillStyle = '#1A1A1A';
   if (isJump) {
-    // Shoulder caps
-    ctx.beginPath(); ctx.arc(cx - 10, cy - 7, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 10, cy - 7, 2.5, 0, Math.PI * 2); ctx.fill();
-    // Arms up
     ctx.beginPath(); ctx.ellipse(cx - 11.5, cy - 5, 2.5, 7, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(cx + 11.5, cy - 5, 2.5, 7, 0, 0, Math.PI * 2); ctx.fill();
   } else {
@@ -1235,21 +1231,16 @@ function _drawPlayerBase(ctx, legPhase, armPhase, isJump) {
       [{ x: -13, y: -3, h: 13 }, { x: 8, y: -5, h: 13 }],
     ];
     const ap = armOff[armPhase] || armOff[0];
-    // Shoulder caps
-    ctx.beginPath(); ctx.arc(cx - 9, cy - 7, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 9, cy - 7, 2.5, 0, Math.PI * 2); ctx.fill();
-    // Left arm
     ctx.beginPath();
     ctx.ellipse(cx + ap[0].x + 2.5, cy + ap[0].y + ap[0].h / 2, 2.5, ap[0].h / 2, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Right arm (slightly forward holding weapon)
     ctx.beginPath();
     ctx.ellipse(cx + ap[1].x + 2.5, cy + ap[1].y + ap[1].h / 2, 2.5, ap[1].h / 2, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // ── HANDS — skin-colored ovals #D2956A ──
-  ctx.fillStyle = '#D2956A';
+  // ── GLOVED HANDS — black tactical gloves ──
+  ctx.fillStyle = '#222222';
   if (isJump) {
     ctx.beginPath(); ctx.ellipse(cx - 11.5, cy - 13, 2.5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(cx + 11.5, cy - 13, 2.5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
@@ -1261,98 +1252,118 @@ function _drawPlayerBase(ctx, legPhase, armPhase, isJump) {
       [{ x: -13, y: -3, h: 13 }, { x: 8, y: -5, h: 13 }],
     ];
     const ap = armOff[armPhase] || armOff[0];
-    // Left hand
     ctx.beginPath();
     ctx.ellipse(cx + ap[0].x + 2.5, cy + ap[0].y + ap[0].h, 2.5, 1.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Right hand
     ctx.beginPath();
     ctx.ellipse(cx + ap[1].x + 2.5, cy + ap[1].y + ap[1].h, 2.5, 1.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // ── PISTOL with silencer in right hand ──
-    // Body: small black shape
+    // ── SILENCED PISTOL in right hand ──
     ctx.fillStyle = '#0e0e0e';
     ctx.beginPath();
     ctx.ellipse(cx + ap[1].x + 7, cy + ap[1].y + ap[1].h, 3, 1.2, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Silencer: elongated dark gray cylinder
     ctx.fillStyle = '#333333';
     ctx.beginPath();
     ctx.ellipse(cx + ap[1].x + 11, cy + ap[1].y + ap[1].h, 2.5, 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // ── NECK — short skin-colored ellipse connecting head to torso ──
-  ctx.fillStyle = '#c4926a';
+  // ── NECK ──
+  ctx.fillStyle = '#C49A6C';
   ctx.beginPath();
   ctx.ellipse(cx, cy - 9, 3, 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── HEAD — oval arc (taller than wide) ──
-  ctx.fillStyle = '#D2956A';
+  // ── HEAD — oval, ~22% of total height, Mediterranean skin ──
+  ctx.fillStyle = '#C49A6C';
   ctx.beginPath();
   ctx.ellipse(cx, cy - 15, 7, 8.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── HAIR — black #1A1A1A, slicked back with bezierCurveTo for volume ──
+  // Angular jawline / chin
+  ctx.beginPath();
+  ctx.moveTo(cx - 5, cy - 9);
+  ctx.lineTo(cx, cy - 7);
+  ctx.lineTo(cx + 5, cy - 9);
+  ctx.fillStyle = '#b08657';
+  ctx.fill();
+
+  // ── SLICKED-BACK HAIR with pompadour volume ──
   ctx.fillStyle = '#1A1A1A';
-  // Main hair cap
   ctx.beginPath();
   ctx.ellipse(cx, cy - 19.5, 7.5, 4, 0, Math.PI, 0);
   ctx.fill();
-  // Hair volume on top — higher in front (slight quiff), tapering back
+  // Pompadour — higher in front, bezierCurveTo
   ctx.beginPath();
   ctx.moveTo(cx - 7, cy - 18);
-  ctx.bezierCurveTo(cx - 5, cy - 23, cx + 3, cy - 23.5, cx + 7, cy - 19);
+  ctx.bezierCurveTo(cx - 5, cy - 24, cx + 3, cy - 24.5, cx + 7, cy - 19);
   ctx.bezierCurveTo(cx + 8, cy - 17, cx - 8, cy - 17, cx - 7, cy - 18);
   ctx.closePath();
   ctx.fill();
-  // Side hair covering sides
+  // Side hair
   ctx.beginPath();
   ctx.arc(cx - 7, cy - 15, 2, Math.PI * 0.6, Math.PI * 1.6);
   ctx.fill();
   ctx.beginPath();
   ctx.arc(cx + 7, cy - 15, 2, Math.PI * 1.4, Math.PI * 0.4);
   ctx.fill();
-  // Hair streaks (thin bezier lines for slicked look)
+  // Hair streaks
   ctx.strokeStyle = '#222222';
   ctx.lineWidth = 0.5;
   for (let i = -2; i <= 2; i++) {
     ctx.beginPath();
-    ctx.moveTo(cx + i * 2, cy - 22);
+    ctx.moveTo(cx + i * 2, cy - 23);
     ctx.bezierCurveTo(cx + i * 2.3, cy - 20, cx + i * 2.8, cy - 18, cx + i * 3, cy - 16);
     ctx.stroke();
   }
 
-  // ── EYES — two small arc black dots at 1/3 from top of face ──
-  ctx.fillStyle = '#0e0e0e';
-  ctx.beginPath(); ctx.arc(cx - 3, cy - 16, 1, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 3, cy - 16, 1, 0, Math.PI * 2); ctx.fill();
-
-  // ── EYEBROWS — short quadraticCurveTo arched lines, black, lineWidth 2 ──
+  // ── Thick straight EYEBROWS above sunglasses ──
   ctx.strokeStyle = '#1A1A1A';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'butt';
   ctx.beginPath();
-  ctx.moveTo(cx - 6, cy - 18);
-  ctx.quadraticCurveTo(cx - 3.5, cy - 19.5, cx - 1, cy - 18);
+  ctx.moveTo(cx - 6, cy - 17.5);
+  ctx.lineTo(cx - 0.5, cy - 18);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(cx + 1, cy - 18);
-  ctx.quadraticCurveTo(cx + 3.5, cy - 19.5, cx + 6, cy - 18);
+  ctx.moveTo(cx + 0.5, cy - 18);
+  ctx.lineTo(cx + 6, cy - 17.5);
   ctx.stroke();
 
-  // ── MOUTH — subtle horizontal line, serious/neutral ──
+  // ── AVIATOR SUNGLASSES — the defining feature ──
+  // Left lens — dark oval
+  ctx.fillStyle = '#0A0A0A';
+  ctx.beginPath(); ctx.ellipse(cx - 3, cy - 15.5, 3, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+  // Right lens
+  ctx.beginPath(); ctx.ellipse(cx + 3, cy - 15.5, 3, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+  // Frame
+  ctx.strokeStyle = '#333333';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath(); ctx.ellipse(cx - 3, cy - 15.5, 3, 1.8, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx + 3, cy - 15.5, 3, 1.8, 0, 0, Math.PI * 2); ctx.stroke();
+  // Nose bridge
+  ctx.beginPath();
+  ctx.moveTo(cx - 0.5, cy - 15.5);
+  ctx.lineTo(cx + 0.5, cy - 15.5);
+  ctx.stroke();
+  // Diagonal reflection (cyan/white)
+  ctx.strokeStyle = 'rgba(180, 220, 255, 0.4)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(cx - 5, cy - 16); ctx.lineTo(cx - 1, cy - 15); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 1, cy - 16); ctx.lineTo(cx + 5, cy - 15); ctx.stroke();
+
+  // ── MOUTH — serious, straight with slight frown ──
   ctx.strokeStyle = '#6a4030';
   ctx.lineWidth = 0.8;
   ctx.beginPath();
   ctx.moveTo(cx - 2, cy - 10.5);
   ctx.lineTo(cx + 2, cy - 10.5);
   ctx.stroke();
-
-  // ── Shoulder accents — rounded arc ──
-  ctx.fillStyle = 'rgba(100, 150, 255, 0.3)';
-  ctx.beginPath(); ctx.arc(cx - 9, cy - 7, 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 9, cy - 7, 1.5, 0, Math.PI * 2); ctx.fill();
+  // Frown corners
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(cx - 2, cy - 10.5); ctx.lineTo(cx - 2.5, cy - 10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 2, cy - 10.5); ctx.lineTo(cx + 2.5, cy - 10); ctx.stroke();
 }
 
 // ── plt_player_idle (64x64) ──
