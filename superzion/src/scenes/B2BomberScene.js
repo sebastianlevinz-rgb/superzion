@@ -550,9 +550,9 @@ export default class B2BomberScene extends Phaser.Scene {
     this.phase = 'takeoff';
     this.takeoffTimer = 0;
     this.takeoffStage = 0;
-    this.takeoffBomberY = 0;
+    this.takeoffBomberY = 140;  // start near bottom of screen
     this.takeoffSpeed = 0;
-    this.takeoffScale = 1.5;
+    this.takeoffScale = 1.3;   // less extreme zoom
     this.takeoffShake = 0;
     this.takeoffRunwayOffset = 0;
 
@@ -616,7 +616,7 @@ export default class B2BomberScene extends Phaser.Scene {
     // Zoom out
     if (this.takeoffStage >= 1 && this.takeoffStage < 3) {
       const zoomProgress = Math.min(1, (t - 3) / 2);
-      this.takeoffScale = 1.5 - 0.5 * zoomProgress;
+      this.takeoffScale = 1.3 - 0.3 * zoomProgress;
     }
 
     // Engine intensification
@@ -670,7 +670,7 @@ export default class B2BomberScene extends Phaser.Scene {
     // ===== DRAW EVERYTHING =====
     gfx.clear();
     const scale = this.takeoffScale;
-    const bomberScreenY = baseY + this.takeoffBomberY * 0.1;
+    const bomberScreenY = baseY + this.takeoffBomberY;
 
     // Dark background
     gfx.fillStyle(0x0a0a12, 1);
@@ -795,21 +795,36 @@ export default class B2BomberScene extends Phaser.Scene {
       }
     }
 
-    // Transition to flight phase
+    // Smooth transition: during liftoff, blend runway into ocean water
     if (this.takeoffStage === 3) {
       const liftT = t - 7.5;
-      if (liftT > 0.8 && !this._takeoffFading) {
+      const blendAlpha = Math.min(1, liftT / 2);  // 0→1 over 2 seconds
+
+      // Draw ocean water fading IN over the runway background
+      gfx.fillStyle(0x0a1628, blendAlpha * 0.9);
+      gfx.fillRect(0, 0, W, H);
+      // Wave hints appearing
+      if (blendAlpha > 0.3) {
+        gfx.lineStyle(1, 0x1a2a48, blendAlpha * 0.3);
+        for (let y = 0; y < H; y += 40) {
+          for (let x = 0; x < W; x += 8) {
+            const wy = y + Math.sin(x * 0.04 + t * 1.5) * 3;
+            const wy2 = y + Math.sin((x + 8) * 0.04 + t * 1.5) * 3;
+            gfx.lineBetween(x, wy, x + 8, wy2);
+          }
+        }
+      }
+
+      // Fade title
+      if (this.takeoffTitle && this.takeoffTitle.alpha > 0) {
+        this.takeoffTitle.setAlpha(Math.max(0, 1 - liftT * 1.5));
+      }
+
+      // Transition to flight when fully blended
+      if (liftT > 2.2 && !this._takeoffFading) {
         this._takeoffFading = true;
-        const fadeOverlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(50);
-        this.takeoffObjects.push(fadeOverlay);
-        this.tweens.add({
-          targets: fadeOverlay, alpha: 1, duration: 800,
-          onComplete: () => {
-            this._cleanupTakeoff();
-            this._startFlight();
-          },
-        });
-        this.tweens.add({ targets: this.takeoffTitle, alpha: 0, duration: 600 });
+        this._cleanupTakeoff();
+        this._startFlight();
       }
     }
   }
@@ -857,7 +872,7 @@ export default class B2BomberScene extends Phaser.Scene {
     this.detectionLevel = 0;
     this.maxDetection = 0;
     this.terrainOffset = 0;
-    this.terrainSpeed = 200;
+    this.terrainSpeed = 280;    // faster flight
     this.jetX = W / 2;
     this.jetY = H * 0.65;
     this.jetBankAngle = 0;
@@ -1095,44 +1110,44 @@ export default class B2BomberScene extends Phaser.Scene {
       }
 
     } else if (t < 12) {
-      // ── COASTLINE TRANSITION (sand/beach → land) ──
+      // ── COASTLINE TRANSITION — land appears FROM TOP (plane flies toward it) ──
       const coastProgress = (t - 7) / 5;  // 0 to 1
 
-      // Water portion (top part, shrinking)
-      const waterH = H * (1 - coastProgress);
+      // Land portion at TOP (growing downward — plane approaches from below)
+      const landH = H * coastProgress;
+      gfx.fillStyle(0x2a1e10, 1);
+      gfx.fillRect(0, 0, W, landH);
+
+      // Some vegetation dots on land
+      if (coastProgress > 0.2) {
+        for (let i = 0; i < 10; i++) {
+          const vx = (i * 127 + Math.floor(offset * 0.1)) % W;
+          const vy = ((i * 89 + Math.floor(offset * 0.3)) % Math.max(1, landH));
+          if (vy < landH) {
+            gfx.fillStyle(0x1a3a1a, 0.4);
+            gfx.fillCircle(vx, vy, 3 + (i % 3));
+          }
+        }
+      }
+
+      // Beach strip (between land and water)
+      const beachY = landH;
+      const beachH = 20 + coastProgress * 15;
+      gfx.fillStyle(0x8a7a5a, 0.8);
+      gfx.fillRect(0, beachY, W, beachH);
+
+      // Water portion at BOTTOM (shrinking — plane has passed over it)
+      const waterTop = beachY + beachH;
       gfx.fillStyle(0x0a1628, 1);
-      gfx.fillRect(0, 0, W, waterH);
-      // Waves in water portion
+      gfx.fillRect(0, waterTop, W, H - waterTop);
+      // Waves in water
       const waveOffset = offset % 40;
-      for (let y = -40 + waveOffset; y < waterH; y += 40) {
+      for (let y = waterTop; y < H + 40; y += 40) {
         gfx.lineStyle(1, 0x1a2a48, 0.3);
         for (let x = 0; x < W; x += 8) {
           const wy = y + Math.sin(x * 0.04 + t * 1.5) * 3;
           const wy2 = y + Math.sin((x + 8) * 0.04 + t * 1.5) * 3;
           gfx.lineBetween(x, wy, x + 8, wy2);
-        }
-      }
-
-      // Beach strip
-      const beachY = waterH;
-      const beachH = 30 + coastProgress * 20;
-      gfx.fillStyle(0x8a7a5a, 0.8);
-      gfx.fillRect(0, beachY, W, beachH);
-
-      // Land portion (below beach, growing)
-      gfx.fillStyle(0x2a1e10, 1);
-      gfx.fillRect(0, beachY + beachH, W, H - beachY - beachH);
-
-      // Some vegetation dots on land
-      if (coastProgress > 0.3) {
-        const landTop = beachY + beachH;
-        for (let i = 0; i < 8; i++) {
-          const vx = (i * 127 + Math.floor(offset * 0.1)) % W;
-          const vy = landTop + ((i * 89 + Math.floor(offset * 0.3)) % Math.max(1, H - landTop));
-          if (vy > landTop && vy < H) {
-            gfx.fillStyle(0x1a3a1a, 0.4);
-            gfx.fillCircle(vx, vy, 3 + (i % 3));
-          }
         }
       }
 
@@ -1255,7 +1270,7 @@ export default class B2BomberScene extends Phaser.Scene {
     this.missileSpawnTimer = 0;
     this.bombingEnded = false;
     this.bombCooldown = 0;
-    this.terrainSpeed = 120;  // slower approach for aiming
+    this.terrainSpeed = 160;  // faster approach — need quick aim
     this.terrainOffset = 0;
     this.mountainHP = MOUNTAIN_LAYERS;
     this.mountainApproachDist = 0;
@@ -1827,7 +1842,7 @@ export default class B2BomberScene extends Phaser.Scene {
     MusicManager.get().playLevel5Music('escape');
     this.phaseTimer = 0;
     this.escapeTimer = 0;
-    this.terrainSpeed = -220;  // negative = terrain scrolls upward (plane going back)
+    this.terrainSpeed = -300;  // fast escape — terrain scrolls upward rapidly
     this.terrainOffset = 0;
     this._cleanupMissiles();
     this.missileSpawnTimer = 0;
@@ -1879,13 +1894,19 @@ export default class B2BomberScene extends Phaser.Scene {
     // Terrain scrolls upward (reverse direction)
     this.terrainOffset += this.terrainSpeed * dt;
 
-    // Last missiles (sparse)
+    // Aggressive pursuit missiles — dodging is the gameplay here
     this.missileSpawnTimer += dt;
-    if (this.missileSpawnTimer >= 3.5 && this.escapeTimer < 8) {
+    const missileInterval = this.escapeTimer < 4 ? 1.8 : 2.5;  // faster at start
+    if (this.missileSpawnTimer >= missileInterval && this.escapeTimer < 9) {
       this.missileSpawnTimer = 0;
-      const mx = 100 + Math.random() * (W - 200);
-      const my = H + 30;  // missiles come from bottom (the land we're leaving)
+      // Missiles from both left and right sides, and from below
+      const side = Math.floor(this.escapeTimer / missileInterval) % 3;
+      let mx, my;
+      if (side === 0) { mx = -20; my = H * 0.3 + Math.random() * H * 0.4; }       // from left
+      else if (side === 1) { mx = W + 20; my = H * 0.3 + Math.random() * H * 0.4; } // from right
+      else { mx = 100 + Math.random() * (W - 200); my = H + 30; }                    // from below
       this._spawnTrackingMissile(mx, my);
+      SoundManager.get().playRadarAlert();
     }
     this._updateMissiles(dt);
 
