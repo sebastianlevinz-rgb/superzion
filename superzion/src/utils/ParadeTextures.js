@@ -459,7 +459,7 @@ export function createAngryEyebrowsParade(scene) {
     // Head center ~35% from top, large elongated oval
     const headCY = by - 88;
     const headRX = 18;       // wide oval head
-    const headRY = 22;       // elongated tall
+    const headRY = 25;       // elongated tall — increased 15%
     const neckTop = headCY + headRY;
     const shoulderY = neckTop + 6;
     const torsoBottom = by - 20;
@@ -468,7 +468,7 @@ export function createAngryEyebrowsParade(scene) {
     // ═══════════════════════════════════════════
     // LEGS (dark pants)
     // ═══════════════════════════════════════════
-    ctx.fillStyle = '#1E1E30';
+    ctx.fillStyle = '#1A1A1A';
     ctx.beginPath();
     ctx.ellipse(cx - 5, by - 10, 3.5, 10, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -485,9 +485,9 @@ export function createAngryEyebrowsParade(scene) {
     ctx.fill();
 
     // ═══════════════════════════════════════════
-    // TORSO (dark suit)
+    // TORSO (dark suit — distinct from pants)
     // ═══════════════════════════════════════════
-    const suitColor = '#1A1A2E';
+    const suitColor = '#2A2A2A';
     ctx.fillStyle = suitColor;
     ctx.beginPath();
     ctx.moveTo(cx - 18, shoulderY);
@@ -497,8 +497,16 @@ export function createAngryEyebrowsParade(scene) {
     ctx.closePath();
     ctx.fill();
 
+    // Waistline
+    ctx.strokeStyle = '#111111';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 15, torsoBottom);
+    ctx.lineTo(cx + 15, torsoBottom);
+    ctx.stroke();
+
     // Shoulder pads
-    ctx.fillStyle = '#222238';
+    ctx.fillStyle = '#333333';
     ctx.beginPath();
     ctx.moveTo(cx - 22, shoulderY);
     ctx.lineTo(cx - 14, shoulderY - 3);
@@ -509,8 +517,8 @@ export function createAngryEyebrowsParade(scene) {
     ctx.closePath();
     ctx.fill();
 
-    // Lapels
-    ctx.fillStyle = '#3A3A4E';
+    // Lapels (V-shape, lighter than suit)
+    ctx.fillStyle = '#4A4A4A';
     ctx.beginPath();
     ctx.moveTo(cx - 4, shoulderY);
     ctx.lineTo(cx - 10, shoulderY + 3);
@@ -525,30 +533,42 @@ export function createAngryEyebrowsParade(scene) {
     ctx.lineTo(cx + 1, shoulderY + 15);
     ctx.closePath();
     ctx.fill();
+    // Lapel V-lines
+    ctx.strokeStyle = '#4A4A4A';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - 1, shoulderY);
+    ctx.lineTo(cx - 7, shoulderY + 16);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 1, shoulderY);
+    ctx.lineTo(cx + 7, shoulderY + 16);
+    ctx.stroke();
 
-    // Buttons
-    ctx.fillStyle = '#0A0A1A';
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.arc(cx, shoulderY + 16 + i * 5, 1, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Buttons (below kefia area)
+    ctx.fillStyle = '#555555';
+    ctx.beginPath();
+    ctx.arc(cx, shoulderY + 19, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, shoulderY + 25, 1, 0, Math.PI * 2);
+    ctx.fill();
 
-    // ── Arms (suit sleeves, fists) ──
-    ctx.fillStyle = suitColor;
+    // ── Arms (suit sleeves, visible at sides) ──
+    ctx.fillStyle = '#2E2E2E';
     // Left arm
     ctx.beginPath();
-    ctx.ellipse(cx - 22, shoulderY + 12, 3, 10, 0.1, 0, Math.PI * 2);
+    ctx.ellipse(cx - 22, shoulderY + 12, 3.5, 10, 0.1, 0, Math.PI * 2);
     ctx.fill();
     // Right arm (slightly raised)
     ctx.save();
     ctx.translate(cx + 22, shoulderY + 8);
     ctx.rotate(-0.5);
-    ctx.fillStyle = suitColor;
+    ctx.fillStyle = '#2E2E2E';
     ctx.beginPath();
-    ctx.ellipse(0, 0, 3, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 3.5, 10, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Fist
+    // Hand
     ctx.fillStyle = skinBase;
     ctx.beginPath();
     ctx.ellipse(0, -12, 3, 2.5, 0, 0, Math.PI * 2);
@@ -561,7 +581,7 @@ export function createAngryEyebrowsParade(scene) {
     ctx.fill();
 
     // ═══════════════════════════════════════════
-    // KEFIA ON SHOULDERS (checkered white/dark)
+    // KEFIA ON SHOULDERS (diagonal crosshatch)
     // ═══════════════════════════════════════════
     const kefW = '#E8E8E8';
     const kefD = '#3A3A3A';
@@ -598,32 +618,111 @@ export function createAngryEyebrowsParade(scene) {
     ctx.closePath();
     ctx.fill();
 
-    // Hanging ends
+    // Hanging ends (shorter — kefia ends at mid-chest)
     ctx.fillStyle = kefW;
-    ctx.fillRect(cx - 4, shoulderY + 6, 3, 14);
-    ctx.fillRect(cx + 1, shoulderY + 6, 3, 14);
+    ctx.fillRect(cx - 4, shoulderY + 6, 3, 10);
+    ctx.fillRect(cx + 1, shoulderY + 6, 3, 10);
 
-    // Checkered pattern on drapes
-    ctx.fillStyle = kefD;
-    for (let py = shoulderY + 1; py < shoulderY + 20; py += 4) {
-      for (let px = cx - 20; px < cx - 2; px += 4) {
-        if ((Math.floor(px / 4) + Math.floor(py / 4)) % 2 === 0) {
-          ctx.fillRect(px, py, 2, 2);
-        }
-      }
+    // Diagonal crosshatch on left drape
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, neckTop);
+    ctx.lineTo(cx - 20, shoulderY + 3);
+    ctx.lineTo(cx - 22, shoulderY + 18);
+    ctx.lineTo(cx - 16, shoulderY + 22);
+    ctx.lineTo(cx - 6, shoulderY + 14);
+    ctx.lineTo(cx - 1, shoulderY + 4);
+    ctx.closePath();
+    ctx.clip();
+    ctx.strokeStyle = kefD;
+    ctx.lineWidth = 0.6;
+    for (let i = -50; i < 80; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 24 + i, shoulderY);
+      ctx.lineTo(cx - 24 + i + 24, shoulderY + 24);
+      ctx.stroke();
     }
-    for (let py = shoulderY + 1; py < shoulderY + 20; py += 4) {
-      for (let px = cx + 2; px < cx + 20; px += 4) {
-        if ((Math.floor(px / 4) + Math.floor(py / 4)) % 2 === 0) {
-          ctx.fillRect(px, py, 2, 2);
-        }
-      }
+    for (let i = -50; i < 80; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(cx + 24 - i, shoulderY);
+      ctx.lineTo(cx + 24 - i - 24, shoulderY + 24);
+      ctx.stroke();
     }
-    // Pattern on ends
-    for (let py = shoulderY + 8; py < shoulderY + 18; py += 3) {
-      ctx.fillRect(cx - 3, py, 1.5, 1.5);
-      ctx.fillRect(cx + 2, py, 1.5, 1.5);
+    ctx.restore();
+
+    // Diagonal crosshatch on right drape
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx + 6, neckTop);
+    ctx.lineTo(cx + 20, shoulderY + 3);
+    ctx.lineTo(cx + 22, shoulderY + 18);
+    ctx.lineTo(cx + 16, shoulderY + 22);
+    ctx.lineTo(cx + 6, shoulderY + 14);
+    ctx.lineTo(cx + 1, shoulderY + 4);
+    ctx.closePath();
+    ctx.clip();
+    ctx.strokeStyle = kefD;
+    ctx.lineWidth = 0.6;
+    for (let i = -50; i < 80; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 24 + i, shoulderY);
+      ctx.lineTo(cx - 24 + i + 24, shoulderY + 24);
+      ctx.stroke();
     }
+    for (let i = -50; i < 80; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(cx + 24 - i, shoulderY);
+      ctx.lineTo(cx + 24 - i - 24, shoulderY + 24);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Crosshatch on center neckpiece
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, neckTop - 1);
+    ctx.lineTo(cx + 7, neckTop - 1);
+    ctx.lineTo(cx + 5, shoulderY + 6);
+    ctx.lineTo(cx - 5, shoulderY + 6);
+    ctx.closePath();
+    ctx.clip();
+    ctx.strokeStyle = kefD;
+    ctx.lineWidth = 0.6;
+    for (let i = -20; i < 30; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 8 + i, neckTop - 2);
+      ctx.lineTo(cx - 8 + i + 16, neckTop + 14);
+      ctx.stroke();
+    }
+    for (let i = -20; i < 30; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(cx + 8 - i, neckTop - 2);
+      ctx.lineTo(cx + 8 - i - 16, neckTop + 14);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Crosshatch on hanging ends
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cx - 4, shoulderY + 6, 3, 10);
+    ctx.rect(cx + 1, shoulderY + 6, 3, 10);
+    ctx.clip();
+    ctx.strokeStyle = kefD;
+    ctx.lineWidth = 0.6;
+    for (let i = -16; i < 20; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 5 + i, shoulderY + 5);
+      ctx.lineTo(cx - 5 + i + 12, shoulderY + 17);
+      ctx.stroke();
+    }
+    for (let i = -16; i < 20; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(cx + 5 - i, shoulderY + 5);
+      ctx.lineTo(cx + 5 - i - 12, shoulderY + 17);
+      ctx.stroke();
+    }
+    ctx.restore();
 
     // ═══════════════════════════════════════════
     // NECK (short, thick)
@@ -696,12 +795,12 @@ export function createAngryEyebrowsParade(scene) {
     // ═══════════════════════════════════════════
     // EYEBROWS — THICK, PROMINENT (signature)
     // ═══════════════════════════════════════════
-    const browY = headCY - 3;
-    const browColor = '#2A2A2A';
-    const browH = 4;
-    const browBW = 13;
+    const browY = headCY - headRY * 0.4;  // ~30% from top of head
+    const browColor = '#111111';
+    const browH = 5;   // thick at parade scale
+    const browBW = 15;  // extends beyond eyes
     const browGap = 2;
-    const browAngle = 0.16;
+    const browAngle = 0.22;
 
     ctx.fillStyle = browColor;
     // Left eyebrow
@@ -740,15 +839,29 @@ export function createAngryEyebrowsParade(scene) {
       ctx.stroke();
     }
 
-    // Brow shadow
-    ctx.fillStyle = 'rgba(20, 15, 10, 0.3)';
-    ctx.fillRect(cx - browGap / 2 - browBW, browY + browH / 2, browBW, 2);
-    ctx.fillRect(cx + browGap / 2, browY + browH / 2, browBW, 2);
+    // Brow shadow (1-2px below each brow)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    const pLShadowInner = browY + browH / 2 + browAngle * browBW / 2 + 1;
+    const pLShadowOuter = browY + browH / 2 - browAngle * browBW / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - browGap / 2 - browBW, pLShadowOuter);
+    ctx.lineTo(cx - browGap / 2, pLShadowInner);
+    ctx.lineTo(cx - browGap / 2, pLShadowInner + 2);
+    ctx.lineTo(cx - browGap / 2 - browBW, pLShadowOuter + 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + browGap / 2 + browBW, pLShadowOuter);
+    ctx.lineTo(cx + browGap / 2, pLShadowInner);
+    ctx.lineTo(cx + browGap / 2, pLShadowInner + 2);
+    ctx.lineTo(cx + browGap / 2 + browBW, pLShadowOuter + 2);
+    ctx.closePath();
+    ctx.fill();
 
     // ═══════════════════════════════════════════
     // EYES (small, squinting, intense)
     // ═══════════════════════════════════════════
-    const eyeY = browY + browH + 3;
+    const eyeY = browY + browH + 5;  // 4-5px below eyebrows at parade scale
     const eyeSpacing = 8;
     for (const side of [-1, 1]) {
       const ex = cx + side * eyeSpacing;
@@ -773,8 +886,8 @@ export function createAngryEyebrowsParade(scene) {
     // ═══════════════════════════════════════════
     // NOSE (large, trapezoidal)
     // ═══════════════════════════════════════════
-    const noseTop = eyeY + 2;
-    const noseBot = headCY + 9;
+    const noseTop = eyeY + 3;
+    const noseBot = headCY + headRY * 0.5;  // nose at ~50% of head height
     ctx.fillStyle = '#A07850';
     ctx.beginPath();
     ctx.moveTo(cx - 1.5, noseTop);
@@ -791,7 +904,7 @@ export function createAngryEyebrowsParade(scene) {
     // ═══════════════════════════════════════════
     // MOUTH (thin frown)
     // ═══════════════════════════════════════════
-    const mouthY = noseBot + 4;
+    const mouthY = headCY + headRY * 0.7;  // mouth at ~70% of head height
     ctx.fillStyle = '#8A6A4A';
     ctx.beginPath();
     ctx.moveTo(cx - 8, mouthY);
@@ -825,6 +938,29 @@ export function createAngryEyebrowsParade(scene) {
         ctx.fillRect(bx, bby, 0.6 + Math.random() * 0.4, 0.8 + Math.random());
       }
     }
+
+    // ═══════════════════════════════════════════
+    // OUTLINE (1px black around head and body)
+    // ═══════════════════════════════════════════
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    // Head outline
+    ctx.beginPath();
+    ctx.ellipse(cx, headCY, headRX + 1, headRY + 1, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Body silhouette outline
+    ctx.beginPath();
+    ctx.moveTo(cx - 22, shoulderY);
+    ctx.lineTo(cx - 18, shoulderY);
+    ctx.lineTo(cx - 15, torsoBottom);
+    ctx.lineTo(cx - 9, torsoBottom);
+    ctx.lineTo(cx - 9, legBottom);
+    ctx.lineTo(cx + 9, legBottom);
+    ctx.lineTo(cx + 9, torsoBottom);
+    ctx.lineTo(cx + 15, torsoBottom);
+    ctx.lineTo(cx + 18, shoulderY);
+    ctx.lineTo(cx + 22, shoulderY);
+    ctx.stroke();
   }, 64, 110);
 }
 

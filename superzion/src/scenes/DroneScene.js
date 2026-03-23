@@ -122,9 +122,9 @@ function _generateBossTexture(scene, key, expression) {
   // ── Layout (CABEZÓN: ~40% head, ~60% body) ──
   const headCY = 28;      // head center Y
   const headRX = 20;      // head width radius
-  const headRY = 24;      // head height radius (elongated)
-  const neckTop = headCY + headRY; // 52
-  const shoulderY = 58;
+  const headRY = 28;      // head height radius — increased 15% for feature spread
+  const neckTop = headCY + headRY; // 56
+  const shoulderY = 62;
   const torsoBottom = 100;
   const legBottom = 120;
 
@@ -132,8 +132,8 @@ function _generateBossTexture(scene, key, expression) {
   // BODY (drawn first, behind head)
   // ═══════════════════════════════════════════
 
-  // ── Legs ──
-  ctx.fillStyle = '#1E1E30';
+  // ── Legs (dark pants) ──
+  ctx.fillStyle = '#1A1A1A';
   ctx.fillRect(cx - 12, torsoBottom, 10, legBottom - torsoBottom);
   ctx.fillRect(cx + 2, torsoBottom, 10, legBottom - torsoBottom);
   // Shoes
@@ -141,8 +141,8 @@ function _generateBossTexture(scene, key, expression) {
   ctx.fillRect(cx - 14, legBottom, 13, 5);
   ctx.fillRect(cx + 1, legBottom, 13, 5);
 
-  // ── Torso (dark suit) ──
-  const suitColor = '#1A1A2E';
+  // ── Torso (dark suit — distinct from pants) ──
+  const suitColor = '#2A2A2A';
   ctx.fillStyle = suitColor;
   ctx.beginPath();
   ctx.moveTo(cx - 24, shoulderY);
@@ -152,8 +152,16 @@ function _generateBossTexture(scene, key, expression) {
   ctx.closePath();
   ctx.fill();
 
+  // Waistline (1px line between suit and pants)
+  ctx.strokeStyle = '#111111';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 20, torsoBottom);
+  ctx.lineTo(cx + 20, torsoBottom);
+  ctx.stroke();
+
   // Shoulders
-  ctx.fillStyle = '#222238';
+  ctx.fillStyle = '#333333';
   ctx.beginPath();
   ctx.moveTo(cx - 28, shoulderY);
   ctx.lineTo(cx - 20, shoulderY - 3);
@@ -164,8 +172,8 @@ function _generateBossTexture(scene, key, expression) {
   ctx.closePath();
   ctx.fill();
 
-  // Lapels
-  ctx.fillStyle = '#3A3A4E';
+  // Lapels (V-shape, lighter than suit)
+  ctx.fillStyle = '#4A4A4A';
   ctx.beginPath();
   ctx.moveTo(cx - 6, shoulderY - 1);
   ctx.lineTo(cx - 12, shoulderY + 3);
@@ -180,21 +188,36 @@ function _generateBossTexture(scene, key, expression) {
   ctx.lineTo(cx + 2, shoulderY + 20);
   ctx.closePath();
   ctx.fill();
+  // Lapel V-lines
+  ctx.strokeStyle = '#4A4A4A';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, shoulderY);
+  ctx.lineTo(cx - 9, shoulderY + 22);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + 2, shoulderY);
+  ctx.lineTo(cx + 9, shoulderY + 22);
+  ctx.stroke();
 
-  // Buttons
-  ctx.fillStyle = '#0A0A1A';
-  ctx.beginPath(); ctx.arc(cx, shoulderY + 22, 1.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx, shoulderY + 29, 1.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx, shoulderY + 36, 1.2, 0, Math.PI * 2); ctx.fill();
+  // Buttons (below kefia area)
+  ctx.fillStyle = '#555555';
+  ctx.beginPath(); ctx.arc(cx, shoulderY + 25, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, shoulderY + 32, 1.5, 0, Math.PI * 2); ctx.fill();
 
-  // ── Arms ──
-  ctx.fillStyle = suitColor;
-  ctx.fillRect(cx - 32, shoulderY + 2, 6, 26);
-  ctx.fillRect(cx + 26, shoulderY + 2, 6, 26);
-  // Fists
+  // ── Arms (visible at sides, 7px wide) ──
+  ctx.fillStyle = '#2E2E2E';
+  ctx.fillRect(cx - 33, shoulderY + 2, 7, 28);
+  ctx.fillRect(cx + 26, shoulderY + 2, 7, 28);
+  // Arm edge highlights
+  ctx.strokeStyle = '#383838';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - 26, shoulderY + 2); ctx.lineTo(cx - 26, shoulderY + 30); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 26, shoulderY + 2); ctx.lineTo(cx + 26, shoulderY + 30); ctx.stroke();
+  // Hands (skin-colored ovals)
   ctx.fillStyle = skinBase;
-  ctx.beginPath(); ctx.arc(cx - 29, shoulderY + 30, 4, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 29, shoulderY + 30, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx - 29, shoulderY + 32, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 30, shoulderY + 32, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
 
   // ═══════════════════════════════════════════
   // KEFIA ON SHOULDERS (checkered pattern)
@@ -234,32 +257,111 @@ function _generateBossTexture(scene, key, expression) {
   ctx.closePath();
   ctx.fill();
 
-  // Hanging ends
+  // Hanging ends (shorter — kefia ends at mid-chest)
   ctx.fillStyle = kefW;
-  ctx.fillRect(cx - 5, shoulderY + 8, 4, 18);
-  ctx.fillRect(cx + 1, shoulderY + 8, 4, 18);
+  ctx.fillRect(cx - 5, shoulderY + 8, 4, 12);
+  ctx.fillRect(cx + 1, shoulderY + 8, 4, 12);
 
-  // Checkered pattern
-  ctx.fillStyle = kefD;
-  for (let py = shoulderY + 1; py < shoulderY + 24; py += 4) {
-    for (let px = cx - 28; px < cx - 2; px += 4) {
-      if ((Math.floor(px / 4) + Math.floor(py / 4)) % 2 === 0) {
-        ctx.fillRect(px, py, 2, 2);
-      }
-    }
+  // Diagonal crosshatch pattern on left drape
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, neckTop);
+  ctx.lineTo(cx - 28, shoulderY + 3);
+  ctx.lineTo(cx - 30, shoulderY + 22);
+  ctx.lineTo(cx - 22, shoulderY + 26);
+  ctx.lineTo(cx - 8, shoulderY + 20);
+  ctx.lineTo(cx - 1, shoulderY + 5);
+  ctx.closePath();
+  ctx.clip();
+  ctx.strokeStyle = kefD;
+  ctx.lineWidth = 0.7;
+  for (let i = -60; i < 100; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(cx - 32 + i, shoulderY);
+    ctx.lineTo(cx - 32 + i + 30, shoulderY + 30);
+    ctx.stroke();
   }
-  for (let py = shoulderY + 1; py < shoulderY + 24; py += 4) {
-    for (let px = cx + 2; px < cx + 28; px += 4) {
-      if ((Math.floor(px / 4) + Math.floor(py / 4)) % 2 === 0) {
-        ctx.fillRect(px, py, 2, 2);
-      }
-    }
+  for (let i = -60; i < 100; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(cx + 32 - i, shoulderY);
+    ctx.lineTo(cx + 32 - i - 30, shoulderY + 30);
+    ctx.stroke();
   }
-  // Pattern on ends
-  for (let py = shoulderY + 10; py < shoulderY + 24; py += 3) {
-    ctx.fillRect(cx - 4, py, 1.5, 1.5);
-    ctx.fillRect(cx + 2, py, 1.5, 1.5);
+  ctx.restore();
+
+  // Diagonal crosshatch pattern on right drape
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx + 8, neckTop);
+  ctx.lineTo(cx + 28, shoulderY + 3);
+  ctx.lineTo(cx + 30, shoulderY + 22);
+  ctx.lineTo(cx + 22, shoulderY + 26);
+  ctx.lineTo(cx + 8, shoulderY + 20);
+  ctx.lineTo(cx + 1, shoulderY + 5);
+  ctx.closePath();
+  ctx.clip();
+  ctx.strokeStyle = kefD;
+  ctx.lineWidth = 0.7;
+  for (let i = -60; i < 100; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(cx - 32 + i, shoulderY);
+    ctx.lineTo(cx - 32 + i + 30, shoulderY + 30);
+    ctx.stroke();
   }
+  for (let i = -60; i < 100; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(cx + 32 - i, shoulderY);
+    ctx.lineTo(cx + 32 - i - 30, shoulderY + 30);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Crosshatch on center neckpiece
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx - 9, neckTop - 1);
+  ctx.lineTo(cx + 9, neckTop - 1);
+  ctx.lineTo(cx + 6, shoulderY + 8);
+  ctx.lineTo(cx - 6, shoulderY + 8);
+  ctx.closePath();
+  ctx.clip();
+  ctx.strokeStyle = kefD;
+  ctx.lineWidth = 0.7;
+  for (let i = -30; i < 40; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(cx - 10 + i, neckTop - 2);
+    ctx.lineTo(cx - 10 + i + 20, neckTop + 18);
+    ctx.stroke();
+  }
+  for (let i = -30; i < 40; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(cx + 10 - i, neckTop - 2);
+    ctx.lineTo(cx + 10 - i - 20, neckTop + 18);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Crosshatch on hanging ends
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(cx - 5, shoulderY + 8, 4, 12);
+  ctx.rect(cx + 1, shoulderY + 8, 4, 12);
+  ctx.clip();
+  ctx.strokeStyle = kefD;
+  ctx.lineWidth = 0.7;
+  for (let i = -20; i < 30; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(cx - 6 + i, shoulderY + 7);
+    ctx.lineTo(cx - 6 + i + 14, shoulderY + 21);
+    ctx.stroke();
+  }
+  for (let i = -20; i < 30; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(cx + 6 - i, shoulderY + 7);
+    ctx.lineTo(cx + 6 - i - 14, shoulderY + 21);
+    ctx.stroke();
+  }
+  ctx.restore();
 
   // ═══════════════════════════════════════════
   // NECK
@@ -332,12 +434,13 @@ function _generateBossTexture(scene, key, expression) {
   // ═══════════════════════════════════════════
   // EYEBROWS — SIGNATURE FEATURE
   // ═══════════════════════════════════════════
-  const browY = headCY - 3;
-  const browColor = expression === 'dead' ? '#4A4A4A' : '#2A2A2A';
-  const browH = 5;   // thick!
-  const browW = 16;  // wide!
+  const browY = headCY - headRY * 0.4;  // ~30% from top of head
+  const browColor = expression === 'dead' ? '#4A4A4A' : '#111111';
+  const browH = 6;   // thick and dominant at 128 scale
+  const browW = 18;  // extends beyond eyes on both sides
   const browGap = 3; // almost touching
-  const browAngle = expression === 'furious' ? 0.28 : expression === 'angry' ? 0.22 : 0.16;
+  // Increased V-angles
+  const browAngle = expression === 'furious' ? 0.38 : expression === 'angry' ? 0.30 : 0.22;
 
   ctx.fillStyle = browColor;
 
@@ -398,7 +501,7 @@ function _generateBossTexture(scene, key, expression) {
   // ═══════════════════════════════════════════
   // EYES (small, squinting, intense)
   // ═══════════════════════════════════════════
-  const eyeY = browY + browH + 3;
+  const eyeY = browY + browH + 6;  // 5-6px below eyebrows at 128 scale
   const eyeSpacing = 10;
 
   if (expression === 'dead') {
@@ -449,8 +552,8 @@ function _generateBossTexture(scene, key, expression) {
   // ═══════════════════════════════════════════
   // NOSE (large, wide, trapezoidal)
   // ═══════════════════════════════════════════
-  const noseTop2 = eyeY + 3;
-  const noseBot = headCY + 11;
+  const noseTop2 = eyeY + 4;
+  const noseBot = headCY + headRY * 0.5;  // nose at ~50% of head height
 
   ctx.fillStyle = '#A07850';
   ctx.beginPath();
@@ -475,7 +578,7 @@ function _generateBossTexture(scene, key, expression) {
   // ═══════════════════════════════════════════
   // MOUTH (thin frown)
   // ═══════════════════════════════════════════
-  const mouthY = noseBot + 5;
+  const mouthY = headCY + headRY * 0.7;  // mouth at ~70% of head height
 
   if (expression === 'dead') {
     ctx.strokeStyle = '#6A5A4A';
@@ -528,6 +631,31 @@ function _generateBossTexture(scene, key, expression) {
       }
     }
   }
+
+  // ═══════════════════════════════════════════
+  // OUTLINE (1px black around head and body)
+  // ═══════════════════════════════════════════
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 1;
+  // Head outline
+  ctx.beginPath();
+  ctx.ellipse(cx, headCY, headRX + 1, headRY + 1, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Body silhouette outline
+  ctx.beginPath();
+  ctx.moveTo(cx - 28, shoulderY);
+  ctx.lineTo(cx - 24, shoulderY);
+  ctx.lineTo(cx - 20, torsoBottom);
+  ctx.lineTo(cx - 12, torsoBottom);
+  ctx.lineTo(cx - 12, legBottom);
+  ctx.lineTo(cx - 14, legBottom + 5);
+  ctx.lineTo(cx + 14, legBottom + 5);
+  ctx.lineTo(cx + 12, legBottom);
+  ctx.lineTo(cx + 12, torsoBottom);
+  ctx.lineTo(cx + 20, torsoBottom);
+  ctx.lineTo(cx + 24, shoulderY);
+  ctx.lineTo(cx + 28, shoulderY);
+  ctx.stroke();
 
   // ═══════════════════════════════════════════
   // EXPRESSION EFFECTS
@@ -801,11 +929,11 @@ function _generateBossPeekTexture(scene) {
 
   // ── THICK EYEBROWS (the star of the show) ──
   const browY = 14;
-  const browColor = '#2A2A2A';
+  const browColor = '#111111';
   const browH = 6;
   const browW = 18;
   const browGap = 3;
-  const browAngle = 0.16;
+  const browAngle = 0.22;
 
   ctx.fillStyle = browColor;
   // Left eyebrow
@@ -844,10 +972,24 @@ function _generateBossPeekTexture(scene) {
     ctx.stroke();
   }
 
-  // Brow shadow
-  ctx.fillStyle = 'rgba(20, 15, 10, 0.3)';
-  ctx.fillRect(cx - browGap / 2 - browW, browY + browH / 2, browW, 2);
-  ctx.fillRect(cx + browGap / 2, browY + browH / 2, browW, 2);
+  // Brow shadow (1-2px below each brow)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  const peekShadowInner = browY + browH / 2 + browAngle * browW / 2 + 1;
+  const peekShadowOuter = browY + browH / 2 - browAngle * browW / 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - browGap / 2 - browW, peekShadowOuter);
+  ctx.lineTo(cx - browGap / 2, peekShadowInner);
+  ctx.lineTo(cx - browGap / 2, peekShadowInner + 2);
+  ctx.lineTo(cx - browGap / 2 - browW, peekShadowOuter + 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + browGap / 2 + browW, peekShadowOuter);
+  ctx.lineTo(cx + browGap / 2, peekShadowInner);
+  ctx.lineTo(cx + browGap / 2, peekShadowInner + 2);
+  ctx.lineTo(cx + browGap / 2 + browW, peekShadowOuter + 2);
+  ctx.closePath();
+  ctx.fill();
 
   // ── EYES (squinting, intense, peeking) ──
   const eyeY = browY + browH + 4;
