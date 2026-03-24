@@ -13,7 +13,8 @@ import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.
 
 const W = 960;
 const H = 540;
-const WORLD_WIDTH = 4800; // ~5 screens wide
+const WORLD_WIDTH = 1600; // short warm-up level (~1.5 screens)
+const PLAYER_BASE_SCALE = 1.6;
 const PLAYER_SPEED = 200;
 const JUMP_VELOCITY = -420;
 const COYOTE_TIME = 80;   // ms
@@ -208,38 +209,14 @@ export default class PlatformerScene extends Phaser.Scene {
   _createPlatforms() {
     this.platforms = this.physics.add.staticGroup();
 
-    // ── MAIN ROUTE PLATFORMS ──
-    // Max height change between neighbours: 30-40px
-    // Wide platforms (scaleX >= 2) serve as guard patrol areas
+    // ── SHORT WARM-UP ROUTE — just enough to get into the game ──
     const layout = [
-      // === STARTING AREA (gentle intro) ===
-      { x: 200,  y: 430, key: 'plt_roof_flat', scaleX: 4   },  // Wide starting street platform
-      { x: 550,  y: 430, key: 'plt_roof_flat', scaleX: 2   },  // Continue at same height
-      { x: 780,  y: 400, key: 'plt_roof_flat', scaleX: 1.5 },  // Slight step up (30px)
-
-      // === FIRST CLIMB (gradual) ===
-      { x: 1000, y: 370, key: 'plt_roof_flat', scaleX: 1.5 },  // Step up (30px)
-      { x: 1200, y: 370, key: 'plt_roof_flat', scaleX: 2   },  // Same height, wide (guard patrol)
-      { x: 1450, y: 340, key: 'plt_roof_flat', scaleX: 1.5 },  // Step up (30px)
-
-      // === MID SECTION (mix of heights) ===
-      { x: 1650, y: 370, key: 'plt_roof_flat', scaleX: 2   },  // Step DOWN (safe landing)
-      { x: 1900, y: 340, key: 'plt_roof_flat', scaleX: 1.5 },  // Step up
-      { x: 2100, y: 340, key: 'plt_roof_flat', scaleX: 2   },  // Same height, wide (guard)
-
-      // === CHALLENGE SECTION (still fair) ===
-      { x: 2350, y: 310, key: 'plt_roof_flat', scaleX: 1   },  // Step up (30px), narrow
-      { x: 2550, y: 350, key: 'plt_roof_flat', scaleX: 1.5 },  // Step down (safe)
-      { x: 2800, y: 320, key: 'plt_roof_flat', scaleX: 2   },  // Step up (30px)
-
-      // === APPROACH TO TARGET ===
-      { x: 3100, y: 350, key: 'plt_roof_flat', scaleX: 2   },  // Step down
-      { x: 3400, y: 350, key: 'plt_roof_flat', scaleX: 2   },  // Same height, wide
-      { x: 3700, y: 380, key: 'plt_roof_flat', scaleX: 2.5 },  // Step down (approach)
-
-      // === TARGET BUILDING ===
-      { x: 4100, y: 400, key: 'plt_roof_flat', scaleX: 3   },  // Wide target area
-      { x: 4400, y: 400, key: 'plt_roof_flat', scaleX: 2   },  // Target building roof
+      { x: 200,  y: 430, key: 'plt_roof_flat', scaleX: 4   },  // Wide starting platform
+      { x: 550,  y: 400, key: 'plt_roof_flat', scaleX: 2   },  // Step up
+      { x: 780,  y: 370, key: 'plt_roof_flat', scaleX: 2   },  // Step up (guard here)
+      { x: 1050, y: 340, key: 'plt_roof_flat', scaleX: 1.5 },  // Jump across
+      { x: 1280, y: 370, key: 'plt_roof_flat', scaleX: 3   },  // Target building roof
+      { x: 1500, y: 370, key: 'plt_roof_flat', scaleX: 2   },  // Target building extension
     ];
 
     for (const def of layout) {
@@ -282,17 +259,10 @@ export default class PlatformerScene extends Phaser.Scene {
     streetLine.lineTo(WORLD_WIDTH, 478);
     streetLine.strokePath();
 
-    // ── RESCUE PLATFORMS (stepping stones from ground back to main route) ──
-    // Placed every ~400px so player can always climb back from y=490
+    // ── RESCUE PLATFORMS — one set for short level ──
     const rescuePoints = [
-      { x: 400,  steps: [{ y: 460, sx: 0.8 }, { y: 435, sx: 0.6 }] },
-      { x: 900,  steps: [{ y: 460, sx: 0.8 }, { y: 430, sx: 0.6 }] },
-      { x: 1400, steps: [{ y: 460, sx: 0.8 }, { y: 430, sx: 0.6 }, { y: 400, sx: 0.5 }] },
-      { x: 1850, steps: [{ y: 460, sx: 0.8 }, { y: 430, sx: 0.6 }] },
-      { x: 2400, steps: [{ y: 460, sx: 0.8 }, { y: 430, sx: 0.6 }, { y: 395, sx: 0.5 }] },
-      { x: 2900, steps: [{ y: 460, sx: 0.8 }, { y: 430, sx: 0.6 }] },
-      { x: 3500, steps: [{ y: 460, sx: 0.8 }, { y: 430, sx: 0.6 }] },
-      { x: 4000, steps: [{ y: 460, sx: 0.8 }, { y: 435, sx: 0.6 }] },
+      { x: 500,  steps: [{ y: 460, sx: 0.8 }, { y: 435, sx: 0.6 }] },
+      { x: 1000, steps: [{ y: 460, sx: 0.8 }, { y: 430, sx: 0.6 }] },
     ];
 
     for (const rp of rescuePoints) {
@@ -352,15 +322,9 @@ export default class PlatformerScene extends Phaser.Scene {
   // OBSTACLES -- cameras, searchlights, electric wires
   // ═══════════════════════════════════════════════════════════════
   _createObstacles() {
-    // Security cameras: mount above platforms, sweep with vision cones
-    // Positioned relative to the new platform layout
+    // Minimal obstacles for short warm-up level
     this.secCameras = [
-      // Near platform x=780 y=400 — camera above it
-      { x: 850,  y: 355, angleMin: 0.8, angleMax: 2.2, speed: 0.6, length: 120, halfAngle: 0.3 },
-      // Near platform x=1900 y=340 — camera above it
-      { x: 1950, y: 300, angleMin: 0.5, angleMax: 2.0, speed: 0.5, length: 140, halfAngle: 0.35 },
-      // Near platform x=3100 y=350 — camera above it
-      { x: 3150, y: 310, angleMin: 0.6, angleMax: 2.1, speed: 0.7, length: 130, halfAngle: 0.3 },
+      { x: 600, y: 355, angleMin: 0.8, angleMax: 2.2, speed: 0.5, length: 100, halfAngle: 0.3 },
     ];
     for (const cam of this.secCameras) {
       cam.currentAngle = cam.angleMin;
@@ -368,32 +332,9 @@ export default class PlatformerScene extends Phaser.Scene {
       cam.sprite = this.add.image(cam.x, cam.y, 'plt_camera').setDepth(8);
     }
 
-    // Searchlights: ground-mounted, larger + slower sweep
-    this.searchlights = [
-      // Between first climb and mid section
-      { x: 1450, y: 340, angleMin: -0.6, angleMax: 0.6, speed: 0.4, length: 180, halfAngle: 0.4 },
-      // In approach-to-target area
-      { x: 2800, y: 320, angleMin: -0.5, angleMax: 0.5, speed: 0.35, length: 200, halfAngle: 0.45 },
-    ];
-    for (const sl of this.searchlights) {
-      sl.currentAngle = sl.angleMin;
-      sl.sweepDir = 1;
-      sl.sprite = this.add.image(sl.x, sl.y, 'plt_searchlight_base').setDepth(8);
-    }
-
-    // Electric wires: horizontal hazard, flash on/off
-    // Positioned between platforms where the player must pass through
-    this.wires = [
-      // Between platforms at x=1000(y=370) and x=1200(y=370)
-      { x: 1100, y: 355, width: 100, onTime: 1000, offTime: 1000, timer: 0, isOn: true },
-      // Between challenge platforms at x=2350(y=310) and x=2550(y=350)
-      { x: 2450, y: 330, width: 80,  onTime: 800,  offTime: 1200, timer: 0, isOn: true },
-      // Between approach platforms at x=3400(y=350) and x=3700(y=380)
-      { x: 3550, y: 365, width: 100, onTime: 1000, offTime: 1000, timer: 0, isOn: true },
-    ];
-    for (const w of this.wires) {
-      w.sprite = this.add.image(w.x, w.y, 'plt_electric_wire').setDepth(8);
-    }
+    // No searchlights or electric wires — keep it simple
+    this.searchlights = [];
+    this.wires = [];
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -401,26 +342,19 @@ export default class PlatformerScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════
   _createGuards() {
     this.guards = [];
-    // Guard Y = platform_y - 25 (places feet near platform surface).
-    // Gravity pulls them onto the platform on first frame.
-
-    // Guard 1: wide platform at x=1200, y=370 -> guard y=345, patrol range=100
-    this.guards.push(new RooftopGuard(this, 1200, 345, 100));
-    // Guard 2: wide platform at x=2100, y=340 -> guard y=315, patrol range=80
-    this.guards.push(new RooftopGuard(this, 2100, 315, 80));
-    // Guard 3: target area at x=4100, y=400 -> guard y=375, patrol range=120
-    this.guards.push(new RooftopGuard(this, 4100, 375, 120));
+    // One guard on the middle platform — just enough to add tension
+    this.guards.push(new RooftopGuard(this, 780, 345, 80));
   }
 
   // ═══════════════════════════════════════════════════════════════
   // TARGET -- building at end of level
   // ═══════════════════════════════════════════════════════════════
   _createTarget() {
-    // Target building visual — positioned on the target platform at x=4500
-    this.targetBuilding = this.add.image(4500, 320, 'plt_target_building').setDepth(5);
+    // Target building — at the end of the short route
+    this.targetBuilding = this.add.image(1400, 290, 'plt_target_building').setDepth(5);
 
     // Golden glow/pulse around window area
-    this.targetGlow = this.add.rectangle(4500, 300, 70, 70, 0xffd700, 0.15).setDepth(4);
+    this.targetGlow = this.add.rectangle(1400, 270, 70, 70, 0xffd700, 0.15).setDepth(4);
     this.tweens.add({
       targets: this.targetGlow,
       alpha: 0.35,
@@ -431,7 +365,7 @@ export default class PlatformerScene extends Phaser.Scene {
     });
 
     // Overlap trigger zone at window
-    this.targetZone = this.add.zone(4500, 300, 60, 60);
+    this.targetZone = this.add.zone(1400, 270, 60, 60);
     this.physics.add.existing(this.targetZone, true);
     this.physics.add.overlap(this.player, this.targetZone, () => {
       this._enterBuilding();
@@ -847,13 +781,13 @@ export default class PlatformerScene extends Phaser.Scene {
       // Stretch on jump
       this.tweens.add({
         targets: this.player,
-        scaleX: 0.85 * 0.8,
-        scaleY: 1.15 * 0.8,
+        scaleX: 0.85 * PLAYER_BASE_SCALE,
+        scaleY: 1.15 * PLAYER_BASE_SCALE,
         duration: 100,
         yoyo: true,
         ease: 'Quad.easeOut',
         onComplete: () => {
-          if (this.player && this.player.active) this.player.setScale(0.8);
+          if (this.player && this.player.active) this.player.setScale(PLAYER_BASE_SCALE);
         },
       });
     } else if (onGround && hasBufferedJump && this.jumpBufferTimer > 0) {
@@ -863,13 +797,13 @@ export default class PlatformerScene extends Phaser.Scene {
       // Stretch on jump
       this.tweens.add({
         targets: this.player,
-        scaleX: 0.85 * 0.8,
-        scaleY: 1.15 * 0.8,
+        scaleX: 0.85 * PLAYER_BASE_SCALE,
+        scaleY: 1.15 * PLAYER_BASE_SCALE,
         duration: 100,
         yoyo: true,
         ease: 'Quad.easeOut',
         onComplete: () => {
-          if (this.player && this.player.active) this.player.setScale(0.8);
+          if (this.player && this.player.active) this.player.setScale(PLAYER_BASE_SCALE);
         },
       });
     }
@@ -880,14 +814,14 @@ export default class PlatformerScene extends Phaser.Scene {
       // Squash on landing
       this.tweens.add({
         targets: this.player,
-        scaleX: 1.2 * 0.8,
-        scaleY: 0.8 * 0.8,
+        scaleX: 1.2 * PLAYER_BASE_SCALE,
+        scaleY: 0.8 * PLAYER_BASE_SCALE,
         duration: 80,
         yoyo: true,
         ease: 'Quad.easeOut',
         onComplete: () => {
           if (this.player && this.player.active) {
-            this.player.setScale(0.8);
+            this.player.setScale(PLAYER_BASE_SCALE);
           }
         },
       });
