@@ -318,6 +318,17 @@ export default class PlatformerScene extends Phaser.Scene {
     }
 
     // No kill zone — player lands on street level and climbs back up
+
+    // ── GROUND FILL below street level (so blue sky doesn't look like water) ──
+    const groundFill = this.add.graphics().setDepth(4).setScrollFactor(1);
+    groundFill.fillStyle(0x555555, 1);  // dark gray pavement
+    groundFill.fillRect(0, 488, WORLD_WIDTH, 120);
+    // Darker sub-layer (underground)
+    groundFill.fillStyle(0x3a3a3a, 1);
+    groundFill.fillRect(0, 500, WORLD_WIDTH, 80);
+    // Curb line
+    groundFill.lineStyle(2, 0x666666, 0.8);
+    groundFill.lineBetween(0, 488, WORLD_WIDTH, 488);
   }
 
   // ═══════════════════════════════════════════════════════════════
