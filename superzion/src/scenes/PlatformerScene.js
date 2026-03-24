@@ -170,7 +170,7 @@ export default class PlatformerScene extends Phaser.Scene {
 
     // ── Tutorial overlay (pauses gameplay until dismissed) ──
     showTutorialOverlay(this, [
-      'LEVEL 1: OPERATION TEHRAN',
+      'LEVEL 1: The Tehran Guest Room',
       '',
       'ARROWS: Move & Jump',
       'Reach the target building',

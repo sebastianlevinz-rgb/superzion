@@ -128,7 +128,7 @@ export default class BeirutRadarScene extends Phaser.Scene {
 
     // Tutorial overlay (pauses gameplay until dismissed)
     showTutorialOverlay(this, [
-      'LEVEL 2: EXPLOSIVE INTERCEPTION',
+      'LEVEL 2: OPERATION GRIM BEEPER',
       '',
       'Drag JAMMERS onto radar signals',
       'Block all signals before they escape',
@@ -322,7 +322,7 @@ export default class BeirutRadarScene extends Phaser.Scene {
     this.add.rectangle(W / 2, 16, W, 32, 0x000000, 0.5).setDepth(100);
 
     // Title
-    this.titleText = this.add.text(W / 2, 16, 'OPERATION EXPLOSIVE INTERCEPTION', {
+    this.titleText = this.add.text(W / 2, 16, 'OPERATION GRIM BEEPER', {
       fontFamily: 'monospace', fontSize: '13px', color: '#00ffaa',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(101);
@@ -973,7 +973,7 @@ export default class BeirutRadarScene extends Phaser.Scene {
 
     const lines = [
       { text: 'MISSION COMPLETE', size: '24px', color: '#00ffcc', y: 80 },
-      { text: 'OPERATION EXPLOSIVE INTERCEPTION', size: '14px', color: '#448866', y: 110 },
+      { text: 'OPERATION GRIM BEEPER', size: '14px', color: '#448866', y: 110 },
       { text: `Signals Intercepted: ${this.totalIntercepted}/${this.totalSignals}`, size: '14px', color: '#00ddaa', y: 160 },
       { text: `Best Round: ${this.bestRoundIntercepted} intercepted`, size: '12px', color: '#00aa88', y: 190 },
       { text: `Best Combo: ${this.bestCombo || 'NONE'}`, size: '12px', color: '#00aa88', y: 215 },

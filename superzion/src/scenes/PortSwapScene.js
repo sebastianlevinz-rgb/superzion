@@ -499,7 +499,7 @@ export default class PortSwapScene extends Phaser.Scene {
       .setDepth(100).setScrollFactor(0);
 
     // Title
-    this.hudTitle = this.add.text(W / 2, 8, 'OPERATION EXPLOSIVE INTERCEPTION', {
+    this.hudTitle = this.add.text(W / 2, 8, 'OPERATION GRIM BEEPER', {
       fontFamily: 'monospace', fontSize: '12px', color: '#FFD700', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setDepth(101).setScrollFactor(0);
 
@@ -1557,7 +1557,7 @@ export default class PortSwapScene extends Phaser.Scene {
       this._endScreen = showVictoryScreen(this, {
         title: 'MISSION COMPLETE',
         stats: [
-          { label: 'OPERATION', value: 'EXPLOSIVE INTERCEPTION' },
+          { label: 'OPERATION', value: 'GRIM BEEPER' },
           { label: 'CONTAINERS SCANNED', value: String(this.containersScanned) },
           { label: 'TIMES DETECTED', value: String(this.timesDetected) },
           { label: 'DISTRACTIONS USED', value: `${this.distractionsUsed}/${MAX_DISTRACTIONS}` },

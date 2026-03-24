@@ -1293,7 +1293,7 @@ export default class DroneScene extends Phaser.Scene {
 
     // Tutorial overlay (pauses gameplay until dismissed)
     showTutorialOverlay(this, [
-      'LEVEL 4: OPERATION UNDERGROUND',
+      'LEVEL 4: OPERATION LAST CHAIR',
       '',
       'ARROWS: Steer the drone',
       'Navigate through the ruined city',
@@ -1312,7 +1312,7 @@ export default class DroneScene extends Phaser.Scene {
     const titleStyle = { fontFamily: 'monospace', fontSize: '11px', color: '#00e5ff',
       shadow: { offsetX: 0, offsetY: 0, color: '#00e5ff', blur: 4, fill: true } };
 
-    this.hudTitle = this.add.text(15, 12, 'OPERATION UNDERGROUND', titleStyle)
+    this.hudTitle = this.add.text(15, 12, 'OPERATION LAST CHAIR', titleStyle)
       .setDepth(50).setScrollFactor(0);
     this.hudHP = this.add.text(15, 30, `DRONE: ${this.droneHP}/${this.droneMaxHP}`, hudStyle)
       .setDepth(50).setScrollFactor(0);
@@ -1978,7 +1978,7 @@ export default class DroneScene extends Phaser.Scene {
     MusicManager.get().playLevel4Music('command');
 
     const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.9).setDepth(40);
-    const txt = this.add.text(W / 2, H / 2 - 20, 'OPERATION UNDERGROUND', {
+    const txt = this.add.text(W / 2, H / 2 - 20, 'OPERATION LAST CHAIR', {
       fontFamily: 'monospace', fontSize: '24px', color: '#ff8800',
       shadow: { offsetX: 0, offsetY: 0, color: '#ff8800', blur: 10, fill: true },
     }).setOrigin(0.5).setDepth(41);

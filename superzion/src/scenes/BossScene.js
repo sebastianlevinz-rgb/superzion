@@ -207,7 +207,7 @@ export default class BossScene extends Phaser.Scene {
 
     // Tutorial overlay (pauses gameplay until dismissed)
     showTutorialOverlay(this, [
-      'LEVEL 6: OPERATION LAST STAND',
+      'LEVEL 6: OPERATION ENDGAME: DEATH TO THE REGIME',
       '',
       'ARROWS: Move your fighter',
       'SPACE: Fire weapons',
@@ -345,8 +345,8 @@ export default class BossScene extends Phaser.Scene {
       ease: 'Power2',
     });
 
-    // "OPERATION LAST STAND" text
-    this.centerMsg.setText('OPERATION LAST STAND');
+    // "OPERATION ENDGAME: DEATH TO THE REGIME" text
+    this.centerMsg.setText('OPERATION ENDGAME: DEATH TO THE REGIME');
     this.centerMsg.setColor('#ff2222');
     this.centerMsg.setAlpha(1);
     this.tweens.add({

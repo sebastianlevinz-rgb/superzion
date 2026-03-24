@@ -16,7 +16,7 @@ export default class BombermanHUD {
     this.bar.setScrollFactor(0).setDepth(100);
 
     // Title
-    this.title = scene.add.text(480, 12, 'OPERATION TEHRAN', {
+    this.title = scene.add.text(480, 12, 'THE TEHRAN GUEST ROOM', {
       fontFamily: 'monospace', fontSize: '14px', color: '#FFD700',
       shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 6, fill: true },
     });

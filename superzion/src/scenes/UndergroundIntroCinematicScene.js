@@ -20,7 +20,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
     // Military terminal background
     this._drawMilitaryBg(this);
     // Military HUD overlay
-    this._drawMilitaryHUD(this, 'OPERATION UNDERGROUND', "31\u00b025'N 34\u00b023'E", '#00AA44');
+    this._drawMilitaryHUD(this, 'OPERATION LAST CHAIR', "31\u00b025'N 34\u00b023'E", '#00AA44');
 
     // Background silhouette: destroyed building rubble
     this._drawUndergroundSilhouette();
@@ -106,7 +106,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
           droneGfx.fillStyle(0x88aacc, 0.8);
           droneGfx.fillCircle(dx, dy + 3, 3);
           this.tweens.add({ targets: droneGfx, y: droneGfx.y - 5, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-          this._draw3DOperationTitle(this, 'OPERATION UNDERGROUND', 42);
+          this._draw3DOperationTitle(this, 'OPERATION LAST CHAIR', 42);
         },
       },
     ], 'FlightRouteScene', { level: 4, nextScene: 'DroneScene' });
