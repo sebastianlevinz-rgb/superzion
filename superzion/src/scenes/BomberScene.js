@@ -271,7 +271,7 @@ export default class BomberScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '36px', color: '#ffffff',
       }).setOrigin(0.5).setDepth(61);
       this.pauseObjects.push(title);
-      const opts = this.add.text(W / 2, H / 2 + 20, 'ESC — Resume  |  M — Mute', {
+      const opts = this.add.text(W / 2, H / 2 + 20, 'ESC — Resume  |  Q — Menu  |  M — Mute', {
         fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa',
       }).setOrigin(0.5).setDepth(61);
       this.pauseObjects.push(opts);
@@ -2106,7 +2106,7 @@ export default class BomberScene extends Phaser.Scene {
       this._togglePause();
       return;
     }
-    if (this.isPaused) return;
+    if (this.isPaused) { if (this.input.keyboard.checkDown(this.input.keyboard.addKey("Q"), 500)) { MusicManager.get().stop(0.3); this.scene.start("MenuScene"); } return; }
 
     // P key — debug skip to victory
     if (Phaser.Input.Keyboard.JustDown(this.keys.p) && this.phase !== 'victory') {

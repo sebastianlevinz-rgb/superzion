@@ -383,7 +383,7 @@ export default class BossScene extends Phaser.Scene {
       this._togglePause();
       return;
     }
-    if (this.isPaused) return;
+    if (this.isPaused) { if (this.input.keyboard.checkDown(this.input.keyboard.addKey("Q"), 500)) { MusicManager.get().stop(0.3); this.scene.start("MenuScene"); } return; }
 
     switch (this.phase) {
       case 'intro':
@@ -3012,7 +3012,7 @@ export default class BossScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '36px', color: '#ffffff',
       }).setOrigin(0.5).setDepth(61);
       this.pauseObjects.push(title);
-      const hint = this.add.text(W / 2, H / 2 + 15, 'Press ESC to resume', {
+      const hint = this.add.text(W / 2, H / 2 + 15, 'ESC — Resume  |  Q — Menu  |  M — Mute', {
         fontFamily: 'monospace', fontSize: '14px', color: '#888888',
       }).setOrigin(0.5).setDepth(61);
       this.pauseObjects.push(hint);

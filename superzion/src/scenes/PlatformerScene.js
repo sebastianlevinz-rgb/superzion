@@ -556,7 +556,7 @@ export default class PlatformerScene extends Phaser.Scene {
       }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
       this.pauseObjects.push(title);
 
-      const opts = this.add.text(W / 2, H / 2 + 10, 'ESC: Resume | R: Restart | M: Mute', {
+      const opts = this.add.text(W / 2, H / 2 + 10, 'ESC: Resume | Q: Menu | R: Restart | M: Mute', {
         fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
       this.pauseObjects.push(opts);

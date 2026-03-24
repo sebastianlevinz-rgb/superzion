@@ -19,96 +19,38 @@ export default class GameIntroScene extends BaseCinematicScene {
     // Start menu music (Am trance) from first frame — plays continuously into MenuScene
     MusicManager.get().playMenuMusic();
 
-    // ── Define narrative pages ──
+    // ── Define narrative pages (5 lines + boss parade + arsenal + hero + title) ──
     this._initPages([
-      // --- Dark opening: 3000 years of persecution ---
       {
         text: 'For 3,000 years, they tried to erase us.',
-        color: '#ffffff', size: 24, y: H * 0.45,
+        color: '#ffffff', size: 26, y: H * 0.45,
         setup: () => this._setupDestructionBg(),
       },
       {
-        text: 'Babylon. Rome. The Inquisition. The Camps.',
-        color: '#cccccc', size: 22, y: H * 0.45,
+        text: 'Babylon. Rome. The Inquisition. The Nazis. They\'re all gone. We\'re still here.',
+        color: '#FFD700', size: 24, y: H * 0.45,
         setup: () => this._setupDestructionIntenseBg(),
       },
       {
-        text: 'Every time, we came back.',
-        color: '#FFD700', size: 26, y: H * 0.45,
-        setup: () => this._setupLightPointBg(),
-      },
-      {
-        text: 'Our enemies change their names. Their flags. Their weapons.',
-        color: '#cccccc', size: 20, y: H * 0.45,
-        setup: () => this._setupGrowingLight1(),
-      },
-      {
-        text: 'But we are still here. The same people. The same land. The same fire.',
-        color: '#ffffff', size: 22, y: H * 0.45,
-        setup: () => this._setupGrowingLight2(),
-      },
-
-      // --- Map of Israel surrounded by enemy logos ---
-      {
-        text: 'Now they call themselves new names. They build new tunnels. New missiles. New plans.',
-        color: '#ff6644', size: 20, y: H * 0.82,
-        setup: () => this._setupMapScene(),
-      },
-
-      // --- 4 bosses in silhouette ---
-      {
-        text: 'They think this time will be different.',
-        color: '#ff4444', size: 24, y: H * 0.85,
+        text: 'New enemies. Hamas. Hezbollah. The Iranian regime. Same mistake.',
+        color: '#FF4444', size: 22, y: H * 0.45,
         setup: () => this._setupBossSilhouettes(),
       },
-
-      // --- Enemy parade ---
       {
-        text: 'They have armies. Missiles. Tunnels. And all the time in the world.',
-        color: '#ff6644', size: 20, y: H * 0.85,
+        text: 'They forgot our secret weapon: we have nowhere else to go.',
+        color: '#ffffff', size: 26, y: H * 0.82,
         setup: () => this._setupEnemyParade(),
       },
-
-      // --- Dark moment ---
       {
-        text: 'But they always forget one thing.',
-        color: '#ffffff', size: 26, y: H * 0.45,
-        setup: () => this._setupDarkBg(),
-      },
-
-      // --- Israel flag waving ---
-      {
-        text: 'We have nowhere else to go. And that changes everything.',
-        color: '#ffffff', size: 22, y: H * 0.82,
-        setup: () => this._setupIsraelFlag(),
-      },
-
-      // --- Israeli arsenal ---
-      {
-        text: 'Babylon is dust. Rome fell. The Inquisition is a footnote. The camps are museums.',
-        color: '#4488ff', size: 20, y: H * 0.82,
-        setup: () => this._setupArsenal(),
-      },
-      {
-        text: "We're still here.",
-        color: '#FFD700', size: 28, y: H * 0.82,
-      },
-      {
-        text: "And this time won't be the exception.",
-        color: '#ffffff', size: 22, y: H * 0.82,
-      },
-
-      // --- SuperZion reveal ---
-      {
-        text: 'One agent. Trained by the Mossad. Armed by the IDF. Driven by 3,000 years of not giving up.',
-        color: '#FFD700', size: 20, y: H * 0.85,
+        text: 'One Nation. One mission. 3,000 years of not giving up.',
+        color: '#FFD700', size: 24, y: H * 0.85,
         setup: () => this._setupHeroReveal(),
       },
 
-      // --- Title page (special handling in setup) ---
+      // --- Title page ---
       {
-        text: '',  // Title is rendered visually, not via typewriter
-        color: '#000000', size: 1, y: -100,  // hidden text
+        text: '',
+        color: '#000000', size: 1, y: -100,
         charDelay: 1,
         setup: () => this._setupTitleReveal(),
         cleanup: () => { if (this._emberTimer) { this._emberTimer.remove(); this._emberTimer = null; } },
