@@ -117,11 +117,12 @@ export default class BaseCinematicScene extends Phaser.Scene {
     });
     this._currentPageText.setOrigin(0.5).setDepth(20);
 
-    // Handle empty text pages (e.g. recap pages with only visuals)
+    // Handle empty text pages (e.g. recap pages, title page)
     if (!page.text || page.text.length === 0) {
       this._currentPageText.setText('');
       this.typewriterComplete = true;
       this.pageReady = true;
+      if (this._spaceHint) this._spaceHint.setAlpha(1);
     } else {
       let idx = 0;
       this._twTimer = this.time.addEvent({
