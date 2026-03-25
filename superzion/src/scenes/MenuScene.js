@@ -296,7 +296,7 @@ export default class MenuScene extends Phaser.Scene {
       const y = startY + i * gap;
 
       // Arrow selector
-      const arrow = this.add.text(280, y, '\u25B6', {
+      const arrow = this.add.text(140, y, '\u25B6', {
         fontFamily: 'monospace', fontSize: '20px', color: '#33FF33',
       });
       arrow.setOrigin(0.5); arrow.setDepth(10);
@@ -304,7 +304,7 @@ export default class MenuScene extends Phaser.Scene {
       this.selectorArrows.push(arrow);
 
       // Level label -- selected = bright green, unselected = dim amber
-      const label = this.add.text(460, y, LEVELS[i].label, {
+      const label = this.add.text(320, y, LEVELS[i].label, {
         fontFamily: 'monospace', fontSize: '18px',
         color: i === 0 ? '#33FF33' : '#AA8833',
       });
@@ -320,20 +320,26 @@ export default class MenuScene extends Phaser.Scene {
           for (let s = 0; s < 3; s++) starStr += s < sc ? '\u2605' : '\u2606';
         }
       } catch (e) {}
-      const starText = this.add.text(640, y, starStr, {
+      const starText = this.add.text(500, y, starStr, {
         fontFamily: 'monospace', fontSize: '14px', color: '#FFD700',
       });
       starText.setOrigin(0, 0.5); starText.setDepth(10);
       this.starTexts.push(starText);
     }
 
-    // Level descriptions
-    this.descText = this.add.text(W / 2, startY + LEVELS.length * gap + 20, '', {
+    // Level descriptions (hidden -- replaced by preview panel)
+    this.descText = this.add.text(320, startY + LEVELS.length * gap + 20, '', {
       fontFamily: 'monospace', fontSize: '12px', color: '#77BB77',
       align: 'center', lineSpacing: 4,
+      wordWrap: { width: 420 },
     });
     this.descText.setOrigin(0.5); this.descText.setDepth(10);
     this._updateDescription();
+
+    // =====================================================================
+    // PREVIEW PANEL (right side)
+    // =====================================================================
+    this._createPreviewPanel();
 
     // Controls hint -- amber monospace
     const controls = this.add.text(W / 2, 475, 'UP/DOWN -- Select  |  ENTER/SPACE -- Start  |  M -- Mute  |  H -- Hard Mode', {
@@ -374,6 +380,7 @@ export default class MenuScene extends Phaser.Scene {
       this.selectorArrows[i].setAlpha(selected ? 1 : 0);
     }
     this._updateDescription();
+    this._updatePreview();
   }
 
   _updateDescription() {
@@ -427,6 +434,337 @@ export default class MenuScene extends Phaser.Scene {
       MusicManager.get().stop(0.3);
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.time.delayedCall(300, () => this.scene.start(targetScene));
+    }
+  }
+
+  // =====================================================================
+  // PREVIEW PANEL -- visual preview of each level on the right side
+  // =====================================================================
+
+  _createPreviewPanel() {
+    const px = 680, py = 170, pw = 250, ph = 310;
+
+    // Panel background
+    this._previewBg = this.add.graphics().setDepth(9);
+    this._previewBg.fillStyle(0x0a0a1e, 0.85);
+    this._previewBg.fillRoundedRect(px - pw / 2, py, pw, ph, 8);
+    this._previewBg.lineStyle(2, 0x00e5ff, 0.5);
+    this._previewBg.strokeRoundedRect(px - pw / 2, py, pw, ph, 8);
+
+    // Mini scene preview graphics
+    const previewGfxX = px - 100;
+    const previewGfxY = py + 15;
+    this._previewGfx = this.add.graphics().setDepth(10);
+    this._previewGfx.setPosition(previewGfxX, previewGfxY);
+
+    // Level name text
+    this._previewName = this.add.text(px, py + 150, '', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#FFD700',
+      fontStyle: 'bold',
+      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 4, fill: true },
+    }).setOrigin(0.5).setDepth(10);
+
+    // Level description text
+    this._previewDesc = this.add.text(px, py + 190, '', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#88AACC',
+      align: 'center', lineSpacing: 3,
+      wordWrap: { width: pw - 30 },
+    }).setOrigin(0.5, 0).setDepth(10);
+
+    // Difficulty indicator
+    this._previewDifficulty = this.add.text(px, py + 260, '', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#ff6644',
+    }).setOrigin(0.5).setDepth(10);
+
+    // Star rating from localStorage
+    this._previewStars = this.add.text(px, py + 282, '', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#FFD700',
+      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 4, fill: true },
+    }).setOrigin(0.5).setDepth(10);
+
+    // Initial draw
+    this._updatePreview();
+  }
+
+  _updatePreview() {
+    const idx = this.selectedIndex;
+
+    // Fade effect: quickly pulse alpha
+    const panelElements = [this._previewBg, this._previewGfx, this._previewName, this._previewDesc, this._previewDifficulty, this._previewStars];
+    for (const el of panelElements) {
+      if (el) {
+        el.setAlpha(0);
+        this.tweens.add({ targets: el, alpha: 1, duration: 200 });
+      }
+    }
+
+    // Draw mini preview
+    this._drawLevelPreview(this._previewGfx, idx);
+
+    // Level names
+    const names = [
+      'TEHRAN GUEST ROOM',
+      'GRIM BEEPER',
+      'DEEP STRIKE',
+      'LAST CHAIR',
+      'MOUNTAIN BREAKER',
+      'ENDGAME',
+    ];
+    this._previewName.setText(names[idx]);
+
+    // Short descriptions
+    const descs = [
+      'Rooftop platformer.\nInfiltrate. Plant device.\nEscape alive.',
+      'Stealth top-down.\nSabotage pager shipment.\nAvoid detection.',
+      'Aerial side-scroller.\nBomb the bunker.\nReturn to base.',
+      'Drone reconnaissance.\nNavigate tunnels.\nDestroy command center.',
+      'Stealth bomber run.\nPenetrate defenses.\nDestroy Fordow facility.',
+      'Final confrontation.\nEnd the regime.\nNo retreat.',
+    ];
+    this._previewDesc.setText(descs[idx]);
+
+    // Difficulty (1-5 skulls)
+    const difficulties = [2, 3, 3, 4, 4, 5];
+    let diffStr = 'DIFF: ';
+    for (let d = 0; d < 5; d++) {
+      diffStr += d < difficulties[idx] ? '\u2620' : '\u2022';
+    }
+    this._previewDifficulty.setText(diffStr);
+
+    // Best star rating from localStorage
+    let starStr = '';
+    try {
+      const saved = localStorage.getItem(`superzion_stars_${idx + 1}`);
+      if (saved) {
+        const sc = parseInt(saved, 10);
+        starStr = 'BEST: ';
+        for (let s = 0; s < 3; s++) starStr += s < sc ? '\u2605' : '\u2606';
+      }
+    } catch (e) {}
+    this._previewStars.setText(starStr);
+  }
+
+  _drawLevelPreview(gfx, levelIndex) {
+    gfx.clear();
+    const pw = 200, ph = 120;
+
+    // Border
+    gfx.lineStyle(1, 0x00e5ff, 0.3);
+    gfx.strokeRect(0, 0, pw, ph);
+
+    switch (levelIndex) {
+      case 0: // Level 1 -- Tehran rooftops at night
+        // Night sky
+        gfx.fillStyle(0x1a1a2e);
+        gfx.fillRect(0, 0, pw, ph);
+        // Moon
+        gfx.fillStyle(0xcccc88, 0.8);
+        gfx.fillCircle(160, 22, 10);
+        // Stars
+        gfx.fillStyle(0xffffff, 0.5);
+        gfx.fillCircle(30, 15, 1); gfx.fillCircle(80, 10, 1);
+        gfx.fillCircle(120, 25, 1); gfx.fillCircle(50, 30, 1);
+        // Rooftop silhouettes
+        gfx.fillStyle(0x333344);
+        gfx.fillRect(5, 65, 35, 55);
+        gfx.fillRect(50, 55, 40, 65);
+        gfx.fillRect(100, 60, 35, 60);
+        gfx.fillRect(145, 50, 45, 70);
+        // Windows (dim yellow)
+        gfx.fillStyle(0x665522, 0.5);
+        gfx.fillRect(15, 75, 5, 5); gfx.fillRect(25, 80, 5, 5);
+        gfx.fillRect(60, 65, 5, 5); gfx.fillRect(75, 70, 5, 5);
+        gfx.fillRect(155, 60, 5, 5); gfx.fillRect(170, 65, 5, 5);
+        // Small player figure (green)
+        gfx.fillStyle(0x33ff33);
+        gfx.fillRect(72, 50, 4, 7);
+        // Ground
+        gfx.fillStyle(0x222233);
+        gfx.fillRect(0, ph - 5, pw, 5);
+        break;
+
+      case 1: // Level 2 -- Beirut port top-down
+        // Floor
+        gfx.fillStyle(0x0a1a0a);
+        gfx.fillRect(0, 0, pw, ph);
+        // Grid lines (floor plan)
+        gfx.lineStyle(1, 0x1a3a1a, 0.4);
+        for (let x = 0; x < pw; x += 20) gfx.lineBetween(x, 0, x, ph);
+        for (let y = 0; y < ph; y += 20) gfx.lineBetween(0, y, pw, y);
+        // Rooms (walls)
+        gfx.lineStyle(2, 0x446644, 0.6);
+        gfx.strokeRect(10, 10, 50, 40);
+        gfx.strokeRect(80, 15, 45, 35);
+        gfx.strokeRect(140, 5, 50, 45);
+        gfx.strokeRect(30, 65, 55, 40);
+        gfx.strokeRect(110, 70, 60, 40);
+        // Vision cones (green triangles)
+        gfx.fillStyle(0x00ff00, 0.15);
+        gfx.fillTriangle(35, 30, 15, 50, 55, 50);
+        gfx.fillTriangle(150, 55, 130, 75, 170, 75);
+        // Guard dots (red)
+        gfx.fillStyle(0xff4444);
+        gfx.fillCircle(35, 28, 3);
+        gfx.fillCircle(150, 52, 3);
+        // Pager icons (small yellow rectangles)
+        gfx.fillStyle(0xffcc00, 0.7);
+        gfx.fillRect(90, 28, 6, 4);
+        gfx.fillRect(45, 78, 6, 4);
+        gfx.fillRect(135, 82, 6, 4);
+        break;
+
+      case 2: // Level 3 -- Aerial bombardment side-view
+        // Sky gradient
+        gfx.fillStyle(0x1a2a4a);
+        gfx.fillRect(0, 0, pw, ph * 0.7);
+        gfx.fillStyle(0x0a1a2a);
+        gfx.fillRect(0, 0, pw, ph * 0.3);
+        // Stars
+        gfx.fillStyle(0xffffff, 0.4);
+        gfx.fillCircle(20, 15, 1); gfx.fillCircle(80, 8, 1);
+        gfx.fillCircle(140, 20, 1); gfx.fillCircle(170, 10, 1);
+        // F-15 silhouette
+        gfx.fillStyle(0x556688);
+        gfx.beginPath();
+        gfx.moveTo(40, 38);
+        gfx.lineTo(55, 35); gfx.lineTo(90, 34);
+        gfx.lineTo(95, 32); gfx.lineTo(95, 40);
+        gfx.lineTo(90, 39); gfx.lineTo(55, 40);
+        gfx.closePath(); gfx.fill();
+        // Wings
+        gfx.beginPath();
+        gfx.moveTo(65, 34); gfx.lineTo(80, 22);
+        gfx.lineTo(85, 24); gfx.lineTo(73, 34);
+        gfx.closePath(); gfx.fill();
+        gfx.beginPath();
+        gfx.moveTo(65, 40); gfx.lineTo(80, 52);
+        gfx.lineTo(85, 50); gfx.lineTo(73, 40);
+        gfx.closePath(); gfx.fill();
+        // Exhaust
+        gfx.fillStyle(0xff8844, 0.4);
+        gfx.fillCircle(97, 37, 4);
+        // Mountain target below
+        gfx.fillStyle(0x2a3a2a);
+        gfx.beginPath();
+        gfx.moveTo(0, ph);
+        gfx.lineTo(40, ph * 0.75); gfx.lineTo(100, ph * 0.65);
+        gfx.lineTo(160, ph * 0.72); gfx.lineTo(pw, ph * 0.8);
+        gfx.lineTo(pw, ph); gfx.closePath(); gfx.fill();
+        // Target X
+        gfx.lineStyle(2, 0xff0000, 0.6);
+        gfx.lineBetween(95, ph * 0.68, 105, ph * 0.78);
+        gfx.lineBetween(105, ph * 0.68, 95, ph * 0.78);
+        break;
+
+      case 3: // Level 4 -- Top-down room with drone
+        // Dark floor
+        gfx.fillStyle(0x121218);
+        gfx.fillRect(0, 0, pw, ph);
+        // Tunnel walls
+        gfx.fillStyle(0x2a2a30, 0.7);
+        gfx.fillRect(0, 0, pw, 8);
+        gfx.fillRect(0, ph - 8, pw, 8);
+        gfx.fillRect(0, 0, 8, ph);
+        gfx.fillRect(pw - 8, 0, 8, ph);
+        // Interior walls
+        gfx.fillStyle(0x2a2a30, 0.5);
+        gfx.fillRect(60, 8, 4, 40);
+        gfx.fillRect(60, 70, 4, ph - 78);
+        gfx.fillRect(130, 8, 4, 60);
+        gfx.fillRect(130, 90, 4, ph - 98);
+        // Armchair (small brown shape)
+        gfx.fillStyle(0x554422);
+        gfx.fillRect(150, 25, 14, 14);
+        gfx.fillStyle(0x443311);
+        gfx.fillRect(148, 22, 18, 4);
+        // Boss figure peeking (red dot)
+        gfx.fillStyle(0xff4444);
+        gfx.fillCircle(157, 32, 4);
+        // Drone (small cyan shape)
+        gfx.fillStyle(0x00cccc);
+        gfx.fillRect(30, 55, 12, 4);
+        gfx.fillStyle(0x88dddd);
+        gfx.fillRect(26, 56, 6, 2);
+        gfx.fillRect(42, 56, 6, 2);
+        // Camera eye
+        gfx.fillStyle(0x00ffff, 0.8);
+        gfx.fillCircle(36, 57, 2);
+        break;
+
+      case 4: // Level 5 -- B-2 over water/mountains at night
+        // Night sky
+        gfx.fillStyle(0x0a0a1e);
+        gfx.fillRect(0, 0, pw, ph * 0.4);
+        // Water
+        gfx.fillStyle(0x0a1a3a);
+        gfx.fillRect(0, ph * 0.4, pw, ph * 0.35);
+        // Water highlights
+        gfx.lineStyle(1, 0x1a3a5a, 0.3);
+        gfx.lineBetween(10, ph * 0.5, 50, ph * 0.5);
+        gfx.lineBetween(80, ph * 0.55, 130, ph * 0.55);
+        gfx.lineBetween(150, ph * 0.48, 190, ph * 0.48);
+        // Stars
+        gfx.fillStyle(0xffffff, 0.3);
+        gfx.fillCircle(20, 10, 1); gfx.fillCircle(60, 18, 1);
+        gfx.fillCircle(110, 8, 1); gfx.fillCircle(175, 15, 1);
+        // B-2 flying wing (top-down)
+        gfx.fillStyle(0x333344, 0.9);
+        gfx.beginPath();
+        gfx.moveTo(100, 20); // nose
+        gfx.lineTo(145, 30);
+        gfx.lineTo(135, 34);
+        gfx.lineTo(100, 28);
+        gfx.lineTo(65, 34);
+        gfx.lineTo(55, 30);
+        gfx.closePath(); gfx.fill();
+        // Mountain target ahead
+        gfx.fillStyle(0x2a3a2a);
+        gfx.beginPath();
+        gfx.moveTo(0, ph);
+        gfx.lineTo(50, ph * 0.75); gfx.lineTo(100, ph * 0.65);
+        gfx.lineTo(150, ph * 0.72); gfx.lineTo(pw, ph * 0.78);
+        gfx.lineTo(pw, ph); gfx.closePath(); gfx.fill();
+        // Green glow (nuke facility)
+        gfx.fillStyle(0x22ff22, 0.12);
+        gfx.fillCircle(100, ph * 0.72, 15);
+        break;
+
+      case 5: // Level 6 -- Beirut skyline side-view
+        // Blood sky
+        gfx.fillStyle(0x1a0808);
+        gfx.fillRect(0, 0, pw, ph);
+        gfx.fillStyle(0x2a0a0a, 0.8);
+        gfx.fillRect(0, 0, pw, ph * 0.5);
+        // Distant fire glow
+        gfx.fillStyle(0xff4400, 0.12);
+        gfx.fillCircle(40, ph * 0.4, 20);
+        gfx.fillCircle(170, ph * 0.35, 15);
+        // City skyline silhouettes
+        gfx.fillStyle(0x0a0505);
+        gfx.fillRect(10, ph * 0.45, 25, ph * 0.55);
+        gfx.fillRect(40, ph * 0.5, 20, ph * 0.5);
+        gfx.fillRect(70, ph * 0.4, 30, ph * 0.6);
+        gfx.fillRect(110, ph * 0.35, 35, ph * 0.65);
+        gfx.fillRect(155, ph * 0.42, 25, ph * 0.58);
+        // Fortress (center, larger)
+        gfx.fillStyle(0x1a0a0a);
+        gfx.fillRect(85, ph * 0.3, 50, ph * 0.7);
+        gfx.fillRect(80, ph * 0.28, 60, 8);
+        // Fighter approaching from left
+        gfx.fillStyle(0x00ccff, 0.6);
+        gfx.beginPath();
+        gfx.moveTo(15, ph * 0.3);
+        gfx.lineTo(25, ph * 0.28);
+        gfx.lineTo(25, ph * 0.32);
+        gfx.closePath(); gfx.fill();
+        // Exhaust trail
+        gfx.lineStyle(1, 0x00ccff, 0.3);
+        gfx.lineBetween(5, ph * 0.3, 15, ph * 0.3);
+        // Boss figure silhouette (on fortress)
+        gfx.fillStyle(0x1a0505);
+        gfx.fillCircle(110, ph * 0.25, 5);
+        gfx.fillRect(107, ph * 0.28, 6, 10);
+        break;
     }
   }
 }

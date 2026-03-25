@@ -26,6 +26,42 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
     this._drawMountainBreakerSilhouette();
 
     this._initPages([
+      // -- RECAP PAGE: Previously on SuperZion --
+      {
+        text: '',
+        charDelay: 0,
+        autoAdvance: 2500,
+        setup: () => {
+          const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setDepth(1);
+          this._addPageVisual(bg);
+          this._addPageVisual(this.add.text(W / 2, 60, 'PREVIOUSLY...', {
+            fontFamily: 'monospace', fontSize: '14px', color: '#666666',
+          }).setOrigin(0.5).setDepth(2));
+          const bossData = [
+            { key: 'parade_foambeard', name: 'Haniyeh \u2713', x: W / 2 - 120 },
+            { key: 'parade_turboturban', name: 'Nasrallah \u2713', x: W / 2 },
+            { key: 'parade_angryeyebrows', name: 'Sinwar \u2713', x: W / 2 + 120 },
+          ];
+          for (const bd of bossData) {
+            if (this.textures.exists(bd.key)) {
+              const boss = this.add.image(bd.x, H * 0.32, bd.key).setScale(0.6).setDepth(2).setTint(0x666666);
+              this._addPageVisual(boss);
+              const xg = this.add.graphics().setDepth(3);
+              xg.lineStyle(3, 0xff0000, 0.8);
+              xg.lineBetween(bd.x - 16, H * 0.32 - 16, bd.x + 16, H * 0.32 + 16);
+              xg.lineBetween(bd.x + 16, H * 0.32 - 16, bd.x - 16, H * 0.32 + 16);
+              this._addPageVisual(xg);
+            }
+            this._addPageVisual(this.add.text(bd.x, H * 0.44, bd.name, {
+              fontFamily: 'monospace', fontSize: '10px', color: '#44ff44',
+            }).setOrigin(0.5).setDepth(2));
+          }
+          this._addPageVisual(this.add.text(W / 2, H * 0.7, 'Last Chair: COMPLETE \u2713', {
+            fontFamily: 'monospace', fontSize: '20px', color: '#44ff44',
+            shadow: { offsetX: 0, offsetY: 0, color: '#44ff44', blur: 6, fill: true },
+          }).setOrigin(0.5).setDepth(2));
+        },
+      },
       {
         text: "The underground empire is finished. Yahya Sinwar won't give orders again.",
         color: '#4488ff', size: 20, y: H * 0.82,

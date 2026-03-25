@@ -27,6 +27,36 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
     this._drawBeirutSilhouette();
 
     this._initPages([
+      // -- RECAP PAGE: Previously on SuperZion --
+      {
+        text: '',
+        charDelay: 0,
+        autoAdvance: 2500,
+        setup: () => {
+          const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setDepth(1);
+          this._addPageVisual(bg);
+          this._addPageVisual(this.add.text(W / 2, 70, 'PREVIOUSLY...', {
+            fontFamily: 'monospace', fontSize: '14px', color: '#666666',
+          }).setOrigin(0.5).setDepth(2));
+          // Boss eliminated
+          if (this.textures.exists('parade_foambeard')) {
+            const boss = this.add.image(W / 2, H * 0.35, 'parade_foambeard').setScale(1.2).setDepth(2).setTint(0x666666);
+            this._addPageVisual(boss);
+            const xGfx = this.add.graphics().setDepth(3);
+            xGfx.lineStyle(4, 0xff0000, 0.8);
+            xGfx.lineBetween(W / 2 - 30, H * 0.35 - 30, W / 2 + 30, H * 0.35 + 30);
+            xGfx.lineBetween(W / 2 + 30, H * 0.35 - 30, W / 2 - 30, H * 0.35 + 30);
+            this._addPageVisual(xGfx);
+          }
+          this._addPageVisual(this.add.text(W / 2, H * 0.55, 'ISMAIL HANIYEH', {
+            fontFamily: 'monospace', fontSize: '12px', color: '#666666',
+          }).setOrigin(0.5).setDepth(2));
+          this._addPageVisual(this.add.text(W / 2, H * 0.7, 'Tehran: COMPLETE \u2713', {
+            fontFamily: 'monospace', fontSize: '20px', color: '#44ff44',
+            shadow: { offsetX: 0, offsetY: 0, color: '#44ff44', blur: 6, fill: true },
+          }).setOrigin(0.5).setDepth(2));
+        },
+      },
       {
         text: 'Tehran: done. But cutting one head means nothing if the body keeps moving.',
         color: '#ff6644', size: 20, y: H * 0.82,

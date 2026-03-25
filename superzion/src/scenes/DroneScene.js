@@ -1394,6 +1394,7 @@ export default class DroneScene extends Phaser.Scene {
       try {
         this.ambientRef.source.stop();
         if (this.ambientRef.osc) this.ambientRef.osc.stop();
+        if (this.ambientRef.stopDrip) this.ambientRef.stopDrip();
       } catch (e) { /* already stopped */ }
       this.ambientRef = null;
     }
@@ -2083,6 +2084,10 @@ export default class DroneScene extends Phaser.Scene {
   _startBossFight() {
     this.phase = 'boss';
     MusicManager.get().playLevel4Music('command');
+
+    // Underground tunnel ambient
+    this._stopAmbient();
+    this.ambientRef = SoundManager.get().playAmbientUnderground();
 
     // Drone HP for boss fight
     this.droneHP = this.dm.isHard() ? 4 : 6;

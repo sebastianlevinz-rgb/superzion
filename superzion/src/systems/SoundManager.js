@@ -1505,6 +1505,243 @@ export default class SoundManager {
     osc.stop(t + 0.25);
   }
 
+  // ── Ambient loops ──────────────────────────────────────────────
+
+  // Night wind ambient (Level 1 — Tehran rooftops)
+  // Low-frequency filtered noise that sounds like gentle wind
+  playAmbientWind() {
+    this._init();
+    if (!this.ctx || !this.masterGain) return null;
+    const t = this.ctx.currentTime;
+
+    // Noise source through low-pass filter for wind
+    const bufferSize = Math.floor(this.ctx.sampleRate * 2);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 400;
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.03, t);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    noise.start();
+
+    return { source: noise, gain };
+  }
+
+  // Industrial port ambient (Level 2 — Beirut)
+  // Low rumble + filtered noise for machinery hum
+  playAmbientIndustrial() {
+    this._init();
+    if (!this.ctx || !this.masterGain) return null;
+    const t = this.ctx.currentTime;
+
+    // Low rumble oscillator (40Hz)
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 40;
+    oscGain.gain.setValueAtTime(0.02, t);
+    osc.connect(oscGain);
+    oscGain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 300);
+
+    // Machinery hum — noise through bandpass at 200Hz
+    const bufferSize = Math.floor(this.ctx.sampleRate * 2);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 200;
+    bp.Q.value = 2;
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.015, t);
+
+    noise.connect(bp);
+    bp.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    noise.start();
+
+    return { source: noise, gain: noiseGain, osc };
+  }
+
+  // Underground echo ambient (Level 4 — tunnels)
+  // Deep reverberant hum + occasional drip sounds
+  playAmbientUnderground() {
+    this._init();
+    if (!this.ctx || !this.masterGain) return null;
+    const t = this.ctx.currentTime;
+
+    // Deep hum (60Hz)
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 60;
+    oscGain.gain.setValueAtTime(0.015, t);
+    osc.connect(oscGain);
+    oscGain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 300);
+
+    // Filtered noise for air movement
+    const bufferSize = Math.floor(this.ctx.sampleRate * 2);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 300;
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.01, t);
+
+    noise.connect(lp);
+    lp.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    noise.start();
+
+    // Occasional drip sound (high sine blip every 3-5 seconds)
+    this._undergroundDripActive = true;
+    const scheduleDrip = () => {
+      if (!this._undergroundDripActive || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const dripOsc = this.ctx.createOscillator();
+      const dripGain = this.ctx.createGain();
+      dripOsc.type = 'sine';
+      dripOsc.frequency.setValueAtTime(2000 + Math.random() * 1000, now);
+      dripOsc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+      dripGain.gain.setValueAtTime(0.03, now);
+      dripGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      dripOsc.connect(dripGain);
+      dripGain.connect(this.masterGain);
+      dripOsc.start(now);
+      dripOsc.stop(now + 0.1);
+      dripOsc.onended = () => { try { dripGain.disconnect(); dripOsc.disconnect(); } catch (e) {} };
+      this._dripTimeout = setTimeout(scheduleDrip, 3000 + Math.random() * 2000);
+    };
+    this._dripTimeout = setTimeout(scheduleDrip, 2000 + Math.random() * 2000);
+
+    return { source: noise, gain: noiseGain, osc, stopDrip: () => {
+      this._undergroundDripActive = false;
+      if (this._dripTimeout) { clearTimeout(this._dripTimeout); this._dripTimeout = null; }
+    }};
+  }
+
+  // Battle chaos ambient (Level 6 — final boss)
+  // Distant rumbles + low continuous drone
+  playAmbientBattle() {
+    this._init();
+    if (!this.ctx || !this.masterGain) return null;
+    const t = this.ctx.currentTime;
+
+    // Low continuous drone (50Hz)
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 50;
+    oscGain.gain.setValueAtTime(0.02, t);
+    osc.connect(oscGain);
+    oscGain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 300);
+
+    // Filtered noise layer
+    const bufferSize = Math.floor(this.ctx.sampleRate * 2);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 250;
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.012, t);
+
+    noise.connect(lp);
+    lp.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    noise.start();
+
+    // Distant rumble bursts every 2-4 seconds
+    this._battleRumbleActive = true;
+    const scheduleRumble = () => {
+      if (!this._battleRumbleActive || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const rumbleOsc = this.ctx.createOscillator();
+      const rumbleGain = this.ctx.createGain();
+      rumbleOsc.type = 'sine';
+      rumbleOsc.frequency.value = 30 + Math.random() * 20;
+      rumbleGain.gain.setValueAtTime(0, now);
+      rumbleGain.gain.linearRampToValueAtTime(0.06, now + 0.1);
+      rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      rumbleOsc.connect(rumbleGain);
+      rumbleGain.connect(this.masterGain);
+      rumbleOsc.start(now);
+      rumbleOsc.stop(now + 0.6);
+      rumbleOsc.onended = () => { try { rumbleGain.disconnect(); rumbleOsc.disconnect(); } catch (e) {} };
+      this._rumbleTimeout = setTimeout(scheduleRumble, 2000 + Math.random() * 2000);
+    };
+    this._rumbleTimeout = setTimeout(scheduleRumble, 1500 + Math.random() * 2000);
+
+    return { source: noise, gain: noiseGain, osc, stopRumble: () => {
+      this._battleRumbleActive = false;
+      if (this._rumbleTimeout) { clearTimeout(this._rumbleTimeout); this._rumbleTimeout = null; }
+    }};
+  }
+
+  // ── Dramatic death effects ────────────────────────────────────
+
+  // Heartbeat: two thumps (lub-dub)
+  playHeartbeat() {
+    this._init();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // Two thumps: lub-dub
+    for (const offset of [0, 0.15]) {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 40 + (offset > 0 ? 10 : 0);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0, now + offset);
+      gain.gain.linearRampToValueAtTime(0.15, now + offset + 0.05);
+      gain.gain.linearRampToValueAtTime(0, now + offset + 0.2);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.25);
+      osc.onended = () => { try { gain.disconnect(); osc.disconnect(); } catch (e) {} };
+    }
+  }
+
   // Toggle mute — also syncs MusicManager
   toggleMute() {
     this._init();

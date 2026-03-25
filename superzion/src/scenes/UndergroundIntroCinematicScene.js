@@ -26,6 +26,49 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
     this._drawUndergroundSilhouette();
 
     this._initPages([
+      // -- RECAP PAGE: Previously on SuperZion --
+      {
+        text: '',
+        charDelay: 0,
+        autoAdvance: 2500,
+        setup: () => {
+          const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setDepth(1);
+          this._addPageVisual(bg);
+          this._addPageVisual(this.add.text(W / 2, 70, 'PREVIOUSLY...', {
+            fontFamily: 'monospace', fontSize: '14px', color: '#666666',
+          }).setOrigin(0.5).setDepth(2));
+          // Haniyeh eliminated
+          if (this.textures.exists('parade_foambeard')) {
+            const boss1 = this.add.image(W / 2 - 80, H * 0.32, 'parade_foambeard').setScale(0.7).setDepth(2).setTint(0x666666);
+            this._addPageVisual(boss1);
+            const x1 = this.add.graphics().setDepth(3);
+            x1.lineStyle(3, 0xff0000, 0.8);
+            x1.lineBetween(W / 2 - 98, H * 0.32 - 18, W / 2 - 62, H * 0.32 + 18);
+            x1.lineBetween(W / 2 - 62, H * 0.32 - 18, W / 2 - 98, H * 0.32 + 18);
+            this._addPageVisual(x1);
+          }
+          this._addPageVisual(this.add.text(W / 2 - 80, H * 0.44, 'Haniyeh \u2713', {
+            fontFamily: 'monospace', fontSize: '10px', color: '#44ff44',
+          }).setOrigin(0.5).setDepth(2));
+          // Nasrallah eliminated
+          if (this.textures.exists('parade_turboturban')) {
+            const boss2 = this.add.image(W / 2 + 80, H * 0.32, 'parade_turboturban').setScale(0.7).setDepth(2).setTint(0x666666);
+            this._addPageVisual(boss2);
+            const x2 = this.add.graphics().setDepth(3);
+            x2.lineStyle(3, 0xff0000, 0.8);
+            x2.lineBetween(W / 2 + 62, H * 0.32 - 18, W / 2 + 98, H * 0.32 + 18);
+            x2.lineBetween(W / 2 + 98, H * 0.32 - 18, W / 2 + 62, H * 0.32 + 18);
+            this._addPageVisual(x2);
+          }
+          this._addPageVisual(this.add.text(W / 2 + 80, H * 0.44, 'Nasrallah \u2713', {
+            fontFamily: 'monospace', fontSize: '10px', color: '#44ff44',
+          }).setOrigin(0.5).setDepth(2));
+          this._addPageVisual(this.add.text(W / 2, H * 0.7, 'Deep Strike: COMPLETE \u2713', {
+            fontFamily: 'monospace', fontSize: '20px', color: '#44ff44',
+            shadow: { offsetX: 0, offsetY: 0, color: '#44ff44', blur: 6, fill: true },
+          }).setOrigin(0.5).setDepth(2));
+        },
+      },
       {
         text: "The general is gone. But the tunnels remain.",
         color: '#ff6644', size: 20, y: H * 0.82,

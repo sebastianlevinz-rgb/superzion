@@ -34,6 +34,7 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this.pageReady = false;
     this.typewriterComplete = false;
     this._twTimer = null;
+    this._autoAdvanceTimer = null;
     this._currentPageText = null;
     this._pageVisuals = [];
   }
@@ -82,6 +83,7 @@ export default class BaseCinematicScene extends Phaser.Scene {
       this.pages[this.currentPage].cleanup();
     }
     if (this._twTimer) { this._twTimer.remove(); this._twTimer = null; }
+    if (this._autoAdvanceTimer) { this._autoAdvanceTimer.remove(); this._autoAdvanceTimer = null; }
     if (this._currentPageText) { this._currentPageText.destroy(); this._currentPageText = null; }
     this._clearPageVisuals();
 
@@ -115,21 +117,37 @@ export default class BaseCinematicScene extends Phaser.Scene {
     });
     this._currentPageText.setOrigin(0.5).setDepth(20);
 
-    let idx = 0;
-    this._twTimer = this.time.addEvent({
-      delay: charDelay, repeat: page.text.length - 1,
-      callback: () => {
+    // Handle empty text pages (e.g. recap pages with only visuals)
+    if (!page.text || page.text.length === 0) {
+      this._currentPageText.setText('');
+      this.typewriterComplete = true;
+      this.pageReady = true;
+    } else {
+      let idx = 0;
+      this._twTimer = this.time.addEvent({
+        delay: charDelay, repeat: page.text.length - 1,
+        callback: () => {
+          if (this.skipped) return;
+          idx++;
+          this._currentPageText.setText(page.text.substring(0, idx));
+          SoundManager.get().playTypewriterClick();
+          if (idx >= page.text.length) {
+            this.typewriterComplete = true;
+            this.pageReady = true;
+            this._spaceHint.setAlpha(1);
+          }
+        },
+      });
+    }
+
+    // Auto-advance support: if the page has autoAdvance, advance after that delay
+    if (this._autoAdvanceTimer) { this._autoAdvanceTimer.remove(); this._autoAdvanceTimer = null; }
+    if (page.autoAdvance) {
+      this._autoAdvanceTimer = this.time.delayedCall(page.autoAdvance, () => {
         if (this.skipped) return;
-        idx++;
-        this._currentPageText.setText(page.text.substring(0, idx));
-        SoundManager.get().playTypewriterClick();
-        if (idx >= page.text.length) {
-          this.typewriterComplete = true;
-          this.pageReady = true;
-          this._spaceHint.setAlpha(1);
-        }
-      },
-    });
+        this._advancePage();
+      });
+    }
 
     // Show space hint immediately (always visible)
     this._spaceHint.setAlpha(1);

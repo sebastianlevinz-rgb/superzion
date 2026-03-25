@@ -240,6 +240,9 @@ export default class PortSwapScene extends Phaser.Scene {
       // Music
       MusicManager.get().playLevel2Music(false);
 
+      // Ambient industrial port sounds
+      this.ambientRef = SoundManager.get().playAmbientIndustrial();
+
       // Intel radio messages (timed, appear after briefing fades)
       this._showIntelMessage(this.intel.text[0], 5000);
       this._showIntelMessage(this.intel.text[1], 8000);
@@ -1638,6 +1641,13 @@ export default class PortSwapScene extends Phaser.Scene {
   // ════════════════════════════════════════════════════════════
 
   shutdown() {
+    if (this.ambientRef) {
+      try {
+        this.ambientRef.source.stop();
+        if (this.ambientRef.osc) this.ambientRef.osc.stop();
+      } catch (e) { /* ok */ }
+      this.ambientRef = null;
+    }
     if (this._endScreen) this._endScreen.destroy();
     MusicManager.get().stop(0.2);
   }

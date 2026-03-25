@@ -29,6 +29,61 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
     this._drawLastStandSilhouette();
 
     this._initPages([
+      // -- RECAP PAGE: Previously on SuperZion --
+      {
+        text: '',
+        charDelay: 0,
+        autoAdvance: 3000,
+        setup: () => {
+          const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setDepth(1);
+          this._addPageVisual(bg);
+          this._addPageVisual(this.add.text(W / 2, 50, 'PREVIOUSLY...', {
+            fontFamily: 'monospace', fontSize: '14px', color: '#666666',
+          }).setOrigin(0.5).setDepth(2));
+          const bossData = [
+            { key: 'parade_foambeard', name: 'Haniyeh \u2713', x: W * 0.2 },
+            { key: 'parade_turboturban', name: 'Nasrallah \u2713', x: W * 0.4 },
+            { key: 'parade_angryeyebrows', name: 'Sinwar \u2713', x: W * 0.6 },
+          ];
+          for (const bd of bossData) {
+            if (this.textures.exists(bd.key)) {
+              const boss = this.add.image(bd.x, H * 0.28, bd.key).setScale(0.55).setDepth(2).setTint(0x666666);
+              this._addPageVisual(boss);
+              const xg = this.add.graphics().setDepth(3);
+              xg.lineStyle(3, 0xff0000, 0.8);
+              xg.lineBetween(bd.x - 15, H * 0.28 - 15, bd.x + 15, H * 0.28 + 15);
+              xg.lineBetween(bd.x + 15, H * 0.28 - 15, bd.x - 15, H * 0.28 + 15);
+              this._addPageVisual(xg);
+            }
+            this._addPageVisual(this.add.text(bd.x, H * 0.39, bd.name, {
+              fontFamily: 'monospace', fontSize: '10px', color: '#44ff44',
+            }).setOrigin(0.5).setDepth(2));
+          }
+          // Nuclear facility destroyed
+          this._addPageVisual(this.add.text(W * 0.8, H * 0.28, '\u2622', {
+            fontFamily: 'monospace', fontSize: '28px', color: '#44ff44',
+          }).setOrigin(0.5).setDepth(2));
+          const xNuke = this.add.graphics().setDepth(3);
+          xNuke.lineStyle(3, 0xff0000, 0.8);
+          xNuke.lineBetween(W * 0.8 - 15, H * 0.28 - 15, W * 0.8 + 15, H * 0.28 + 15);
+          xNuke.lineBetween(W * 0.8 + 15, H * 0.28 - 15, W * 0.8 - 15, H * 0.28 + 15);
+          this._addPageVisual(xNuke);
+          this._addPageVisual(this.add.text(W * 0.8, H * 0.39, 'Fordow \u2713', {
+            fontFamily: 'monospace', fontSize: '10px', color: '#44ff44',
+          }).setOrigin(0.5).setDepth(2));
+          this._addPageVisual(this.add.text(W / 2, H * 0.58, 'Mountain Breaker: COMPLETE \u2713', {
+            fontFamily: 'monospace', fontSize: '20px', color: '#44ff44',
+            shadow: { offsetX: 0, offsetY: 0, color: '#44ff44', blur: 6, fill: true },
+          }).setOrigin(0.5).setDepth(2));
+          // Final tease
+          const tease = this.add.text(W / 2, H * 0.78, 'ONE TARGET REMAINS...', {
+            fontFamily: 'monospace', fontSize: '18px', color: '#ff2222',
+            shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 10, fill: true },
+          }).setOrigin(0.5).setDepth(2).setAlpha(0);
+          this._addPageVisual(tease);
+          this.tweens.add({ targets: tease, alpha: 1, duration: 800, delay: 800 });
+        },
+      },
       // -- PAGE 1: Natanz crater with fire/smoke aftermath --
       {
         text: "Fordow is a crater. The centrifuges are scrap metal. The bomb will never exist.",

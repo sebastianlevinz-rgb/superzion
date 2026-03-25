@@ -26,6 +26,36 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
     this._drawDeepStrikeSilhouette();
 
     this._initPages([
+      // -- RECAP PAGE: Previously on SuperZion --
+      {
+        text: '',
+        charDelay: 0,
+        autoAdvance: 2500,
+        setup: () => {
+          const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setDepth(1);
+          this._addPageVisual(bg);
+          this._addPageVisual(this.add.text(W / 2, 70, 'PREVIOUSLY...', {
+            fontFamily: 'monospace', fontSize: '14px', color: '#666666',
+          }).setOrigin(0.5).setDepth(2));
+          // Haniyeh eliminated
+          if (this.textures.exists('parade_foambeard')) {
+            const boss1 = this.add.image(W / 2 - 60, H * 0.35, 'parade_foambeard').setScale(0.8).setDepth(2).setTint(0x666666);
+            this._addPageVisual(boss1);
+            const x1 = this.add.graphics().setDepth(3);
+            x1.lineStyle(3, 0xff0000, 0.8);
+            x1.lineBetween(W / 2 - 80, H * 0.35 - 20, W / 2 - 40, H * 0.35 + 20);
+            x1.lineBetween(W / 2 - 40, H * 0.35 - 20, W / 2 - 80, H * 0.35 + 20);
+            this._addPageVisual(x1);
+          }
+          this._addPageVisual(this.add.text(W / 2 - 60, H * 0.48, 'Haniyeh \u2713', {
+            fontFamily: 'monospace', fontSize: '11px', color: '#44ff44',
+          }).setOrigin(0.5).setDepth(2));
+          this._addPageVisual(this.add.text(W / 2, H * 0.7, 'Grim Beeper: COMPLETE \u2713', {
+            fontFamily: 'monospace', fontSize: '20px', color: '#44ff44',
+            shadow: { offsetX: 0, offsetY: 0, color: '#44ff44', blur: 6, fill: true },
+          }).setOrigin(0.5).setDepth(2));
+        },
+      },
       {
         text: 'The tracker worked. We know where everything was going.',
         color: '#4488ff', size: 20, y: H * 0.82,

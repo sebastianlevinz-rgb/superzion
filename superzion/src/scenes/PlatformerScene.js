@@ -113,6 +113,9 @@ export default class PlatformerScene extends Phaser.Scene {
     this._createGuards();
     this._createTarget();
 
+    // ── Ambient wind sound ──
+    this.ambientRef = SoundManager.get().playAmbientWind();
+
     // ── Camera follow + zoom for larger player ──
     this.cameras.main.setZoom(1.5);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
@@ -908,6 +911,10 @@ export default class PlatformerScene extends Phaser.Scene {
 
   // ── Cleanup on scene shutdown ──
   shutdown() {
+    if (this.ambientRef) {
+      try { this.ambientRef.source.stop(); } catch (e) { /* ok */ }
+      this.ambientRef = null;
+    }
     if (this._controlsOverlay) {
       try { this._controlsOverlay.destroy(); } catch (e) { /* ok */ }
     }

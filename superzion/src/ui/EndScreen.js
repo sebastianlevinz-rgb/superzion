@@ -3,6 +3,7 @@
 // ===================================================================
 
 import MusicManager from '../systems/MusicManager.js';
+import SoundManager from '../systems/SoundManager.js';
 
 const W = 960;
 const H = 540;
@@ -217,13 +218,65 @@ export function showDefeatScreen(scene, opts = {}) {
   const elements = [];
   const cleanups = []; // { key, handler } pairs for keyboard cleanup
 
+  // ── Dramatic death effects (before overlay) ──
+
+  // 1. Red tint flash
+  const redFlash = scene.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0.3)
+    .setDepth(499).setScrollFactor(0);
+  scene.tweens.add({
+    targets: redFlash, alpha: 0, duration: 800,
+    onComplete: () => { redFlash.destroy(); },
+  });
+
+  // 2. Camera slow-mo effect (brief pause)
+  scene.time.timeScale = 0.3;
+  scene.time.delayedCall(400, () => { scene.time.timeScale = 1; });
+
+  // 3. Screen shake
+  scene.cameras.main.shake(500, 0.02);
+
+  // 4. Heartbeat sound
+  SoundManager.get().playHeartbeat();
+
+  // ── Overlay and UI (shown after brief dramatic pause) ──
+
   // 1. Overlay
   const overlay = _makeOverlay(scene);
   elements.push(overlay);
 
-  // 2. Title
-  const titleObj = _makeTitle(scene, title, '#ff3333', '#ff3333');
+  // 2. Typewriter title — bigger font (40px), appears letter-by-letter
+  const titleObj = scene.add.text(W / 2, 120, '', {
+    fontFamily: 'monospace',
+    fontSize: '40px',
+    color: '#ff3333',
+    shadow: { offsetX: 0, offsetY: 0, color: '#ff3333', blur: 14, fill: true },
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(501);
   elements.push(titleObj);
+
+  // Typewriter effect: 50ms per character
+  let charIndex = 0;
+  const typewriterEvent = scene.time.addEvent({
+    delay: 50,
+    repeat: title.length - 1,
+    callback: () => {
+      charIndex++;
+      titleObj.setText(title.substring(0, charIndex));
+    },
+  });
+
+  // Slight wobble tween on the title (starts after typewriter completes)
+  scene.time.delayedCall(50 * title.length + 100, () => {
+    if (titleObj.active) {
+      scene.tweens.add({
+        targets: titleObj,
+        angle: { from: -0.5, to: 0.5 },
+        duration: 200,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+  });
 
   // 3. Stats (optional)
   const statsStartY = 180;
@@ -249,8 +302,8 @@ export function showDefeatScreen(scene, opts = {}) {
   }).setOrigin(0.5).setScrollFactor(0).setDepth(501);
   elements.push(escLabel);
 
-  // 5. Key handling (delayed 500ms to prevent accidental skip)
-  scene.time.delayedCall(500, () => {
+  // 5. Key handling (delayed 800ms to allow dramatic effects to play out)
+  scene.time.delayedCall(800, () => {
     const rKey = scene.input.keyboard.addKey('R');
     const sKey = scene.input.keyboard.addKey('S');
     const escKey = scene.input.keyboard.addKey('ESC');
@@ -275,6 +328,7 @@ export function showDefeatScreen(scene, opts = {}) {
   });
 
   function destroy() {
+    if (typewriterEvent) typewriterEvent.destroy();
     for (const c of cleanups) {
       c.key.off('down', c.handler);
     }

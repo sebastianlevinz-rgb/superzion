@@ -203,6 +203,9 @@ export default class BossScene extends Phaser.Scene {
     this._setupInput();
     this._startIntro();
 
+    // Ambient battle sounds
+    this.ambientRef = SoundManager.get().playAmbientBattle();
+
     this.events.on('shutdown', this.shutdown, this);
 
     // Tutorial overlay (pauses gameplay until dismissed)
@@ -3267,6 +3270,14 @@ export default class BossScene extends Phaser.Scene {
   }
 
   shutdown() {
+    if (this.ambientRef) {
+      try {
+        this.ambientRef.source.stop();
+        if (this.ambientRef.osc) this.ambientRef.osc.stop();
+        if (this.ambientRef.stopRumble) this.ambientRef.stopRumble();
+      } catch (e) { /* ok */ }
+      this.ambientRef = null;
+    }
     if (this._endScreen) this._endScreen.destroy();
     this.tweens.killAll();
     this.time.removeAllEvents();

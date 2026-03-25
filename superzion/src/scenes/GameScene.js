@@ -99,6 +99,9 @@ export default class GameScene extends Phaser.Scene {
     // 13. Controls overlay
     showControlsOverlay(this, 'ARROWS/WASD: Move | SPACE: Bomb | E: Plant | SHIFT: Dodge | ESC: Pause');
 
+    // 14. Ambient wind sound
+    this.ambientRef = SoundManager.get().playAmbientWind();
+
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
   }
@@ -881,6 +884,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   shutdown() {
+    if (this.ambientRef) {
+      try { this.ambientRef.source.stop(); } catch (e) { /* ok */ }
+      this.ambientRef = null;
+    }
     if (this._endScreen) this._endScreen.destroy();
     this.tweens.killAll();
     this.time.removeAllEvents();
