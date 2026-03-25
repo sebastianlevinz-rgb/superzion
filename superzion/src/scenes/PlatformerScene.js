@@ -14,7 +14,7 @@ import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.
 const W = 960;
 const H = 540;
 const WORLD_WIDTH = 1600; // short warm-up level (~1.5 screens)
-const PLAYER_BASE_SCALE = 1.6;
+// Player scale is 1 (no scaling needed)
 const PLAYER_SPEED = 200;
 const JUMP_VELOCITY = -420;
 const COYOTE_TIME = 80;   // ms
@@ -28,10 +28,7 @@ class RooftopGuard {
     this.scene = scene;
     this.sprite = scene.physics.add.sprite(x, y, 'plt_guard_walk_0');
     this.sprite.setDepth(9);
-    this.sprite.setScale(1.6);
-    // Body sized to match the visual at 1.6 scale — same proportions as player
-    this.sprite.body.setSize(24, 44);
-    this.sprite.body.setOffset(20, 16);
+    this.sprite.setScale(1);  // default scale — no body mismatch
 
     // Ensure gravity is active so guard falls onto platform
     this.sprite.body.setAllowGravity(true);
@@ -117,7 +114,7 @@ export default class PlatformerScene extends Phaser.Scene {
     this._createTarget();
 
     // ── Camera follow + zoom for larger player ──
-    this.cameras.main.setZoom(1.2);
+    this.cameras.main.setZoom(1.5);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
     // ── Fade in ──
@@ -209,103 +206,69 @@ export default class PlatformerScene extends Phaser.Scene {
   _createPlatforms() {
     this.platforms = this.physics.add.staticGroup();
 
-    // ── SHORT WARM-UP ROUTE — just enough to get into the game ──
+    // ── SIMPLE SOLID PLATFORMS using rectangles — no texture scaling bugs ──
     const layout = [
-      { x: 200,  y: 430, key: 'plt_roof_flat', scaleX: 4   },  // Wide starting platform
-      { x: 550,  y: 400, key: 'plt_roof_flat', scaleX: 2   },  // Step up
-      { x: 780,  y: 370, key: 'plt_roof_flat', scaleX: 2   },  // Step up (guard here)
-      { x: 1050, y: 340, key: 'plt_roof_flat', scaleX: 1.5 },  // Jump across
-      { x: 1280, y: 370, key: 'plt_roof_flat', scaleX: 3   },  // Target building roof
-      { x: 1500, y: 370, key: 'plt_roof_flat', scaleX: 2   },  // Target building extension
+      { x: 200,  y: 430, w: 500, h: 24 },   // Wide starting platform
+      { x: 560,  y: 395, w: 240, h: 24 },   // Step up
+      { x: 800,  y: 360, w: 240, h: 24 },   // Step up (guard here)
+      { x: 1060, y: 330, w: 180, h: 24 },   // Jump across
+      { x: 1320, y: 360, w: 360, h: 24 },   // Target building roof
+      { x: 1540, y: 360, w: 200, h: 24 },   // Target building extension
     ];
 
     for (const def of layout) {
-      const p = this.platforms.create(def.x, def.y, def.key);
-      if (def.scaleX && def.scaleX !== 1) {
-        p.setScale(def.scaleX, 1).refreshBody();
-      }
+      const p = this.add.rectangle(def.x, def.y, def.w, def.h, 0x666666);
+      this.physics.add.existing(p, true); // static body
       p.setDepth(5);
-      p.setTint(0x888888);
+      // Top edge highlight
+      const edge = this.add.rectangle(def.x, def.y - def.h / 2, def.w, 2, 0xbbbbaa, 0.9);
+      edge.setDepth(6);
+      this.platforms.add(p);
     }
 
-    // ── GROUND LEVEL (street level at y=480) ──
-    // Single solid ground — player collides with world bounds at y=492 as backup
-    const ground = this.platforms.create(WORLD_WIDTH / 2, 480, 'plt_roof_flat');
-    ground.setScale(WORLD_WIDTH / 128, 2).refreshBody();
+    // ── SOLID GROUND (street level) — thick and impossible to clip through ──
+    const ground = this.add.rectangle(WORLD_WIDTH / 2, 490, WORLD_WIDTH, 80, 0x555555);
+    this.physics.add.existing(ground, true);
     ground.setDepth(5);
-    ground.setTint(0x999999);
+    this.platforms.add(ground);
 
-    // ── Yellow/white street marking lines on ground level ──
-    const streetLine = this.add.graphics().setDepth(6);
-    // Dashed yellow center line
-    streetLine.lineStyle(2, 0xFFDD44, 0.7);
+    // Street markings
+    const streetGfx = this.add.graphics().setDepth(6);
+    streetGfx.lineStyle(2, 0xFFDD44, 0.7);
     for (let sx = 0; sx < WORLD_WIDTH; sx += 40) {
-      streetLine.beginPath();
-      streetLine.moveTo(sx, 484);
-      streetLine.lineTo(sx + 20, 484);
-      streetLine.strokePath();
+      streetGfx.lineBetween(sx, 454, sx + 20, 454);
     }
-    // White edge lines
-    streetLine.lineStyle(1.5, 0xFFFFFF, 0.5);
-    streetLine.beginPath();
-    streetLine.moveTo(0, 478);
-    streetLine.lineTo(WORLD_WIDTH, 478);
-    streetLine.strokePath();
+    streetGfx.lineStyle(1.5, 0xFFFFFF, 0.5);
+    streetGfx.lineBetween(0, 448, WORLD_WIDTH, 448);
 
-    // ── RESCUE PLATFORMS — one set for short level ──
-    const rescuePoints = [
-      { x: 500,  steps: [{ y: 460, sx: 0.8 }, { y: 435, sx: 0.6 }] },
-      { x: 1000, steps: [{ y: 460, sx: 0.8 }, { y: 430, sx: 0.6 }] },
+    // ── RESCUE STEPS (back to route from ground) ──
+    const rescueSteps = [
+      { x: 500, y: 430, w: 80 },
+      { x: 1000, y: 430, w: 80 },
     ];
-
-    for (const rp of rescuePoints) {
-      for (const step of rp.steps) {
-        const sp = this.platforms.create(rp.x, step.y, 'plt_roof_flat');
-        sp.setScale(step.sx, 1).refreshBody();
-        sp.body.setSize(sp.body.width, 16);           // thin floor surface
-        sp.body.setOffset(0, sp.body.height / 2 - 8); // center vertically
-        sp.setDepth(5);
-        sp.setTint(0xaaaaaa); // Slightly lighter gray rescue platforms
-      }
+    for (const rs of rescueSteps) {
+      const rp = this.add.rectangle(rs.x, rs.y, rs.w, 16, 0xaaaaaa);
+      this.physics.add.existing(rp, true);
+      rp.setDepth(5);
+      this.platforms.add(rp);
     }
 
-    // ── VISUAL TOP-EDGE HIGHLIGHT on each non-ground platform ──
-    for (const p of this.platforms.getChildren()) {
-      if (p.y < 480) {
-        const edge = this.add.rectangle(
-          p.x, p.y - p.displayHeight / 2,
-          p.displayWidth, 2, 0xbbbbaa, 0.8
-        );
-        edge.setDepth(6);
-      }
-    }
-
-    // No kill zone — player lands on street level and climbs back up
-
-    // ── GROUND FILL below street level (so blue sky doesn't look like water) ──
-    const groundFill = this.add.graphics().setDepth(4).setScrollFactor(1);
-    groundFill.fillStyle(0x555555, 1);  // dark gray pavement
-    groundFill.fillRect(0, 488, WORLD_WIDTH, 120);
-    // Darker sub-layer (underground)
-    groundFill.fillStyle(0x3a3a3a, 1);
-    groundFill.fillRect(0, 500, WORLD_WIDTH, 80);
-    // Curb line
-    groundFill.lineStyle(2, 0x666666, 0.8);
-    groundFill.lineBetween(0, 488, WORLD_WIDTH, 488);
+    // ── UNDERGROUND FILL (visual only — so you don't see sky below) ──
+    const underGfx = this.add.graphics().setDepth(4);
+    underGfx.fillStyle(0x3a3a3a, 1);
+    underGfx.fillRect(0, 530, WORLD_WIDTH, 100);
   }
 
   // ═══════════════════════════════════════════════════════════════
   // PLAYER
   // ═══════════════════════════════════════════════════════════════
   _createPlayer() {
-    this.player = this.physics.add.sprite(200, 350, 'plt_player_idle');
+    this.player = this.physics.add.sprite(200, 380, 'plt_player_idle');
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(10);
-    this.player.setScale(1.6);
-    // Body sized to match the actual sprite art (64x64 canvas, character ~24x44)
-    // At 1.6 scale the physics body becomes ~38x70 which fits the visible character
-    this.player.body.setSize(24, 44);
-    this.player.body.setOffset(20, 16);
+    // NO custom scale — use default 1x to avoid physics body mismatch
+    // The 64x64 texture is a fine size for the player
+    this.player.setScale(1);
 
     // Collide with platforms
     this.physics.add.collider(this.player, this.platforms);
@@ -317,7 +280,7 @@ export default class PlatformerScene extends Phaser.Scene {
   _createObstacles() {
     // Minimal obstacles for short warm-up level
     this.secCameras = [
-      { x: 600, y: 355, angleMin: 0.8, angleMax: 2.2, speed: 0.5, length: 100, halfAngle: 0.3 },
+      { x: 600, y: 350, angleMin: 0.8, angleMax: 2.2, speed: 0.5, length: 100, halfAngle: 0.3 },
     ];
     for (const cam of this.secCameras) {
       cam.currentAngle = cam.angleMin;
@@ -336,7 +299,7 @@ export default class PlatformerScene extends Phaser.Scene {
   _createGuards() {
     this.guards = [];
     // One guard on the middle platform — just enough to add tension
-    this.guards.push(new RooftopGuard(this, 780, 345, 80));
+    this.guards.push(new RooftopGuard(this, 800, 320, 80));
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -344,10 +307,10 @@ export default class PlatformerScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════
   _createTarget() {
     // Target building — at the end of the short route
-    this.targetBuilding = this.add.image(1400, 290, 'plt_target_building').setDepth(5);
+    this.targetBuilding = this.add.image(1400, 280, 'plt_target_building').setDepth(5);
 
     // Golden glow/pulse around window area
-    this.targetGlow = this.add.rectangle(1400, 270, 70, 70, 0xffd700, 0.15).setDepth(4);
+    this.targetGlow = this.add.rectangle(1400, 280, 70, 70, 0xffd700, 0.15).setDepth(4);
     this.tweens.add({
       targets: this.targetGlow,
       alpha: 0.35,
@@ -358,7 +321,7 @@ export default class PlatformerScene extends Phaser.Scene {
     });
 
     // Overlap trigger zone at window
-    this.targetZone = this.add.zone(1400, 270, 60, 60);
+    this.targetZone = this.add.zone(1400, 290, 60, 60);
     this.physics.add.existing(this.targetZone, true);
     this.physics.add.overlap(this.player, this.targetZone, () => {
       this._enterBuilding();
@@ -774,13 +737,13 @@ export default class PlatformerScene extends Phaser.Scene {
       // Stretch on jump
       this.tweens.add({
         targets: this.player,
-        scaleX: 0.85 * PLAYER_BASE_SCALE,
-        scaleY: 1.15 * PLAYER_BASE_SCALE,
+        scaleX: 0.85 * 1,
+        scaleY: 1.15 * 1,
         duration: 100,
         yoyo: true,
         ease: 'Quad.easeOut',
         onComplete: () => {
-          if (this.player && this.player.active) this.player.setScale(PLAYER_BASE_SCALE);
+          if (this.player && this.player.active) this.player.setScale(1);
         },
       });
     } else if (onGround && hasBufferedJump && this.jumpBufferTimer > 0) {
@@ -790,13 +753,13 @@ export default class PlatformerScene extends Phaser.Scene {
       // Stretch on jump
       this.tweens.add({
         targets: this.player,
-        scaleX: 0.85 * PLAYER_BASE_SCALE,
-        scaleY: 1.15 * PLAYER_BASE_SCALE,
+        scaleX: 0.85 * 1,
+        scaleY: 1.15 * 1,
         duration: 100,
         yoyo: true,
         ease: 'Quad.easeOut',
         onComplete: () => {
-          if (this.player && this.player.active) this.player.setScale(PLAYER_BASE_SCALE);
+          if (this.player && this.player.active) this.player.setScale(1);
         },
       });
     }
@@ -807,14 +770,14 @@ export default class PlatformerScene extends Phaser.Scene {
       // Squash on landing
       this.tweens.add({
         targets: this.player,
-        scaleX: 1.2 * PLAYER_BASE_SCALE,
-        scaleY: 0.8 * PLAYER_BASE_SCALE,
+        scaleX: 1.2 * 1,
+        scaleY: 0.8 * 1,
         duration: 80,
         yoyo: true,
         ease: 'Quad.easeOut',
         onComplete: () => {
           if (this.player && this.player.active) {
-            this.player.setScale(PLAYER_BASE_SCALE);
+            this.player.setScale(1);
           }
         },
       });
