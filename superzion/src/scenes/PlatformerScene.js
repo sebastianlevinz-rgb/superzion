@@ -102,8 +102,8 @@ export default class PlatformerScene extends Phaser.Scene {
     // ── Controls overlay ──
     this._controlsOverlay = showControlsOverlay(this, 'ARROWS: Move/Jump | ESC: Pause');
 
-    // ── Physics world bounds (extended to accommodate ground at y=490) ──
-    this.physics.world.setBounds(0, 0, WORLD_WIDTH, H + 60);
+    // ── Physics world bounds — hard floor at street level (y=490) ──
+    this.physics.world.setBounds(0, 0, WORLD_WIDTH, 492);
 
     // ── Camera bounds ──
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, H + 60);
@@ -228,19 +228,12 @@ export default class PlatformerScene extends Phaser.Scene {
       p.setTint(0x888888);
     }
 
-    // ── GROUND LEVEL (street level at y=490) ──
-    // Continuous ground spanning full WORLD_WIDTH — safety net so player never dies
-    const groundSegments = 10;
-    const segWidth = WORLD_WIDTH / groundSegments;
-    for (let i = 0; i < groundSegments; i++) {
-      const gx = segWidth * i + segWidth / 2;
-      const g = this.platforms.create(gx, 490, 'plt_roof_flat');
-      g.setScale(segWidth / 128, 1).refreshBody();
-      g.body.setSize(g.body.width, 16);           // thin floor surface
-      g.body.setOffset(0, g.body.height / 2 - 8); // center vertically
-      g.setDepth(5);
-      g.setTint(0x999999); // Gray pavement
-    }
+    // ── GROUND LEVEL (street level at y=480) ──
+    // Single solid ground — player collides with world bounds at y=492 as backup
+    const ground = this.platforms.create(WORLD_WIDTH / 2, 480, 'plt_roof_flat');
+    ground.setScale(WORLD_WIDTH / 128, 2).refreshBody();
+    ground.setDepth(5);
+    ground.setTint(0x999999);
 
     // ── Yellow/white street marking lines on ground level ──
     const streetLine = this.add.graphics().setDepth(6);
