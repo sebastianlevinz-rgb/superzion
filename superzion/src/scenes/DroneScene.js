@@ -3024,8 +3024,9 @@ export default class DroneScene extends Phaser.Scene {
 
       // Out of bounds
       if (p.x < -30 || p.x > W + 30 || p.y < -30 || p.y > H + 30) {
-        // Phase 3: leave crack mark where projectile lands
+        // Phase 3: leave crack mark (capped at 40 to prevent memory growth)
         if (this.bossPhase === 3) {
+          if (this.floorCracks.length >= 40) this.floorCracks.shift();
           this.floorCracks.push({
             x: Phaser.Math.Clamp(p.x, ROOM_LEFT + 10, ROOM_RIGHT - 10),
             y: Phaser.Math.Clamp(p.y, ROOM_TOP + 10, ROOM_BOTTOM - 10),
@@ -3040,8 +3041,9 @@ export default class DroneScene extends Phaser.Scene {
       if (this.droneInvulnTimer <= 0 && !this.dodgeActive) {
         const dist = Phaser.Math.Distance.Between(p.x, p.y, this.droneX, this.droneY);
         if (dist < 25) {
-          // Phase 3: leave crack mark
+          // Phase 3: leave crack mark (capped)
           if (this.bossPhase === 3) {
+            if (this.floorCracks.length >= 40) this.floorCracks.shift();
             this.floorCracks.push({ x: p.x, y: p.y });
           }
           this._projectileBreakEffect(p.x, p.y);

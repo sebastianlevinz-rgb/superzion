@@ -808,10 +808,10 @@ export default class B2BomberScene extends Phaser.Scene {
       if (blendAlpha > 0.3) {
         gfx.lineStyle(1, 0x1a2a48, blendAlpha * 0.3);
         for (let y = 0; y < H; y += 40) {
-          for (let x = 0; x < W; x += 8) {
+          for (let x = 0; x < W; x += 16) {
             const wy = y + Math.sin(x * 0.04 + t * 1.5) * 3;
-            const wy2 = y + Math.sin((x + 8) * 0.04 + t * 1.5) * 3;
-            gfx.lineBetween(x, wy, x + 8, wy2);
+            const wy2 = y + Math.sin((x + 16) * 0.04 + t * 1.5) * 3;
+            gfx.lineBetween(x, wy, x + 16, wy2);
           }
         }
       }
@@ -1090,14 +1090,14 @@ export default class B2BomberScene extends Phaser.Scene {
       gfx.fillRect(0, 0, W, H);
 
       // Wave lines scrolling down (every 40px, with sine deformation)
-      const waveOffset = offset % 40;
-      for (let y = -40 + waveOffset; y < H + 40; y += 40) {
+      const waveOffset = offset % 60;
+      for (let y = -60 + waveOffset; y < H + 60; y += 60) {
         gfx.lineStyle(1, 0x1a2a48, 0.3);
         // Draw wave as series of short segments
-        for (let x = 0; x < W; x += 8) {
+        for (let x = 0; x < W; x += 16) {
           const wy = y + Math.sin(x * 0.04 + t * 1.5) * 3;
-          const wy2 = y + Math.sin((x + 8) * 0.04 + t * 1.5) * 3;
-          gfx.lineBetween(x, wy, x + 8, wy2);
+          const wy2 = y + Math.sin((x + 16) * 0.04 + t * 1.5) * 3;
+          gfx.lineBetween(x, wy, x + 16, wy2);
         }
       }
 
@@ -1182,13 +1182,13 @@ export default class B2BomberScene extends Phaser.Scene {
       gfx.fillStyle(0x0a1628, 1);
       gfx.fillRect(0, waterTop, W, H - waterTop);
       // Waves in water
-      const waveOffset = offset % 40;
+      const waveOffset = offset % 60;
       for (let y = waterTop; y < H + 40; y += 40) {
         gfx.lineStyle(1, 0x1a2a48, 0.3);
-        for (let x = 0; x < W; x += 8) {
+        for (let x = 0; x < W; x += 16) {
           const wy = y + Math.sin(x * 0.04 + t * 1.5) * 3;
-          const wy2 = y + Math.sin((x + 8) * 0.04 + t * 1.5) * 3;
-          gfx.lineBetween(x, wy, x + 8, wy2);
+          const wy2 = y + Math.sin((x + 16) * 0.04 + t * 1.5) * 3;
+          gfx.lineBetween(x, wy, x + 16, wy2);
         }
       }
 
