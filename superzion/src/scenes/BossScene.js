@@ -229,11 +229,54 @@ export default class BossScene extends Phaser.Scene {
     // Sky — static background
     this.skyBg = this.add.image(W / 2, H / 2, 'beirut_sky').setDepth(-10);
 
+    // ── Morning sky detail: haze bands and sun glow ──
+    const skyDetailGfx = this.add.graphics().setDepth(-9);
+    // Dawn haze (warm golden bands near horizon)
+    skyDetailGfx.fillStyle(0xffcc88, 0.06);
+    skyDetailGfx.fillRect(0, H * 0.4, W, H * 0.15);
+    skyDetailGfx.fillStyle(0xff9966, 0.04);
+    skyDetailGfx.fillRect(0, H * 0.5, W, H * 0.12);
+    // Atmospheric dust/smog
+    skyDetailGfx.fillStyle(0xbbaa88, 0.03);
+    skyDetailGfx.fillRect(0, H * 0.55, W, H * 0.2);
+    // Sun glow (east side — right side for morning)
+    skyDetailGfx.fillStyle(0xffdd88, 0.08);
+    skyDetailGfx.fillCircle(W - 80, H * 0.35, 60);
+    skyDetailGfx.fillStyle(0xffcc66, 0.04);
+    skyDetailGfx.fillCircle(W - 80, H * 0.35, 120);
+
     // City silhouette — slow parallax
     this.cityTile = this.add.tileSprite(W / 2, H - 140, W, 150, 'beirut_city').setDepth(-7);
 
+    // ── City detail overlay: building silhouettes with windows, minarets, smoke ──
+    this.cityDetailGfx = this.add.graphics().setDepth(-6);
+    this._drawCityEnvironment();
+
     // Ground — faster parallax
     this.groundTile = this.add.tileSprite(W / 2, H - 60, W, 120, 'beirut_ground').setDepth(-5);
+
+    // ── Ground detail overlay: roads, vehicles, infrastructure ──
+    const groundDetailGfx = this.add.graphics().setDepth(-4);
+    // Road lines
+    groundDetailGfx.lineStyle(1.5, 0x555550, 0.2);
+    groundDetailGfx.lineBetween(0, H - 40, W, H - 40);
+    // Road dashes
+    groundDetailGfx.lineStyle(1, 0x777770, 0.12);
+    for (let dx = 0; dx < W; dx += 25) {
+      groundDetailGfx.lineBetween(dx, H - 40, dx + 12, H - 40);
+    }
+    // Vehicles on road
+    const vehicles = [
+      { x: 100, w: 14, h: 6, color: 0x556655 },
+      { x: 250, w: 12, h: 5, color: 0x665555 },
+      { x: 440, w: 18, h: 7, color: 0x4a4a5a },
+      { x: 600, w: 14, h: 5, color: 0x5a5a44 },
+      { x: 780, w: 20, h: 8, color: 0x4a5a4a },
+    ];
+    for (const v of vehicles) {
+      groundDetailGfx.fillStyle(v.color, 0.25);
+      groundDetailGfx.fillRect(v.x, H - 46, v.w, v.h);
+    }
 
     // Player fighter — side-view, nose already points right
     this.playerSprite = this.add.image(this.playerX, this.playerY, 'player_fighter').setDepth(10);
@@ -245,6 +288,140 @@ export default class BossScene extends Phaser.Scene {
     // Graphics layers
     this.gfx = this.add.graphics().setDepth(15);
     this.effectsGfx = this.add.graphics().setDepth(20);
+
+    // ── Environment damage graphics (drawn based on boss HP) ──
+    this.envDamageGfx = this.add.graphics().setDepth(-3);
+    this._envSmokeParticles = [];
+  }
+
+  // ── Draw city environment detail (building windows, minarets, smoke columns) ──
+  _drawCityEnvironment() {
+    const gfx = this.cityDetailGfx;
+    if (!gfx) return;
+
+    // Building silhouettes with lit windows (behind city parallax layer)
+    const buildings = [
+      { x: 50, w: 60, h: 120 },
+      { x: 130, w: 45, h: 90 },
+      { x: 200, w: 70, h: 150 },
+      { x: 300, w: 50, h: 100 },
+      { x: 380, w: 55, h: 130 },
+      { x: 460, w: 40, h: 80 },
+      { x: 520, w: 65, h: 140 },
+      { x: 610, w: 50, h: 110 },
+      { x: 690, w: 60, h: 95 },
+      { x: 770, w: 55, h: 125 },
+      { x: 850, w: 45, h: 85 },
+      { x: 910, w: 50, h: 105 },
+    ];
+
+    for (const b of buildings) {
+      const by = H - 65 - b.h;
+      // Building body (dark silhouette)
+      gfx.fillStyle(0x3a3a44, 0.2);
+      gfx.fillRect(b.x, by, b.w, b.h);
+
+      // Lit windows (small yellow dots)
+      for (let wy = by + 10; wy + 8 < H - 70; wy += 15) {
+        for (let wx = b.x + 6; wx + 5 < b.x + b.w - 3; wx += 12) {
+          // ~40% of windows are lit
+          const hash = (wx * 7 + wy * 13 + b.x) % 10;
+          if (hash < 4) {
+            gfx.fillStyle(0xffee88, 0.12 + (hash % 2) * 0.06);
+            gfx.fillRect(wx, wy, 4, 5);
+          }
+        }
+      }
+    }
+
+    // Minaret shapes (tall thin towers with pointed tops)
+    const minarets = [
+      { x: 170, h: 60 },
+      { x: 430, h: 50 },
+      { x: 710, h: 55 },
+    ];
+    for (const m of minarets) {
+      const my = H - 65 - m.h;
+      gfx.fillStyle(0x4a4a54, 0.25);
+      gfx.fillRect(m.x - 2, my, 4, m.h);
+      // Pointed top
+      gfx.beginPath();
+      gfx.moveTo(m.x - 4, my);
+      gfx.lineTo(m.x, my - 8);
+      gfx.lineTo(m.x + 4, my);
+      gfx.closePath();
+      gfx.fillPath();
+      // Balcony ring
+      gfx.lineStyle(1, 0x5a5a64, 0.2);
+      gfx.lineBetween(m.x - 4, my + 10, m.x + 4, my + 10);
+    }
+
+    // Smoke/haze columns (static background detail)
+    for (let si = 0; si < 3; si++) {
+      const sx = 150 + si * 300;
+      gfx.fillStyle(0x666660, 0.04);
+      gfx.fillCircle(sx, H - 130, 25);
+      gfx.fillStyle(0x555550, 0.03);
+      gfx.fillCircle(sx + 5, H - 160, 30);
+      gfx.fillCircle(sx - 3, H - 190, 20);
+    }
+  }
+
+  // ── Update environment damage based on boss HP ──
+  _updateEnvironmentDamage(dt) {
+    if (!this.envDamageGfx) return;
+    this.envDamageGfx.clear();
+
+    const hpRatio = this.bunkerHP / this.BUNKER_HP;
+    const damageLevel = 1 - hpRatio; // 0 = no damage, 1 = max damage
+
+    // Only show damage effects during attack phase and when boss has taken damage
+    if (damageLevel <= 0 || (this.phase !== 'attack' && this.phase !== 'air_defense')) return;
+
+    const gfx = this.envDamageGfx;
+
+    // Craters on ground (more as boss takes damage)
+    const craterCount = Math.floor(damageLevel * 8);
+    for (let i = 0; i < craterCount; i++) {
+      const cx = ((i * 137 + 50) % (W - 100)) + 50;
+      const cy = H - 25 - (i % 3) * 8;
+      const cr = 4 + (i % 3) * 2;
+      gfx.fillStyle(0x333330, 0.3);
+      gfx.fillCircle(cx, cy, cr);
+      gfx.fillStyle(0x444440, 0.15);
+      gfx.fillCircle(cx, cy, cr * 0.6);
+    }
+
+    // Fire columns on buildings (progressive)
+    const fireCount = Math.floor(damageLevel * 5);
+    const fireTime = this.time ? Date.now() / 150 : 0;
+    for (let fi = 0; fi < fireCount; fi++) {
+      const fx = 100 + fi * 180;
+      const fy = H - 100 - fi * 15;
+      const flicker = Math.sin(fireTime + fi * 2) * 0.1;
+      gfx.fillStyle(0xff4400, 0.12 + flicker);
+      gfx.fillCircle(fx, fy, 6);
+      gfx.fillStyle(0xff6600, 0.08 + flicker * 0.5);
+      gfx.fillCircle(fx, fy - 4, 10);
+    }
+
+    // Smoke columns based on damage
+    const smokeCount = Math.floor(damageLevel * 6);
+    for (let si = 0; si < smokeCount; si++) {
+      const sx = 80 + si * 160;
+      for (let layer = 0; layer < 3; layer++) {
+        const smokeY = H - 120 - layer * 25 - Math.sin(fireTime * 0.3 + si + layer) * 5;
+        const smokeR = 8 + layer * 5;
+        gfx.fillStyle(0x555555, 0.06 - layer * 0.015);
+        gfx.fillCircle(sx + Math.sin(fireTime * 0.2 + si) * 8, smokeY, smokeR);
+      }
+    }
+
+    // Red tint overlay (increases with damage)
+    if (damageLevel > 0.5) {
+      gfx.fillStyle(0xff0000, (damageLevel - 0.5) * 0.04);
+      gfx.fillRect(0, 0, W, H);
+    }
   }
 
   _setupHUD() {
@@ -393,15 +570,19 @@ export default class BossScene extends Phaser.Scene {
         break;
       case 'approach':
         this._updateApproach(dt);
+        this._updateEnvironmentDamage(dt);
         break;
       case 'air_defense':
         this._updateAirDefense(dt);
+        this._updateEnvironmentDamage(dt);
         break;
       case 'attack':
         this._updateAttack(dt);
+        this._updateEnvironmentDamage(dt);
         break;
       case 'disintegrating':
         this._updateDisintegration(dt);
+        this._updateEnvironmentDamage(dt);
         break;
       case 'victory_pending':
         break;
@@ -635,10 +816,35 @@ export default class BossScene extends Phaser.Scene {
           if (this.bunkerHP <= 0) break;
         }
 
-        this.bunkerSprite.setTint(0xffaa44);
-        this.time.delayedCall(120, () => {
-          if (this.bunkerSprite && this.bunkerSprite.active) this.bunkerSprite.clearTint();
+        // White flash → red flash → clear (heavy bomb impact)
+        this.bunkerSprite.setTint(0xffffff);
+        this.time.delayedCall(50, () => {
+          if (this.bunkerSprite && this.bunkerSprite.active) {
+            this.bunkerSprite.setTint(0xff4444);
+            this.time.delayedCall(100, () => {
+              if (this.bunkerSprite && this.bunkerSprite.active) this.bunkerSprite.clearTint();
+            });
+          }
         });
+
+        // Debris particles from heavy bomb hit
+        for (let dp = 0; dp < 8; dp++) {
+          const debP = this.add.circle(
+            this.bunkerX + (Math.random() - 0.5) * 50,
+            this.bunkerY + (Math.random() - 0.5) * 50,
+            2 + Math.random() * 4,
+            [0x888888, 0x666666, 0xaa8866, 0xff6644][Math.floor(Math.random() * 4)],
+            0.8
+          ).setDepth(25);
+          this.tweens.add({
+            targets: debP,
+            x: debP.x + (Math.random() - 0.5) * 80,
+            y: debP.y + (Math.random() - 0.5) * 80,
+            alpha: 0, scale: 0,
+            duration: 400 + Math.random() * 300,
+            onComplete: () => debP.destroy(),
+          });
+        }
 
         // Phase transitions (same thresholds as normal bullets)
         if (this.bunkerHP <= this.BUNKER_HP * 0.6 && !this.phase2Triggered) {
@@ -1176,11 +1382,23 @@ export default class BossScene extends Phaser.Scene {
       ease: 'Power2',
     });
 
-    // Show boss HP bar
+    // Show boss HP bar + start breathing idle animation
     this.time.delayedCall(1000, () => {
       this.hpBarBg.setAlpha(1);
       this.hpBarFill.setAlpha(1);
       this.hpBarLabel.setAlpha(1);
+
+      // Breathing idle animation on boss sprite
+      if (this.bunkerSprite && this.bunkerSprite.active) {
+        this.tweens.add({
+          targets: this.bunkerSprite,
+          scaleY: this.bunkerSprite.scaleY * 1.02,
+          duration: 1200,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
     });
 
     // Clear heavy bombs
@@ -2125,11 +2343,37 @@ export default class BossScene extends Phaser.Scene {
         this.bunkerHP--;
         this.shotsHit++;
         SoundManager.get().playBossHit();
+        this.cameras.main.shake(100, 0.005);
 
+        // White flash → red flash → clear
         this.bunkerSprite.setTint(0xffffff);
-        this.time.delayedCall(80, () => {
-          if (this.bunkerSprite && this.bunkerSprite.active) this.bunkerSprite.clearTint();
+        this.time.delayedCall(50, () => {
+          if (this.bunkerSprite && this.bunkerSprite.active) {
+            this.bunkerSprite.setTint(0xff4444);
+            this.time.delayedCall(100, () => {
+              if (this.bunkerSprite && this.bunkerSprite.active) this.bunkerSprite.clearTint();
+            });
+          }
         });
+
+        // Debris particles from boss hit
+        for (let dp = 0; dp < 5; dp++) {
+          const debP = this.add.circle(
+            this.bunkerX + (Math.random() - 0.5) * 40,
+            this.bunkerY + (Math.random() - 0.5) * 40,
+            2 + Math.random() * 3,
+            [0x888888, 0x666666, 0xaa8866, 0xff6644][Math.floor(Math.random() * 4)],
+            0.8
+          ).setDepth(25);
+          this.tweens.add({
+            targets: debP,
+            x: debP.x + (Math.random() - 0.5) * 60,
+            y: debP.y + (Math.random() - 0.5) * 60,
+            alpha: 0, scale: 0,
+            duration: 400 + Math.random() * 300,
+            onComplete: () => debP.destroy(),
+          });
+        }
 
         // Phase 2 transition: HP <= 60%
         if (this.bunkerHP <= this.BUNKER_HP * 0.6 && !this.phase2Triggered) {

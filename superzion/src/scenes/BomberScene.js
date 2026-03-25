@@ -199,8 +199,31 @@ export default class BomberScene extends Phaser.Scene {
     // Far sky (static background)
     this.skyBg = this.add.image(W / 2, H / 2, 'sunset_sky').setDepth(-10);
 
-    // Clouds (slow parallax)
+    // ── Enhanced sunset sky: gradient overlay from orange to purple with sun disc ──
+    const sunsetGfx = this.add.graphics().setDepth(-9);
+    // Orange-to-purple gradient bands
+    sunsetGfx.fillStyle(0xff6633, 0.08);
+    sunsetGfx.fillRect(0, H * 0.5, W, H * 0.15);
+    sunsetGfx.fillStyle(0xff4488, 0.06);
+    sunsetGfx.fillRect(0, H * 0.35, W, H * 0.15);
+    sunsetGfx.fillStyle(0x6622aa, 0.05);
+    sunsetGfx.fillRect(0, H * 0.15, W, H * 0.2);
+    // Sun disc (near horizon)
+    sunsetGfx.fillStyle(0xff6600, 0.25);
+    sunsetGfx.fillCircle(W * 0.7, GROUND_Y - 30, 40);
+    sunsetGfx.fillStyle(0xffaa33, 0.15);
+    sunsetGfx.fillCircle(W * 0.7, GROUND_Y - 30, 55);
+    sunsetGfx.fillStyle(0xff8844, 0.06);
+    sunsetGfx.fillCircle(W * 0.7, GROUND_Y - 30, 80);
+
+    // Clouds (slow parallax) — main layer
     this.cloudTile = this.add.tileSprite(W / 2, 100, W, 150, 'cloud_layer').setDepth(-7);
+
+    // ── Extra cloud layers (different speeds, sizes) ──
+    this.cloudTile2 = this.add.tileSprite(W / 2, 60, W, 120, 'cloud_layer')
+      .setDepth(-8).setAlpha(0.3).setScale(1.5, 0.8);
+    this.cloudTile3 = this.add.tileSprite(W / 2, 180, W, 100, 'cloud_layer')
+      .setDepth(-6).setAlpha(0.15).setScale(0.7, 0.5);
 
     // Far mountains (mid parallax) — hidden during sea phases
     this.farTerrain = this.add.tileSprite(W / 2, GROUND_Y - 55, W, 250, 'far_mountains').setDepth(-5);
@@ -208,6 +231,9 @@ export default class BomberScene extends Phaser.Scene {
 
     // Ground (near parallax)
     this.groundTile = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_surface').setDepth(1);
+
+    // ── Ground detail overlay (drawn per-frame based on flight stage) ──
+    this.groundDetailGfx = this.add.graphics().setDepth(1.5);
 
     // Carrier sprite (shown during takeoff/landing)
     this.carrierSprite = this.add.image(240, GROUND_Y - 10, 'carrier_side').setDepth(2);
@@ -288,8 +314,60 @@ export default class BomberScene extends Phaser.Scene {
     const dx = speed * dt;
     this.scrollX += dx;
     this.cloudTile.tilePositionX += dx * 0.1;
+    if (this.cloudTile2) this.cloudTile2.tilePositionX += dx * 0.04;
+    if (this.cloudTile3) this.cloudTile3.tilePositionX += dx * 0.18;
     this.farTerrain.tilePositionX += dx * 0.3;
     this.groundTile.tilePositionX += dx * 0.8;
+
+    // ── Ground detail: roads, building clusters, river ──
+    if (this.groundDetailGfx) {
+      this.groundDetailGfx.clear();
+      const gd = this.groundDetailGfx;
+      const baseY = GROUND_Y;
+      const scrollOff = this.scrollX;
+
+      if (this.flightTerrainStage === 0) {
+        // SEA: tiny boat shapes and moonlight reflection
+        gd.fillStyle(0xffffff, 0.06);
+        // Moonlight streak
+        for (let i = 0; i < 6; i++) {
+          const sx = ((i * 170 + 50) - scrollOff * 0.2) % W;
+          const shimmer = Math.sin(scrollOff * 0.01 + i) * 2;
+          gd.fillRect(sx < 0 ? sx + W : sx, baseY + 10 + shimmer, 3, 12);
+        }
+      } else if (this.flightTerrainStage >= 1) {
+        // LAND: tiny roads and building clusters
+        const roadScroll = scrollOff * 0.8;
+
+        // Tiny roads
+        gd.lineStyle(1, 0x555555, 0.2);
+        for (let i = 0; i < 3; i++) {
+          const rx = ((i * 330 + 100) - roadScroll) % (W + 200) - 100;
+          gd.lineBetween(rx, baseY + 5, rx, baseY + 90);
+        }
+
+        // Building clusters (small rectangles)
+        gd.fillStyle(0x8a7a6a, 0.15);
+        for (let i = 0; i < 8; i++) {
+          const bx = ((i * 137 + 50) - roadScroll * 0.6) % (W + 100) - 50;
+          const bh = 4 + (i % 3) * 3;
+          gd.fillRect(bx, baseY + 15 + (i % 4) * 8, 6, bh);
+        }
+
+        // River/water (blue winding line) — only on coast/land
+        if (this.flightTerrainStage === 1) {
+          gd.lineStyle(2, 0x3366aa, 0.15);
+          const riverX0 = (200 - roadScroll * 0.3) % W;
+          gd.beginPath();
+          gd.moveTo(riverX0, baseY + 10);
+          for (let seg = 0; seg < 6; seg++) {
+            const segX = riverX0 + seg * 30 + Math.sin(seg * 1.2) * 15;
+            gd.lineTo(segX, baseY + 15 + seg * 12);
+          }
+          gd.strokePath();
+        }
+      }
+    }
   }
 
   _updateHUD() {
@@ -1097,6 +1175,55 @@ export default class BomberScene extends Phaser.Scene {
     this.camoGfx.fillStyle(0x3a5530, 0.3);
     this.camoGfx.fillRect(BUNKER_X - 130, BUNKER_TOP_Y - 12, 260, 15);
 
+    // ── BUNKER AREA DETAIL: walls, guard towers, road ──
+    const bunkerAreaGfx = this.add.graphics().setDepth(1.5);
+
+    // Perimeter wall (rectangular outline around bunker complex)
+    bunkerAreaGfx.lineStyle(2, 0x6a6a5a, 0.4);
+    bunkerAreaGfx.strokeRect(BUNKER_X - 200, BUNKER_TOP_Y - 30, 400, GROUND_Y - BUNKER_TOP_Y + 30);
+
+    // Road leading to bunker (from left edge to bunker entrance)
+    bunkerAreaGfx.lineStyle(3, 0x555550, 0.3);
+    bunkerAreaGfx.lineBetween(0, GROUND_Y - 5, BUNKER_X - 200, GROUND_Y - 5);
+    // Road dashes
+    bunkerAreaGfx.lineStyle(1, 0x888880, 0.2);
+    for (let rx = 10; rx < BUNKER_X - 200; rx += 20) {
+      bunkerAreaGfx.lineBetween(rx, GROUND_Y - 5, rx + 10, GROUND_Y - 5);
+    }
+
+    // Guard towers (4 corners of perimeter)
+    const towerPositions = [
+      { x: BUNKER_X - 200, y: BUNKER_TOP_Y - 30 },
+      { x: BUNKER_X + 200, y: BUNKER_TOP_Y - 30 },
+      { x: BUNKER_X - 200, y: GROUND_Y },
+      { x: BUNKER_X + 200, y: GROUND_Y },
+    ];
+    for (const tp of towerPositions) {
+      // Tower base (rectangle)
+      bunkerAreaGfx.fillStyle(0x6a6a5a, 0.5);
+      bunkerAreaGfx.fillRect(tp.x - 6, tp.y - 12, 12, 12);
+      // Tower roof (triangle)
+      bunkerAreaGfx.fillStyle(0x555550, 0.5);
+      bunkerAreaGfx.beginPath();
+      bunkerAreaGfx.moveTo(tp.x - 8, tp.y - 12);
+      bunkerAreaGfx.lineTo(tp.x, tp.y - 20);
+      bunkerAreaGfx.lineTo(tp.x + 8, tp.y - 12);
+      bunkerAreaGfx.closePath();
+      bunkerAreaGfx.fillPath();
+      // Searchlight dot
+      bunkerAreaGfx.fillStyle(0xffff88, 0.3);
+      bunkerAreaGfx.fillCircle(tp.x, tp.y - 16, 2);
+    }
+
+    // Inner compound fence (dotted line)
+    bunkerAreaGfx.lineStyle(1, 0x888880, 0.2);
+    const innerX = BUNKER_X - 160, innerY = BUNKER_TOP_Y - 15;
+    const innerW = 320, innerH = GROUND_Y - BUNKER_TOP_Y + 10;
+    for (let fx = innerX; fx < innerX + innerW; fx += 8) {
+      bunkerAreaGfx.lineBetween(fx, innerY, fx + 4, innerY);
+      bunkerAreaGfx.lineBetween(fx, innerY + innerH, fx + 4, innerY + innerH);
+    }
+
     this.instrText.setText('ARROWS to position \u2014 SPACE to drop bomb');
     this.instrText.setColor('#ff8800');
 
@@ -1251,6 +1378,44 @@ export default class BomberScene extends Phaser.Scene {
       g.fillCircle(bunkLeft + bunkW - 50, BUNKER_TOP_Y + 45, 10);
       g.fillStyle(0xff2200, 0.1);
       g.fillCircle(BUNKER_X, BUNKER_TOP_Y + 50, 15);
+
+      // Animated fire sprites on the bunker surface (flickering orange/yellow circles)
+      if (!this._bunkerFireSprites) {
+        this._bunkerFireSprites = [];
+        const firePositions = [
+          { x: bunkLeft + 45, y: BUNKER_TOP_Y + 35 },
+          { x: bunkLeft + bunkW - 45, y: BUNKER_TOP_Y + 40 },
+          { x: BUNKER_X - 10, y: BUNKER_TOP_Y + 50 },
+          { x: BUNKER_X + 15, y: BUNKER_TOP_Y + 30 },
+        ];
+        for (const fp of firePositions) {
+          const fireOuter = this.add.circle(fp.x, fp.y, 6, 0xff6600, 0.6).setDepth(5);
+          const fireInner = this.add.circle(fp.x, fp.y - 2, 3, 0xffcc00, 0.8).setDepth(5);
+          // Flickering animation
+          this.tweens.add({
+            targets: fireOuter,
+            scaleX: { from: 0.8, to: 1.3 },
+            scaleY: { from: 1.0, to: 1.5 },
+            alpha: { from: 0.4, to: 0.7 },
+            duration: 200 + Math.random() * 200,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+          });
+          this.tweens.add({
+            targets: fireInner,
+            scaleX: { from: 0.7, to: 1.2 },
+            scaleY: { from: 0.9, to: 1.4 },
+            alpha: { from: 0.5, to: 0.9 },
+            y: fp.y - 4,
+            duration: 150 + Math.random() * 150,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+          });
+          this._bunkerFireSprites.push(fireOuter, fireInner);
+        }
+      }
 
       // Soldiers flee
       for (const s of this.miniSoldiers) {
@@ -1463,11 +1628,16 @@ export default class BomberScene extends Phaser.Scene {
             // Interior shakes on impact + boss hit feedback
             this.cameras.main.shake(100, 0.005);
             if (this.bossSprite && this.bossSprite.active) {
+              // White flash → red flash → clear
               this.bossSprite.setTint(0xffffff);
               if (this.bossYellSprite) this.bossYellSprite.setTint(0xffffff);
               this.time.delayedCall(50, () => {
-                if (this.bossSprite && this.bossSprite.active) this.bossSprite.clearTint();
-                if (this.bossYellSprite && this.bossYellSprite.active) this.bossYellSprite.clearTint();
+                if (this.bossSprite && this.bossSprite.active) this.bossSprite.setTint(0xff4444);
+                if (this.bossYellSprite && this.bossYellSprite.active) this.bossYellSprite.setTint(0xff4444);
+                this.time.delayedCall(100, () => {
+                  if (this.bossSprite && this.bossSprite.active) this.bossSprite.clearTint();
+                  if (this.bossYellSprite && this.bossYellSprite.active) this.bossYellSprite.clearTint();
+                });
               });
               this.tweens.add({
                 targets: [this.bossSprite, this.bossYellSprite],
@@ -1483,6 +1653,25 @@ export default class BomberScene extends Phaser.Scene {
                 scaleX: 0.55 * 1.08, scaleY: 0.55 * 1.08,
                 duration: 100, yoyo: true,
                 ease: 'Quad.easeOut',
+              });
+            }
+
+            // Debris particles from bunker hit
+            for (let dp = 0; dp < 5; dp++) {
+              const debrisP = this.add.circle(
+                b.x + (Math.random() - 0.5) * 40,
+                BUNKER_TOP_Y + layerIdx * LAYER_H + (Math.random() - 0.5) * 20,
+                2 + Math.random() * 3,
+                [0x888888, 0x666666, 0xaa8866, 0xff6644][Math.floor(Math.random() * 4)],
+                0.8
+              ).setDepth(25);
+              this.tweens.add({
+                targets: debrisP,
+                x: debrisP.x + (Math.random() - 0.5) * 80,
+                y: debrisP.y + (Math.random() - 0.5) * 60,
+                alpha: 0, scale: 0,
+                duration: 400 + Math.random() * 300,
+                onComplete: () => debrisP.destroy(),
               });
             }
 
@@ -1697,6 +1886,11 @@ export default class BomberScene extends Phaser.Scene {
     if (this.camoGfx) { this.camoGfx.destroy(); this.camoGfx = null; }
     if (this.bunkerInteriorGfx) { this.bunkerInteriorGfx.destroy(); this.bunkerInteriorGfx = null; }
     if (this.bunkerDamageGfx) { this.bunkerDamageGfx.destroy(); this.bunkerDamageGfx = null; }
+    // Cleanup bunker fire sprites
+    if (this._bunkerFireSprites) {
+      for (const fs of this._bunkerFireSprites) { if (fs && fs.active) fs.destroy(); }
+      this._bunkerFireSprites = null;
+    }
     if (this.bossSprite) { this.bossSprite.destroy(); this.bossSprite = null; }
     if (this.bossYellSprite) { this.bossYellSprite.destroy(); this.bossYellSprite = null; }
     if (this.consoleSprite) { this.consoleSprite.destroy(); this.consoleSprite = null; }

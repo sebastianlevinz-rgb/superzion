@@ -1637,6 +1637,50 @@ export default class DroneScene extends Phaser.Scene {
     gfx.fillStyle(0x4A4540, 0.5);
     gfx.fillRect(0, H - 55, W, 8);
 
+    // --- Street level detail ---
+    // Road markings
+    gfx.lineStyle(1.5, 0x6A6A60, 0.25);
+    gfx.lineBetween(0, H - 35, 650, H - 35);
+    gfx.lineStyle(1, 0x7A7A70, 0.15);
+    for (let dx = 10; dx < 640; dx += 30) {
+      gfx.lineBetween(dx, H - 35, dx + 15, H - 35);
+    }
+
+    // Cars (small colored rectangles on streets)
+    const carDefs = [
+      { x: 80, color: 0x8a3030, w: 18, h: 8 },
+      { x: 200, color: 0x505060, w: 16, h: 8 },
+      { x: 350, color: 0x7a7a40, w: 20, h: 8 },
+      { x: 480, color: 0x404050, w: 16, h: 8 },
+      { x: 150, color: 0x2a2a44, w: 22, h: 10 }, // truck/van
+    ];
+    for (const car of carDefs) {
+      const carY = H - 42;
+      gfx.fillStyle(car.color, 0.4);
+      gfx.fillRect(car.x, carY, car.w, car.h);
+      // Windows
+      gfx.fillStyle(0x8899aa, 0.25);
+      gfx.fillRect(car.x + 2, carY + 1, car.w * 0.3, car.h - 2);
+    }
+
+    // Debris piles on ground
+    gfx.fillStyle(0x6A6058, 0.3);
+    gfx.fillCircle(420, H - 48, 8);
+    gfx.fillCircle(550, H - 46, 6);
+    gfx.fillCircle(300, H - 45, 5);
+
+    // Street lamps (vertical lines with circles on top)
+    const lampPositions = [100, 300, 500];
+    for (const lx of lampPositions) {
+      gfx.lineStyle(1.5, 0x5A5A50, 0.35);
+      gfx.lineBetween(lx, H - 50, lx, H - 80);
+      gfx.fillStyle(0x7A7A70, 0.3);
+      gfx.fillCircle(lx, H - 82, 4);
+      // Light glow (dim, the power is out)
+      gfx.fillStyle(0xffee88, 0.04);
+      gfx.fillCircle(lx, H - 75, 12);
+    }
+
     // --- Distant buildings (left background) ---
     const distBldgs = [
       { x: 20, w: 80, h: 280 },
@@ -1743,6 +1787,44 @@ export default class DroneScene extends Phaser.Scene {
     // Building edge shadow (left side)
     gfx.fillStyle(0x000000, 0.15);
     gfx.fillRect(bldgX, bldgTop, 6, H - bldgTop - 50);
+
+    // --- Fire/smoke on destroyed building ---
+    // Small fire on upper floors (flickering orange)
+    const fireFlicker = Math.sin(Date.now() / 120) * 0.15;
+    gfx.fillStyle(0xff4400, 0.2 + fireFlicker);
+    gfx.fillCircle(bldgX + 40, bldgTop + 30, 8);
+    gfx.fillStyle(0xff6600, 0.15 + fireFlicker * 0.5);
+    gfx.fillCircle(bldgX + 40, bldgTop + 25, 12);
+    gfx.fillStyle(0xff8800, 0.08);
+    gfx.fillCircle(bldgX + 40, bldgTop + 20, 18);
+
+    // Second fire spot
+    gfx.fillStyle(0xff3300, 0.15 + fireFlicker * 0.8);
+    gfx.fillCircle(bldgX + bldgW - 30, bldgTop + 60, 6);
+    gfx.fillStyle(0xff5500, 0.1);
+    gfx.fillCircle(bldgX + bldgW - 30, bldgTop + 55, 10);
+
+    // Smoke rising from fires (semi-transparent gray)
+    const smokeTime = Date.now() / 1000;
+    for (let si = 0; si < 4; si++) {
+      const sx = bldgX + 38 + Math.sin(smokeTime + si * 1.5) * 8;
+      const sy = bldgTop + 10 - si * 20 + Math.sin(smokeTime * 0.5 + si) * 5;
+      const sr = 5 + si * 3;
+      gfx.fillStyle(0x555555, 0.08 - si * 0.015);
+      gfx.fillCircle(sx, Math.max(0, sy), sr);
+    }
+
+    // Exposed rebar/broken wall elements
+    gfx.lineStyle(1, 0x8a6a4a, 0.25);
+    gfx.lineBetween(bldgX + 15, bldgTop + 15, bldgX + 15, bldgTop + 35);
+    gfx.lineBetween(bldgX + bldgW - 20, bldgTop + 8, bldgX + bldgW - 18, bldgTop + 28);
+    // Bent rebar
+    gfx.lineStyle(1, 0x7a5a3a, 0.2);
+    gfx.beginPath();
+    gfx.moveTo(bldgX + 60, bldgTop + 12);
+    gfx.lineTo(bldgX + 65, bldgTop + 18);
+    gfx.lineTo(bldgX + 62, bldgTop + 28);
+    gfx.strokePath();
 
     // --- Glowing window (target) ---
     const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
@@ -3171,11 +3253,16 @@ export default class DroneScene extends Phaser.Scene {
     this.bossHP -= amount;
     SoundManager.get().playBossHit();
 
-    // White flash then restore
+    // White flash → red flash → clear
     if (this.bossSprite) {
       this.bossSprite.setTint(0xffffff);
       this.time.delayedCall(50, () => {
-        if (this.bossSprite && this.bossSprite.active) this.bossSprite.clearTint();
+        if (this.bossSprite && this.bossSprite.active) {
+          this.bossSprite.setTint(0xff4444);
+          this.time.delayedCall(100, () => {
+            if (this.bossSprite && this.bossSprite.active) this.bossSprite.clearTint();
+          });
+        }
       });
       // Scale bump
       this.tweens.add({
@@ -3658,7 +3745,7 @@ export default class DroneScene extends Phaser.Scene {
       this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
     }
 
-    // 1. Boss trembles
+    // 1. Boss freezes then trembles
     this.time.addEvent({
       delay: 50,
       repeat: 30,
@@ -3670,23 +3757,51 @@ export default class DroneScene extends Phaser.Scene {
       },
     });
 
-    // 2. Scale down and fade (falls)
+    // 2. White flash + mega explosion particles after 1.5s
     this.time.delayedCall(1500, () => {
+      // White screen flash
+      this.cameras.main.flash(500, 255, 255, 255);
+      // Camera shake for 2 seconds
+      this.cameras.main.shake(2000, 0.03);
+      SoundManager.get().playBossShockwave();
+
+      // Spray 20 explosion particles from boss position
+      const bx = this.bossX, by = this.bossY;
+      const deathColors = [0xff6600, 0xffaa00, 0xff2200, 0xffdd00, 0xffffff];
+      for (let i = 0; i < 20; i++) {
+        const radius = 2 + Math.random() * 5;
+        const color = deathColors[Math.floor(Math.random() * deathColors.length)];
+        const particle = this.add.circle(bx, by, radius, color, 0.9).setDepth(55);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 60 + Math.random() * 150;
+        this.tweens.add({
+          targets: particle,
+          x: bx + Math.cos(angle) * speed,
+          y: by + Math.sin(angle) * speed,
+          scale: 0,
+          alpha: 0,
+          rotation: Math.random() * 6,
+          duration: 600 + Math.random() * 500,
+          ease: 'Quad.easeOut',
+          onComplete: () => particle.destroy(),
+        });
+      }
+
+      // Scale down and fade (falls)
       if (this.bossSprite) {
-        SoundManager.get().playBossShockwave();
         this.tweens.add({
           targets: this.bossSprite,
           scaleX: 0.8 * (BOSS_DISPLAY / 128),
           scaleY: 0.8 * (BOSS_DISPLAY / 128),
-          alpha: 0.6,
-          duration: 800,
+          alpha: 0,
+          duration: 1200,
           ease: 'Quad.easeIn',
         });
       }
     });
 
     // 3. "YAHYA SINWAR IS DOWN" text (gold, centered, glow)
-    this.time.delayedCall(2500, () => {
+    this.time.delayedCall(3000, () => {
       const victoryText = this.add.text(W / 2, H / 2, 'YAHYA SINWAR IS DOWN', {
         fontFamily: 'monospace', fontSize: '32px', color: '#FFD700',
         fontStyle: 'bold',
@@ -3702,8 +3817,8 @@ export default class DroneScene extends Phaser.Scene {
       this.score += 3000;
     });
 
-    // 4. After 2 seconds: show victory screen
-    this.time.delayedCall(4500, () => {
+    // 4. After animation: show victory screen
+    this.time.delayedCall(5000, () => {
       this._cleanupBoss();
       this._showVictory();
     });

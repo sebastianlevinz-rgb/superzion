@@ -1110,6 +1110,30 @@ export default class B2BomberScene extends Phaser.Scene {
         gfx.fillCircle(fx, fy, 2);
       }
 
+      // ── Boat/ship shapes (tiny triangles) scattered on the water ──
+      for (let i = 0; i < 4; i++) {
+        const bx = ((i * 263 + 80 + Math.floor(offset * 0.05)) % W);
+        const by = ((i * 181 + 120 + Math.floor(offset * 0.3)) % (H - 50)) + 50;
+        gfx.fillStyle(0x2a3a5a, 0.25);
+        gfx.beginPath();
+        gfx.moveTo(bx, by - 3);
+        gfx.lineTo(bx - 5, by + 2);
+        gfx.lineTo(bx + 5, by + 2);
+        gfx.closePath();
+        gfx.fillPath();
+        // Hull line
+        gfx.lineStyle(0.5, 0x2a3a5a, 0.2);
+        gfx.lineBetween(bx - 6, by + 2, bx + 6, by + 2);
+      }
+
+      // ── Moonlight reflection streak on water ──
+      gfx.fillStyle(0x3a4a6a, 0.08);
+      for (let mr = 0; mr < 8; mr++) {
+        const mx = W * 0.5 + Math.sin(t * 0.3 + mr * 0.4) * 20;
+        const my = ((mr * 60 + offset * 0.2) % (H + 40)) - 20;
+        gfx.fillRect(mx - 1, my, 3, 10 + mr % 3 * 4);
+      }
+
     } else if (t < 12) {
       // ── COASTLINE TRANSITION — land appears FROM TOP (plane flies toward it) ──
       const coastProgress = (t - 7) / 5;  // 0 to 1
@@ -1136,6 +1160,22 @@ export default class B2BomberScene extends Phaser.Scene {
       const beachH = 20 + coastProgress * 15;
       gfx.fillStyle(0x8a7a5a, 0.8);
       gfx.fillRect(0, beachY, W, beachH);
+
+      // ── Palm tree silhouettes along beach transition ──
+      if (coastProgress > 0.3) {
+        gfx.fillStyle(0x1a3a1a, 0.35);
+        gfx.lineStyle(1.5, 0x1a3a1a, 0.35);
+        for (let pi = 0; pi < 6; pi++) {
+          const px = ((pi * 167 + Math.floor(offset * 0.1)) % W);
+          const py = beachY - 2;
+          // Trunk (vertical line, slightly curved)
+          gfx.lineBetween(px, py, px + 2, py - 14);
+          // Palm frond (circle cluster on top)
+          gfx.fillCircle(px + 2, py - 16, 6);
+          gfx.fillCircle(px - 2, py - 18, 4);
+          gfx.fillCircle(px + 5, py - 15, 4);
+        }
+      }
 
       // Water portion at BOTTOM (shrinking — plane has passed over it)
       const waterTop = beachY + beachH;
@@ -1187,6 +1227,57 @@ export default class B2BomberScene extends Phaser.Scene {
       const hRoadOff = offset % 300;
       for (let y = -300 + hRoadOff; y < H + 50; y += 300) {
         gfx.lineBetween(0, y, W, y);
+      }
+
+      // ── Road intersections (where horiz and vert roads cross) ──
+      for (const road of this.flightRoads) {
+        for (let iy = -300 + hRoadOff; iy < H + 50; iy += 300) {
+          gfx.fillStyle(0x3a3a3a, 0.3);
+          gfx.fillRect(road.x - 4, iy - 4, 8, 8);
+        }
+      }
+
+      // ── Taller buildings (some with lights) ──
+      for (const b of this.flightBuildings) {
+        const by = ((b.yBase + offset) % (H + 200)) - 100;
+        if (by > -20 && by < H + 20) {
+          // Some buildings are taller — draw a lighter "upper floor" extension
+          if (b.h > 12) {
+            gfx.fillStyle(b.color, 0.3);
+            gfx.fillRect(b.x + 1, by - 4, b.w - 2, 4);
+          }
+          // Lit windows on larger buildings
+          if (b.w > 10 && b.h > 8) {
+            gfx.fillStyle(0xffee88, 0.15);
+            gfx.fillRect(b.x + 2, by + 2, 2, 2);
+            if (b.w > 14) {
+              gfx.fillRect(b.x + b.w - 4, by + 2, 2, 2);
+            }
+          }
+        }
+      }
+
+      // ── Mosque dome shapes (small arcs) ──
+      const mosqueSeeds = [
+        { x: 200, yBase: 120 },
+        { x: 600, yBase: 300 },
+        { x: 400, yBase: 50 },
+      ];
+      for (const m of mosqueSeeds) {
+        const my = ((m.yBase + offset) % (H + 200)) - 100;
+        if (my > -20 && my < H + 20) {
+          gfx.fillStyle(0x4a3a28, 0.4);
+          gfx.fillRect(m.x - 4, my, 8, 10);
+          // Dome (half circle on top)
+          gfx.beginPath();
+          gfx.arc(m.x, my, 5, Math.PI, 0, false);
+          gfx.fillPath();
+          // Minaret (thin tall rectangle next to dome)
+          gfx.fillRect(m.x + 7, my - 6, 2, 16);
+          // Crescent on top
+          gfx.fillStyle(0x8a7a5a, 0.3);
+          gfx.fillCircle(m.x + 8, my - 7, 1.5);
+        }
       }
     }
   }
@@ -1544,6 +1635,53 @@ export default class B2BomberScene extends Phaser.Scene {
       // Inner ring
       gfx.lineStyle(1, 0x888888, 0.3);
       gfx.strokeCircle(mtnCX, mtnY, 18);
+
+      // ── FACILITY DETAIL ──
+      // Radar dishes (small circles with line)
+      gfx.fillStyle(0x888888, 0.4);
+      gfx.fillCircle(mtnCX + 60, mtnY - 30, 5);
+      gfx.lineStyle(1, 0x888888, 0.3);
+      gfx.lineBetween(mtnCX + 60, mtnY - 30, mtnCX + 60, mtnY - 22);
+      gfx.fillCircle(mtnCX - 55, mtnY + 25, 4);
+      gfx.lineBetween(mtnCX - 55, mtnY + 25, mtnCX - 55, mtnY + 32);
+
+      // Guard tower outposts (small rectangles with triangle roofs)
+      const facilityTowers = [
+        { x: mtnCX + 75, y: mtnY - 10 },
+        { x: mtnCX - 70, y: mtnY + 45 },
+        { x: mtnCX + 30, y: mtnY + 60 },
+        { x: mtnCX - 40, y: mtnY - 55 },
+      ];
+      for (const ft of facilityTowers) {
+        gfx.fillStyle(0x5a5a4a, 0.4);
+        gfx.fillRect(ft.x - 3, ft.y - 4, 6, 6);
+        gfx.fillStyle(0x4a4a3a, 0.3);
+        gfx.beginPath();
+        gfx.moveTo(ft.x - 4, ft.y - 4);
+        gfx.lineTo(ft.x, ft.y - 8);
+        gfx.lineTo(ft.x + 4, ft.y - 4);
+        gfx.closePath();
+        gfx.fillPath();
+      }
+
+      // Perimeter fence (dotted line around mountain)
+      gfx.lineStyle(0.5, 0x666666, 0.2);
+      for (let a = 0; a < Math.PI * 2; a += 0.15) {
+        const fenceR = 95;
+        const x1 = mtnCX + Math.cos(a) * fenceR;
+        const y1 = mtnY + Math.sin(a) * fenceR;
+        const x2 = mtnCX + Math.cos(a + 0.08) * fenceR;
+        const y2 = mtnY + Math.sin(a + 0.08) * fenceR;
+        gfx.lineBetween(x1, y1, x2, y2);
+      }
+
+      // Access road to bunker (from bottom)
+      gfx.lineStyle(2, 0x3a3a3a, 0.25);
+      gfx.lineBetween(mtnCX, mtnY + 85, mtnCX, mtnY + 130);
+      gfx.lineStyle(1, 0x555555, 0.15);
+      for (let ry = mtnY + 88; ry < mtnY + 130; ry += 8) {
+        gfx.lineBetween(mtnCX, ry, mtnCX, ry + 4);
+      }
 
       // Layer indicators (rings around mountain showing remaining layers)
       for (let i = 0; i < MOUNTAIN_LAYERS; i++) {

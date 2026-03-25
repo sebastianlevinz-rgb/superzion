@@ -53,6 +53,7 @@ export default class GameScene extends Phaser.Scene {
     this.breakGroup = this.physics.add.staticGroup();
     this.goldDoorSprite = null;
     this._buildGrid();
+    this._drawGridOverlay();
 
     // 5. Exit marker at spawn
     this.add.image(gx(SPAWN.col), gy(SPAWN.row), 'bm_exit').setDepth(1).setAlpha(0.5);
@@ -116,6 +117,78 @@ export default class GameScene extends Phaser.Scene {
     bg.fillStyle(0xffffff, 0.6);
     bg.fillTriangle(170, HUD_H - 10, 220, HUD_H - 30, 270, HUD_H - 10);
     bg.fillTriangle(720, HUD_H - 8, 760, HUD_H - 25, 800, HUD_H - 8);
+
+    // ── Military compound atmosphere: dim green-tinted overlay ──
+    const atmoGfx = this.add.graphics().setDepth(-1);
+    atmoGfx.fillStyle(0x224422, 0.05);
+    atmoGfx.fillRect(GRID_X, GRID_Y, COLS * TILE, ROWS * TILE);
+  }
+
+  // ── Grid lines + wall variation + crate texture + corner details ──
+  _drawGridOverlay() {
+    const overlayGfx = this.add.graphics().setDepth(0.5);
+
+    // Floor tile grid lines (thin dark lines forming the grid)
+    overlayGfx.lineStyle(0.5, 0x444444, 0.15);
+    for (let c = 0; c <= COLS; c++) {
+      const x = GRID_X + c * TILE;
+      overlayGfx.lineBetween(x, GRID_Y, x, GRID_Y + ROWS * TILE);
+    }
+    for (let r = 0; r <= ROWS; r++) {
+      const y = GRID_Y + r * TILE;
+      overlayGfx.lineBetween(GRID_X, y, GRID_X + COLS * TILE, y);
+    }
+
+    // Wall color variation overlay (alternate shades on wall tiles)
+    const wallOverlay = this.add.graphics().setDepth(2.5);
+    const wallShades = [0x000000, 0x1a1408, 0x0a0a04];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (this.map[r][c] === T_WALL) {
+          const hash = (r * 7 + c * 13) % 3;
+          const shade = wallShades[hash];
+          const alpha = 0.08 + (hash * 0.04);
+          wallOverlay.fillStyle(shade, alpha);
+          wallOverlay.fillRect(gx(c) - TILE / 2, gy(r) - TILE / 2, TILE, TILE);
+        }
+      }
+    }
+
+    // Breakable crate texture (X marks and plank lines)
+    const crateOverlay = this.add.graphics().setDepth(2.5);
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (this.map[r][c] === T_BREAK) {
+          const cx = gx(c), cy = gy(r);
+          // X mark (wooden plank cross)
+          crateOverlay.lineStyle(1, 0x8a7a5a, 0.25);
+          crateOverlay.lineBetween(cx - 10, cy - 10, cx + 10, cy + 10);
+          crateOverlay.lineBetween(cx + 10, cy - 10, cx - 10, cy + 10);
+          // Horizontal plank line
+          crateOverlay.lineStyle(0.5, 0x7a6a4a, 0.2);
+          crateOverlay.lineBetween(cx - 12, cy, cx + 12, cy);
+        }
+      }
+    }
+
+    // Corner details: filing cabinets and desks (visual only, not in gameplay area)
+    const cornerGfx = this.add.graphics().setDepth(1.5);
+
+    // Filing cabinet (top-left corner area, if empty)
+    const cabinetX = GRID_X + TILE * 1.5, cabinetY = GRID_Y + TILE * 1.5;
+    cornerGfx.fillStyle(0x666677, 0.35);
+    cornerGfx.fillRect(cabinetX - 8, cabinetY - 12, 16, 24);
+    cornerGfx.lineStyle(0.5, 0x555566, 0.3);
+    cornerGfx.lineBetween(cabinetX - 6, cabinetY - 4, cabinetX + 6, cabinetY - 4);
+    cornerGfx.lineBetween(cabinetX - 6, cabinetY + 4, cabinetX + 6, cabinetY + 4);
+
+    // Desk (bottom-right corner area)
+    const deskX = GRID_X + COLS * TILE - TILE * 1.5, deskY = GRID_Y + ROWS * TILE - TILE * 1.5;
+    cornerGfx.fillStyle(0x6a5040, 0.3);
+    cornerGfx.fillRect(deskX - 14, deskY - 8, 28, 16);
+    // Chair next to desk
+    cornerGfx.fillStyle(0x555555, 0.25);
+    cornerGfx.fillCircle(deskX - 18, deskY, 5);
   }
 
   // ── Build grid ──────────────────────────────────────────────────
@@ -259,13 +332,13 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.shake(100, 0.005);
     SoundManager.get().playDroneHit();
 
-    // White flash then red
+    // White flash then red then clear
     this.boss.sprite.setTint(0xffffff);
     this.time.delayedCall(50, () => {
-      if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.setTint(0xff0000);
-    });
-    this.time.delayedCall(200, () => {
-      if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.clearTint();
+      if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.setTint(0xff4444);
+      this.time.delayedCall(100, () => {
+        if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.clearTint();
+      });
     });
 
     // Scale bump
@@ -276,9 +349,35 @@ export default class GameScene extends Phaser.Scene {
       ease: 'Quad.easeOut',
     });
 
-    // Change expression
-    if (this.boss.hp <= 1 && this.boss.hp > 0) {
+    // Debris particles flying off boss on hit
+    const bx = this.boss.sprite.x, by = this.boss.sprite.y;
+    for (let i = 0; i < 5; i++) {
+      const p = this.add.circle(
+        bx + (Math.random() - 0.5) * 30,
+        by + (Math.random() - 0.5) * 30,
+        2 + Math.random() * 3,
+        [0x888888, 0x666666, 0xaa8866, 0xff6644][Math.floor(Math.random() * 4)],
+        0.8
+      ).setDepth(25);
+      this.tweens.add({
+        targets: p,
+        x: p.x + (Math.random() - 0.5) * 60,
+        y: p.y + (Math.random() - 0.5) * 60,
+        alpha: 0, scale: 0,
+        duration: 400 + Math.random() * 300,
+        onComplete: () => p.destroy(),
+      });
+    }
+
+    // Progressive expression changes based on HP percentage
+    const hpRatio = this.boss.hp / this.boss.maxHp;
+    if (hpRatio <= 0.33 && this.boss.hp > 0) {
       this.boss.sprite.setTexture('bm_boss1_angry');
+    } else if (hpRatio <= 0.66 && hpRatio > 0.33) {
+      // Intermediate damage — tint briefly to show stress
+      if (this.textures.exists('bm_boss1_angry')) {
+        this.boss.sprite.setTexture('bm_boss1_angry');
+      }
     }
 
     if (this.boss.hp <= 0) {
@@ -294,41 +393,47 @@ export default class GameScene extends Phaser.Scene {
     // Dead expression
     sp.setTexture('bm_boss1_dead');
 
-    // Shake left/right
-    this.tweens.add({
-      targets: sp, x: bx - 5, duration: 50, yoyo: true, repeat: 8,
-      onComplete: () => {
-        // Fall backward with rotation
+    // Step 1: Freeze for 0.5s
+    this.time.delayedCall(500, () => {
+      // Step 2: White screen flash
+      this.cameras.main.flash(500, 255, 255, 255);
+
+      // Step 3: Spray 30 particles (orange/red/yellow)
+      const bossColors = [0xff6600, 0xffaa00, 0xff2200, 0xffdd00, 0xffffff];
+      for (let i = 0; i < 30; i++) {
+        const radius = 1.5 + Math.random() * 4;
+        const color = bossColors[Math.floor(Math.random() * bossColors.length)];
+        const p = this.add.circle(bx, by, radius, color, 0.9).setDepth(22);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 50 + Math.random() * 150;
         this.tweens.add({
-          targets: sp, angle: -90, y: by + 200, alpha: 0,
-          duration: 800, ease: 'Power2',
-          onComplete: () => sp.destroy(),
+          targets: p,
+          x: bx + Math.cos(angle) * speed, y: by + Math.sin(angle) * speed,
+          scale: 0,
+          alpha: 0,
+          rotation: Math.random() * 6,
+          duration: 500 + Math.random() * 400,
+          ease: 'Quad.easeOut',
+          onComplete: () => p.destroy(),
         });
-      },
-    });
+      }
 
-    // Camera shake
-    this.cameras.main.shake(500, 0.025);
+      // Step 4: Camera shake for 1s
+      this.cameras.main.shake(1000, 0.035);
 
-    // Particles
-    const bossColors = [0xff6600, 0xffaa00, 0xff2200, 0xffdd00, 0xffffff];
-    for (let i = 0; i < 25; i++) {
-      const radius = 1.5 + Math.random() * 4;
-      const color = bossColors[Math.floor(Math.random() * bossColors.length)];
-      const p = this.add.circle(bx, by, radius, color, 0.9).setDepth(22);
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 50 + Math.random() * 120;
+      // Shake left/right then fall
       this.tweens.add({
-        targets: p,
-        x: bx + Math.cos(angle) * speed, y: by + Math.sin(angle) * speed,
-        scale: 0,
-        alpha: 0,
-        rotation: Math.random() * 6,
-        duration: 500 + Math.random() * 400,
-        ease: 'Quad.easeOut',
-        onComplete: () => p.destroy(),
+        targets: sp, x: bx - 5, duration: 50, yoyo: true, repeat: 8,
+        onComplete: () => {
+          // Step 5: Fade boss alpha to 0 with rotation
+          this.tweens.add({
+            targets: sp, angle: -90, y: by + 200, alpha: 0,
+            duration: 800, ease: 'Power2',
+            onComplete: () => sp.destroy(),
+          });
+        },
       });
-    }
+    });
 
     // Gold text
     const txt = this.add.text(bx, by - 40, 'BOSS ELIMINATED!', {
@@ -337,9 +442,10 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(50).setScale(0);
     this.tweens.add({
       targets: txt, scaleX: 1, scaleY: 1, duration: 500, ease: 'Back.easeOut',
+      delay: 600,
     });
     this.tweens.add({
-      targets: txt, alpha: 0, y: by - 70, duration: 1500, delay: 2000,
+      targets: txt, alpha: 0, y: by - 70, duration: 1500, delay: 2600,
       onComplete: () => txt.destroy(),
     });
   }

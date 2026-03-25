@@ -186,6 +186,28 @@ export default class PlatformerScene extends Phaser.Scene {
     this.bgStars = this.add.tileSprite(WORLD_WIDTH / 2, H / 2, WORLD_WIDTH, H, 'plt_stars_sky')
       .setScrollFactor(0.02).setDepth(-10);
 
+    // ── MOON (large pale circle with craters) ──
+    const moonGfx = this.add.graphics().setScrollFactor(0.03).setDepth(-9);
+    const moonX = 750, moonY = 60, moonR = 30;
+    // Outer glow
+    moonGfx.fillStyle(0xffffff, 0.04);
+    moonGfx.fillCircle(moonX, moonY, moonR + 20);
+    moonGfx.fillStyle(0xffffff, 0.06);
+    moonGfx.fillCircle(moonX, moonY, moonR + 10);
+    // Moon disc
+    moonGfx.fillStyle(0xe8e4d0, 0.85);
+    moonGfx.fillCircle(moonX, moonY, moonR);
+    // Lighter highlight
+    moonGfx.fillStyle(0xf4f0e0, 0.4);
+    moonGfx.fillCircle(moonX - 6, moonY - 6, moonR * 0.7);
+    // Craters (darker spots)
+    moonGfx.fillStyle(0xc8c4b0, 0.5);
+    moonGfx.fillCircle(moonX - 8, moonY + 5, 7);
+    moonGfx.fillCircle(moonX + 10, moonY - 4, 5);
+    moonGfx.fillCircle(moonX + 3, moonY + 12, 4);
+    moonGfx.fillCircle(moonX - 12, moonY - 10, 3);
+    moonGfx.fillCircle(moonX + 14, moonY + 8, 3);
+
     // Mountains: horizon area, NOT overlapping platforms (texture is 960x240)
     this.bgMountains = this.add.tileSprite(WORLD_WIDTH / 2, 180, WORLD_WIDTH, 240, 'plt_mountains')
       .setScrollFactor(0.1).setDepth(-8);
@@ -197,6 +219,18 @@ export default class PlatformerScene extends Phaser.Scene {
     // Near buildings: just above platform area (texture is 960x180)
     this.bgNear = this.add.tileSprite(WORLD_WIDTH / 2, 300, WORLD_WIDTH, 180, 'plt_near_buildings')
       .setScrollFactor(0.6).setDepth(-4);
+
+    // ── BUILDING LIGHTS (tiny dots on near buildings parallax zone) ──
+    const lightsGfx = this.add.graphics().setScrollFactor(0.6).setDepth(-3);
+    const lightColors = [0xffee88, 0xffffff, 0xffdd66, 0xffcc44];
+    for (let i = 0; i < 40; i++) {
+      const lx = Math.random() * WORLD_WIDTH;
+      const ly = 230 + Math.random() * 120;
+      const color = lightColors[Math.floor(Math.random() * lightColors.length)];
+      const alpha = 0.15 + Math.random() * 0.35;
+      lightsGfx.fillStyle(color, alpha);
+      lightsGfx.fillCircle(lx, ly, 1 + Math.random() * 1.5);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -253,6 +287,89 @@ export default class PlatformerScene extends Phaser.Scene {
     const underGfx = this.add.graphics().setDepth(4);
     underGfx.fillStyle(0x3a3a3a, 1);
     underGfx.fillRect(0, 530, WORLD_WIDTH, 100);
+
+    // ── ROOFTOP DETAILS (decorative objects on platforms) ──
+    const roofGfx = this.add.graphics().setDepth(4);
+
+    // Water tanks on some platforms (gray cylinders)
+    const waterTanks = [
+      { x: 140, y: 408 },   // starting platform
+      { x: 830, y: 338 },   // 3rd platform
+      { x: 1340, y: 338 },  // target building roof
+    ];
+    for (const wt of waterTanks) {
+      // Tank body (gray rectangle with rounded top)
+      roofGfx.fillStyle(0x888888, 0.7);
+      roofGfx.fillRect(wt.x - 6, wt.y - 16, 12, 16);
+      // Tank top (circle)
+      roofGfx.fillStyle(0x999999, 0.6);
+      roofGfx.fillCircle(wt.x, wt.y - 16, 7);
+      // Tank legs
+      roofGfx.fillStyle(0x666666, 0.5);
+      roofGfx.fillRect(wt.x - 5, wt.y, 2, 4);
+      roofGfx.fillRect(wt.x + 3, wt.y, 2, 4);
+    }
+
+    // Satellite dishes (small circles on stems)
+    const dishes = [
+      { x: 520, y: 375 },
+      { x: 1100, y: 310 },
+      { x: 1500, y: 340 },
+    ];
+    for (const d of dishes) {
+      // Stem
+      roofGfx.lineStyle(1.5, 0x777777, 0.6);
+      roofGfx.lineBetween(d.x, d.y, d.x, d.y - 10);
+      // Dish (half-circle pointing up-right)
+      roofGfx.lineStyle(2, 0x999999, 0.6);
+      roofGfx.beginPath();
+      roofGfx.arc(d.x, d.y - 10, 5, -Math.PI, 0, false);
+      roofGfx.strokePath();
+      // Feed horn dot
+      roofGfx.fillStyle(0xbbbbbb, 0.5);
+      roofGfx.fillCircle(d.x, d.y - 13, 1);
+    }
+
+    // AC units (small gray rectangles)
+    const acUnits = [
+      { x: 240, y: 415 },
+      { x: 580, y: 380 },
+      { x: 1070, y: 315 },
+    ];
+    for (const ac of acUnits) {
+      roofGfx.fillStyle(0x777777, 0.6);
+      roofGfx.fillRect(ac.x - 7, ac.y - 6, 14, 8);
+      // Fan grille (dark circle)
+      roofGfx.fillStyle(0x555555, 0.5);
+      roofGfx.fillCircle(ac.x, ac.y - 3, 3);
+      // Vent lines
+      roofGfx.lineStyle(0.5, 0x555555, 0.4);
+      roofGfx.lineBetween(ac.x - 5, ac.y - 6, ac.x - 5, ac.y + 2);
+      roofGfx.lineBetween(ac.x + 5, ac.y - 6, ac.x + 5, ac.y + 2);
+    }
+
+    // Laundry lines between platforms (thin colored lines)
+    const laundryLines = [
+      { x1: 450, y1: 400, x2: 530, y2: 375, color: 0xee8844 },
+      { x1: 1280, y1: 345, x2: 1360, y2: 345, color: 0xeeeeee },
+    ];
+    for (const ll of laundryLines) {
+      // Main line
+      roofGfx.lineStyle(0.8, 0x888888, 0.5);
+      roofGfx.lineBetween(ll.x1, ll.y1 - 12, ll.x2, ll.y2 - 12);
+      // Hanging clothes (small colored rectangles hanging down)
+      const dx = ll.x2 - ll.x1;
+      const dy = ll.y2 - ll.y1;
+      const clothColors = [0xcc4444, 0x4488cc, 0xeeeeee, 0x44aa44, 0xddaa44];
+      for (let i = 0; i < 4; i++) {
+        const t = (i + 1) / 5;
+        const cx = ll.x1 + dx * t;
+        const cy = ll.y1 + dy * t - 12;
+        const col = clothColors[i % clothColors.length];
+        roofGfx.fillStyle(col, 0.5);
+        roofGfx.fillRect(cx - 2, cy + 1, 4, 5 + Math.random() * 3);
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
