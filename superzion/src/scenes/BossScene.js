@@ -457,7 +457,7 @@ export default class BossScene extends Phaser.Scene {
 
     // Boss HP bar (hidden until attack phase)
     this.hpBarBg = this.add.rectangle(W / 2, 20, 400, 14, 0x333333).setDepth(30).setAlpha(0);
-    this.hpBarFill = this.add.rectangle(W / 2 - 198, 20, 396, 10, 0xff2222).setDepth(31);
+    this.hpBarFill = this.add.rectangle(W / 2 - 198, 20, 396, 10, 0x44ff44).setDepth(31);
     this.hpBarFill.setOrigin(0, 0.5);
     this.hpBarFill.setAlpha(0);
     this.hpBarLabel = this.add.text(W / 2, 20, 'AYATOLLAH ALI KHAMENEI', {
@@ -2495,13 +2495,13 @@ export default class BossScene extends Phaser.Scene {
     const hpRatio = this.bunkerHP / this.BUNKER_HP;
     this.hpBarFill.setScale(hpRatio, 1);
 
-    // Color the HP bar based on phase
-    if (this.bunkerPhase === 3) {
-      this.hpBarFill.setFillStyle(0xff2222);
-    } else if (this.bunkerPhase === 2) {
-      this.hpBarFill.setFillStyle(0xff8844);
+    // Color the HP bar based on HP percentage (green→yellow→red)
+    if (hpRatio > 0.6) {
+      this.hpBarFill.setFillStyle(0x44ff44);
+    } else if (hpRatio > 0.3) {
+      this.hpBarFill.setFillStyle(0xffcc00);
     } else {
-      this.hpBarFill.setFillStyle(0xff2222);
+      this.hpBarFill.setFillStyle(0xff4444);
     }
   }
 

@@ -308,7 +308,7 @@ export default class GameScene extends Phaser.Scene {
     // Boss HP bar (fixed to camera)
     this.bossHpBg = this.add.rectangle(480, 48, 160, 12, 0x222222, 0.9)
       .setScrollFactor(0).setDepth(100);
-    this.bossHpFill = this.add.rectangle(480, 48, 156, 8, 0xff2222)
+    this.bossHpFill = this.add.rectangle(480, 48, 156, 8, 0x44ff44)
       .setScrollFactor(0).setDepth(101);
     this.bossHpLabel = this.add.text(480, 36, 'ISMAIL HANIYEH', {
       fontFamily: 'monospace', fontSize: '8px', color: '#FFD700',
@@ -325,7 +325,7 @@ export default class GameScene extends Phaser.Scene {
     const ratio = this.boss.hp / this.boss.maxHp;
     this.bossHpFill.setDisplaySize(156 * ratio, 8);
     this.bossHpFill.setX(480 - (156 * (1 - ratio)) / 2);
-    const color = ratio > 0.66 ? 0xff2222 : ratio > 0.33 ? 0xff8800 : 0xff0000;
+    const color = ratio > 0.6 ? 0x44ff44 : ratio > 0.3 ? 0xffcc00 : 0xff4444;
     this.bossHpFill.setFillStyle(color);
   }
 

@@ -2321,7 +2321,7 @@ export default class DroneScene extends Phaser.Scene {
       .setDepth(51).setScrollFactor(0);
     this.bossHPBarBg.setStrokeStyle(1, 0x444444);
 
-    this.bossHPBarFill = this.add.rectangle(barX + 1, barY + 1, barW - 2, barH - 2, 0xff0000)
+    this.bossHPBarFill = this.add.rectangle(barX + 1, barY + 1, barW - 2, barH - 2, 0x44ff44)
       .setDepth(52).setScrollFactor(0).setOrigin(0, 0);
 
     this.bossHPBarLabel = this.add.text(W / 2, barY - 2, 'YAHYA SINWAR', {
@@ -2358,9 +2358,9 @@ export default class DroneScene extends Phaser.Scene {
     this.bossHPBarFill.width = (barW - 2) * ratio;
 
     let color;
-    if (ratio > 0.6) color = 0xff0000;
-    else if (ratio > 0.3) color = 0xff8800;
-    else color = 0x880000;
+    if (ratio > 0.6) color = 0x44ff44;
+    else if (ratio > 0.3) color = 0xffcc00;
+    else color = 0xff4444;
     this.bossHPBarFill.setFillStyle(color);
   }
 

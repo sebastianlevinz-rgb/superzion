@@ -1155,6 +1155,19 @@ export default class BomberScene extends Phaser.Scene {
       this.miniSoldiers.push({ sprite: s, origX: sp.x, origY: sp.y, fleeing: false });
     }
 
+    // ── Boss HP bar (bunker layers) ──
+    const barW = 200;
+    const barY = 20;
+    this.bossHPBarBg = this.add.rectangle(W / 2, barY, barW + 4, 16, 0x333333)
+      .setDepth(30).setScrollFactor(0);
+    this.bossHPBarBg.setStrokeStyle(1, 0x666666);
+    this.bossHPBarFill = this.add.rectangle(W / 2 - barW / 2, barY, barW, 12, 0x44ff44)
+      .setOrigin(0, 0.5).setDepth(31).setScrollFactor(0);
+    this.bossHPBarLabel = this.add.text(W / 2, barY - 12, 'HASSAN NASRALLAH', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#ff8800',
+      shadow: { offsetX: 0, offsetY: 0, color: '#ff8800', blur: 4, fill: true },
+    }).setOrigin(0.5).setDepth(31).setScrollFactor(0);
+
     // ── Damage effects container ──
     this.bunkerDamageGfx = this.add.graphics().setDepth(3.5);
     this.bunkerSmokeParticles = [];
@@ -1336,6 +1349,18 @@ export default class BomberScene extends Phaser.Scene {
       this.bossSprite.setVisible(false);
       this.bossYellSprite.setVisible(true);
     }
+  }
+
+  _updateBossHPBar() {
+    if (!this.bossHPBarFill || !this.bossHPBarBg) return;
+    const ratio = Math.max(0, this.bunkerHP / BUNKER_LAYERS);
+    const barW = 200;
+    this.bossHPBarFill.setDisplaySize(barW * ratio, 12);
+
+    // Color by HP percentage (green→yellow→red)
+    if (ratio > 0.6) this.bossHPBarFill.setFillStyle(0x44ff44);
+    else if (ratio > 0.3) this.bossHPBarFill.setFillStyle(0xffcc00);
+    else this.bossHPBarFill.setFillStyle(0xff4444);
   }
 
   _updateBunkerDamage(layerIdx) {
@@ -1560,6 +1585,7 @@ export default class BomberScene extends Phaser.Scene {
     this._updateChaff(dt);
     this._updateExplosions(dt);
     this._updateBunkerSmoke(dt);
+    this._updateBossHPBar();
 
     // Check end conditions
     if (this.bunkerHP <= 0) {
@@ -1876,6 +1902,11 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   _cleanupBunkerSprites() {
+    // Cleanup boss HP bar
+    if (this.bossHPBarBg) { this.bossHPBarBg.destroy(); this.bossHPBarBg = null; }
+    if (this.bossHPBarFill) { this.bossHPBarFill.destroy(); this.bossHPBarFill = null; }
+    if (this.bossHPBarLabel) { this.bossHPBarLabel.destroy(); this.bossHPBarLabel = null; }
+
     for (const l of this.bunkerLayerSprites) {
       if (l.rect) l.rect.destroy();
       if (l.rLayer) l.rLayer.destroy();
