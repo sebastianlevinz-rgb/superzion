@@ -25,13 +25,13 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
     // Military HUD overlay (amber for final level)
     this._drawMilitaryHUD(this, 'OPERATION ENDGAME: DEATH TO THE REGIME', "32\u00b005'N 52\u00b000'E", '#CCAA00');
 
-    // Background silhouette: Supreme Turban threatening figure + lightning
+    // Background silhouette: Ayatollah Ali Khamenei threatening figure + lightning
     this._drawLastStandSilhouette();
 
     this._initPages([
       // -- PAGE 1: Natanz crater with fire/smoke aftermath --
       {
-        text: "Natanz is a crater. The centrifuges are scrap metal. The bomb will never exist.",
+        text: "Fordow is a crater. The centrifuges are scrap metal. The bomb will never exist.",
         color: '#ff8844', size: 20, y: H * 0.82,
         setup: () => {
           const bg = this.add.graphics().setDepth(1);
@@ -80,9 +80,9 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
           bg.fillRect(0, 0, W, H);
         },
       },
-      // -- PAGE 3: Supreme Turban reveal with full war background --
+      // -- PAGE 3: Ayatollah Ali Khamenei reveal with full war background --
       {
-        text: "Supreme Turban. The puppet master. Every missile, every tunnel, every death \u2014 traces back to him.",
+        text: "Ayatollah Ali Khamenei. The puppet master. Every missile, every tunnel, every death \u2014 traces back to him.",
         color: '#ff4444', size: 18, y: H * 0.82,
         setup: () => {
           const bg = this.add.graphics().setDepth(1);
@@ -215,7 +215,7 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
             SoundManager.get().playExplosion();
           }
 
-          this._addPageVisual(this.add.text(W / 2, H * 0.62, 'SUPREME TURBAN', {
+          this._addPageVisual(this.add.text(W / 2, H * 0.62, 'AYATOLLAH ALI KHAMENEI', {
             fontFamily: 'monospace', fontSize: '22px', color: '#ff2222',
             shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 25, fill: true },
           }).setOrigin(0.5).setDepth(11));
@@ -244,7 +244,7 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
       },
       // -- PAGE 5: History --
       {
-        text: "Babylon tried. Rome tried. The Inquisition tried. The Camps tried.",
+        text: "Babylon tried. Rome tried. The Inquisition tried. The Nazis tried.",
         color: '#ffffff', size: 20, y: H * 0.45,
         setup: () => {
           const bg = this.add.graphics().setDepth(1);
@@ -275,7 +275,7 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
     this._addPageVisual(bg);
   }
 
-  /** L6 silhouette: Large threatening figure (Supreme Turban) + lightning bolts */
+  /** L6 silhouette: Large threatening figure (Ayatollah Ali Khamenei) + lightning bolts */
   _drawLastStandSilhouette() {
     const gfx = this.add.graphics().setDepth(5).setScrollFactor(0);
     const c = 0xCCAA00;

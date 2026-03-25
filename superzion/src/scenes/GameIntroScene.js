@@ -652,7 +652,7 @@ export default class GameIntroScene extends BaseCinematicScene {
 
     // Boss sprites as dark silhouettes with red backlight
     const bossKeys = ['parade_foambeard', 'parade_turboturban', 'parade_angryeyebrows', 'parade_supremeturban'];
-    const bossNames = ['FOAM BEARD', 'TURBO TURBAN', 'ANGRY EYEBROWS', 'SUPREME TURBAN'];
+    const bossNames = ['ISMAIL HANIYEH', 'HASSAN NASRALLAH', 'YAHYA SINWAR', 'AYATOLLAH ALI KHAMENEI'];
     const spacing = W / 5;
 
     bossKeys.forEach((key, i) => {

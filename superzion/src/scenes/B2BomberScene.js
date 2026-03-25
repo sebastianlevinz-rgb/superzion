@@ -1815,7 +1815,7 @@ export default class B2BomberScene extends Phaser.Scene {
 
     // AFTERMATH: Text + transition
     this.time.delayedCall(9500, () => {
-      const txt = this.add.text(W / 2, 50, 'NATANZ FACILITY -- DESTROYED', {
+      const txt = this.add.text(W / 2, 50, 'FORDOW FACILITY -- DESTROYED', {
         fontFamily: 'monospace', fontSize: '24px', color: '#00ff00',
         shadow: { offsetX: 0, offsetY: 0, color: '#00ff00', blur: 16, fill: true },
       }).setOrigin(0.5).setDepth(25);

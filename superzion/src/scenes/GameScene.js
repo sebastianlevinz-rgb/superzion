@@ -217,7 +217,7 @@ export default class GameScene extends Phaser.Scene {
           ease: 'Sine.easeInOut',
         });
         // Title text
-        const title = this.add.text(bx, by - 60, 'BOSS: FOAM BEARD', {
+        const title = this.add.text(bx, by - 60, 'BOSS: ISMAIL HANIYEH', {
           fontFamily: 'monospace', fontSize: '12px', color: '#FFD700',
           shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 8, fill: true },
         }).setOrigin(0.5).setDepth(50).setAlpha(0);
@@ -234,7 +234,7 @@ export default class GameScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(100);
     this.bossHpFill = this.add.rectangle(480, 48, 156, 8, 0xff2222)
       .setScrollFactor(0).setDepth(101);
-    this.bossHpLabel = this.add.text(480, 36, 'FOAM BEARD', {
+    this.bossHpLabel = this.add.text(480, 36, 'ISMAIL HANIYEH', {
       fontFamily: 'monospace', fontSize: '8px', color: '#FFD700',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
   }

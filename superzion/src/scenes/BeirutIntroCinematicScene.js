@@ -50,13 +50,9 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
         setup: () => this._darkOverlay(),
       },
       {
-        text: 'A weapons shipment is arriving at the Port of Beirut. Hidden in cargo containers.',
+        text: 'A Beeper shipment is arriving at the Port of Beirut. Hidden in cargo containers.',
         color: '#00e5ff', size: 18, y: H * 0.45,
         setup: () => this._briefingOverlay(),
-      },
-      {
-        text: 'If those weapons reach their destination, our cities burn.',
-        color: '#ff4444', size: 22, y: H * 0.45,
       },
       {
         text: 'Time to become invisible.',

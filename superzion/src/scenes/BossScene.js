@@ -214,7 +214,7 @@ export default class BossScene extends Phaser.Scene {
       'X: Heavy bombs (limited)',
       'SHIFT: Barrel roll (invulnerability)',
       'C: Anti-missile pulse',
-      'Defeat SUPREME TURBAN',
+      'Defeat AYATOLLAH ALI KHAMENEI',
       '',
       'Attack when his shield drops!',
       'Double-tap LEFT/RIGHT for barrel roll',
@@ -280,7 +280,7 @@ export default class BossScene extends Phaser.Scene {
     this.hpBarFill = this.add.rectangle(W / 2 - 198, 20, 396, 10, 0xff2222).setDepth(31);
     this.hpBarFill.setOrigin(0, 0.5);
     this.hpBarFill.setAlpha(0);
-    this.hpBarLabel = this.add.text(W / 2, 20, 'SUPREME TURBAN', {
+    this.hpBarLabel = this.add.text(W / 2, 20, 'AYATOLLAH ALI KHAMENEI', {
       fontFamily: 'monospace', fontSize: '9px', color: '#ffffff',
     }).setOrigin(0.5).setDepth(32).setAlpha(0);
 

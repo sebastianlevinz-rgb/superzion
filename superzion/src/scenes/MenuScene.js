@@ -382,7 +382,7 @@ export default class MenuScene extends Phaser.Scene {
       'Sabotage enemy port operations in Beirut.\nSwap cargo manifests. Escape before detection.',
       'Precision aerial bombardment over Lebanon.\nDestroy the underground bunker. Return to carrier.',
       'Drone reconnaissance and tunnel infiltration in Gaza.\nMap tunnels. Navigate underground. Destroy command center.',
-      'B-2 Stealth Bomber night mission over Iran.\nPenetrate defenses. Destroy Natanz nuclear facility.',
+      'B-2 Stealth Bomber night mission over Iran.\nPenetrate defenses. Destroy Fordow nuclear facility.',
       'The final confrontation. Destroy The Commander.\nEnd the war. No retreat. No surrender.',
     ];
     this.descText.setText(descs[this.selectedIndex]);

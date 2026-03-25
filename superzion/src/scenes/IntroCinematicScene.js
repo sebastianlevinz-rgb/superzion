@@ -49,7 +49,7 @@ export default class IntroCinematicScene extends BaseCinematicScene {
         setup: () => this._briefingOverlay(),
       },
       {
-        text: 'The man in charge: Foam Beard. A businessman who sells weapons like others sell furniture.',
+        text: 'The man in charge: Ismail Haniyeh. Chairman of the Hamas Political Bureau.',
         color: '#ff8800', size: 18, y: H * 0.82,
         setup: () => {
           this._darkOverlay();
@@ -59,7 +59,7 @@ export default class IntroCinematicScene extends BaseCinematicScene {
             this.tweens.add({ targets: boss, alpha: 1, duration: 600 });
             SoundManager.get().playExplosion();
           }
-          const label = this.add.text(W / 2, H * 0.6, 'FOAM BEARD', {
+          const label = this.add.text(W / 2, H * 0.6, 'ISMAIL HANIYEH', {
             fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
             shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 10, fill: true },
           }).setOrigin(0.5).setDepth(11);

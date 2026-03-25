@@ -68,7 +68,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
         },
       },
       {
-        text: "And hiding inside: Angry Eyebrows. The man who turned the underground into a fortress.",
+        text: "And hiding inside: Yahya Sinwar. The man who turned the underground into a fortress.",
         color: '#ff4444', size: 18, y: H * 0.82,
         setup: () => {
           this._darkOverlay();
@@ -78,7 +78,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
             this.tweens.add({ targets: boss, alpha: 1, duration: 600 });
             SoundManager.get().playExplosion();
           }
-          this._addPageVisual(this.add.text(W / 2, H * 0.6, 'ANGRY EYEBROWS', {
+          this._addPageVisual(this.add.text(W / 2, H * 0.6, 'YAHYA SINWAR', {
             fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
             shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 10, fill: true },
           }).setOrigin(0.5).setDepth(11));

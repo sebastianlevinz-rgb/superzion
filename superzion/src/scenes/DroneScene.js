@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
 // DroneScene — Level 4: Operation Underground
 // Phase 1: City precision minigame (navigate to glowing window)
-// Phase 2: Boss fight — ANGRY EYEBROWS (top-down destroyed room)
-//   Angry Eyebrows hides behind armchair (phase 1), roams and throws
+// Phase 2: Boss fight — YAHYA SINWAR (top-down destroyed room)
+//   Yahya Sinwar hides behind armchair (phase 1), roams and throws
 //   objects (phase 2), then charges desperately (phase 3).
 //   Drone uses SPACE to shoot, X for missiles, SHIFT to dash.
 // + Victory/Results overlay
@@ -903,7 +903,7 @@ function _generateBossProjectileTextures(scene) {
 
 // ═══════════════════════════════════════════════════════════════
 // BOSS PEEK TEXTURE — only eyebrows + eyes above armchair
-// The visual signature of "Angry Eyebrows" hiding behind cover
+// The visual signature of "Yahya Sinwar" hiding behind cover
 // ═══════════════════════════════════════════════════════════════
 function _generateBossPeekTexture(scene) {
   if (scene.textures.exists('ts_boss4_peek')) return;
@@ -1300,7 +1300,7 @@ export default class DroneScene extends Phaser.Scene {
       'Enter through the target window',
       'Then: SPACE to shoot, X for missiles',
       'SHIFT: Dodge/dash',
-      'Defeat ANGRY EYEBROWS',
+      'Defeat YAHYA SINWAR',
     ]);
   }
 
@@ -1343,7 +1343,7 @@ export default class DroneScene extends Phaser.Scene {
       this.hudTimer.setText('');
     } else if (this.phase === 'boss') {
       this.hudPhase.setText('HIDEOUT');
-      this.hudObjective.setText('ELIMINATE ANGRY EYEBROWS');
+      this.hudObjective.setText('ELIMINATE YAHYA SINWAR');
       this.hudTimer.setText('');
     }
   }
@@ -1908,8 +1908,8 @@ export default class DroneScene extends Phaser.Scene {
         this.time.delayedCall(1200, () => {
           interiorBg.setFillStyle(0x1a1810);
 
-          // "ANGRY EYEBROWS" text
-          const angryTitle = this.add.text(W / 2, H / 2 - 30, 'ANGRY EYEBROWS', {
+          // "YAHYA SINWAR" text
+          const angryTitle = this.add.text(W / 2, H / 2 - 30, 'YAHYA SINWAR', {
             fontFamily: 'monospace', fontSize: '42px', color: '#ff4400',
             fontStyle: 'bold',
             shadow: { offsetX: 0, offsetY: 0, color: '#ff4400', blur: 20, fill: true },
@@ -1983,7 +1983,7 @@ export default class DroneScene extends Phaser.Scene {
       shadow: { offsetX: 0, offsetY: 0, color: '#ff8800', blur: 10, fill: true },
     }).setOrigin(0.5).setDepth(41);
 
-    const sub = this.add.text(W / 2, H / 2 + 20, 'INFILTRATE AND ELIMINATE ANGRY EYEBROWS', {
+    const sub = this.add.text(W / 2, H / 2 + 20, 'INFILTRATE AND ELIMINATE YAHYA SINWAR', {
       fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
     }).setOrigin(0.5).setDepth(41);
 
@@ -1996,7 +1996,7 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   // ═════════════════════════════════════════════════════════════
-  // BOSS FIGHT: ANGRY EYEBROWS (top-down destroyed room)
+  // BOSS FIGHT: YAHYA SINWAR (top-down destroyed room)
   // ═════════════════════════════════════════════════════════════
   _startBossFight() {
     this.phase = 'boss';
@@ -2237,7 +2237,7 @@ export default class DroneScene extends Phaser.Scene {
     this.bossHPBarFill = this.add.rectangle(barX + 1, barY + 1, barW - 2, barH - 2, 0xff0000)
       .setDepth(52).setScrollFactor(0).setOrigin(0, 0);
 
-    this.bossHPBarLabel = this.add.text(W / 2, barY - 2, 'ANGRY EYEBROWS', {
+    this.bossHPBarLabel = this.add.text(W / 2, barY - 2, 'YAHYA SINWAR', {
       fontFamily: 'monospace', fontSize: '12px', color: '#ff4444',
       shadow: { offsetX: 0, offsetY: 0, color: '#ff4444', blur: 6, fill: true },
     }).setOrigin(0.5, 1).setDepth(53).setScrollFactor(0);
@@ -2321,7 +2321,7 @@ export default class DroneScene extends Phaser.Scene {
           this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
         }
 
-        const nameText = this.add.text(W / 2, H / 2, 'ANGRY EYEBROWS', {
+        const nameText = this.add.text(W / 2, H / 2, 'YAHYA SINWAR', {
           fontFamily: 'monospace', fontSize: '40px', color: '#ff4444',
           shadow: { offsetX: 0, offsetY: 0, color: '#ff4444', blur: 20, fill: true },
         }).setOrigin(0.5).setDepth(55).setScrollFactor(0).setAlpha(0);
@@ -3685,9 +3685,9 @@ export default class DroneScene extends Phaser.Scene {
       }
     });
 
-    // 3. "ANGRY EYEBROWS IS DOWN" text (gold, centered, glow)
+    // 3. "YAHYA SINWAR IS DOWN" text (gold, centered, glow)
     this.time.delayedCall(2500, () => {
-      const victoryText = this.add.text(W / 2, H / 2, 'ANGRY EYEBROWS IS DOWN', {
+      const victoryText = this.add.text(W / 2, H / 2, 'YAHYA SINWAR IS DOWN', {
         fontFamily: 'monospace', fontSize: '32px', color: '#FFD700',
         fontStyle: 'bold',
         shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 16, fill: true },
@@ -3879,7 +3879,7 @@ export default class DroneScene extends Phaser.Scene {
     const bossStatus = this.bossDefeated ? 'ELIMINATED' : `${this.bossHP}/${this.bossMaxHP} HP remaining`;
     const stats = [
       { label: 'ENEMIES DOWNED', value: `${this.enemiesKilled}` },
-      { label: 'ANGRY EYEBROWS', value: bossStatus },
+      { label: 'YAHYA SINWAR', value: bossStatus },
       { label: 'DRONE STATUS', value: this.droneHP > 0 ? 'INTACT' : 'DESTROYED' },
       { label: 'SCORE', value: `${this.score}` },
     ];

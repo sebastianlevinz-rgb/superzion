@@ -27,7 +27,7 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
 
     this._initPages([
       {
-        text: "The underground empire is finished. Angry Eyebrows won't give orders again.",
+        text: "The underground empire is finished. Yahya Sinwar won't give orders again.",
         color: '#4488ff', size: 20, y: H * 0.82,
         setup: () => {
           // Tunnels collapsing overlay

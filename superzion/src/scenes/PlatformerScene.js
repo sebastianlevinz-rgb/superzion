@@ -177,7 +177,7 @@ export default class PlatformerScene extends Phaser.Scene {
       'Reach the target building',
       'Then: SPACE to place bombs',
       'Find the KEY to unlock the exit',
-      'Defeat FOAM BEARD',
+      'Defeat ISMAIL HANIYEH',
     ]);
   }
 
