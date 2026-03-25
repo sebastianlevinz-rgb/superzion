@@ -1,5 +1,3 @@
 {
-  "installCommand": "cd superzion && npm install",
-  "buildCommand": "cd superzion && npx vite build",
-  "outputDirectory": "superzion/dist"
+  "rootDirectory": "superzion"
 }
