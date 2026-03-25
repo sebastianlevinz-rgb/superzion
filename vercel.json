@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd superzion && npm install && npm run build",
+  "outputDirectory": "superzion/dist",
+  "framework": "vite"
+}
