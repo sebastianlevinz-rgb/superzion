@@ -47,11 +47,12 @@ export default class GameIntroScene extends BaseCinematicScene {
         setup: () => this._setupHeroReveal(),
       },
 
-      // --- Title page ---
+      // --- Title page (auto-advance after 4 seconds as fallback) ---
       {
-        text: '',
+        text: ' ',
         color: '#000000', size: 1, y: -100,
         charDelay: 1,
+        autoAdvance: 4000,
         setup: () => this._setupTitleReveal(),
         cleanup: () => { if (this._emberTimer) { this._emberTimer.remove(); this._emberTimer = null; } },
       },
