@@ -614,12 +614,12 @@ export default class GameIntroScene extends BaseCinematicScene {
     mapGfx.fillStyle(0x4488ff, 0.15);
     mapGfx.fillCircle(cx, cy, 60);
 
-    // Enemy org logos surrounding the map
+    // Real enemy flags surrounding the map
     const orgPositions = [
-      { key: 'org_skull', x: cx - 180, y: cy - 40 },
-      { key: 'org_fist', x: cx + 180, y: cy - 40 },
-      { key: 'org_swords', x: cx - 120, y: cy + 80 },
-      { key: 'org_serpent', x: cx + 120, y: cy + 80 },
+      { key: 'flag_iran', x: cx - 180, y: cy - 40 },
+      { key: 'flag_hamas', x: cx + 180, y: cy - 40 },
+      { key: 'flag_hezbollah', x: cx - 120, y: cy + 80 },
+      { key: 'flag_palestine', x: cx + 120, y: cy + 80 },
     ];
     orgPositions.forEach((od, i) => {
       if (this.textures.exists(od.key)) {
@@ -657,23 +657,31 @@ export default class GameIntroScene extends BaseCinematicScene {
 
     bossKeys.forEach((key, i) => {
       const bx = spacing * (i + 1);
-      const by = H * 0.45;
+      const by = H * 0.4;
 
-      // Red glow behind
-      const glow = this.add.circle(bx, by, 40, 0xff2200, 0).setDepth(3);
+      // Red glow behind — bigger and brighter
+      const glow = this.add.circle(bx, by, 60, 0xff2200, 0).setDepth(3);
       this._addPageVisual(glow);
-      this.tweens.add({ targets: glow, alpha: 0.3, duration: 600, delay: i * 200, yoyo: true, repeat: -1 });
+      this.tweens.add({ targets: glow, alpha: 0.45, duration: 600, delay: i * 200, yoyo: true, repeat: -1 });
 
-      // Boss sprite (dark tint)
+      // Boss sprite (brighter red tint so details are visible)
       if (this.textures.exists(key)) {
-        const boss = this.add.sprite(bx, by, key).setDepth(5).setScale(0.8).setAlpha(0).setTint(0x220000);
+        const boss = this.add.sprite(bx, by, key).setDepth(5).setScale(0.5).setAlpha(0).setTint(0x882222);
         this._addPageVisual(boss);
-        this.tweens.add({ targets: boss, alpha: 0.8, duration: 400, delay: i * 200 });
+        // Zoom-in entrance: start at 0.5 scale, tween to 1.0
+        this.tweens.add({
+          targets: boss,
+          alpha: 1.0,
+          scale: 1.0,
+          duration: 400,
+          delay: i * 200,
+          ease: 'Back.easeOut',
+        });
       }
 
-      // Name label
-      const label = this.add.text(bx, by + 55, bossNames[i], {
-        fontFamily: 'monospace', fontSize: '10px', color: '#ff4444',
+      // Name label — bigger font
+      const label = this.add.text(bx, by + 65, bossNames[i], {
+        fontFamily: 'monospace', fontSize: '13px', color: '#ff4444',
       }).setOrigin(0.5).setDepth(6).setAlpha(0);
       this._addPageVisual(label);
       this.tweens.add({ targets: label, alpha: 1, duration: 400, delay: i * 200 + 200 });
@@ -694,12 +702,12 @@ export default class GameIntroScene extends BaseCinematicScene {
     bg.fillStyle(0x2a1508, 1);
     bg.fillRect(0, H - 60, W, 60);
 
-    // Org logos waving
+    // Real enemy flags waving
     const orgData = [
-      { key: 'org_skull', x: 150 },
-      { key: 'org_fist', x: W / 2 - 100 },
-      { key: 'org_swords', x: W / 2 + 100 },
-      { key: 'org_serpent', x: W - 150 },
+      { key: 'flag_iran', x: 120 },
+      { key: 'flag_hamas', x: W / 2 - 120 },
+      { key: 'flag_hezbollah', x: W / 2 + 120 },
+      { key: 'flag_palestine', x: W - 120 },
     ];
     orgData.forEach((fd, i) => {
       if (this.textures.exists(fd.key)) {
@@ -783,6 +791,98 @@ export default class GameIntroScene extends BaseCinematicScene {
       domeGfx.fillRect(dx - 8, H - 95, 5, 18);
       domeGfx.fillRect(dx + 3, H - 95, 5, 18);
     }
+
+    // ── B-2 Spirit flying across with F-15 escorts and drone ──
+    this.time.delayedCall(1200, () => {
+      if (this.skipped) return;
+
+      // B-2 flying from left to right (large, center screen)
+      const b2Gfx = this.add.graphics().setDepth(15);
+      this._addPageVisual(b2Gfx);
+      let b2X = -100;
+
+      const drawB2 = () => {
+        b2Gfx.clear();
+        // Flying wing shape (top-down, nose right)
+        b2Gfx.fillStyle(0x3a3a3a);
+        b2Gfx.beginPath();
+        b2Gfx.moveTo(b2X + 40, 160);           // nose
+        b2Gfx.lineTo(b2X - 30, 160 - 50);      // upper wing tip
+        b2Gfx.lineTo(b2X - 15, 160 - 40);      // upper trailing
+        b2Gfx.lineTo(b2X - 5, 160);            // center rear
+        b2Gfx.lineTo(b2X - 15, 160 + 40);      // lower trailing
+        b2Gfx.lineTo(b2X - 30, 160 + 50);      // lower wing tip
+        b2Gfx.closePath();
+        b2Gfx.fill();
+        // Engine glow
+        b2Gfx.fillStyle(0xff6600, 0.6);
+        b2Gfx.fillCircle(b2X - 10, 160 - 10, 3);
+        b2Gfx.fillCircle(b2X - 10, 160 + 10, 3);
+      };
+
+      // F-15 escorts (smaller, above and below B-2)
+      const escort1Gfx = this.add.graphics().setDepth(14);
+      const escort2Gfx = this.add.graphics().setDepth(14);
+      this._addPageVisual(escort1Gfx);
+      this._addPageVisual(escort2Gfx);
+
+      // Drone following behind
+      const droneGfx = this.add.graphics().setDepth(13);
+      this._addPageVisual(droneGfx);
+
+      // Engine trails
+      const trailGfx = this.add.graphics().setDepth(12);
+      this._addPageVisual(trailGfx);
+
+      const flyTimer = this.time.addEvent({
+        delay: 16, repeat: 180, // ~3 seconds at 60fps
+        callback: () => {
+          b2X += 4;
+          drawB2();
+
+          // F-15 escort 1 (upper)
+          escort1Gfx.clear();
+          escort1Gfx.fillStyle(0x5a5a62);
+          const e1x = b2X - 80, e1y = 110;
+          escort1Gfx.beginPath();
+          escort1Gfx.moveTo(e1x + 15, e1y);
+          escort1Gfx.lineTo(e1x - 10, e1y - 12);
+          escort1Gfx.lineTo(e1x - 5, e1y);
+          escort1Gfx.lineTo(e1x - 10, e1y + 12);
+          escort1Gfx.closePath();
+          escort1Gfx.fill();
+
+          // F-15 escort 2 (lower)
+          escort2Gfx.clear();
+          escort2Gfx.fillStyle(0x5a5a62);
+          const e2x = b2X - 80, e2y = 210;
+          escort2Gfx.beginPath();
+          escort2Gfx.moveTo(e2x + 15, e2y);
+          escort2Gfx.lineTo(e2x - 10, e2y - 12);
+          escort2Gfx.lineTo(e2x - 5, e2y);
+          escort2Gfx.lineTo(e2x - 10, e2y + 12);
+          escort2Gfx.closePath();
+          escort2Gfx.fill();
+
+          // Drone (small, trailing)
+          droneGfx.clear();
+          droneGfx.fillStyle(0x4a6a4a);
+          const dx = b2X - 140, dy = 160;
+          droneGfx.fillRect(dx - 6, dy - 2, 12, 4);
+          droneGfx.fillRect(dx - 3, dy - 6, 6, 12);
+
+          // Engine trails
+          trailGfx.clear();
+          trailGfx.fillStyle(0xff8800, 0.15);
+          trailGfx.fillRect(b2X - 40, 155, 30, 2);
+          trailGfx.fillRect(b2X - 40, 165, 30, 2);
+          trailGfx.fillStyle(0xaaaaaa, 0.1);
+          trailGfx.fillRect(b2X - 60, 155, 40, 3);
+          trailGfx.fillRect(b2X - 60, 166, 40, 3);
+        },
+      });
+      this._addPageVisual({ destroy: () => flyTimer.remove() });
+    });
   }
 
   /** SuperZion hero reveal — smoky battlefield, hero walks in */
@@ -828,7 +928,87 @@ export default class GameIntroScene extends BaseCinematicScene {
       });
     }
 
-    // Background smoke wisps (no explosions — keep intro quiet)
+    // ── B-2 Spirit flyover with F-15 escorts and drone ──
+    this.time.delayedCall(1200, () => {
+      if (this.skipped) return;
+
+      const b2Gfx = this.add.graphics().setDepth(15);
+      this._addPageVisual(b2Gfx);
+      let b2X = -100;
+
+      const drawB2 = () => {
+        b2Gfx.clear();
+        b2Gfx.fillStyle(0x3a3a3a);
+        b2Gfx.beginPath();
+        b2Gfx.moveTo(b2X + 40, 80);
+        b2Gfx.lineTo(b2X - 30, 80 - 50);
+        b2Gfx.lineTo(b2X - 15, 80 - 40);
+        b2Gfx.lineTo(b2X - 5, 80);
+        b2Gfx.lineTo(b2X - 15, 80 + 40);
+        b2Gfx.lineTo(b2X - 30, 80 + 50);
+        b2Gfx.closePath();
+        b2Gfx.fill();
+        b2Gfx.fillStyle(0xff6600, 0.6);
+        b2Gfx.fillCircle(b2X - 10, 80 - 10, 3);
+        b2Gfx.fillCircle(b2X - 10, 80 + 10, 3);
+      };
+
+      const escort1Gfx = this.add.graphics().setDepth(14);
+      const escort2Gfx = this.add.graphics().setDepth(14);
+      this._addPageVisual(escort1Gfx);
+      this._addPageVisual(escort2Gfx);
+
+      const droneGfx = this.add.graphics().setDepth(13);
+      this._addPageVisual(droneGfx);
+
+      const trailGfx = this.add.graphics().setDepth(12);
+      this._addPageVisual(trailGfx);
+
+      const flyTimer = this.time.addEvent({
+        delay: 16, repeat: 180,
+        callback: () => {
+          b2X += 4;
+          drawB2();
+
+          escort1Gfx.clear();
+          escort1Gfx.fillStyle(0x5a5a62);
+          const e1x = b2X - 80, e1y = 40;
+          escort1Gfx.beginPath();
+          escort1Gfx.moveTo(e1x + 15, e1y);
+          escort1Gfx.lineTo(e1x - 10, e1y - 12);
+          escort1Gfx.lineTo(e1x - 5, e1y);
+          escort1Gfx.lineTo(e1x - 10, e1y + 12);
+          escort1Gfx.closePath();
+          escort1Gfx.fill();
+
+          escort2Gfx.clear();
+          escort2Gfx.fillStyle(0x5a5a62);
+          const e2x = b2X - 80, e2y = 120;
+          escort2Gfx.beginPath();
+          escort2Gfx.moveTo(e2x + 15, e2y);
+          escort2Gfx.lineTo(e2x - 10, e2y - 12);
+          escort2Gfx.lineTo(e2x - 5, e2y);
+          escort2Gfx.lineTo(e2x - 10, e2y + 12);
+          escort2Gfx.closePath();
+          escort2Gfx.fill();
+
+          droneGfx.clear();
+          droneGfx.fillStyle(0x4a6a4a);
+          const ddx = b2X - 140, ddy = 80;
+          droneGfx.fillRect(ddx - 6, ddy - 2, 12, 4);
+          droneGfx.fillRect(ddx - 3, ddy - 6, 6, 12);
+
+          trailGfx.clear();
+          trailGfx.fillStyle(0xff8800, 0.15);
+          trailGfx.fillRect(b2X - 40, 75, 30, 2);
+          trailGfx.fillRect(b2X - 40, 85, 30, 2);
+          trailGfx.fillStyle(0xaaaaaa, 0.1);
+          trailGfx.fillRect(b2X - 60, 75, 40, 3);
+          trailGfx.fillRect(b2X - 60, 86, 40, 3);
+        },
+      });
+      this._addPageVisual({ destroy: () => flyTimer.remove() });
+    });
   }
 
   /** SUPERZION title reveal — post-apocalyptic chrome metal epic */

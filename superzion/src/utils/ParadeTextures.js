@@ -206,6 +206,89 @@ export function createEnemyFlag(scene) {
   }, 140, 90);
 }
 
+export function createHamasFlag(scene) {
+  wavingSheet(scene, 'flag_hamas', (ctx, w, h) => {
+    // Green background
+    ctx.fillStyle = '#006400';
+    ctx.fillRect(0, 0, w, h);
+    // White Arabic-style text simulation (horizontal lines in center)
+    ctx.fillStyle = '#ffffff';
+    const cx = w / 2, cy = h / 2;
+    for (let i = -3; i <= 3; i++) {
+      const ly = cy - 18 + i * 5;
+      const lw = 30 + Math.abs(i) * 4;
+      ctx.fillRect(cx - lw / 2, ly, lw, 2);
+    }
+    // White dome/mosque shape at center-bottom
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy + 12, 14, Math.PI, 0);
+    ctx.fill();
+    // Dome pillars
+    ctx.fillRect(cx - 14, cy + 12, 4, 14);
+    ctx.fillRect(cx + 10, cy + 12, 4, 14);
+    ctx.fillRect(cx - 2, cy + 12, 4, 14);
+    // Sword pointing upward from dome
+    ctx.fillRect(cx - 1, cy - 10, 2, 22);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 14);
+    ctx.lineTo(cx + 4, cy - 8);
+    ctx.lineTo(cx - 4, cy - 8);
+    ctx.closePath();
+    ctx.fill();
+    // Crossguard on sword
+    ctx.fillRect(cx - 5, cy + 2, 10, 2);
+  }, 140, 90);
+}
+
+export function createHezbollahFlag(scene) {
+  wavingSheet(scene, 'flag_hezbollah', (ctx, w, h) => {
+    // Yellow background
+    ctx.fillStyle = '#DAA520';
+    ctx.fillRect(0, 0, w, h);
+    // Green text/logo simulation (green brush strokes in center)
+    ctx.fillStyle = '#006400';
+    const cx = w / 2, cy = h / 2;
+    // Horizontal green text-like strokes
+    for (let i = -2; i <= 2; i++) {
+      const ly = cy - 24 + i * 6;
+      const lw = 38 - Math.abs(i) * 6;
+      ctx.fillRect(cx - lw / 2, ly, lw, 3);
+    }
+    // Green raised fist holding rifle (central emblem)
+    ctx.fillStyle = '#006400';
+    // Rifle (vertical line)
+    ctx.fillRect(cx - 1, cy - 18, 3, 36);
+    // Rifle barrel end
+    ctx.fillRect(cx - 3, cy - 20, 7, 3);
+    // Fist body
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy + 8);
+    ctx.quadraticCurveTo(cx - 12, cy - 2, cx - 8, cy - 8);
+    ctx.lineTo(cx + 8, cy - 8);
+    ctx.quadraticCurveTo(cx + 12, cy - 2, cx + 10, cy + 8);
+    ctx.closePath();
+    ctx.fill();
+    // Wrist
+    ctx.fillRect(cx - 5, cy + 8, 10, 10);
+    // Finger lines
+    ctx.strokeStyle = '#004400';
+    ctx.lineWidth = 1;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + i * 5, cy - 8);
+      ctx.lineTo(cx + i * 4, cy + 2);
+      ctx.stroke();
+    }
+    // Globe/arc at bottom
+    ctx.strokeStyle = '#006400';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy + 26, 18, Math.PI + 0.3, -0.3);
+    ctx.stroke();
+  }, 140, 90);
+}
+
 // ═════════════════════════════════════════════════════════════
 // BOSS PARADE SPRITES (facing left, static pose)
 // ═════════════════════════════════════════════════════════════
@@ -1887,6 +1970,8 @@ export function generateAllParadeTextures(scene) {
   createPalestineFlag(scene);
   createIsraelFlag(scene);
   createEnemyFlag(scene);
+  createHamasFlag(scene);
+  createHezbollahFlag(scene);
   // Fictional org logos (for Axis of Evil section)
   createOrgSkull(scene);
   createOrgFist(scene);
