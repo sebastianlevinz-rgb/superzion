@@ -204,56 +204,52 @@ export default class PlatformerScene extends Phaser.Scene {
   // Physics: jump_h=98px, jump_d=187px. Safe gaps: <=70px vert, <=140px horiz.
   // ═══════════════════════════════════════════════════════════════
   _createPlatforms() {
+    // Generate a simple 32x32 platform texture
+    if (!this.textures.exists('_plat_block')) {
+      const c = document.createElement('canvas');
+      c.width = 32; c.height = 32;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#666666';
+      ctx.fillRect(0, 0, 32, 32);
+      ctx.fillStyle = '#888888';
+      ctx.fillRect(0, 0, 32, 3);
+      this.textures.addCanvas('_plat_block', c);
+    }
+    if (!this.textures.exists('_ground_block')) {
+      const c = document.createElement('canvas');
+      c.width = 32; c.height = 32;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#555555';
+      ctx.fillRect(0, 0, 32, 32);
+      ctx.fillStyle = '#666666';
+      ctx.fillRect(0, 0, 32, 2);
+      this.textures.addCanvas('_ground_block', c);
+    }
+
     this.platforms = this.physics.add.staticGroup();
 
-    // ── SIMPLE SOLID PLATFORMS using rectangles — no texture scaling bugs ──
+    // ── PLATFORMS — using staticGroup.create() the standard Phaser way ──
     const layout = [
-      { x: 200,  y: 430, w: 500, h: 24 },   // Wide starting platform
-      { x: 560,  y: 395, w: 240, h: 24 },   // Step up
-      { x: 800,  y: 360, w: 240, h: 24 },   // Step up (guard here)
-      { x: 1060, y: 330, w: 180, h: 24 },   // Jump across
-      { x: 1320, y: 360, w: 360, h: 24 },   // Target building roof
-      { x: 1540, y: 360, w: 200, h: 24 },   // Target building extension
+      { x: 200,  y: 430, sx: 16, sy: 0.75 },  // Wide starting platform
+      { x: 560,  y: 395, sx: 8,  sy: 0.75 },  // Step up
+      { x: 800,  y: 360, sx: 8,  sy: 0.75 },  // Step up (guard here)
+      { x: 1060, y: 330, sx: 6,  sy: 0.75 },  // Jump across
+      { x: 1320, y: 360, sx: 12, sy: 0.75 },  // Target building roof
+      { x: 1540, y: 360, sx: 7,  sy: 0.75 },  // Target building extension
     ];
 
     for (const def of layout) {
-      const p = this.add.rectangle(def.x, def.y, def.w, def.h, 0x666666);
-      this.physics.add.existing(p, true); // static body
+      const p = this.platforms.create(def.x, def.y, '_plat_block');
+      p.setScale(def.sx, def.sy).refreshBody();
       p.setDepth(5);
-      // Top edge highlight
-      const edge = this.add.rectangle(def.x, def.y - def.h / 2, def.w, 2, 0xbbbbaa, 0.9);
-      edge.setDepth(6);
-      this.platforms.add(p);
     }
 
-    // ── SOLID GROUND (street level) — thick and impossible to clip through ──
-    const ground = this.add.rectangle(WORLD_WIDTH / 2, 490, WORLD_WIDTH, 80, 0x555555);
-    this.physics.add.existing(ground, true);
+    // ── SOLID GROUND — very thick, impossible to clip ──
+    const ground = this.platforms.create(WORLD_WIDTH / 2, 480, '_ground_block');
+    ground.setScale(WORLD_WIDTH / 32, 4).refreshBody();  // 128px thick
     ground.setDepth(5);
-    this.platforms.add(ground);
 
-    // Street markings
-    const streetGfx = this.add.graphics().setDepth(6);
-    streetGfx.lineStyle(2, 0xFFDD44, 0.7);
-    for (let sx = 0; sx < WORLD_WIDTH; sx += 40) {
-      streetGfx.lineBetween(sx, 454, sx + 20, 454);
-    }
-    streetGfx.lineStyle(1.5, 0xFFFFFF, 0.5);
-    streetGfx.lineBetween(0, 448, WORLD_WIDTH, 448);
-
-    // ── RESCUE STEPS (back to route from ground) ──
-    const rescueSteps = [
-      { x: 500, y: 430, w: 80 },
-      { x: 1000, y: 430, w: 80 },
-    ];
-    for (const rs of rescueSteps) {
-      const rp = this.add.rectangle(rs.x, rs.y, rs.w, 16, 0xaaaaaa);
-      this.physics.add.existing(rp, true);
-      rp.setDepth(5);
-      this.platforms.add(rp);
-    }
-
-    // ── UNDERGROUND FILL (visual only — so you don't see sky below) ──
+    // ── UNDERGROUND FILL (visual) ──
     const underGfx = this.add.graphics().setDepth(4);
     underGfx.fillStyle(0x3a3a3a, 1);
     underGfx.fillRect(0, 530, WORLD_WIDTH, 100);
@@ -733,54 +729,16 @@ export default class PlatformerScene extends Phaser.Scene {
     if (wantsJump && (onGround || canCoyoteJump)) {
       this.player.body.setVelocityY(JUMP_VELOCITY);
       SoundManager.get().playJump();
-      this.lastOnGround = 0; // consume coyote time
-      // Stretch on jump
-      this.tweens.add({
-        targets: this.player,
-        scaleX: 0.85 * 1,
-        scaleY: 1.15 * 1,
-        duration: 100,
-        yoyo: true,
-        ease: 'Quad.easeOut',
-        onComplete: () => {
-          if (this.player && this.player.active) this.player.setScale(1);
-        },
-      });
+      this.lastOnGround = 0;
     } else if (onGround && hasBufferedJump && this.jumpBufferTimer > 0) {
       this.player.body.setVelocityY(JUMP_VELOCITY);
       SoundManager.get().playJump();
-      this.jumpBufferTimer = 0; // consume buffer
-      // Stretch on jump
-      this.tweens.add({
-        targets: this.player,
-        scaleX: 0.85 * 1,
-        scaleY: 1.15 * 1,
-        duration: 100,
-        yoyo: true,
-        ease: 'Quad.easeOut',
-        onComplete: () => {
-          if (this.player && this.player.active) this.player.setScale(1);
-        },
-      });
+      this.jumpBufferTimer = 0;
     }
 
-    // Landing sound + squash effect
+    // Landing sound (NO squash/stretch — it changes physics body and causes clip-through)
     if (onGround && this.wasAirborne) {
       SoundManager.get().playLand();
-      // Squash on landing
-      this.tweens.add({
-        targets: this.player,
-        scaleX: 1.2 * 1,
-        scaleY: 0.8 * 1,
-        duration: 80,
-        yoyo: true,
-        ease: 'Quad.easeOut',
-        onComplete: () => {
-          if (this.player && this.player.active) {
-            this.player.setScale(1);
-          }
-        },
-      });
     }
     this.wasAirborne = !onGround;
 
