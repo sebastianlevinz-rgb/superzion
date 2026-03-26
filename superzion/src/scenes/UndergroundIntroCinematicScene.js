@@ -22,6 +22,12 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
     // Military HUD overlay
     this._drawMilitaryHUD(this, 'OPERATION LAST CHAIR', "31\u00b025'N 34\u00b023'E", '#00AA44');
 
+    // Status LEDs on HUD border — blinking green dots
+    for (let i = 0; i < 3; i++) {
+      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
+      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
+    }
+
     // Background silhouette: destroyed building rubble
     this._drawUndergroundSilhouette();
 
@@ -67,6 +73,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
             fontFamily: 'monospace', fontSize: '20px', color: '#44ff44',
             shadow: { offsetX: 0, offsetY: 0, color: '#44ff44', blur: 6, fill: true },
           }).setOrigin(0.5).setDepth(2));
+          this.time.delayedCall(500, () => { SoundManager.get().playInterceptSuccess(); });
         },
       },
       {
@@ -108,6 +115,20 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
           bg.fillStyle(0x444400, 0.15);
           bg.fillRect(W * 0.3, 130, W * 0.4, 20);
           bg.fillRect(W * 0.25, 290, W * 0.5, 20);
+          SoundManager.get().playDroneScan();
+
+          // Sonar ping — pulsing green circle that expands and fades
+          const sonarPing = () => {
+            if (this.skipped) return;
+            const ping = this.add.circle(W * 0.5, H * 0.4, 8, 0x00ff44, 0.35).setDepth(3);
+            this._addPageVisual(ping);
+            this.tweens.add({
+              targets: ping, scaleX: 6, scaleY: 6, alpha: 0, duration: 1800, ease: 'Sine.easeOut',
+              onComplete: () => { if (ping && ping.active) ping.destroy(); },
+            });
+          };
+          sonarPing();
+          this.time.addEvent({ delay: 2000, repeat: -1, callback: sonarPing });
         },
       },
       {
@@ -121,7 +142,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
             this.tweens.add({ targets: boss, alpha: 1, duration: 600 });
             SoundManager.get().playExplosion();
           }
-          this._addPageVisual(this.add.text(W / 2, H * 0.6, 'YAHYA SINWAR', {
+          this._addPageVisual(this.add.text(W / 2, H * 0.75, 'YAHYA SINWAR', {
             fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
             shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 10, fill: true },
           }).setOrigin(0.5).setDepth(11));
@@ -133,7 +154,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
         setup: () => this._darkOverlay(),
       },
       {
-        text: "Good thing we're not sending a man. We're sending something with no fear and perfect aim.",
+        text: "Good thing we're not sending a man. We're sending something with no fear and perfect aim. Time to pull the last chair from under him.",
         color: '#FFD700', size: 20, y: H * 0.82,
         setup: () => {
           this._darkOverlay();
@@ -149,6 +170,10 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
           droneGfx.fillStyle(0x88aacc, 0.8);
           droneGfx.fillCircle(dx, dy + 3, 3);
           this.tweens.add({ targets: droneGfx, y: droneGfx.y - 5, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+          const droneRef = SoundManager.get().playDroneHum();
+          this.time.delayedCall(3000, () => {
+            try { if (droneRef && droneRef.source) droneRef.source.stop(); if (droneRef && droneRef.osc) droneRef.osc.stop(); } catch(e) {}
+          });
           this._draw3DOperationTitle(this, 'OPERATION LAST CHAIR', 42);
         },
       },

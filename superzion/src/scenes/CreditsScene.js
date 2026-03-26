@@ -2,10 +2,10 @@
 // CreditsScene — Star Wars scrolling credits after BossScene
 // ═══════════════════════════════════════════════════════════════
 
+import Phaser from 'phaser';
 import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
-import { createCliffBackground } from '../utils/CinematicTextures.js';
 
 export default class CreditsScene extends BaseCinematicScene {
   constructor() { super('CreditsScene'); }
@@ -15,11 +15,52 @@ export default class CreditsScene extends BaseCinematicScene {
     MusicManager.get().playMenuMusic();
     this.done = false;
 
-    // Background — cliff at low alpha
-    createCliffBackground(this);
-    this.add.image(W / 2, H / 2, 'cin_cliff_bg').setDepth(0).setAlpha(0.25);
+    // Animated sunset background (procedural — no texture dependency)
+    const bgGfx = this.add.graphics().setDepth(0);
+    // Sky gradient: dark purple at top -> orange-gold at horizon (H*0.6)
+    for (let y = 0; y < H * 0.6; y++) {
+      const t = y / (H * 0.6);
+      const r = 18 + t * 140 | 0;   // dark purple -> warm orange
+      const g = 8 + t * 70 | 0;     // dark -> gold
+      const b = 40 - t * 30 | 0;    // purple tint fading
+      bgGfx.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      bgGfx.fillRect(0, y, W, 1);
+    }
+    // Sea gradient: orange-gold at horizon -> dark deep blue below
+    for (let y = Math.floor(H * 0.6); y < H; y++) {
+      const t = (y - H * 0.6) / (H * 0.4);
+      const r = 158 - t * 140 | 0;
+      const g = 78 - t * 70 | 0;
+      const b = 10 + t * 25 | 0;
+      bgGfx.fillStyle(Phaser.Display.Color.GetColor(Math.max(r, 0), Math.max(g, 0), b), 1);
+      bgGfx.fillRect(0, y, W, 1);
+    }
 
-    // Dark gradient overlay
+    // Sun glow circle — golden, pulsing slowly
+    const sunGlow = this.add.circle(W * 0.5, H * 0.6, 80, 0xffcc44, 0.15).setDepth(0);
+    this.tweens.add({
+      targets: sunGlow,
+      alpha: { from: 0.15, to: 0.08 },
+      scaleX: { from: 1, to: 1.08 },
+      scaleY: { from: 1, to: 1.08 },
+      duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // Subtle cloud ellipses with slow drift tweens
+    const cloudData = [
+      { x: W * 0.25, y: H * 0.3, w: 120, h: 20 },
+      { x: W * 0.7, y: H * 0.22, w: 100, h: 15 },
+      { x: W * 0.5, y: H * 0.42, w: 140, h: 18 },
+    ];
+    for (const cd of cloudData) {
+      const cloud = this.add.ellipse(cd.x, cd.y, cd.w, cd.h, 0xffddaa, 0.1).setDepth(0);
+      this.tweens.add({
+        targets: cloud, x: cd.x + 40, duration: 20000 + Math.random() * 10000,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      });
+    }
+
+    // Dark overlay so credits text remains readable
     const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.5).setDepth(1);
 
     // Credits content
@@ -35,8 +76,6 @@ export default class CreditsScene extends BaseCinematicScene {
       '',
       '',
       'Op. Tehran — Infiltration',
-      '',
-      'Op. Grim Beeper — Intelligence',
       '',
       'Op. Deep Strike — Aerial Assault',
       '',

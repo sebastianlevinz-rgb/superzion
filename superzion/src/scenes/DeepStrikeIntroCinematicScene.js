@@ -22,6 +22,12 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
     // Military HUD overlay (amber for this level)
     this._drawMilitaryHUD(this, 'OPERATION DEEP STRIKE', "33\u00b050'N 35\u00b045'E", '#CCAA00');
 
+    // Status LEDs on HUD border — blinking green dots
+    for (let i = 0; i < 3; i++) {
+      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
+      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
+    }
+
     // Background silhouette: F-15 jet + stars
     this._drawDeepStrikeSilhouette();
 
@@ -47,13 +53,11 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
             x1.lineBetween(W / 2 - 40, H * 0.35 - 20, W / 2 - 80, H * 0.35 + 20);
             this._addPageVisual(x1);
           }
-          this._addPageVisual(this.add.text(W / 2 - 60, H * 0.48, 'Haniyeh \u2713', {
-            fontFamily: 'monospace', fontSize: '11px', color: '#44ff44',
-          }).setOrigin(0.5).setDepth(2));
-          this._addPageVisual(this.add.text(W / 2, H * 0.7, 'Grim Beeper: COMPLETE \u2713', {
+          this._addPageVisual(this.add.text(W / 2, H * 0.55, 'Tehran: COMPLETE \u2713', {
             fontFamily: 'monospace', fontSize: '20px', color: '#44ff44',
             shadow: { offsetX: 0, offsetY: 0, color: '#44ff44', blur: 6, fill: true },
           }).setOrigin(0.5).setDepth(2));
+          this.time.delayedCall(500, () => { SoundManager.get().playInterceptSuccess(); });
         },
       },
       {
@@ -89,7 +93,7 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
             this.tweens.add({ targets: boss, alpha: 1, duration: 600 });
             SoundManager.get().playExplosion();
           }
-          this._addPageVisual(this.add.text(W / 2, H * 0.6, 'HASSAN NASRALLAH', {
+          this._addPageVisual(this.add.text(W / 2, H * 0.75, 'HASSAN NASRALLAH', {
             fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
             shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 10, fill: true },
           }).setOrigin(0.5).setDepth(11));
@@ -110,6 +114,7 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
           this._addPageVisual(glow);
           glow.fillStyle(0xffaa00, 0.12);
           glow.fillCircle(W * 0.3, H * 0.35, 60);
+          SoundManager.get().playJetEngine();
           if (this.textures.exists('cin_superzion')) {
             const hero = this.add.image(W / 2, H * 0.45, 'cin_superzion').setScale(1.6).setDepth(10).setAlpha(0);
             this._addPageVisual(hero);

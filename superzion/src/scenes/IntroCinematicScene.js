@@ -22,6 +22,12 @@ export default class IntroCinematicScene extends BaseCinematicScene {
     // Military HUD overlay (border, brackets, labels, timestamp)
     this._drawMilitaryHUD(this, 'THE TEHRAN GUEST ROOM', "35\u00b041'N 51\u00b025'E", '#00AA44');
 
+    // Status LEDs on HUD border — blinking green dots
+    for (let i = 0; i < 3; i++) {
+      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
+      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
+    }
+
     // Background silhouette: mosque dome + minaret + mountain ridge
     this._drawTehranSilhouette();
 
@@ -59,7 +65,7 @@ export default class IntroCinematicScene extends BaseCinematicScene {
             this.tweens.add({ targets: boss, alpha: 1, duration: 600 });
             SoundManager.get().playExplosion();
           }
-          const label = this.add.text(W / 2, H * 0.6, 'ISMAIL HANIYEH', {
+          const label = this.add.text(W / 2, H * 0.75, 'ISMAIL HANIYEH', {
             fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
             shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 10, fill: true },
           }).setOrigin(0.5).setDepth(11);
@@ -81,6 +87,7 @@ export default class IntroCinematicScene extends BaseCinematicScene {
             this._addPageVisual(hero);
             this.tweens.add({ targets: hero, alpha: 1, duration: 600 });
             this.tweens.add({ targets: hero, scaleY: 1.82, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            SoundManager.get().playAfterburner();
           }
           this._draw3DOperationTitle(this, 'THE TEHRAN GUEST ROOM', 42);
         },

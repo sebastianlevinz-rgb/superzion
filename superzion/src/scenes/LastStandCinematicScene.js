@@ -25,6 +25,12 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
     // Military HUD overlay (amber for final level)
     this._drawMilitaryHUD(this, 'OPERATION ENDGAME: DEATH TO THE REGIME', "32\u00b005'N 52\u00b000'E", '#CCAA00');
 
+    // Status LEDs on HUD border — blinking RED dots (war atmosphere)
+    for (let i = 0; i < 3; i++) {
+      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0xff2222, 0.6).setDepth(5);
+      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
+    }
+
     // Background silhouette: Ayatollah Ali Khamenei threatening figure + lightning
     this._drawLastStandSilhouette();
 
@@ -142,6 +148,11 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
         setup: () => {
           const bg = this.add.graphics().setDepth(1);
           this._addPageVisual(bg);
+
+          const battleRef = SoundManager.get().playAmbientBattle();
+          this.time.delayedCall(5000, () => {
+            try { if (battleRef) { if (battleRef.source) battleRef.source.stop(); if (battleRef.osc) battleRef.osc.stop(); if (battleRef.stopRumble) battleRef.stopRumble(); } } catch(e) {}
+          });
 
           // a. BLOOD SKY overlay
           bg.fillStyle(0x000000, 0.6);
@@ -267,7 +278,8 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
               targets: boss, alpha: 0.8,
               duration: 1200, yoyo: true, repeat: -1,
             });
-            SoundManager.get().playExplosion();
+            SoundManager.get().playBossEntrance();
+            this.time.delayedCall(300, () => { SoundManager.get().playExplosion(); });
           }
 
           this._addPageVisual(this.add.text(W / 2, H * 0.62, 'AYATOLLAH ALI KHAMENEI', {

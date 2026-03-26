@@ -22,6 +22,12 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
     // Military HUD overlay (amber)
     this._drawMilitaryHUD(this, 'OPERATION MOUNTAIN BREAKER', "33\u00b043'N 51\u00b043'E", '#CCAA00');
 
+    // Status LEDs on HUD border — blinking green dots
+    for (let i = 0; i < 3; i++) {
+      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
+      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
+    }
+
     // Background silhouette: B-2 bomber + mountain + radiation symbol
     this._drawMountainBreakerSilhouette();
 
@@ -60,6 +66,7 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
             fontFamily: 'monospace', fontSize: '20px', color: '#44ff44',
             shadow: { offsetX: 0, offsetY: 0, color: '#44ff44', blur: 6, fill: true },
           }).setOrigin(0.5).setDepth(2));
+          this.time.delayedCall(500, () => { SoundManager.get().playInterceptSuccess(); });
         },
       },
       {
@@ -114,6 +121,7 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
           }
           bg.fillStyle(0x2a3a2a, 1);
           bg.fillRect(0, H - 60, W, 60);
+          SoundManager.get().playRadarAlert();
         },
       },
       {
@@ -148,6 +156,10 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
           // Spotlight
           b2.fillStyle(0xffffcc, 0.06);
           b2.fillTriangle(cx, 0, cx - 80, cy - 20, cx + 80, cy - 20);
+          const b2Ref = SoundManager.get().playB2Engine();
+          this.time.delayedCall(4000, () => {
+            try { if (b2Ref && b2Ref.source) b2Ref.source.stop(); if (b2Ref && b2Ref.osc) b2Ref.osc.stop(); } catch(e) {}
+          });
           this._draw3DOperationTitle(this, 'OPERATION MOUNTAIN BREAKER', 42);
         },
       },
