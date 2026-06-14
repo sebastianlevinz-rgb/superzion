@@ -13,7 +13,7 @@
 import { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { SPRITES, KEY_COLOR } from "./prompts.js";
@@ -23,6 +23,16 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const RAW_DIR = join(__dir, "raw");
 const OUT_DIR = join(__dir, "..", "..", "superzion", "public", "assets", "sprites");
 const MODEL = "gemini-2.5-flash-image";
+
+// Load GEMINI_API_KEY from a local .env (gitignored) if not already set.
+if (!process.env.GEMINI_API_KEY) {
+  try {
+    for (const line of readFileSync(join(__dir, ".env"), "utf8").split("\n")) {
+      const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+?)\s*$/);
+      if (m) process.env[m[1]] = m[2];
+    }
+  } catch { /* no .env */ }
+}
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
