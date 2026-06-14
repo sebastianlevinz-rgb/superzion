@@ -210,7 +210,8 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
   }
 
   _darkOverlay() {
-    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080a10).setDepth(1).setAlpha(0.85);
+    if (this.textures.exists("cin_gaza")) { this._addPageVisual(this.add.image(W / 2, H / 2, "cin_gaza").setDepth(0).setAlpha(0.6)); }
+    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080a10).setDepth(1).setAlpha(0.55);
     this._addPageVisual(bg);
   }
 

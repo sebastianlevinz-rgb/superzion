@@ -137,7 +137,8 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
   }
 
   _briefingOverlay() {
-    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080808).setDepth(1).setAlpha(0.85);
+    if (this.textures.exists("cin_beirut_port")) { this._addPageVisual(this.add.image(W / 2, H / 2, "cin_beirut_port").setDepth(0).setAlpha(0.6)); }
+    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080808).setDepth(1).setAlpha(0.55);
     this._addPageVisual(bg);
     const crt = this.add.graphics().setDepth(2);
     this._addPageVisual(crt);
