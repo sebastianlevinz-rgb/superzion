@@ -17,7 +17,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { SPRITES, KEY_COLOR } from "./prompts.js";
-import { postProcess, postProcessBg } from "./postprocess.js";
+import { postProcess, postProcessBg, postProcessTile, postProcessTileAlpha } from "./postprocess.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const RAW_DIR = join(__dir, "raw");
@@ -88,7 +88,11 @@ async function run() {
       const rawBuf = await callModel(job.prompt, refPath, job.aspect);
       await writeFile(join(RAW_DIR, `${job.name}.png`), rawBuf);
 
-      const finalBuf = job.bg
+      const finalBuf = job.tileAlpha
+        ? await postProcessTileAlpha(rawBuf, job.size)
+        : job.tile
+        ? await postProcessTile(rawBuf, job.size)
+        : job.bg
         ? await postProcessBg(rawBuf, job.size)
         : await postProcess(rawBuf, job.size, job.key);
       await writeFile(join(OUT_DIR, `${job.name}.png`), finalBuf);

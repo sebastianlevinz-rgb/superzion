@@ -10,6 +10,8 @@ import MusicManager from '../systems/MusicManager.js';
 import DifficultyManager from '../systems/DifficultyManager.js';
 import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
 import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.js';
+import InputManager from '../systems/InputManager.js';
+import { screenFlash, impactParticles, hitFeedback } from '../systems/GameJuice.js';
 import {
   createF15SideSprite, createCarrierSide, createSunsetSky,
   createCloudLayer, createSeaSurface, createFarMountains,
@@ -30,10 +32,10 @@ const BUNKER_W = 200;     // bunker width
 const BUNKER_TOP_Y = 340; // top of bunker
 const LAYER_H = 20;       // each layer height
 
-// Distance thresholds (scroll pixels) — shortened for intensity
-const FLIGHT_COAST_DIST = 1500;
-const FLIGHT_MTN_DIST = 2400;
-const FLIGHT_TARGET_DIST = 3500;
+// Distance thresholds (scroll pixels) — extended for more dodging gameplay
+const FLIGHT_COAST_DIST = 2500;
+const FLIGHT_MTN_DIST = 4200;
+const FLIGHT_TARGET_DIST = 6000;
 const RETURN_COAST_DIST = 1100;
 const RETURN_SEA_DIST = 2000;
 const RETURN_CARRIER_DIST = 3100;
@@ -44,7 +46,7 @@ const SAM_LIFETIME = 4.0;      // seconds before self-destruct
 const SAM_SPEED = 182;         // px/s base speed (30% slower, phase-23)
 const SAM_MAX_ON_SCREEN = 2;   // max simultaneous missiles on screen
 const SAM_WARNING_TIME = 1.5;  // seconds of WARNING indicator before missile fires
-const CHAFF_TOTAL = 5;
+const CHAFF_TOTAL = 3;
 const FLAK_INTERVAL = 1.8;    // seconds between flak bursts
 
 // Airplane-style jet physics constants
@@ -55,17 +57,21 @@ const VERT_LERP = 3.0;           // how fast vertical velocity responds to input
 const VERT_DECAY = 2.0;          // how fast it levels out when no input
 const TILT_MAX_DEG = 20;         // max visual tilt in degrees
 const TILT_LERP_SPEED = 6;      // smooth tilt interpolation speed
-const LANDING_CRASH_VY = 150;    // max safe landing descent speed — above this = crash
+const LANDING_CRASH_VY = 165;    // max safe landing descent speed — above this = crash
 
 export default class BomberScene extends Phaser.Scene {
   constructor() { super('BomberScene'); }
 
   create() {
+    // Reset timeScale — Phaser doesn't reset it on scene restart
+    this.time.timeScale = 1;
+
     this.cameras.main.setBackgroundColor('#000000');
-    MusicManager.get().playLevel3Music('takeoff');
+    try { MusicManager.get().playLevel3Music('takeoff'); } catch (e) { /* audio may fail */ }
 
     // Controls overlay
     showControlsOverlay(this, 'ARROWS: Move | SPACE: Drop Bomb | C: Chaff | M: Mute');
+    this.events.once('shutdown', this.shutdown, this);
 
     // Generate textures
     createF15SideSprite(this);
@@ -271,7 +277,8 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   _setupInput() {
-    this.keys = {
+    this.inputManager = new InputManager(this, { preset: 'aerial' });
+    const rawKeys = {
       left: this.input.keyboard.addKey('LEFT'),
       right: this.input.keyboard.addKey('RIGHT'),
       up: this.input.keyboard.addKey('UP'),
@@ -284,6 +291,12 @@ export default class BomberScene extends Phaser.Scene {
       p: this.input.keyboard.addKey('P'),
       esc: this.input.keyboard.addKey('ESC'),
     };
+    this.keys = this.inputManager.enhanceKeys(rawKeys, {
+      left: 'left', right: 'right', up: 'up', down: 'down',
+      space: 'primary', c: 'secondary', esc: 'pause',
+    });
+    // Keep raw keys for JustDown checks
+    this._rawKeys = rawKeys;
     this.isPaused = false;
     this.pauseObjects = [];
   }
@@ -404,8 +417,9 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   _takeDamage() {
+    if (this.crashed || this.phase === 'dead' || this.phase === 'victory') return;
     this.armor--;
-    SoundManager.get().playMissileWarning();
+    try { SoundManager.get().playMissileWarning(); } catch (e) { /* audio may fail */ }
     this.cameras.main.shake(200, 0.015);
 
     // Red flash
@@ -423,6 +437,7 @@ export default class BomberScene extends Phaser.Scene {
     const exp = this.add.circle(x, y, radius, 0xff6600, 0.8).setDepth(15);
     this.explosions.push({ sprite: exp, life: 0.5 });
     if (radius > 20) this.cameras.main.shake(200, 0.01);
+    screenFlash(this, 0xff6600, 60, 0.15);
 
     // Spawn circular explosion particles
     const colors = [0xff6600, 0xff8800, 0xffaa00, 0xff2200, 0xffdd00, 0xffffff];
@@ -497,7 +512,7 @@ export default class BomberScene extends Phaser.Scene {
 
     this.instrText.setText('Engines spooling up... get ready to PULL UP!');
 
-    this.ambientRef = SoundManager.get().playCarrierAmbient();
+    try { this.ambientRef = SoundManager.get().playCarrierAmbient(); } catch (e) { /* audio may fail */ }
   }
 
   _updateTakeoff(dt) {
@@ -530,7 +545,7 @@ export default class BomberScene extends Phaser.Scene {
       // Player presses UP to launch — needs at least half speed
       if (this.keys.up.isDown && this.jetVX >= JET_SPEED / 2) {
         this._stopAmbient();
-        SoundManager.get().playAfterburner();
+        try { SoundManager.get().playAfterburner(); } catch (e) { /* audio */ }
         this.instrText.setText('');
         this.phase = 'launching';
         this.jetVY = -200;
@@ -544,7 +559,7 @@ export default class BomberScene extends Phaser.Scene {
         // Last chance: if pulling up at the edge
         if (this.keys.up.isDown && this.jetVX >= JET_SPEED / 2) {
           this._stopAmbient();
-          SoundManager.get().playAfterburner();
+          try { SoundManager.get().playAfterburner(); } catch (e) { /* audio */ }
           this.phase = 'launching';
           this.jetVY = -200;
           return;
@@ -565,7 +580,7 @@ export default class BomberScene extends Phaser.Scene {
       // If managed to gain altitude, transition to launch
       if (this.jetVY < -50) {
         this._stopAmbient();
-        SoundManager.get().playAfterburner();
+        try { SoundManager.get().playAfterburner(); } catch (e) { /* audio */ }
         this.phase = 'launching';
         return;
       }
@@ -591,10 +606,11 @@ export default class BomberScene extends Phaser.Scene {
   _splashCrash(x, y) {
     if (this.crashed) return;
     this.crashed = true;
+    this._hideLandingGauge();
     this.phase = 'dead';
     this._stopAmbient();
 
-    SoundManager.get().playExplosion();
+    try { SoundManager.get().playExplosion(); } catch (e) { /* audio may fail */ }
     this.cameras.main.shake(800, 0.06);
 
     if (this.jetSprite) this.jetSprite.setVisible(false);
@@ -697,7 +713,7 @@ export default class BomberScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
   _startFlight() {
     this.phase = 'flight';
-    MusicManager.get().playLevel3Music('flight');
+    try { MusicManager.get().playLevel3Music('flight'); } catch (e) { /* audio may fail */ }
     this.phaseTimer = 0;
     this.missileSpawnTimer = 0;
     this.flakTimer = 0;
@@ -714,7 +730,7 @@ export default class BomberScene extends Phaser.Scene {
     this.instrText.setText('ARROWS to dodge \u2014 C for chaff \u2014 Approaching target...');
     this.instrText.setColor('#888888');
 
-    this.ambientRef = SoundManager.get().playJetEngine();
+    try { this.ambientRef = SoundManager.get().playJetEngine(); } catch (e) { /* audio may fail */ }
   }
 
   _updateFlight(dt) {
@@ -851,7 +867,7 @@ export default class BomberScene extends Phaser.Scene {
       targets: warnText, alpha: 0.2, duration: 150, yoyo: true, repeat: blinkRepeats,
     });
     // Play warning sound
-    SoundManager.get().playMissileWarning();
+    try { SoundManager.get().playMissileWarning(); } catch (e) { /* audio */ }
     // Spawn the actual missile after warning period
     this.time.delayedCall(SAM_WARNING_TIME * 1000, () => {
       warn.destroy();
@@ -991,9 +1007,9 @@ export default class BomberScene extends Phaser.Scene {
   _deployChaff() {
     if (this.chaff <= 0 || this.chaffCooldown > 0) return;
     this.chaff--;
-    this.chaffCooldown = 1.0; // 1 second cooldown
+    this.chaffCooldown = 5.0; // 5 second cooldown
 
-    SoundManager.get().playAfterburner(); // reuse afterburner sound for chaff
+    try { SoundManager.get().playAfterburner(); } catch (e) { /* audio */ } // reuse afterburner sound for chaff
 
     // Spawn chaff particles
     for (let i = 0; i < 12; i++) {
@@ -1005,18 +1021,19 @@ export default class BomberScene extends Phaser.Scene {
       this.chaffParticles.push({ sprite: p, x: px, y: py, vx, vy, life: 1.2 });
     }
 
-    // Divert nearest tracking missile toward chaff cloud
+    // Divert nearest tracking missile toward chaff cloud (120px radius only)
     let nearest = null;
     let nearDist = Infinity;
     const chaffX = this.jetX;
     const chaffY = this.jetY;
+    const CHAFF_RADIUS = 120;
     for (const m of this.missiles) {
       const dx = m.x - chaffX;
       const dy = m.y - chaffY;
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d < nearDist) { nearDist = d; nearest = m; }
     }
-    if (nearest && nearDist < 300) {
+    if (nearest && nearDist < CHAFF_RADIUS) {
       // Force missile to target chaff position — it will fly past and explode
       nearest.life = Math.min(nearest.life, 0.6); // explode soon
       const dx = chaffX - nearest.x;
@@ -1049,7 +1066,7 @@ export default class BomberScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
   _startBombing() {
     this.phase = 'bombing';
-    MusicManager.get().playLevel3Music('bombing');
+    try { MusicManager.get().playLevel3Music('bombing'); } catch (e) { /* audio may fail */ }
     this.phaseTimer = 0;
     this.bombObjects = [];
     this._cleanupMissiles();
@@ -1121,6 +1138,10 @@ export default class BomberScene extends Phaser.Scene {
     this.bossBurstCooldown = 10; // every 10s
     this.bossFireRate = 3.5; // single missile every 3.5s
     this.bossDamageStage = 0; // 0-4 progressive damage
+
+    // Bunker turret counter-attack state
+    this._turretTimer = 2; // first shot after 2s
+    this._turretBullets = [];
 
     // ── Console in front of boss ──
     this.consoleSprite = this.add.rectangle(BUNKER_X, BUNKER_TOP_Y + 65, 50, 12, 0x2a2a3a).setDepth(3);
@@ -1240,7 +1261,7 @@ export default class BomberScene extends Phaser.Scene {
     this.instrText.setText('ARROWS to position \u2014 SPACE to drop bomb');
     this.instrText.setColor('#ff8800');
 
-    this.ambientRef = SoundManager.get().playJetEngine();
+    try { this.ambientRef = SoundManager.get().playJetEngine(); } catch (e) { /* audio */ }
   }
 
   _drawBunkerInterior(x, y, w, h) {
@@ -1303,7 +1324,7 @@ export default class BomberScene extends Phaser.Scene {
         yoyo: true, repeat: 1,
         onComplete: () => burstFlash.destroy(),
       });
-      SoundManager.get().playMissileWarning();
+      try { SoundManager.get().playMissileWarning(); } catch (e) { /* audio */ }
       this.time.delayedCall(500, () => {
         this._bossBurstTelegraphing = false;
         this._fireBossMissile(-0.3);
@@ -1338,13 +1359,13 @@ export default class BomberScene extends Phaser.Scene {
       trail: [],
       isBossMissile: true,
     });
-    SoundManager.get().playMissilePass();
+    try { SoundManager.get().playMissilePass(); } catch (e) { /* audio */ }
   }
 
   _setBossYelling(duration) {
     this.bossIsYelling = true;
     this.bossYellTimer = duration;
-    SoundManager.get().playMidBossRoar();
+    try { SoundManager.get().playBossRoar(); } catch (e) { /* audio */ }
     if (this.bossSprite && this.bossSprite.active) {
       this.bossSprite.setVisible(false);
       this.bossYellSprite.setVisible(true);
@@ -1587,6 +1608,43 @@ export default class BomberScene extends Phaser.Scene {
     this._updateBunkerSmoke(dt);
     this._updateBossHPBar();
 
+    // Bunker turret counter-attack
+    this._turretTimer -= dt;
+    if (this._turretTimer <= 0 && this.bunkerHP > 0) {
+      this._turretTimer = 2.5 - (this.phaseTimer * 0.05);
+      if (this._turretTimer < 1) this._turretTimer = 1;
+      // Fire upward toward player
+      const tx = BUNKER_X + (Math.random() - 0.5) * 40;
+      const ty = BUNKER_TOP_Y - 5;
+      const tdx = this.jetX - tx, tdy = this.jetY - ty;
+      const tdist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+      const tSpeed = 160;
+      const bullet = this.add.circle(tx, ty, 3, 0xff4444).setDepth(15);
+      this._turretBullets.push({ sprite: bullet, x: tx, y: ty, vx: (tdx / tdist) * tSpeed, vy: (tdy / tdist) * tSpeed });
+      try { SoundManager.get().playExplosion(); } catch (e) { /* audio */ }
+    }
+
+    // Update turret bullets
+    for (let i = this._turretBullets.length - 1; i >= 0; i--) {
+      const b = this._turretBullets[i];
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.sprite.setPosition(b.x, b.y);
+      // Hit player
+      const pdist = Phaser.Math.Distance.Between(b.x, b.y, this.jetX, this.jetY);
+      if (pdist < 20) {
+        b.sprite.destroy();
+        this._turretBullets.splice(i, 1);
+        this._takeDamage();
+        continue;
+      }
+      // Off screen
+      if (b.y < -20 || b.y > H + 20 || b.x < -20 || b.x > W + 20) {
+        b.sprite.destroy();
+        this._turretBullets.splice(i, 1);
+      }
+    }
+
     // Check end conditions
     if (this.bunkerHP <= 0) {
       this._stopAmbient();
@@ -1609,7 +1667,7 @@ export default class BomberScene extends Phaser.Scene {
   _dropBomb() {
     this.bombs--;
     this.bombsUsed++;
-    SoundManager.get().playBombDrop();
+    try { SoundManager.get().playBombDrop(); } catch (e) { /* audio */ }
 
     const bomb = this.add.circle(this.jetX, this.jetY + 20, 5, 0xffcc00).setDepth(9);
     // Bomb outline
@@ -1647,8 +1705,8 @@ export default class BomberScene extends Phaser.Scene {
               alpha: 0.1, duration: 300,
             });
             this.bunkerHP--;
-            SoundManager.get().playBombImpact();
-            SoundManager.get().playMidBossHit();
+            try { SoundManager.get().playBombImpact(); } catch (e) { /* audio */ }
+            try { SoundManager.get().playBossHit(); } catch (e) { /* audio */ }
             this._addExplosion(b.x, BUNKER_TOP_Y + layerIdx * LAYER_H + 10, 35);
 
             // Interior shakes on impact + boss hit feedback
@@ -1715,7 +1773,7 @@ export default class BomberScene extends Phaser.Scene {
           }
         } else if (b.y >= GROUND_Y) {
           // Ground miss
-          SoundManager.get().playBombImpact();
+          try { SoundManager.get().playBombImpact(); } catch (e) { /* audio */ }
           this._addExplosion(b.x, GROUND_Y - 5, 12);
         } else {
           continue; // still falling through bunker zone but not at ground yet
@@ -1758,7 +1816,7 @@ export default class BomberScene extends Phaser.Scene {
           life: SAM_LIFETIME,
           trail: [],
         });
-        SoundManager.get().playMissilePass();
+        try { SoundManager.get().playMissilePass(); } catch (e) { /* audio */ }
       }
     }
   }
@@ -1797,7 +1855,7 @@ export default class BomberScene extends Phaser.Scene {
       this.cameras.main.zoomTo(1, 800, 'Power2');
       this.cameras.main.pan(W / 2, H / 2, 800);
 
-      SoundManager.get().playExplosion();
+      try { SoundManager.get().playExplosion(); } catch (e) { /* audio */ }
 
       // Kill boss
       if (this.bossYellSprite) { this.bossYellSprite.destroy(); this.bossYellSprite = null; }
@@ -1947,7 +2005,7 @@ export default class BomberScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
   _startReturn() {
     this.phase = 'returning';
-    MusicManager.get().playLevel3Music('landing');
+    try { MusicManager.get().playLevel3Music('landing'); } catch (e) { /* audio */ }
 
     // Save checkpoint: bunker destroyed, now in return phase
     try { localStorage.setItem('superzion_checkpoint_l3', 'return'); } catch (e) { /* ignore */ }
@@ -1959,6 +2017,11 @@ export default class BomberScene extends Phaser.Scene {
     this.jetVX = -JET_SPEED;
     this.jetVY = 0;
     this._cleanupMissiles();
+    // Clean up turret bullets from bombing phase
+    if (this._turretBullets) {
+      for (const b of this._turretBullets) b.sprite.destroy();
+      this._turretBullets = [];
+    }
     this.returnTerrainStage = 0;
     this.returnDistance = 0;
 
@@ -1970,7 +2033,7 @@ export default class BomberScene extends Phaser.Scene {
     this.instrText.setText('Returning to carrier \u2014 UP/DOWN to control altitude');
     this.instrText.setColor('#888888');
 
-    this.ambientRef = SoundManager.get().playJetEngine();
+    try { this.ambientRef = SoundManager.get().playJetEngine(); } catch (e) { /* audio */ }
   }
 
   _updateReturn(dt) {
@@ -2062,13 +2125,61 @@ export default class BomberScene extends Phaser.Scene {
 
     this.groundTile.setTexture('sea_surface');
 
-    this.instrText.setText('UP to slow descent \u2014 DOWN to descend \u2014 Land gently!');
+    this.instrText.setText('UP to slow descent \u2014 DOWN to descend \u2014 watch your SINK RATE!');
     this.instrText.setColor('#ffaa00');
 
-    SoundManager.get().playLandingGear();
+    this._createLandingGauge();
+
+    try { SoundManager.get().playLandingGear(); } catch (e) { /* audio */ }
+  }
+
+  // Vertical-speed (sink rate) gauge \u2014 gives the player the feedback needed to
+  // land softly. Green = safe descent, red = crash speed.
+  _createLandingGauge() {
+    const gx = W - 30, top = 130, h = 200;            // gauge geometry
+    const vyToY = (vy) => top + Phaser.Math.Clamp((vy + 60) / 260, 0, 1) * h;
+    this._gaugeTop = top; this._gaugeH = h; this._gaugeX = gx; this._vyToY = vyToY;
+    const ySafe = vyToY(LANDING_CRASH_VY);
+
+    const g = [];
+    g.push(this.add.rectangle(gx, top + h / 2, 16, h, 0x0a0a18, 0.7)
+      .setStrokeStyle(1, 0x66ccff).setDepth(40).setScrollFactor(0));
+    // safe (green) band down to the crash threshold, danger (red) band below it
+    g.push(this.add.rectangle(gx, (top + ySafe) / 2, 12, ySafe - top, 0x115522, 0.8).setDepth(40).setScrollFactor(0));
+    g.push(this.add.rectangle(gx, (ySafe + top + h) / 2, 12, top + h - ySafe, 0x551111, 0.8).setDepth(40).setScrollFactor(0));
+    g.push(this.add.rectangle(gx, ySafe, 22, 2, 0xff4444).setDepth(41).setScrollFactor(0));   // threshold line
+    g.push(this.add.text(gx, top - 16, 'SINK', { fontFamily: 'monospace', fontSize: '10px', color: '#88ddff' }).setOrigin(0.5).setDepth(41).setScrollFactor(0));
+    this._gaugeFrame = g;
+    this._gaugeNeedle = this.add.rectangle(gx, vyToY(0), 26, 4, 0x00ff66).setDepth(42).setScrollFactor(0);
+    this._sinkWarn = this.add.text(W / 2, 120, '\u26a0 SINK RATE', { fontFamily: 'monospace', fontSize: '20px', color: '#ff3333', fontStyle: 'bold' })
+      .setOrigin(0.5).setDepth(42).setScrollFactor(0).setVisible(false);
+  }
+
+  _updateLandingGauge() {
+    if (!this._gaugeNeedle) return;
+    const vy = this.jetVY;
+    this._gaugeNeedle.y = this._vyToY(vy);
+    // colour: green safe, yellow getting close, red over the crash threshold
+    let col = 0x00ff66;
+    if (vy > LANDING_CRASH_VY) col = 0xff3333;
+    else if (vy > LANDING_CRASH_VY * 0.7) col = 0xffcc00;
+    this._gaugeNeedle.setFillStyle(col);
+    // sink-rate warning when descending too fast and low to the deck
+    const tooFast = vy > LANDING_CRASH_VY;
+    const low = this.jetY > DECK_Y - 140;
+    const show = tooFast && low;
+    this._sinkWarn.setVisible(show);
+    if (show) this._sinkWarn.setAlpha(0.4 + 0.6 * Math.abs(Math.sin(this.time.now / 90)));
+  }
+
+  _hideLandingGauge() {
+    if (this._gaugeFrame) { this._gaugeFrame.forEach((o) => o.destroy()); this._gaugeFrame = null; }
+    if (this._gaugeNeedle) { this._gaugeNeedle.destroy(); this._gaugeNeedle = null; }
+    if (this._sinkWarn) { this._sinkWarn.destroy(); this._sinkWarn = null; }
   }
 
   _updateLanding(dt) {
+    this._updateLandingGauge();
     // Landing approach: gentle leftward drift toward carrier (automatic)
     this.jetX -= 50 * dt;
     this.jetX = Phaser.Math.Clamp(this.jetX, 30, W - 30);
@@ -2086,6 +2197,16 @@ export default class BomberScene extends Phaser.Scene {
 
     this.jetVY = Phaser.Math.Clamp(this.jetVY, CLIMB_RATE * 0.8, DIVE_RATE * 0.8);
     this.jetY += this.jetVY * dt;
+
+    // Altimeter beep (faster as altitude decreases — closer to ground)
+    if (!this._altBeepTimer) this._altBeepTimer = 0;
+    this._altBeepTimer -= dt;
+    if (this._altBeepTimer <= 0) {
+      const altPct = (GROUND_Y - this.jetY) / GROUND_Y; // 0=ground, 1=high
+      const beepInterval = 0.3 + altPct * 1.2; // 0.3s at ground, 1.5s high up
+      this._altBeepTimer = beepInterval;
+      try { SoundManager.get().playRadarBlip(); } catch (e) { /* audio */ }
+    }
 
     // Visual tilt: smooth lerp based on vy (less extreme during landing)
     const maxVY = DIVE_RATE;
@@ -2131,6 +2252,7 @@ export default class BomberScene extends Phaser.Scene {
         // Hook animation — small hook catching arresting wire + deceleration
         this._showHookAnimation(this.jetX, DECK_Y);
 
+        this._hideLandingGauge();
         this.phase = 'landed';
         this.time.delayedCall(2000, () => this._showVictory());
       } else {
@@ -2139,7 +2261,7 @@ export default class BomberScene extends Phaser.Scene {
           this.landingRetries++;
           this.instrText.setText('WAVE OFF \u2014 Go around!');
           this.instrText.setColor('#ff4444');
-          SoundManager.get().playMissileWarning();
+          try { SoundManager.get().playMissileWarning(); } catch (e) { /* audio */ }
           this.jetY = 180;
           this.jetX = W - 150;
           this.jetVY = 0;
@@ -2165,7 +2287,7 @@ export default class BomberScene extends Phaser.Scene {
 
   /** Hook catching arresting wire animation + deceleration slide */
   _showHookAnimation(x, y) {
-    SoundManager.get().playLandingGear();
+    try { SoundManager.get().playLandingGear(); } catch (e) { /* audio */ }
 
     // Small hook dropping from plane underside
     const hookLine = this.add.line(0, 0, x, y + 8, x, y + 18, 0xcccccc).setDepth(11);
@@ -2213,6 +2335,7 @@ export default class BomberScene extends Phaser.Scene {
   // CRASH
   // ═════════════════════════════════════════════════════════════
   _crashJet(reason) {
+    this._hideLandingGauge();
     // Water crashes use the splash crash animation instead
     if (reason === 'water') {
       this._splashCrash(this.jetX, Math.min(this.jetY, GROUND_Y));
@@ -2224,7 +2347,7 @@ export default class BomberScene extends Phaser.Scene {
     this.phase = 'dead';
     this._stopAmbient();
 
-    SoundManager.get().playExplosion();
+    try { SoundManager.get().playExplosion(); } catch (e) { /* audio may fail */ }
     this.cameras.main.shake(600, 0.05);
 
     const crashX = this.jetX;
@@ -2264,10 +2387,11 @@ export default class BomberScene extends Phaser.Scene {
   // VICTORY / RESULTS
   // ═════════════════════════════════════════════════════════════
   _showVictory() {
+    if (this.phase === 'victory') return;
     this.phase = 'victory';
     this.instrText.setVisible(false);
     if (this.instrBg) this.instrBg.setVisible(false);
-    MusicManager.get().stop(1);
+    try { MusicManager.get().stop(1); } catch (e) { /* audio may fail */ }
 
     // Clear checkpoint on level completion
     try { localStorage.removeItem('superzion_checkpoint_l3'); } catch (e) { /* ignore */ }
@@ -2275,7 +2399,7 @@ export default class BomberScene extends Phaser.Scene {
     const layersDestroyed = BUNKER_LAYERS - Math.max(0, this.bunkerHP);
     this.missionSuccess = layersDestroyed >= BUNKER_LAYERS;
 
-    if (this.missionSuccess) SoundManager.get().playVictory();
+    if (this.missionSuccess) try { SoundManager.get().playVictory(); } catch (e) { /* audio may fail */ }
 
     // Star rating
     let starCount;
@@ -2285,6 +2409,14 @@ export default class BomberScene extends Phaser.Scene {
     else starCount = 1;
 
     try { localStorage.setItem('superzion_stars_3', String(Math.max(starCount, parseInt(localStorage.getItem('superzion_stars_3') || '0')))); } catch(e) {}
+
+    // Save level progress: completing level 2 (BomberScene) unlocks level 3
+    if (this.missionSuccess) {
+      try {
+        const prev = parseInt(localStorage.getItem('superzion_level_progress') || '1');
+        if (3 > prev) localStorage.setItem('superzion_level_progress', '3');
+      } catch(e) {}
+    }
 
     const statsData = [
       { label: 'BUNKER LAYERS PENETRATED', value: `${layersDestroyed}/${BUNKER_LAYERS}` },
@@ -2317,17 +2449,18 @@ export default class BomberScene extends Phaser.Scene {
   update(time, delta) {
     // Tutorial active: skip all gameplay
     if (this.tutorialActive) return;
+    this.inputManager.update();
 
     const dt = delta / 1000;
 
     // Mute toggle
-    if (Phaser.Input.Keyboard.JustDown(this.keys.m)) {
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.m) || this.inputManager.justDown('mute')) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
 
     // ESC pause
-    if (Phaser.Input.Keyboard.JustDown(this.keys.esc) && this.phase !== 'victory') {
+    if ((Phaser.Input.Keyboard.JustDown(this._rawKeys.esc) || this.inputManager.justDown('pause')) && this.phase !== 'victory' && this.phase !== 'dead') {
       this._togglePause();
       return;
     }
@@ -2387,6 +2520,7 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   shutdown() {
+    this.time.timeScale = 1;
     if (this._endScreen) this._endScreen.destroy();
     this._stopAmbient();
     this.tweens.killAll();

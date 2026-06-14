@@ -10,6 +10,7 @@ import MusicManager from '../systems/MusicManager.js';
 import DifficultyManager from '../systems/DifficultyManager.js';
 import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
 import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.js';
+import InputManager from '../systems/InputManager.js';
 
 const W = 960;
 const H = 540;
@@ -61,6 +62,10 @@ export default class B2BomberScene extends Phaser.Scene {
     this.samSites = [];
     this.chaffDecoys = [];
     this.missileSpawnTimer = 0;
+    this._maneuverSoundCD = 0;  // cooldown between maneuver sounds
+    this._radarBlipCD = 0;       // cooldown for radar ping sound
+    this._highDetection = false; // flag for detection edge tint
+    this._damageSmoke = 0;       // smoke trail intensity from damage
     this.mountainLayerSprites = [];
     this.mountainSprite = null;
 
@@ -98,6 +103,8 @@ export default class B2BomberScene extends Phaser.Scene {
       'Destroy the mountain fortress!',
     ]);
 
+    this.events.once('shutdown', this.shutdown, this);
+
     // Start with cinematic takeoff sequence
     this._startTakeoff();
   }
@@ -110,6 +117,8 @@ export default class B2BomberScene extends Phaser.Scene {
     this.terrainGfx = this.add.graphics().setDepth(0);
     // B-2 graphics layer (drawn every frame)
     this.b2Gfx = this.add.graphics().setDepth(10);
+    // AI top-down B-2 sprite (replaces the procedural _drawB2 vector art).
+    this.b2Sprite = this.add.image(0, 0, 'b2_top').setDepth(10).setVisible(false);
     // Radar/SAM overlay graphics
     this.radarGfx = this.add.graphics().setDepth(5);
     // Missile tracking lines
@@ -161,7 +170,8 @@ export default class B2BomberScene extends Phaser.Scene {
   }
 
   _setupInput() {
-    this.keys = {
+    this.inputManager = new InputManager(this, { preset: 'aerial' });
+    const rawKeys = {
       left: this.input.keyboard.addKey('LEFT'),
       right: this.input.keyboard.addKey('RIGHT'),
       up: this.input.keyboard.addKey('UP'),
@@ -175,6 +185,11 @@ export default class B2BomberScene extends Phaser.Scene {
       r: this.input.keyboard.addKey('R'),
       s: this.input.keyboard.addKey('S'),
     };
+    this.keys = this.inputManager.enhanceKeys(rawKeys, {
+      left: 'left', right: 'right', up: 'up', down: 'down',
+      space: 'primary', c: 'secondary', esc: 'pause',
+    });
+    this._rawKeys = rawKeys;
     this.isPaused = false;
     this.pauseObjects = [];
   }
@@ -257,6 +272,9 @@ export default class B2BomberScene extends Phaser.Scene {
     SoundManager.get().playMissileWarning();
     this.cameras.main.shake(200, 0.015);
 
+    // Damage smoke trail - add persistent smoke particles
+    this._damageSmoke = Math.max(this._damageSmoke || 0, (3 - this.armor));
+
     const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0.3).setDepth(25);
     this.tweens.add({ targets: flash, alpha: 0, duration: 300, onComplete: () => flash.destroy() });
 
@@ -305,45 +323,61 @@ export default class B2BomberScene extends Phaser.Scene {
   // TOP-DOWN B-2 DRAWING (shared across all gameplay phases)
   // ═════════════════════════════════════════════════════════════
   _drawB2(gfx, bx, by, scale, bankAngle) {
+    // AI sprite version — nose UP. (Procedural vector art below is bypassed.)
+    if (this.b2Sprite) {
+      this.b2Sprite.setVisible(true).setPosition(bx, by)
+        .setScale((scale || 1) * 1.0).setFlipY(false)
+        .setRotation((bankAngle || 0) * 0.22);
+      return;
+    }
     const bs = scale || 1;
     // Banking: shift wing tips based on bankAngle (-1 to 1)
-    const bank = (bankAngle || 0) * 0.15;  // subtle rotation
+    const bank = (bankAngle || 0) * 0.35;  // visible tilt
+
+    // Wing span shrinks on the banking side (perspective foreshortening)
+    const rightSpan = 60 + bank * 18;  // grows when banking left, shrinks when banking right
+    const leftSpan = 60 - bank * 18;
+    const rightTrail = 40 + bank * 12;
+    const leftTrail = 40 - bank * 12;
+
+    // Slight vertical nose offset when banking (nose dips toward turn)
+    const noseShift = bank * 3;
 
     // Draw relative to bx,by with manual vertex offsets for banking
 
     // Flying wing body (boomerang/bat shape from above)
     gfx.fillStyle(0x3a3a3a, 1);
     gfx.beginPath();
-    gfx.moveTo(bx, by - 20 * bs);                                  // nose (top)
-    gfx.lineTo(bx + (60 + bank * 10) * bs, by + 15 * bs);         // right wing tip
-    gfx.lineTo(bx + (40 + bank * 6) * bs, by + 20 * bs);          // right trailing edge
+    gfx.moveTo(bx + noseShift * bs, by - 20 * bs);                // nose (top)
+    gfx.lineTo(bx + rightSpan * bs, by + 15 * bs);                // right wing tip
+    gfx.lineTo(bx + rightTrail * bs, by + 20 * bs);               // right trailing edge
     gfx.lineTo(bx, by + 10 * bs);                                  // center rear
-    gfx.lineTo(bx - (40 - bank * 6) * bs, by + 20 * bs);          // left trailing edge
-    gfx.lineTo(bx - (60 - bank * 10) * bs, by + 15 * bs);         // left wing tip
+    gfx.lineTo(bx - leftTrail * bs, by + 20 * bs);                // left trailing edge
+    gfx.lineTo(bx - leftSpan * bs, by + 15 * bs);                 // left wing tip
     gfx.closePath();
     gfx.fill();
 
-    // Darker wing surface gradient (inner portion)
+    // Darker wing surface gradient (inner portion — shifts with bank)
     gfx.fillStyle(0x2e2e2e, 0.6);
     gfx.beginPath();
-    gfx.moveTo(bx, by - 15 * bs);
-    gfx.lineTo(bx + 35 * bs, by + 12 * bs);
+    gfx.moveTo(bx + noseShift * bs, by - 15 * bs);
+    gfx.lineTo(bx + (35 + bank * 8) * bs, by + 12 * bs);
     gfx.lineTo(bx, by + 8 * bs);
-    gfx.lineTo(bx - 35 * bs, by + 12 * bs);
+    gfx.lineTo(bx - (35 - bank * 8) * bs, by + 12 * bs);
     gfx.closePath();
     gfx.fill();
 
     // Panel lines
     gfx.lineStyle(0.5 * bs, 0x555555, 0.5);
-    gfx.lineBetween(bx, by - 18 * bs, bx, by + 8 * bs);
+    gfx.lineBetween(bx + noseShift * bs, by - 18 * bs, bx, by + 8 * bs);
     gfx.lineBetween(bx - 20 * bs, by + 5 * bs, bx + 20 * bs, by + 5 * bs);
 
     // Wing leading-edge highlight
     gfx.lineStyle(1 * bs, 0x4a4a4a, 0.6);
     gfx.beginPath();
-    gfx.moveTo(bx - (58 - bank * 8) * bs, by + 14 * bs);
-    gfx.lineTo(bx, by - 19 * bs);
-    gfx.lineTo(bx + (58 + bank * 8) * bs, by + 14 * bs);
+    gfx.moveTo(bx - (leftSpan - 2) * bs, by + 14 * bs);
+    gfx.lineTo(bx + noseShift * bs, by - 19 * bs);
+    gfx.lineTo(bx + (rightSpan - 2) * bs, by + 14 * bs);
     gfx.strokePath();
 
     // Engine glow (two engine exhausts at trailing edge)
@@ -366,7 +400,7 @@ export default class B2BomberScene extends Phaser.Scene {
 
   _updateEngineTrail(dt) {
     // Spawn engine trail particles behind the B-2
-    const isFlipped = this._escapeFlipped || (this.phase === 'bounce' && !this._bounceFlipped);
+    const isFlipped = this._escapeFlipped || false;
     if (Math.random() < 0.3) {
       const side = Math.random() < 0.5 ? -1 : 1;
       const px = this.jetX + side * 14 + (Math.random() - 0.5) * 4;
@@ -374,6 +408,17 @@ export default class B2BomberScene extends Phaser.Scene {
       const pColor = Math.random() < 0.3 ? 0xff8800 : 0x554433;
       const p = this.add.circle(px, py, 1.5 + Math.random(), pColor, 0.3).setDepth(4);
       this.engineParticles.push({ sprite: p, life: 0.5 + Math.random() * 0.3 });
+    }
+    // Damage smoke (if armor < 3)
+    if (this._damageSmoke > 0) {
+      for (let ds = 0; ds < this._damageSmoke; ds++) {
+        if (Math.random() < 0.4) {
+          const dsx = this.jetX + (Math.random() - 0.5) * 20;
+          const dsy = this.jetY + 10;
+          const smokeP = this.add.circle(dsx, dsy, 2 + Math.random() * 3, 0x222222, 0.35).setDepth(4);
+          this.engineParticles.push({ sprite: smokeP, life: 0.8 + Math.random() * 0.5 });
+        }
+      }
     }
     for (let i = this.engineParticles.length - 1; i >= 0; i--) {
       const ep = this.engineParticles[i];
@@ -553,7 +598,7 @@ export default class B2BomberScene extends Phaser.Scene {
     this.takeoffStage = 0;
     this.takeoffBomberY = 140;  // start near bottom of screen
     this.takeoffSpeed = 0;
-    this.takeoffScale = 1.3;   // less extreme zoom
+    this.takeoffScale = 1.8;   // zoomed in — big B-2 on runway
     this.takeoffShake = 0;
     this.takeoffRunwayOffset = 0;
 
@@ -592,10 +637,25 @@ export default class B2BomberScene extends Phaser.Scene {
     // Engine trail particles
     this.takeoffParticles = [];
 
-    // Play engine start sound
+    // Play engine spool-up sound (store ref for cleanup — runs 120s!)
+    this._takeoffJetRef = SoundManager.get().playJetEngine();
+
+    // Then the B-2 engine hum kicks in
     this.time.delayedCall(500, () => {
       if (this.phase !== 'takeoff') return;
       this.takeoffEngineRef = SoundManager.get().playB2Engine();
+    });
+
+    // Runway rumble as engines build power
+    this.time.delayedCall(2000, () => {
+      if (this.phase !== 'takeoff') return;
+      SoundManager.get().playAfterburner();
+    });
+
+    // Second afterburner burst at full power
+    this.time.delayedCall(4000, () => {
+      if (this.phase !== 'takeoff') return;
+      SoundManager.get().playAfterburner();
     });
   }
 
@@ -614,10 +674,10 @@ export default class B2BomberScene extends Phaser.Scene {
     else if (t < 7.5) this.takeoffStage = 2;
     else this.takeoffStage = 3;
 
-    // Zoom out
+    // Zoom out (1.8 → 1.0 as engines spool up)
     if (this.takeoffStage >= 1 && this.takeoffStage < 3) {
       const zoomProgress = Math.min(1, (t - 3) / 2);
-      this.takeoffScale = 1.3 - 0.3 * zoomProgress;
+      this.takeoffScale = 1.8 - 0.8 * zoomProgress;
     }
 
     // Engine intensification
@@ -851,6 +911,15 @@ export default class B2BomberScene extends Phaser.Scene {
       this.takeoffEngineRef = null;
     }
 
+    // Stop the jet engine spool-up sound (120s duration — MUST be stopped)
+    if (this._takeoffJetRef) {
+      try {
+        if (this._takeoffJetRef.source) this._takeoffJetRef.source.stop();
+        if (this._takeoffJetRef.osc) this._takeoffJetRef.osc.stop();
+      } catch (e) { /* already stopped */ }
+      this._takeoffJetRef = null;
+    }
+
     // Show gameplay graphics and HUD
     this.terrainGfx.setVisible(true);
     this.b2Gfx.setVisible(true);
@@ -960,7 +1029,25 @@ export default class B2BomberScene extends Phaser.Scene {
     // Visual bank angle when moving left/right
     if (this.keys.left.isDown) this.jetBankAngle += (-1 - this.jetBankAngle) * 5 * dt;
     else if (this.keys.right.isDown) this.jetBankAngle += (1 - this.jetBankAngle) * 5 * dt;
-    else this.jetBankAngle += (0 - this.jetBankAngle) * 5 * dt;
+    else this.jetBankAngle += (0 - this.jetBankAngle) * 3 * dt;
+
+    // Dynamic altitude and speed
+    const altMeters = Math.round(12000 - (this.jetY / H) * 3000);
+    const spdKts = Math.round(450 + Math.abs(this.jetBankAngle) * 20);
+    this.hudAlt.setText(`ALT: ${altMeters}m`);
+    this.hudSpeed.setText(`SPD: ${spdKts} kts`);
+
+    // Maneuver sounds (cooldown prevents spam)
+    this._maneuverSoundCD = Math.max(0, this._maneuverSoundCD - dt);
+    if (this._maneuverSoundCD <= 0) {
+      if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.right)) {
+        SoundManager.get().playAfterburner();
+        this._maneuverSoundCD = 0.5;
+      } else if (Phaser.Input.Keyboard.JustDown(this.keys.up) || Phaser.Input.Keyboard.JustDown(this.keys.down)) {
+        SoundManager.get().playLand();
+        this._maneuverSoundCD = 0.4;
+      }
+    }
 
     // Chaff
     if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaff();
@@ -992,6 +1079,7 @@ export default class B2BomberScene extends Phaser.Scene {
 
     // Detection logic (radar proximity)
     this.detectionLevel = Math.max(0, this.detectionLevel - 8 * dt);
+    this._radarBlipCD = Math.max(0, this._radarBlipCD - dt);
     for (const r of this.radarCones) {
       r.detecting = false;
       const dx = this.jetX - r.x;
@@ -1003,7 +1091,17 @@ export default class B2BomberScene extends Phaser.Scene {
       if (dist < r.range && angleDiff < coneWidth) {
         this.detectionLevel += 25 * DifficultyManager.get().detectionMult() * dt;
         r.detecting = true;
+        // Radar blip sound when sweep line passes near player
+        if (this._radarBlipCD <= 0) {
+          SoundManager.get().playRadarBlip();
+          this._radarBlipCD = 1.5;
+        }
       }
+    }
+
+    // Screen edge tint when detection is high
+    if (this.detectionLevel > 60) {
+      this._highDetection = true;
     }
 
     // SAM firing logic
@@ -1089,15 +1187,47 @@ export default class B2BomberScene extends Phaser.Scene {
       gfx.fillStyle(0x0a1628, 1);
       gfx.fillRect(0, 0, W, H);
 
-      // Wave lines scrolling down (every 40px, with sine deformation)
-      const waveOffset = offset % 60;
-      for (let y = -60 + waveOffset; y < H + 60; y += 60) {
-        gfx.lineStyle(1, 0x1a2a48, 0.3);
-        // Draw wave as series of short segments
-        for (let x = 0; x < W; x += 16) {
-          const wy = y + Math.sin(x * 0.04 + t * 1.5) * 3;
-          const wy2 = y + Math.sin((x + 16) * 0.04 + t * 1.5) * 3;
-          gfx.lineBetween(x, wy, x + 16, wy2);
+      // ── PARALLAX LAYER: Star field (very slow scroll, 0.05x) ──
+      const starOffset = offset * 0.05;
+      for (let i = 0; i < 30; i++) {
+        const sx = ((i * 197 + 53) % W);
+        const sy = ((i * 139 + 17 + starOffset) % (H + 20)) - 10;
+        const twinkle = 0.15 + Math.sin(t * 2.5 + i * 1.7) * 0.1;
+        gfx.fillStyle(0xffffff, twinkle);
+        gfx.fillRect(sx, sy, 1, 1);
+      }
+
+      // ── PARALLAX LAYER: Far clouds (slow scroll, 0.15x) ──
+      const cloudOffset = offset * 0.15;
+      for (let ci = 0; ci < 5; ci++) {
+        const cx = ((ci * 211 + 90) % (W + 120)) - 60;
+        const cy = ((ci * 173 + 40 + cloudOffset) % (H + 80)) - 40;
+        gfx.fillStyle(0x1a2a48, 0.1);
+        gfx.fillEllipse(cx, cy, 60 + (ci % 3) * 20, 18 + (ci % 2) * 8);
+      }
+
+      // ── Large moon in upper-right corner ──
+      gfx.fillStyle(0x8899aa, 0.15);
+      gfx.fillCircle(W * 0.8, 50, 20);
+      // Moon glow ring
+      gfx.lineStyle(3, 0x8899aa, 0.06);
+      gfx.strokeCircle(W * 0.8, 50, 28);
+
+      // Wave lines scrolling down — 3 layers at different spacings for depth
+      const waveLayers = [
+        { spacing: 80, alpha: 0.25, width: 1 },
+        { spacing: 60, alpha: 0.35, width: 1.5 },
+        { spacing: 40, alpha: 0.4, width: 1.5 },
+      ];
+      for (const wl of waveLayers) {
+        const waveOff = offset % wl.spacing;
+        for (let y = -wl.spacing + waveOff; y < H + wl.spacing; y += wl.spacing) {
+          gfx.lineStyle(wl.width, 0x1a2a48, wl.alpha);
+          for (let x = 0; x < W; x += 16) {
+            const wy = y + Math.sin(x * 0.04 + t * 1.5) * 3;
+            const wy2 = y + Math.sin((x + 16) * 0.04 + t * 1.5) * 3;
+            gfx.lineBetween(x, wy, x + 16, wy2);
+          }
         }
       }
 
@@ -1110,28 +1240,46 @@ export default class B2BomberScene extends Phaser.Scene {
         gfx.fillCircle(fx, fy, 2);
       }
 
-      // ── Boat/ship shapes (tiny triangles) scattered on the water ──
-      for (let i = 0; i < 4; i++) {
+      // ── PARALLAX LAYER: Close wave foam patches (fast scroll, 1.3x) ──
+      const foamFastOffset = offset * 1.3;
+      for (let fi = 0; fi < 6; fi++) {
+        const ffx = ((fi * 179 + 31) % W);
+        const ffy = ((fi * 223 + 70 + foamFastOffset) % (H + 60)) - 30;
+        gfx.fillStyle(0x3a5a7a, 0.15);
+        gfx.fillCircle(ffx, ffy, 4 + (fi % 3) * 1);
+        gfx.fillCircle(ffx + 6, ffy + 2, 3);
+      }
+
+      // ── Boat/ship shapes (variety: warships + lights) scattered on the water ──
+      for (let i = 0; i < 6; i++) {
         const bx = ((i * 263 + 80 + Math.floor(offset * 0.05)) % W);
         const by = ((i * 181 + 120 + Math.floor(offset * 0.3)) % (H - 50)) + 50;
+        const isWarship = i % 3 === 0;
+        const hullLen = isWarship ? 12 : 6;
         gfx.fillStyle(0x2a3a5a, 0.25);
         gfx.beginPath();
         gfx.moveTo(bx, by - 3);
-        gfx.lineTo(bx - 5, by + 2);
-        gfx.lineTo(bx + 5, by + 2);
+        gfx.lineTo(bx - hullLen, by + 2);
+        gfx.lineTo(bx + hullLen, by + 2);
         gfx.closePath();
         gfx.fillPath();
         // Hull line
         gfx.lineStyle(0.5, 0x2a3a5a, 0.2);
-        gfx.lineBetween(bx - 6, by + 2, bx + 6, by + 2);
+        gfx.lineBetween(bx - hullLen - 1, by + 2, bx + hullLen + 1, by + 2);
+        // Ship light (every other ship)
+        if (i % 2 === 0) {
+          gfx.fillStyle(0xffee88, 0.3);
+          gfx.fillCircle(bx, by - 1, 1);
+        }
       }
 
-      // ── Moonlight reflection streak on water ──
-      gfx.fillStyle(0x3a4a6a, 0.08);
-      for (let mr = 0; mr < 8; mr++) {
-        const mx = W * 0.5 + Math.sin(t * 0.3 + mr * 0.4) * 20;
-        const my = ((mr * 60 + offset * 0.2) % (H + 40)) - 20;
-        gfx.fillRect(mx - 1, my, 3, 10 + mr % 3 * 4);
+      // ── Moonlight reflection streak on water (wider, shimmer) ──
+      for (let mr = 0; mr < 12; mr++) {
+        const shimmer = 0.06 + Math.sin(t * 1.2 + mr * 0.6) * 0.03;
+        gfx.fillStyle(0x3a4a6a, shimmer);
+        const mx = W * 0.8 + Math.sin(t * 0.3 + mr * 0.4) * 30;
+        const my = ((mr * 45 + offset * 0.2) % (H + 40)) - 20;
+        gfx.fillRect(mx - 2, my, 5, 10 + mr % 3 * 4);
       }
 
     } else if (t < 12) {
@@ -1143,14 +1291,28 @@ export default class B2BomberScene extends Phaser.Scene {
       gfx.fillStyle(0x2a1e10, 1);
       gfx.fillRect(0, 0, W, landH);
 
-      // Some vegetation dots on land
+      // Some vegetation dots on land — mixed greens and sizes
       if (coastProgress > 0.2) {
-        for (let i = 0; i < 10; i++) {
+        const vegColors = [0x1a3a1a, 0x2a4a2a, 0x1a2a1a];
+        for (let i = 0; i < 15; i++) {
           const vx = (i * 127 + Math.floor(offset * 0.1)) % W;
           const vy = ((i * 89 + Math.floor(offset * 0.3)) % Math.max(1, landH));
           if (vy < landH) {
-            gfx.fillStyle(0x1a3a1a, 0.4);
-            gfx.fillCircle(vx, vy, 3 + (i % 3));
+            gfx.fillStyle(vegColors[i % vegColors.length], 0.4);
+            gfx.fillCircle(vx, vy, 2 + (i % 5));
+          }
+        }
+      }
+
+      // ── PARALLAX LAYER: Clouds drifting over land (0.2x speed) ──
+      if (landH > 50) {
+        const coastCloudOff = offset * 0.2;
+        for (let cci = 0; cci < 4; cci++) {
+          const ccx = ((cci * 241 + 70) % (W + 100)) - 50;
+          const ccy = ((cci * 157 + 20 + coastCloudOff) % Math.max(1, landH - 20));
+          if (ccy < landH) {
+            gfx.fillStyle(0x1a2a48, 0.1);
+            gfx.fillEllipse(ccx, ccy, 50 + (cci % 3) * 15, 14 + (cci % 2) * 6);
           }
         }
       }
@@ -1193,9 +1355,29 @@ export default class B2BomberScene extends Phaser.Scene {
       }
 
     } else {
-      // ── LAND (desert/brown with roads and buildings) ──
-      gfx.fillStyle(0x2a1e10, 1);
-      gfx.fillRect(0, 0, W, H);
+      // ── LAND (desert/brown with subtle gradient for depth) ──
+      // Darker at top (far), lighter at bottom (near)
+      const gradSteps = 8;
+      for (let gs = 0; gs < gradSteps; gs++) {
+        const gy = (gs / gradSteps) * H;
+        const gh = H / gradSteps + 1;
+        const lerp = gs / gradSteps;
+        // Blend from 0x1a1408 (top/dark) to 0x2a1e10 (bottom/lighter)
+        const r = Math.round(0x1a + lerp * (0x2a - 0x1a));
+        const g = Math.round(0x14 + lerp * (0x1e - 0x14));
+        const b = Math.round(0x08 + lerp * (0x10 - 0x08));
+        gfx.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+        gfx.fillRect(0, gy, W, gh);
+      }
+
+      // ── Terrain color patches (scattered rectangles for variety) ──
+      const patchColors = [0x2a2018, 0x302418, 0x261c10];
+      for (let pi = 0; pi < 12; pi++) {
+        const px = ((pi * 83 + 37) % W);
+        const py = ((pi * 131 + 19 + offset * 0.3) % (H + 80)) - 40;
+        gfx.fillStyle(patchColors[pi % patchColors.length], 0.25);
+        gfx.fillRect(px, py, 30 + (pi % 4) * 15, 20 + (pi % 3) * 10);
+      }
 
       // Roads (vertical lines scrolling down)
       const roadOffset = offset % H;
@@ -1237,7 +1419,19 @@ export default class B2BomberScene extends Phaser.Scene {
         }
       }
 
-      // ── Taller buildings (some with lights) ──
+      // ── Vehicles on roads (small rectangles scrolling with terrain) ──
+      for (let vi = 0; vi < 4; vi++) {
+        const vRoad = this.flightRoads[vi % this.flightRoads.length];
+        if (!vRoad) continue;
+        const vx = vRoad.x - 2;
+        const vy = ((vi * 191 + 60 + offset) % (H + 100)) - 50;
+        if (vy > -10 && vy < H + 10) {
+          gfx.fillStyle(0x2a2a2a, 0.5);
+          gfx.fillRect(vx, vy, 4, 2);
+        }
+      }
+
+      // ── Taller buildings (some with lights, military variants) ──
       for (const b of this.flightBuildings) {
         const by = ((b.yBase + offset) % (H + 200)) - 100;
         if (by > -20 && by < H + 20) {
@@ -1245,6 +1439,16 @@ export default class B2BomberScene extends Phaser.Scene {
           if (b.h > 12) {
             gfx.fillStyle(b.color, 0.3);
             gfx.fillRect(b.x + 1, by - 4, b.w - 2, 4);
+          }
+          // Military buildings: olive/green barracks
+          if (b.w > 12 && b.h > 10 && (b.x + b.yBase) % 7 === 0) {
+            gfx.fillStyle(0x3a4a3a, 0.4);
+            gfx.fillRect(b.x, by, b.w, b.h);
+          }
+          // Compound walls (faint outline around some buildings)
+          if (b.w > 10 && (b.x + b.yBase) % 5 === 0) {
+            gfx.lineStyle(0.5, 0x4a3a28, 0.1);
+            gfx.strokeRect(b.x - 4, by - 4, b.w + 8, b.h + 8);
           }
           // Lit windows on larger buildings
           if (b.w > 10 && b.h > 8) {
@@ -1257,27 +1461,55 @@ export default class B2BomberScene extends Phaser.Scene {
         }
       }
 
-      // ── Mosque dome shapes (small arcs) ──
+      // ── Mosque dome shapes (improved — larger domes, dual minarets) ──
       const mosqueSeeds = [
-        { x: 200, yBase: 120 },
-        { x: 600, yBase: 300 },
-        { x: 400, yBase: 50 },
+        { x: 200, yBase: 120, large: true },
+        { x: 600, yBase: 300, large: false },
+        { x: 400, yBase: 50, large: true },
       ];
       for (const m of mosqueSeeds) {
         const my = ((m.yBase + offset) % (H + 200)) - 100;
         if (my > -20 && my < H + 20) {
+          const domeR = m.large ? 7 : 5;
           gfx.fillStyle(0x4a3a28, 0.4);
-          gfx.fillRect(m.x - 4, my, 8, 10);
-          // Dome (half circle on top)
+          gfx.fillRect(m.x - 5, my, 10, 12);
+          // Dome (half circle on top — slightly larger)
           gfx.beginPath();
-          gfx.arc(m.x, my, 5, Math.PI, 0, false);
+          gfx.arc(m.x, my, domeR, Math.PI, 0, false);
           gfx.fillPath();
-          // Minaret (thin tall rectangle next to dome)
-          gfx.fillRect(m.x + 7, my - 6, 2, 16);
-          // Crescent on top
+          // Right minaret
+          gfx.fillRect(m.x + 8, my - 6, 2, 18);
+          // Left minaret (for larger mosques)
+          if (m.large) {
+            gfx.fillRect(m.x - 10, my - 6, 2, 18);
+            // Left crescent
+            gfx.fillStyle(0x8a7a5a, 0.3);
+            gfx.fillCircle(m.x - 9, my - 7, 1.5);
+          }
+          // Right crescent on top
           gfx.fillStyle(0x8a7a5a, 0.3);
-          gfx.fillCircle(m.x + 8, my - 7, 1.5);
+          gfx.fillCircle(m.x + 9, my - 7, 1.5);
         }
+      }
+
+      // ── PARALLAX LAYER: Clouds above land (0.2x speed) ──
+      const landCloudOff = offset * 0.2;
+      for (let lci = 0; lci < 5; lci++) {
+        const lcx = ((lci * 199 + 110) % (W + 100)) - 50;
+        const lcy = ((lci * 167 + 30 + landCloudOff) % (H + 60)) - 30;
+        gfx.fillStyle(0x1a2a48, 0.1);
+        gfx.fillEllipse(lcx, lcy, 55 + (lci % 3) * 18, 16 + (lci % 2) * 7);
+      }
+
+      // ── PARALLAX LAYER: Dust/haze at bottom edge (0.5x speed) ──
+      const dustOff = (offset * 0.5) % 200;
+      gfx.fillStyle(0x4a3a28, 0.1);
+      gfx.fillRect(0, H - 40, W, 40);
+      // Slight horizontal variation in dust
+      for (let di = 0; di < 8; di++) {
+        const dx = ((di * 131 + dustOff) % (W + 40)) - 20;
+        gfx.fillStyle(0x4a3a28, 0.06);
+        gfx.fillEllipse(dx, H - 20, 80, 30);
       }
     }
   }
@@ -1348,14 +1580,24 @@ export default class B2BomberScene extends Phaser.Scene {
         gfx.strokeCircle(sam.x, sam.y, pr);
       }
     }
+
+    // ── Red border glow when detection is high ──
+    if (this._highDetection && this.detectionLevel > 60) {
+      const alpha = 0.05 + (this.detectionLevel / 100) * 0.15;
+      gfx.fillStyle(0xff0000, alpha);
+      gfx.fillRect(0, 0, W, 8);      // top
+      gfx.fillRect(0, H - 8, W, 8);  // bottom
+      gfx.fillRect(0, 0, 8, H);      // left
+      gfx.fillRect(W - 8, 0, 8, H);  // right
+    }
+    this._highDetection = false;
   }
 
   // ═════════════════════════════════════════════════════════════
-  // PHASE: BOMBING (attack run on mountain) — ~15 seconds
-  // Mountain appears at top, scrolls down as B-2 approaches
-  // ═════════════════════════════════════════════════════════════
-  // PHASE: BOMBING — LOCKED SCREEN BOUNCE MECHANIC
-  // Mountain fixed in center. B-2 bounces top↔bottom, dropping bombs each pass.
+  // PHASE: BOMBING — Multi-pass bombing runs over the mountain
+  // B-2 auto-flies across the screen. Player controls UP/DOWN altitude.
+  // SPACE drops bombs on each pass. Lower altitude = more accurate but riskier.
+  // 5 passes, 3 bombs per pass.
   // ═════════════════════════════════════════════════════════════
   _startBombing() {
     this.phase = 'bombing';
@@ -1364,32 +1606,42 @@ export default class B2BomberScene extends Phaser.Scene {
     this.bombObjects = [];
     this.missileSpawnTimer = 0;
     this.bombingEnded = false;
-    this.bombCooldown = 0;
-    this.terrainSpeed = 0;  // terrain is LOCKED (no scrolling)
+    this.terrainSpeed = 0;
     this.terrainOffset = 0;
 
-    // Mountain fixed at center of screen
+    // Mountain at center
     this._mtnCenterX = W / 2;
-    this._mtnTargetY = H * 0.35;  // fixed position — upper third
+    this._mtnTargetY = H * 0.45;
     this._mtnBunkerHit = false;
 
-    // Mountain layer health
+    // Layer health
     this.mountainHP = MOUNTAIN_LAYERS;
     this.mountainLayerHP = [];
-    for (let i = 0; i < MOUNTAIN_LAYERS; i++) {
-      this.mountainLayerHP.push(true);
-    }
+    for (let i = 0; i < MOUNTAIN_LAYERS; i++) this.mountainLayerHP.push(true);
 
-    // B-2 starts at bottom, flying UP toward mountain
-    this.jetX = W / 2;
-    this.jetY = H - 60;
+    this._layersDestroyed = 0;
+    this._samWarning = false;
+    this._samWarningTimer = 0;
+
+    // Multi-pass state
+    this._passNumber = 1;
+    this._maxPasses = 6;
+    this._passDir = 1;              // 1 = left→right, -1 = right→left
+    this._passSpeed = 180;          // horizontal speed (auto)
+    this._bombsPerPass = 3;
+    this._bombsThisPass = 3;
+    this._passPaused = false;       // brief pause between passes
+    this._passPauseTimer = 0;
+
+    this.jetX = -40;                // start off-screen left
+    this.jetY = 100;
+    this.jetVY = 0;
     this.jetBankAngle = 0;
-    this._bombingDir = -1;  // -1 = flying up, +1 = flying down
-    this._bombingSpeed = 250;  // B-2 vertical speed
-    this._passCount = 0;
+    this.bombCooldown = 0;
+    this.bustersUsed = 0;
 
-    this.instrText.setText('B-2 approaches — SPACE to drop bomb as you pass over target!');
-    this.instrText.setColor('#ff8800');
+    this.instrText.setText(`PASS 1/${this._maxPasses} — UP/DOWN: Altitude | SPACE: Drop Bomb`);
+    this.instrText.setColor('#00ff66');
 
     this.detBarBg.setVisible(false);
     this.detBarFill.setVisible(false);
@@ -1400,152 +1652,189 @@ export default class B2BomberScene extends Phaser.Scene {
 
   _updateBombing(dt) {
     this.phaseTimer += dt;
+    const BOMB_GRAVITY = 400;
+    const HIT_RADIUS = 70;   // generous hit zone — altitude affects accuracy
+    const MIN_ALT = 70;      // lowest the jet can fly (dangerous, accurate)
+    const MAX_ALT = H * 0.28; // highest (safe, less accurate)
 
-    // Horizontal movement (player controls left/right aiming)
-    if (this.keys.left.isDown) this.jetX -= B2_MOVE_SPEED * dt;
-    if (this.keys.right.isDown) this.jetX += B2_MOVE_SPEED * dt;
-    this.jetX = Phaser.Math.Clamp(this.jetX, B2_MARGIN, W - B2_MARGIN);
-
-    // Bank animation
-    if (this.keys.left.isDown) this.jetBankAngle += (-1 - this.jetBankAngle) * 5 * dt;
-    else if (this.keys.right.isDown) this.jetBankAngle += (1 - this.jetBankAngle) * 5 * dt;
-    else this.jetBankAngle += (0 - this.jetBankAngle) * 5 * dt;
-
-    // B-2 moves vertically automatically (bouncing)
-    this.jetY += this._bombingDir * this._bombingSpeed * dt;
-
-    // BOUNCE at screen edges
-    if (this.jetY < 40) {
-      this.jetY = 40;
-      this._bombingDir = 1;  // now flying down
-      this._passCount++;
-      this._bombingSpeed = Math.min(350, this._bombingSpeed + 15);  // slightly faster each pass
-      SoundManager.get().playAfterburner();
-      this.cameras.main.shake(200, 0.005);
-    }
-    if (this.jetY > H - 40) {
-      this.jetY = H - 40;
-      this._bombingDir = -1;  // now flying up
-      this._passCount++;
-      this._bombingSpeed = Math.min(350, this._bombingSpeed + 15);
-      SoundManager.get().playAfterburner();
-      this.cameras.main.shake(200, 0.005);
-    }
-
-    // Chaff
-    if (Phaser.Input.Keyboard.JustDown(this.keys.c)) this._releaseChaff();
-
-    // Bomb cooldown
-    if (this.bombCooldown > 0) this.bombCooldown -= dt;
-
-    // Drop bomb (flies in the direction the B-2 is moving)
-    if (Phaser.Input.Keyboard.JustDown(this.keys.space) && this.busters > 0 && this.bombCooldown <= 0) {
-      this._dropBusterTopDown();
-      this.bombCooldown = 0.6;
-    }
-
-    this._updateBustersTopDown(dt);
-
-    // Mountain turret missiles (every 4 seconds)
-    this.missileSpawnTimer += dt;
-    if (this.missileSpawnTimer >= 4) {
-      this.missileSpawnTimer = 0;
-      const side = (this._passCount % 2 === 0) ? -1 : 1;
-      this._spawnTrackingMissile(
-        this._mtnCenterX + side * 60,
-        this._mtnTargetY
-      );
-    }
-    this._updateMissiles(dt);
-
-    // HUD
-    this.hudDist.setText(`LAYERS: ${this.mountainHP}/${MOUNTAIN_LAYERS} | PASS: ${this._passCount + 1}`);
-
-    // WIN — all layers destroyed
-    if (this.mountainHP <= 0 && !this._mtnBunkerHit) {
-      this._mtnBunkerHit = true;
-      this._stopAmbient();
-      this._startMountainExplosion();
+    // ── Between-pass pause ──
+    if (this._passPaused) {
+      this._passPauseTimer -= dt;
+      if (this._passPauseTimer <= 0) {
+        this._passPaused = false;
+        this._passNumber++;
+        if (this._passNumber > this._maxPasses) {
+          // OUT OF PASSES
+          if (!this.bombingEnded && this.mountainHP > 0) {
+            this.bombingEnded = true;
+            this._stopAmbient();
+            this.instrText.setText('ALL PASSES COMPLETE — MISSION FAILED');
+            this.instrText.setColor('#ff4444');
+            this.time.delayedCall(2000, () => {
+              this.phase = 'dead';
+              showDefeatScreen(this, {
+                currentScene: 'B2BomberScene',
+                skipScene: 'LastStandCinematicScene',
+              });
+            });
+          }
+          return;
+        }
+        this._passDir *= -1;  // reverse direction
+        this._bombsThisPass = this._bombsPerPass;
+        this.jetX = this._passDir === 1 ? -40 : W + 40;
+        this.jetVY = 0;
+        this.instrText.setText(`PASS ${this._passNumber}/${this._maxPasses} — UP/DOWN: Altitude | SPACE: Drop Bomb`);
+      }
+      // Still update falling bombs during pause
+      this._updateFallingBombs(dt, BOMB_GRAVITY, HIT_RADIUS);
+      this.hudDist.setText(`LAYERS: ${this.mountainHP}/${MOUNTAIN_LAYERS} | PASS ${this._passNumber}/${this._maxPasses} | CHAFF: ${this.chaff}`);
       return;
     }
 
-    // OUT OF BOMBS — fail to escape
-    if (this.busters <= 0 && this.bombObjects.length === 0 && !this.bombingEnded && this.mountainHP > 0) {
-      this.bombingEnded = true;
-      this.instrText.setText('OUT OF ORDNANCE — RETREAT');
-      this.instrText.setColor('#ff4444');
-      this._stopAmbient();
-      this.time.delayedCall(1500, () => this._startEscape());
+    // ── Auto horizontal movement ──
+    this.jetX += this._passSpeed * this._passDir * dt;
+
+    // ── Player controls altitude only (UP = climb, DOWN = dive) ──
+    if (this.keys.up.isDown) {
+      this.jetVY += (-140 - this.jetVY) * 3 * dt;
+    } else if (this.keys.down.isDown) {
+      this.jetVY += (140 - this.jetVY) * 3 * dt;
+    } else {
+      this.jetVY += (0 - this.jetVY) * 2.5 * dt;
     }
+    this.jetVY = Phaser.Math.Clamp(this.jetVY, -160, 160);
+    this.jetY += this.jetVY * dt;
+    this.jetY = Phaser.Math.Clamp(this.jetY, MIN_ALT, MAX_ALT);
+
+    // Visual tilt based on climb/dive
+    const tiltNorm = Phaser.Math.Clamp(this.jetVY / 160, -1, 1);
+    this.jetBankAngle = tiltNorm * 12;
+
+    // ── SPACE = drop bomb ──
+    if (this.bombCooldown > 0) this.bombCooldown -= dt;
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.space) && this._bombsThisPass > 0 && this.bombCooldown <= 0) {
+      this._bombsThisPass--;
+      this.bustersUsed++;
+      this.bombCooldown = 0.35;
+      try { SoundManager.get().playBombDrop(); } catch (e) { /* audio */ }
+
+      // Lower altitude = tighter bomb spread (more accurate)
+      const altFactor = (this.jetY - MIN_ALT) / (MAX_ALT - MIN_ALT); // 0=low, 1=high
+      const spread = altFactor * 30; // bombs drift more from height
+      const drift = (Math.random() - 0.5) * spread;
+
+      const bomb = this.add.circle(this.jetX, this.jetY + 15, 5, 0xffcc00).setDepth(9);
+      const bombOut = this.add.circle(this.jetX, this.jetY + 15, 7, 0xff8800, 0).setDepth(9);
+      bombOut.setStrokeStyle(2, 0xff8800, 0.6);
+      this.bombObjects.push({
+        sprite: bomb, outline: bombOut,
+        x: this.jetX, y: this.jetY + 15,
+        vx: this._passSpeed * this._passDir * 0.3 + drift,
+        vy: 0,
+      });
+    }
+
+    // ── Chaff ──
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.c) && this._samWarning && this.chaff > 0) {
+      this.chaff--;
+      this.chaffUsed++;
+      this._samWarning = false;
+      this.missileSpawnTimer = 0;
+      SoundManager.get().playChaffRelease();
+    }
+
+    // ── Update falling bombs ──
+    this._updateFallingBombs(dt, BOMB_GRAVITY, HIT_RADIUS);
+
+    // ── Check if jet has crossed the screen (end of pass) ──
+    const offScreen = this._passDir === 1 ? this.jetX > W + 50 : this.jetX < -50;
+    if (offScreen) {
+      this._passPaused = true;
+      this._passPauseTimer = 1.2;  // brief pause between passes
+      this.instrText.setText('BANKING FOR NEXT PASS...');
+    }
+
+    // ── SAM warnings (every 7 seconds) ──
+    this.missileSpawnTimer += dt;
+    if (this.missileSpawnTimer >= 7 && !this._samWarning) {
+      this._samWarning = true;
+      this._samWarningTimer = 2.5;
+      SoundManager.get().playMissileWarning();
+    }
+    if (this._samWarning) {
+      this._samWarningTimer -= dt;
+      if (this._samWarningTimer <= 0) {
+        this._samWarning = false;
+        this.missileSpawnTimer = 0;
+        // SAM hit — lose altitude control briefly
+        SoundManager.get().playExplosion();
+        this.cameras.main.shake(600, 0.025);
+        this.jetVY = 80; // force dive
+      }
+    }
+
+    // Altitude indicator
+    const altPct = Math.round((1 - (this.jetY - MIN_ALT) / (MAX_ALT - MIN_ALT)) * 100);
+    const altLabel = altPct > 70 ? 'HIGH (safe)' : altPct > 35 ? 'MED' : 'LOW (accurate!)';
+    this.hudDist.setText(`LAYERS: ${this.mountainHP}/${MOUNTAIN_LAYERS} | PASS ${this._passNumber}/${this._maxPasses} | BOMBS: ${this._bombsThisPass} | ALT: ${altLabel}`);
   }
 
-  _dropBusterTopDown() {
-    this.busters--;
-    this.bustersUsed++;
-    SoundManager.get().playBunkerBusterDrop();
-
-    // Bomb drops in the direction the B-2 is currently moving
-    const dir = this._bombingDir || -1;
-    const bombStartY = this.jetY + dir * 20;
-    const bomb = this.add.rectangle(this.jetX, bombStartY, 4, 12, 0x4a4a52).setDepth(9);
-    const bombNose = this.add.circle(this.jetX, bombStartY + dir * 6, 2, 0x3a3a42).setDepth(9);
-    this.bombObjects.push({
-      sprite: bomb, nose: bombNose,
-      x: this.jetX, y: bombStartY,
-      vy: dir * 320,  // moves in the direction of flight
-      vx: (Math.random() - 0.5) * 10,
-    });
-  }
-
-  _updateBustersTopDown(dt) {
-    const mtnY = this._mtnTargetY;
-    const mtnCX = this._mtnCenterX;
-    const mtnRadius = 80;  // mountain hit radius
-    const layerH = 16;     // visual layer height on screen
-
+  _updateFallingBombs(dt, gravity, hitRadius) {
     for (let i = this.bombObjects.length - 1; i >= 0; i--) {
       const b = this.bombObjects[i];
-      b.y += b.vy * dt;
+      b.vy += gravity * dt;
       b.x += b.vx * dt;
+      b.y += b.vy * dt;
       b.sprite.setPosition(b.x, b.y);
-      b.nose.setPosition(b.x, b.y - 6);
+      b.outline.setPosition(b.x, b.y);
 
-      // Check mountain hit (when bomb reaches mountain Y range)
-      const bombToMtn = Phaser.Math.Distance.Between(b.x, b.y, mtnCX, mtnY);
-      if (bombToMtn < mtnRadius && b.y < mtnY + 40) {
-        const centerDist = Math.abs(b.x - mtnCX);
-        const penetration = centerDist < 25 ? 2 : 1;
+      // Hit the mountain target area
+      if (b.y >= this._mtnTargetY - 20) {
+        const distToTarget = Math.abs(b.x - this._mtnCenterX);
+        b.sprite.destroy();
+        b.outline.destroy();
+        this.bombObjects.splice(i, 1);
 
-        SoundManager.get().playBunkerBusterImpact();
-        this.cameras.main.shake(400, 0.03);
-
-        for (let p = 0; p < penetration && this.mountainHP > 0; p++) {
-          const layerIdx = MOUNTAIN_LAYERS - this.mountainHP;
+        if (distToTarget < hitRadius) {
+          // HIT — destroy a layer
+          const layerIdx = this._layersDestroyed;
           if (layerIdx < MOUNTAIN_LAYERS && this.mountainLayerHP[layerIdx]) {
             this.mountainLayerHP[layerIdx] = false;
             this.mountainHP--;
-
-            const msg = penetration >= 2 && p === 0 ? 'DIRECT HIT — 2 LAYERS!' : `LAYER ${layerIdx + 1} PENETRATED`;
-            const pts = this.add.text(b.x, b.y - 20 - p * 20, msg, {
-              fontFamily: 'monospace', fontSize: '11px', color: '#00ff00',
-            }).setOrigin(0.5).setDepth(20);
-            this.tweens.add({
-              targets: pts, y: b.y - 60, alpha: 0, duration: 1200,
-              onComplete: () => pts.destroy(),
-            });
+            this._layersDestroyed++;
           }
-        }
 
-        this._addExplosion(b.x, b.y, 25, 0xff8800);
-        b.sprite.destroy(); b.nose.destroy();
-        this.bombObjects.splice(i, 1);
+          SoundManager.get().playBunkerBusterImpact();
+          this.cameras.main.shake(500, 0.02 + this._layersDestroyed * 0.008);
+          this._addExplosion(this._mtnCenterX, this._mtnTargetY, 30, 0xff8800);
+
+          const msg = `LAYER ${this._layersDestroyed} PENETRATED`;
+          const pts = this.add.text(this._mtnCenterX, this._mtnTargetY - 40, msg, {
+            fontFamily: 'monospace', fontSize: '14px', color: '#00ff66',
+            shadow: { offsetX: 0, offsetY: 0, color: '#00ff66', blur: 8, fill: true },
+          }).setOrigin(0.5).setDepth(25);
+          this.tweens.add({ targets: pts, y: pts.y - 50, alpha: 0, duration: 1500, onComplete: () => pts.destroy() });
+
+          // WIN
+          if (this.mountainHP <= 0 && !this._mtnBunkerHit) {
+            this._mtnBunkerHit = true;
+            this._stopAmbient();
+            this.time.delayedCall(800, () => this._startMountainExplosion());
+            return;
+          }
+        } else {
+          // MISS
+          this._addExplosion(b.x, b.y, 15, 0xff6600);
+          SoundManager.get().playExplosion();
+        }
         continue;
       }
 
-      // Off screen (missed)
-      if (b.y < -50 || b.x < -30 || b.x > W + 30) {
-        this._addExplosion(b.x, Math.max(10, b.y), 15, 0xff6600);
-        b.sprite.destroy(); b.nose.destroy();
+      // Off-screen
+      if (b.y > H + 20 || b.x < -30 || b.x > W + 30) {
+        b.sprite.destroy();
+        b.outline.destroy();
         this.bombObjects.splice(i, 1);
       }
     }
@@ -1553,171 +1842,203 @@ export default class B2BomberScene extends Phaser.Scene {
 
   _drawBombingTerrain(gfx, t) {
     gfx.clear();
-    const offset = this.terrainOffset;
 
-    // Desert/brown land as base
-    gfx.fillStyle(0x2a1e10, 1);
+    // ── THERMAL/IR CAMERA VIEW ──
+    // Black-green night vision aesthetic
+    gfx.fillStyle(0x0a120a, 1);
     gfx.fillRect(0, 0, W, H);
 
-    // Roads
-    const roadOffset = offset % H;
-    for (const road of this.flightRoads) {
-      gfx.lineStyle(3, 0x3a3a3a, 0.5);
-      gfx.lineBetween(road.x, 0, road.x, H);
-      gfx.lineStyle(1, 0x555555, 0.3);
-      const dashOff = roadOffset % 20;
-      for (let y = -20 + dashOff; y < H; y += 20) {
-        gfx.lineBetween(road.x, y, road.x, y + 10);
-      }
+    // Scanlines (thermal camera effect)
+    for (let y = 0; y < H; y += 3) {
+      gfx.fillStyle(0x000000, 0.15);
+      gfx.fillRect(0, y, W, 1);
     }
 
-    // Buildings
-    for (const b of this.flightBuildings) {
-      const by = ((b.yBase + offset) % (H + 200)) - 100;
-      if (by > -20 && by < H + 20) {
-        gfx.fillStyle(b.color, 0.6);
-        gfx.fillRect(b.x, by, b.w, b.h);
-      }
+    // Noise/grain (sparse green dots)
+    for (let i = 0; i < 30; i++) {
+      const nx = Math.random() * W;
+      const ny = Math.random() * H;
+      gfx.fillStyle(0x00ff00, 0.03 + Math.random() * 0.04);
+      gfx.fillRect(nx, ny, 1, 1);
     }
 
-    // ── Mountain (from above) ──
+    // ── Mountain (thermal view — warm = bright green) ──
     const mtnCX = this._mtnCenterX;
     const mtnY = this._mtnTargetY;
 
-    if (mtnY > -200 && mtnY < H + 100) {
-      // Outer mountain mass (irregular brown-green shape)
-      gfx.fillStyle(0x3a2a18, 0.9);
-      gfx.beginPath();
-      gfx.moveTo(mtnCX, mtnY - 90);
-      gfx.lineTo(mtnCX + 50, mtnY - 80);
-      gfx.lineTo(mtnCX + 90, mtnY - 40);
-      gfx.lineTo(mtnCX + 100, mtnY + 10);
-      gfx.lineTo(mtnCX + 80, mtnY + 60);
-      gfx.lineTo(mtnCX + 40, mtnY + 80);
-      gfx.lineTo(mtnCX - 30, mtnY + 85);
-      gfx.lineTo(mtnCX - 70, mtnY + 60);
-      gfx.lineTo(mtnCX - 95, mtnY + 10);
-      gfx.lineTo(mtnCX - 85, mtnY - 50);
-      gfx.lineTo(mtnCX - 40, mtnY - 80);
-      gfx.closePath();
-      gfx.fill();
+    // Outer mountain mass (warm = brighter in IR)
+    gfx.fillStyle(0x1a3a1a, 0.8);
+    gfx.beginPath();
+    gfx.moveTo(mtnCX, mtnY - 90);
+    gfx.lineTo(mtnCX + 50, mtnY - 80);
+    gfx.lineTo(mtnCX + 90, mtnY - 40);
+    gfx.lineTo(mtnCX + 100, mtnY + 10);
+    gfx.lineTo(mtnCX + 80, mtnY + 60);
+    gfx.lineTo(mtnCX + 40, mtnY + 80);
+    gfx.lineTo(mtnCX - 30, mtnY + 85);
+    gfx.lineTo(mtnCX - 70, mtnY + 60);
+    gfx.lineTo(mtnCX - 95, mtnY + 10);
+    gfx.lineTo(mtnCX - 85, mtnY - 50);
+    gfx.lineTo(mtnCX - 40, mtnY - 80);
+    gfx.closePath();
+    gfx.fill();
 
-      // Inner ridge contour
-      gfx.fillStyle(0x4a3a20, 0.7);
-      gfx.beginPath();
-      gfx.moveTo(mtnCX, mtnY - 60);
-      gfx.lineTo(mtnCX + 50, mtnY - 30);
-      gfx.lineTo(mtnCX + 60, mtnY + 20);
-      gfx.lineTo(mtnCX + 30, mtnY + 50);
-      gfx.lineTo(mtnCX - 25, mtnY + 55);
-      gfx.lineTo(mtnCX - 55, mtnY + 20);
-      gfx.lineTo(mtnCX - 45, mtnY - 35);
-      gfx.closePath();
-      gfx.fill();
+    // Inner ridge (warmer = brighter)
+    gfx.fillStyle(0x2a5a2a, 0.6);
+    gfx.beginPath();
+    gfx.moveTo(mtnCX, mtnY - 60);
+    gfx.lineTo(mtnCX + 50, mtnY - 30);
+    gfx.lineTo(mtnCX + 60, mtnY + 20);
+    gfx.lineTo(mtnCX + 30, mtnY + 50);
+    gfx.lineTo(mtnCX - 25, mtnY + 55);
+    gfx.lineTo(mtnCX - 55, mtnY + 20);
+    gfx.lineTo(mtnCX - 45, mtnY - 35);
+    gfx.closePath();
+    gfx.fill();
 
-      // Green vegetation patches
-      gfx.fillStyle(0x2a3a1a, 0.4);
-      gfx.fillCircle(mtnCX - 40, mtnY + 20, 20);
-      gfx.fillCircle(mtnCX + 35, mtnY - 15, 15);
-      gfx.fillCircle(mtnCX + 10, mtnY + 40, 18);
+    // Bunker entrance (HOT — very bright in IR)
+    const bunkerSize = 22;
+    gfx.fillStyle(0x44ff44, 0.7);
+    gfx.fillRect(mtnCX - bunkerSize / 2, mtnY - bunkerSize / 2, bunkerSize, bunkerSize);
+    gfx.lineStyle(1, 0x00ff00, 0.5);
+    gfx.strokeRect(mtnCX - bunkerSize / 2 - 1, mtnY - bunkerSize / 2 - 1, bunkerSize + 2, bunkerSize + 2);
 
-      // Bunker entrance (dark square at center)
-      const bunkerSize = 20;
-      gfx.fillStyle(0x0a0a0a, 0.9);
-      gfx.fillRect(mtnCX - bunkerSize / 2, mtnY - bunkerSize / 2, bunkerSize, bunkerSize);
-      // Bunker outline
-      gfx.lineStyle(2, 0x555555, 0.6);
-      gfx.strokeRect(mtnCX - bunkerSize / 2, mtnY - bunkerSize / 2, bunkerSize, bunkerSize);
+    // Heat signature rings (facility warmth)
+    gfx.lineStyle(1, 0x22aa22, 0.2);
+    gfx.strokeCircle(mtnCX, mtnY, 30);
+    gfx.strokeCircle(mtnCX, mtnY, 50);
 
-      // Fortification ring around bunker
-      gfx.lineStyle(1.5, 0x666666, 0.4);
-      gfx.strokeCircle(mtnCX, mtnY, 30);
-      // Inner ring
-      gfx.lineStyle(1, 0x888888, 0.3);
-      gfx.strokeCircle(mtnCX, mtnY, 18);
+    // Facility structures (warm spots)
+    const hotSpots = [
+      { x: mtnCX + 60, y: mtnY - 30, r: 6 },
+      { x: mtnCX - 55, y: mtnY + 25, r: 5 },
+      { x: mtnCX + 30, y: mtnY + 55, r: 4 },
+      { x: mtnCX - 40, y: mtnY - 50, r: 5 },
+    ];
+    for (const hs of hotSpots) {
+      gfx.fillStyle(0x33cc33, 0.4);
+      gfx.fillCircle(hs.x, hs.y, hs.r);
+    }
 
-      // ── FACILITY DETAIL ──
-      // Radar dishes (small circles with line)
-      gfx.fillStyle(0x888888, 0.4);
-      gfx.fillCircle(mtnCX + 60, mtnY - 30, 5);
-      gfx.lineStyle(1, 0x888888, 0.3);
-      gfx.lineBetween(mtnCX + 60, mtnY - 30, mtnCX + 60, mtnY - 22);
-      gfx.fillCircle(mtnCX - 55, mtnY + 25, 4);
-      gfx.lineBetween(mtnCX - 55, mtnY + 25, mtnCX - 55, mtnY + 32);
-
-      // Guard tower outposts (small rectangles with triangle roofs)
-      const facilityTowers = [
-        { x: mtnCX + 75, y: mtnY - 10 },
-        { x: mtnCX - 70, y: mtnY + 45 },
-        { x: mtnCX + 30, y: mtnY + 60 },
-        { x: mtnCX - 40, y: mtnY - 55 },
-      ];
-      for (const ft of facilityTowers) {
-        gfx.fillStyle(0x5a5a4a, 0.4);
-        gfx.fillRect(ft.x - 3, ft.y - 4, 6, 6);
-        gfx.fillStyle(0x4a4a3a, 0.3);
-        gfx.beginPath();
-        gfx.moveTo(ft.x - 4, ft.y - 4);
-        gfx.lineTo(ft.x, ft.y - 8);
-        gfx.lineTo(ft.x + 4, ft.y - 4);
-        gfx.closePath();
-        gfx.fillPath();
-      }
-
-      // Perimeter fence (dotted line around mountain)
-      gfx.lineStyle(0.5, 0x666666, 0.2);
-      for (let a = 0; a < Math.PI * 2; a += 0.15) {
-        const fenceR = 95;
-        const x1 = mtnCX + Math.cos(a) * fenceR;
-        const y1 = mtnY + Math.sin(a) * fenceR;
-        const x2 = mtnCX + Math.cos(a + 0.08) * fenceR;
-        const y2 = mtnY + Math.sin(a + 0.08) * fenceR;
-        gfx.lineBetween(x1, y1, x2, y2);
-      }
-
-      // Access road to bunker (from bottom)
-      gfx.lineStyle(2, 0x3a3a3a, 0.25);
-      gfx.lineBetween(mtnCX, mtnY + 85, mtnCX, mtnY + 130);
-      gfx.lineStyle(1, 0x555555, 0.15);
-      for (let ry = mtnY + 88; ry < mtnY + 130; ry += 8) {
-        gfx.lineBetween(mtnCX, ry, mtnCX, ry + 4);
-      }
-
-      // Layer indicators (rings around mountain showing remaining layers)
-      for (let i = 0; i < MOUNTAIN_LAYERS; i++) {
-        if (this.mountainLayerHP[i]) {
-          const layerR = 35 + i * 12;
-          const layerAlpha = 0.3 - i * 0.04;
-          gfx.lineStyle(2, 0x8a6a3a, layerAlpha);
-          gfx.strokeCircle(mtnCX, mtnY, layerR);
-        } else {
-          // Destroyed layer: show as cracked/broken ring
-          const layerR = 35 + i * 12;
-          gfx.lineStyle(1, 0xff4400, 0.2);
-          // Draw partial arcs to show destruction
-          for (let a = 0; a < Math.PI * 2; a += 0.8) {
-            const x1 = mtnCX + Math.cos(a) * layerR;
-            const y1 = mtnY + Math.sin(a) * layerR;
-            const x2 = mtnCX + Math.cos(a + 0.3) * layerR;
-            const y2 = mtnY + Math.sin(a + 0.3) * layerR;
-            gfx.lineBetween(x1, y1, x2, y2);
-          }
+    // Layer indicators (remaining layers as green rings)
+    for (let i = 0; i < MOUNTAIN_LAYERS; i++) {
+      const layerR = 35 + i * 12;
+      if (this.mountainLayerHP[i]) {
+        gfx.lineStyle(2, 0x00aa44, 0.25 - i * 0.03);
+        gfx.strokeCircle(mtnCX, mtnY, layerR);
+      } else {
+        gfx.lineStyle(1, 0xff4400, 0.15);
+        for (let a = 0; a < Math.PI * 2; a += 0.8) {
+          const x1 = mtnCX + Math.cos(a) * layerR;
+          const y1 = mtnY + Math.sin(a) * layerR;
+          const x2 = mtnCX + Math.cos(a + 0.3) * layerR;
+          const y2 = mtnY + Math.sin(a + 0.3) * layerR;
+          gfx.lineBetween(x1, y1, x2, y2);
         }
       }
-
-      // "Supreme Turban" label near bunker when visible
-      if (mtnY > 40 && mtnY < H - 40) {
-        // Pulsing target reticle
-        const reticleAlpha = 0.3 + Math.sin(t * 4) * 0.15;
-        gfx.lineStyle(1, 0xff0000, reticleAlpha);
-        gfx.strokeCircle(mtnCX, mtnY, 12 + Math.sin(t * 3) * 3);
-        // Crosshair
-        gfx.lineBetween(mtnCX - 18, mtnY, mtnCX - 8, mtnY);
-        gfx.lineBetween(mtnCX + 8, mtnY, mtnCX + 18, mtnY);
-        gfx.lineBetween(mtnCX, mtnY - 18, mtnCX, mtnY - 8);
-        gfx.lineBetween(mtnCX, mtnY + 8, mtnCX, mtnY + 18);
-      }
     }
+
+    // ── B-2 BOMBER (side-view profile flying across) ──
+    const jx = this.jetX;
+    const jy = this.jetY;
+    const dir = this._passDir || 1;
+
+    // B-2 side silhouette (flying left or right)
+    gfx.fillStyle(0x66ff66, 0.85);
+    gfx.beginPath();
+    gfx.moveTo(jx + 22 * dir, jy);            // nose
+    gfx.lineTo(jx - 5 * dir, jy - 14);        // top wing
+    gfx.lineTo(jx - 18 * dir, jy - 6);        // rear top
+    gfx.lineTo(jx - 20 * dir, jy);            // tail
+    gfx.lineTo(jx - 18 * dir, jy + 6);        // rear bottom
+    gfx.lineTo(jx - 5 * dir, jy + 10);        // bottom wing
+    gfx.closePath();
+    gfx.fill();
+
+    // Cockpit
+    gfx.fillStyle(0xaaffaa, 0.6);
+    gfx.fillCircle(jx + 16 * dir, jy, 3);
+
+    // Engine glow
+    gfx.fillStyle(0xccffcc, 0.5);
+    gfx.fillCircle(jx - 20 * dir, jy - 2, 3);
+    gfx.fillCircle(jx - 20 * dir, jy + 2, 3);
+
+    // Altitude indicator lines (shows how low you are)
+    const altPct = (jy - 70) / (H * 0.28 - 70); // 0=low, 1=high
+    const indicatorColor = altPct < 0.3 ? 0xff4400 : altPct < 0.6 ? 0xffaa00 : 0x00ff00;
+    gfx.lineStyle(1, indicatorColor, 0.3);
+    gfx.lineBetween(jx - 25, jy + 16, jx + 25, jy + 16);
+
+    // ── Aiming guide (vertical dashed line from jet to ground) ──
+    gfx.lineStyle(1, 0x00ff00, 0.12);
+    for (let gy = jy + 20; gy < mtnY + 60; gy += 12) {
+      gfx.lineBetween(jx, gy, jx, Math.min(gy + 6, mtnY + 60));
+    }
+
+    // ── Falling bombs ──
+    for (const b of this.bombObjects) {
+      gfx.fillStyle(0xffff00, 0.9);
+      gfx.fillCircle(b.x, b.y, 4);
+      gfx.fillStyle(0xff8800, 0.4);
+      gfx.fillCircle(b.x, b.y, 7);
+      // Bomb trail
+      gfx.lineStyle(1, 0xff6600, 0.25);
+      gfx.lineBetween(b.x, b.y - 8, b.x - b.vx * 0.05, b.y - 12);
+    }
+
+    // ── Pass direction arrow at top ──
+    const arrowX = W / 2;
+    const arrowY = 30;
+    gfx.fillStyle(0x00ff00, 0.2);
+    gfx.beginPath();
+    gfx.moveTo(arrowX + 20 * dir, arrowY);
+    gfx.lineTo(arrowX - 10 * dir, arrowY - 8);
+    gfx.lineTo(arrowX - 10 * dir, arrowY + 8);
+    gfx.closePath();
+    gfx.fill();
+
+    // ── SAM WARNING OVERLAY (dramatic) ──
+    if (this._samWarning) {
+      const warnAlpha = 0.2 + Math.sin(t * 12) * 0.15;
+      gfx.fillStyle(0xff0000, warnAlpha);
+      gfx.fillRect(0, 0, W, H);
+
+      // Warning border
+      gfx.lineStyle(3, 0xff0000, 0.4 + Math.sin(t * 8) * 0.3);
+      gfx.strokeRect(4, 4, W - 8, H - 8);
+
+      // SAM INCOMING warning indicator bar
+      gfx.fillStyle(0xff0000, 0.6 + Math.sin(t * 10) * 0.3);
+      gfx.fillRect(W / 2 - 60, 50, 120, 20);
+      gfx.fillStyle(0x000000, 0.8);
+      gfx.fillRect(W / 2 - 58, 52, 116, 16);
+    }
+
+    // ── CAMERA FRAME OVERLAY ──
+    // Corner brackets (IR camera frame)
+    const bracketLen = 30;
+    const bracketInset = 15;
+    gfx.lineStyle(1.5, 0x00ff00, 0.3);
+    // Top-left
+    gfx.lineBetween(bracketInset, bracketInset, bracketInset + bracketLen, bracketInset);
+    gfx.lineBetween(bracketInset, bracketInset, bracketInset, bracketInset + bracketLen);
+    // Top-right
+    gfx.lineBetween(W - bracketInset, bracketInset, W - bracketInset - bracketLen, bracketInset);
+    gfx.lineBetween(W - bracketInset, bracketInset, W - bracketInset, bracketInset + bracketLen);
+    // Bottom-left
+    gfx.lineBetween(bracketInset, H - bracketInset, bracketInset + bracketLen, H - bracketInset);
+    gfx.lineBetween(bracketInset, H - bracketInset, bracketInset, H - bracketInset - bracketLen);
+    // Bottom-right
+    gfx.lineBetween(W - bracketInset, H - bracketInset, W - bracketInset - bracketLen, H - bracketInset);
+    gfx.lineBetween(W - bracketInset, H - bracketInset, W - bracketInset, H - bracketInset - bracketLen);
+
+    // Timestamp overlay (bottom-right)
+    const secs = Math.floor(t);
+    const ms = Math.floor((t % 1) * 100);
+    // (drawn as green text-like shapes for IR aesthetic)
+    gfx.fillStyle(0x00ff00, 0.25);
+    gfx.fillRect(W - 130, H - 30, 115, 16);
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -2101,6 +2422,13 @@ export default class B2BomberScene extends Phaser.Scene {
   }
 
   _drawEscapeB2(gfx, bx, by, bank) {
+    // AI sprite version — flying LEFT (nose rotated to point left), banked.
+    if (this.b2Sprite) {
+      this.b2Sprite.setVisible(true).setPosition(bx, by)
+        .setScale(1.2).setFlipY(false)
+        .setRotation(-Math.PI / 2 + (bank || 0) * 0.18);
+      return;
+    }
     // B-2 flying LEFT across screen, banked, wings almost touching water
     // Different angle than normal — side-ish view from behind, banked
     const bs = 1.2;  // slightly bigger for dramatic effect
@@ -2229,6 +2557,14 @@ export default class B2BomberScene extends Phaser.Scene {
 
     try { localStorage.setItem('superzion_stars_5', String(starCount)); } catch(e) {}
 
+    // Save level progress: completing level 4 (B2BomberScene) unlocks level 5
+    if (missionSuccess) {
+      try {
+        const prev = parseInt(localStorage.getItem('superzion_level_progress') || '1');
+        if (5 > prev) localStorage.setItem('superzion_level_progress', '5');
+      } catch(e) {}
+    }
+
     const stats = [
       { label: 'BUNKER BUSTERS USED', value: `${this.bustersUsed}/${BUSTER_TOTAL}` },
       { label: 'LAYERS PENETRATED', value: `${layersDestroyed}/${MOUNTAIN_LAYERS}` },
@@ -2263,16 +2599,17 @@ export default class B2BomberScene extends Phaser.Scene {
   update(time, delta) {
     // Tutorial active: skip all gameplay
     if (this.tutorialActive) return;
+    this.inputManager.update();
 
     const dt = delta / 1000;
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.m)) {
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.m) || this.inputManager.justDown('mute')) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
 
     // ESC pause
-    if (Phaser.Input.Keyboard.JustDown(this.keys.esc) && this.phase !== 'victory') {
+    if ((Phaser.Input.Keyboard.JustDown(this._rawKeys.esc) || this.inputManager.justDown('pause')) && this.phase !== 'victory') {
       this._togglePause();
       return;
     }
@@ -2289,6 +2626,9 @@ export default class B2BomberScene extends Phaser.Scene {
       this._showVictory();
       return;
     }
+
+    // Hide the B-2 sprite each frame; the active phase's draw call re-shows it.
+    if (this.b2Sprite) this.b2Sprite.setVisible(false);
 
     switch (this.phase) {
       case 'takeoff':
@@ -2315,18 +2655,6 @@ export default class B2BomberScene extends Phaser.Scene {
           this._drawB2Escape(this.b2Gfx, this.jetX, this.jetY, 1, this.jetBankAngle);
         } else {
           this._drawB2(this.b2Gfx, this.jetX, this.jetY, 1, this.jetBankAngle);
-        }
-        break;
-      case 'bounce':
-        this._updateBounce(dt);
-        // Draw land terrain during bounce
-        this._drawBombingTerrain(this.terrainGfx, 0);
-        this.radarGfx.clear();
-        this.b2Gfx.clear();
-        if (this._bounceFlipped) {
-          this._drawB2(this.b2Gfx, this.jetX, this.jetY, 1, this.jetBankAngle);
-        } else {
-          this._drawB2Escape(this.b2Gfx, this.jetX, this.jetY, 1, this.jetBankAngle);
         }
         break;
       case 'escape':
@@ -2375,6 +2703,13 @@ export default class B2BomberScene extends Phaser.Scene {
 
   // B-2 drawn with nose pointing DOWN (escape — flying back)
   _drawB2Escape(gfx, bx, by, scale, bankAngle) {
+    // AI sprite version — nose DOWN (180° rotation).
+    if (this.b2Sprite) {
+      this.b2Sprite.setVisible(true).setPosition(bx, by)
+        .setScale((scale || 1) * 1.0).setFlipY(false)
+        .setRotation(Math.PI + (bankAngle || 0) * 0.15);
+      return;
+    }
     const bs = scale || 1;
     const bank = (bankAngle || 0) * 0.15;
     const t = this.phaseTimer || 0;

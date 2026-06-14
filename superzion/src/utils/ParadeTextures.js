@@ -69,70 +69,66 @@ function staticSprite(scene, key, drawFn, w, h) {
 export function createIranFlag(scene) {
   wavingSheet(scene, 'flag_iran', (ctx, w, h) => {
     const s = h / 3;
-    // Green stripe
-    ctx.fillStyle = '#009b3a';
-    ctx.fillRect(0, 0, w, s);
-    // White stripe
+    // Official tricolour
+    ctx.fillStyle = '#239f40'; ctx.fillRect(0, 0, w, s);        // green
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, s, w, s);        // white
+    ctx.fillStyle = '#da0000'; ctx.fillRect(0, s * 2, w, s);    // red
+    // Takbir border — repeated stylised kufic ticks along the stripe seams
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, s, w, s);
-    // Red stripe
-    ctx.fillStyle = '#c8102e';
-    ctx.fillRect(0, s * 2, w, s);
-    // Decorative Kufic borders
-    for (let x = 0; x < w; x += 5) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x, s - 2, 3, 4);
-      ctx.fillRect(x + 2, s * 2 - 2, 3, 4);
-    }
-    // Central emblem (stylized tulip/sword)
+    for (let x = 4; x < w - 3; x += 11) { ctx.fillRect(x, s - 5, 2, 4); ctx.fillRect(x + 3, s - 3, 2, 2); }
+    for (let x = 4; x < w - 3; x += 11) { ctx.fillRect(x, s * 2 + 1, 2, 4); ctx.fillRect(x + 3, s * 2 + 1, 2, 2); }
+    // Central red emblem (stylised tulip: central sword + four crescents + base)
     const cx = w / 2, cy = h / 2;
-    ctx.fillStyle = '#c8102e';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 14);
-    ctx.lineTo(cx + 5, cy - 6);
-    ctx.lineTo(cx + 10, cy + 2);
-    ctx.lineTo(cx + 7, cy + 6);
-    ctx.lineTo(cx + 3, cy + 10);
-    ctx.lineTo(cx, cy + 12);
-    ctx.lineTo(cx - 3, cy + 10);
-    ctx.lineTo(cx - 7, cy + 6);
-    ctx.lineTo(cx - 10, cy + 2);
-    ctx.lineTo(cx - 5, cy - 6);
-    ctx.closePath();
-    ctx.fill();
-    // Inner detail
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#c8102e';
-    ctx.fillRect(cx - 1, cy - 6, 2, 12);
+    ctx.fillStyle = '#da0000';
+    // central sword/petal
+    ctx.fillRect(cx - 1.5, cy - 9, 3, 16);
+    ctx.beginPath(); ctx.moveTo(cx, cy - 13); ctx.lineTo(cx + 3, cy - 8); ctx.lineTo(cx - 3, cy - 8); ctx.closePath(); ctx.fill();
+    // curved crescents, two per side
+    for (const d of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + d * 2, cy + 5);
+      ctx.quadraticCurveTo(cx + d * 13, cy + 1, cx + d * 9, cy - 10);
+      ctx.quadraticCurveTo(cx + d * 8, cy - 1, cx + d * 2, cy + 1);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + d * 1, cy + 6);
+      ctx.quadraticCurveTo(cx + d * 6, cy + 4, cx + d * 5, cy - 3);
+      ctx.quadraticCurveTo(cx + d * 4, cy + 1, cx + d * 1, cy + 2);
+      ctx.closePath(); ctx.fill();
+    }
+    // base bar
+    ctx.fillRect(cx - 8, cy + 6, 16, 2);
   }, 140, 90);
 }
 
 export function createLebanonFlag(scene) {
   wavingSheet(scene, 'flag_lebanon', (ctx, w, h) => {
-    // Red-White-Red (1:2:1 proportions)
+    // Red-White-Red (1:2:1 proportions), official colours
     const rs = h / 4;
-    ctx.fillStyle = '#ee161f';
+    ctx.fillStyle = '#ed1c24';
     ctx.fillRect(0, 0, w, rs);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, rs, w, rs * 2);
-    ctx.fillStyle = '#ee161f';
+    ctx.fillStyle = '#ed1c24';
     ctx.fillRect(0, rs * 3, w, rs);
-    // Green Cedar of Lebanon
+    // Cedar of Lebanon
     const cx = w / 2, cy = h / 2;
-    ctx.fillStyle = '#006233';
-    // Trunk
-    ctx.fillRect(cx - 2, cy + 6, 4, 10);
-    // Tree layers (3 triangle tiers)
-    for (let i = 0; i < 4; i++) {
-      const ty = cy - 18 + i * 8;
-      const tw = 5 + i * 5;
+    // brown trunk
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(cx - 2, cy + 8, 4, 9);
+    // green layered canopy (cedar tiers, wider toward the base, pointed top)
+    ctx.fillStyle = '#00a651';
+    for (let i = 0; i < 5; i++) {
+      const ty = cy - 17 + i * 6;
+      const tw = 4 + i * 4;
       ctx.beginPath();
       ctx.moveTo(cx, ty);
-      ctx.lineTo(cx + tw, ty + 10);
-      ctx.lineTo(cx - tw, ty + 10);
+      ctx.lineTo(cx + tw, ty + 9);
+      ctx.lineTo(cx + tw * 0.5, ty + 9);
+      ctx.lineTo(cx + tw * 0.6, ty + 12);
+      ctx.lineTo(cx - tw * 0.6, ty + 12);
+      ctx.lineTo(cx - tw * 0.5, ty + 9);
+      ctx.lineTo(cx - tw, ty + 9);
       ctx.closePath();
       ctx.fill();
     }
@@ -164,16 +160,29 @@ export function createPalestineFlag(scene) {
 
 export function createIsraelFlag(scene) {
   wavingSheet(scene, 'flag_israel', (ctx, w, h) => {
-    // White background
+    // White field
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
-    // Blue stripes
+    // Two blue stripes (official #0038b8)
     const sh = h * 0.12;
     ctx.fillStyle = '#0038b8';
-    ctx.fillRect(0, h * 0.18, w, sh);
-    ctx.fillRect(0, h * 0.70, w, sh);
-    // Star of David
-    starOfDavid(ctx, w / 2, h / 2, h * 0.22, '#0038b8', false);
+    ctx.fillRect(0, h * 0.17, w, sh);
+    ctx.fillRect(0, h * 0.71, w, sh);
+    // Blue Star of David — outlined hexagram (two overlaid triangles)
+    const cx = w / 2, cy = h / 2, r = h * 0.20;
+    ctx.strokeStyle = '#0038b8';
+    ctx.lineWidth = 2.4;
+    ctx.lineJoin = 'round';
+    for (const rot of [-Math.PI / 2, Math.PI / 2]) {
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = rot + (i * 2 * Math.PI) / 3;
+        const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
   }, 140, 90);
 }
 

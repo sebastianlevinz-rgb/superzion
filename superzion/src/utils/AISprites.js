@@ -41,7 +41,10 @@ export const AI_SPRITES = [
   'ps_worker_left_0', 'ps_worker_left_1', 'ps_worker_right_0', 'ps_worker_right_1',
 
   // ── Air combat (BomberScene / DroneScene / B2BomberScene) ──
-  'f15_side', 'b2_side', 'drone_top', 'carrier_side',
+  'f15_side', 'b2_side', 'b2_top', 'drone_top', 'carrier_side',
+  // F-15 level scrolling terrain bands (seamless tiles)
+  'sea_surface', 'coast_ground', 'mountain_ground', 'valley_ground',
+  'far_mountains', 'cloud_layer',
   'turbo_turban', 'turbo_turban_yell',
   'guard_idle', 'guard_shoot',
   'turret_idle', 'turret_alert', 'turret_shoot',
@@ -65,6 +68,11 @@ export const AI_SPRITES = [
   'cin_tehran', 'cin_beirut_port', 'cin_lebanon_coast', 'cin_fortress',
   'cin_natanz', 'cin_gaza', 'cin_destroyed_city', 'cin_cliff_bg', 'cin_ops_room',
   'cin_superzion', 'cin_superzion_cliff',
+  '__title_bg', 'b2_silhouette',
+  // Natanz destruction cinematic — target building (sliced floors + roof)
+  'target_bldg_floor_0', 'target_bldg_floor_1', 'target_bldg_floor_2',
+  'target_bldg_floor_3', 'target_bldg_floor_4', 'target_bldg_roof',
+  'sky_gradient',
 
   // ── Props ──
   'ps_container_red', 'ps_container_red_marked',

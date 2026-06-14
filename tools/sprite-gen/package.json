@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
+    "canvas": "^3.2.3",
     "sharp": "^0.33.5"
   }
 }

@@ -79,11 +79,14 @@ function enemySoldier(dir, frame, variant) {
   return `${STYLE}. Sprite of ${base}, ${view}, ${pose}.`;
 }
 
-// ── BOMBERMAN BOSS "Foam Beard" — cartoon warlord villain, 3 states ──
+// ── BOMBERMAN BOSS "Foam Beard" — wild-white-bearded militia commander ──
+// Signature trait: an ENORMOUS wild foamy white beard.
 const BOSS1_BASE =
-  "a cartoon villain warlord boss, large menacing figure, big bushy dark beard, " +
-  "military commander cap and uniform, exaggerated comic villain proportions, " +
-  "front view facing camera, detailed pixel art arcade boss";
+  "a cartoon militia-commander villain boss, stocky figure, with an ENORMOUS " +
+  "wild bushy foamy WHITE beard covering his chest, olive-green military field " +
+  "fatigues, a black-and-white checkered keffiyeh scarf, no turban, " +
+  "exaggerated comic villain proportions, front view facing camera, " +
+  "detailed pixel art arcade boss";
 
 function boss1(state) {
   const s = {
@@ -146,9 +149,12 @@ function vehicle(which) {
   return `${STYLE}. Sprite of ${VEH[which]}, sharp detailed pixel art, side-scroller game asset.`;
 }
 
+// Turbo Turban — signature trait: a COMICALLY OVERSIZED black turban.
 const TURBAN_BASE =
-  "a cartoon villain warlord boss, large comic figure wearing an oversized ornate turban, " +
-  "long robe, big beard, exaggerated comic-villain proportions, front view, detailed pixel art arcade boss";
+  "a cartoon cleric villain boss, round figure wearing a COMICALLY ENORMOUS oversized " +
+  "BLACK turban (the turban is huge, the joke of the character), a brown clerical robe, " +
+  "round glasses, a thick grey-black beard, exaggerated comic-villain proportions, " +
+  "front view, detailed pixel art arcade boss";
 function turban(state) {
   const s = state === "yell"
     ? "furious, mouth open shouting, both arms raised in rage"
@@ -262,6 +268,8 @@ export const SPRITES = {
   air: [
     { name: "f15_side", size: { w: 64, h: 32 }, prompt: vehicle("f15") },
     { name: "b2_side", size: { w: 120, h: 40 }, prompt: vehicle("b2") },
+    { name: "b2_top", size: { w: 128, h: 76 },
+      prompt: `${STYLE}. Sprite of a B-2 Spirit stealth bomber seen from DIRECTLY ABOVE (top-down bird's-eye view), dark charcoal-grey flying-wing bat/boomerang silhouette shape, pointed nose at top, swept back wings, two faintly glowing engine exhausts at the rear edge, sleek angular stealth aircraft, detailed pixel art.` },
     { name: "drone_top", size: 64, prompt: vehicle("drone") },
     { name: "carrier_side", size: { w: 480, h: 200 }, prompt: vehicle("carrier") },
     { name: "turbo_turban", size: 128, prompt: turban("normal") },
@@ -277,14 +285,15 @@ export const SPRITES = {
   // Parade (GameIntroScene / LastStandCinematicScene) — bosses, hero, vehicles
   parade: [
     // Boss caricatures (generic cartoon arcade villains)
+    // Each boss is DISTINCT — its name's signature trait dialed up, own colour/build.
     { name: "parade_foambeard", size: { w: 60, h: 110 }, ref: "bm_boss1_normal",
-      prompt: sprite("a cartoon warlord villain, full body standing front view, big bushy dark beard, military commander cap and uniform, exaggerated comic-villain proportions") },
+      prompt: sprite("a stocky cartoon militia-commander villain, full body front view, with an ENORMOUS wild foamy WHITE beard covering his chest, olive-green field fatigues, a black-and-white checkered keffiyeh scarf, no turban, comic-villain proportions") },
     { name: "parade_turboturban", size: { w: 70, h: 120 }, ref: "turbo_turban",
-      prompt: sprite("a cartoon warlord villain, full body standing front view, oversized ornate turban, long robe, big beard, comic-villain proportions") },
+      prompt: sprite("a round cartoon cleric villain, full body front view, wearing a COMICALLY ENORMOUS oversized BLACK turban, a brown clerical robe, round glasses, a thick grey-black beard, comic-villain proportions") },
     { name: "parade_angryeyebrows", size: { w: 64, h: 110 },
-      prompt: sprite("a cartoon villain general, full body standing front view, enormous comically bushy eyebrows, stern scowl, olive military uniform with medals") },
-    { name: "parade_supremeturban", size: { w: 96, h: 160 }, ref: "parade_turboturban",
-      prompt: sprite("a tall imposing cartoon supreme-leader villain, full body front view, flowing dark robes, large black turban, long grey beard, comic-villain proportions") },
+      prompt: sprite("a cartoon military-general villain, full body front view, with ENORMOUS comically thick bushy connected eyebrows and a deep scowl, an olive-green general's dress uniform COVERED in golden medals and epaulettes, a peaked military cap (NO turban), a short trimmed beard, comic-villain proportions") },
+    { name: "parade_supremeturban", size: { w: 96, h: 160 },
+      prompt: sprite("a tall gaunt imposing cartoon supreme-leader villain, full body front view, a dignified medium BLACK turban, round glasses, a long flowing WHITE beard down to his chest, flowing dark-charcoal robes, the most serious and intimidating of villains, comic-villain proportions") },
     // Hero + soldier
     { name: "parade_superzion", size: { w: 96, h: 160 }, ref: "bm_player_down_0",
       prompt: sprite(HERO_BASE + ", full body heroic standing pose, front view, proud and confident") },
@@ -363,6 +372,41 @@ export const SPRITES = {
     { name: "ps_building", size: { w: 64, h: 48 }, prompt: `${STYLE}. Sprite of a port warehouse building seen from above (top-down), flat roof, industrial.` },
     { name: "armchair", size: 120, prompt: `${STYLE}. Sprite of an ornate royal wingback armchair, plush deep-red velvet with gold trim, front view, empty.` },
     { name: "armchair_side", size: { w: 90, h: 120 }, ref: "armchair", prompt: `${STYLE}. Sprite of an ornate royal wingback armchair, plush deep-red velvet with gold trim, side profile view, empty.` },
+  ],
+
+  // F-15 level scrolling terrain bands (tileSprites — must tile seamlessly).
+  // Aerial side-scroller ground seen passing below the jet. tile:true mirrors.
+  terrain: [
+    { name: "sea_surface", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. Aerial top-down view of deep blue ocean water with gentle waves and foam highlights, filling the frame as a horizontal terrain band.` },
+    { name: "coast_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. Aerial top-down view of a sandy coastline where blue sea meets tan beach and green vegetation, horizontal terrain band.` },
+    { name: "mountain_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. Aerial top-down view of rugged rocky brown mountain ridges and ravines, horizontal terrain band.` },
+    { name: "valley_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. Aerial top-down view of an arid desert valley with sparse scrub and dry riverbeds, horizontal terrain band.` },
+    // Transparent parallax layers (sky shows through the keyed-out areas).
+    // NOTE: use a NO-character style — the base STYLE adds figures.
+    { name: "far_mountains", size: { w: 768, h: 256 }, tileAlpha: true,
+      prompt: `16-bit retro pixel-art parallax scenery layer, NO characters, NO people, NO creatures, NO knights, NO text, NO border. A row of distant hazy blue-grey mountain-range silhouettes along the BOTTOM third only; the ENTIRE rest of the image is a solid flat pure ${KEY_COLOR} green empty sky. Horizontal band, detailed pixel art.` },
+    { name: "cloud_layer", size: { w: 768, h: 160 }, tileAlpha: true,
+      prompt: `16-bit retro pixel-art parallax layer, NO characters, NO people, NO text, NO border. A few soft wispy white and pale-grey clouds scattered across a solid flat pure ${KEY_COLOR} green background. Horizontal cloud band, detailed pixel art.` },
+  ],
+
+  // Natanz target building — generated whole, then SLICED into floor strips.
+  natanz: [
+    { name: "__natanz_building", size: { w: 224, h: 228 },
+      prompt: `16-bit retro pixel-art building sprite, NO characters, NO people, NO text. A tall narrow concrete nuclear/military facility tower, beige and grey weathered concrete, many rows of small dark square windows, ventilation pipes, antennas and a control box on the flat roof, industrial and ominous. The building FILLS the entire frame from the rooftop at the very top to the base at the very bottom. Solid flat pure ${KEY_COLOR} green background on the sides. Detailed pixel art, bold dark outline.` },
+  ],
+
+  // Misc remaining old-graphics replacements
+  extras: [
+    { name: "sky_gradient", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. ONLY a dramatic twilight sky filling the whole frame — deep orange and crimson glow near the bottom horizon fading up through purple to dark navy-black at the top, a few faint wispy clouds, atmospheric and moody. NO ground, NO mountains, NO buildings, NO landscape, just sky.` },
+    { name: "__title_bg", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A dramatic war-torn middle-eastern city skyline at dusk under a dark ominous orange-black sky, ruined silhouetted buildings, smoke columns, distant fire glow, cinematic title-screen backdrop.` },
+    { name: "b2_silhouette", size: { w: 200, h: 80 }, ref: "b2_top",
+      prompt: `${STYLE}. Sprite of a B-2 Spirit stealth bomber seen from DIRECTLY ABOVE (top-down planform), dark charcoal flying-wing bat shape, pointed nose, swept wings, faint engine glow, detailed pixel art.` },
   ],
 
   // Final boss level (BossScene)
