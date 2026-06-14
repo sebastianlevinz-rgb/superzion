@@ -1,1 +1,19 @@
-NUL
+# Dependencies (never commit these — run npm install instead)
+node_modules/
+
+# Local env / secrets
+.env
+.env.local
+.env.*.local
+
+# Build / dev cache
+**/.vite/
+
+# Vercel local link
+.vercel/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+
+# Note: dist/ is intentionally tracked (Vercel static deploy)
