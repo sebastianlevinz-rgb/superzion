@@ -409,6 +409,13 @@ export const SPRITES = {
       prompt: `${STYLE}. Sprite of a B-2 Spirit stealth bomber seen from DIRECTLY ABOVE (top-down planform), dark charcoal flying-wing bat shape, pointed nose, swept wings, faint engine glow, detailed pixel art.` },
   ],
 
+  // Graphics-overhaul batch: remaining procedural backdrops → AI
+  overhaul: [
+    // Credits "Am Yisrael Chai" — sunrise over Tel Aviv skyline & sea
+    { name: "credits_sky", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A breathtaking sunrise over the Tel Aviv coastline seen from the sea — a glowing golden sun rising on the horizon, warm orange-and-pink sky fading to soft blue above, a distant modern city skyline silhouette of towers along the horizon, calm reflective Mediterranean sea in the lower third with shimmering sun reflection, hopeful peaceful dawn atmosphere, cinematic.` },
+  ],
+
   // Final boss level (BossScene)
   boss_final: [
     { name: "player_fighter", size: 64, prompt: sideVeh("an F-16 fighter jet, side view facing right, grey military jet with afterburner") },

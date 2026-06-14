@@ -112,7 +112,7 @@ async function run() {
     }
   }
 
-  console.log(`\nListo. PNGs crudos en raw/, finales en superzion-kaplay/public/sprites/`);
+  console.log(`\nListo. PNGs crudos en raw/, finales en superzion/public/assets/sprites/`);
 }
 
 run();

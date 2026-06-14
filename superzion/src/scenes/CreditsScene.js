@@ -6,62 +6,45 @@ import Phaser from 'phaser';
 import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
+import InputManager from '../systems/InputManager.js';
 
 export default class CreditsScene extends BaseCinematicScene {
   constructor() { super('CreditsScene'); }
 
   create() {
     this.cameras.main.setBackgroundColor('#000000');
+    this.inputManager = new InputManager(this, { preset: 'cinematic' });
     MusicManager.get().playMenuMusic();
     this.done = false;
 
-    // Animated sunset background (procedural — no texture dependency)
-    const bgGfx = this.add.graphics().setDepth(0);
-    // Sky gradient: dark purple at top -> orange-gold at horizon (H*0.6)
-    for (let y = 0; y < H * 0.6; y++) {
-      const t = y / (H * 0.6);
-      const r = 18 + t * 140 | 0;   // dark purple -> warm orange
-      const g = 8 + t * 70 | 0;     // dark -> gold
-      const b = 40 - t * 30 | 0;    // purple tint fading
-      bgGfx.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
-      bgGfx.fillRect(0, y, W, 1);
-    }
-    // Sea gradient: orange-gold at horizon -> dark deep blue below
-    for (let y = Math.floor(H * 0.6); y < H; y++) {
-      const t = (y - H * 0.6) / (H * 0.4);
-      const r = 158 - t * 140 | 0;
-      const g = 78 - t * 70 | 0;
-      const b = 10 + t * 25 | 0;
-      bgGfx.fillStyle(Phaser.Display.Color.GetColor(Math.max(r, 0), Math.max(g, 0), b), 1);
-      bgGfx.fillRect(0, y, W, 1);
-    }
-
-    // Sun glow circle — golden, pulsing slowly
-    const sunGlow = this.add.circle(W * 0.5, H * 0.6, 80, 0xffcc44, 0.15).setDepth(0);
-    this.tweens.add({
-      targets: sunGlow,
-      alpha: { from: 0.15, to: 0.08 },
-      scaleX: { from: 1, to: 1.08 },
-      scaleY: { from: 1, to: 1.08 },
-      duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
-
-    // Subtle cloud ellipses with slow drift tweens
-    const cloudData = [
-      { x: W * 0.25, y: H * 0.3, w: 120, h: 20 },
-      { x: W * 0.7, y: H * 0.22, w: 100, h: 15 },
-      { x: W * 0.5, y: H * 0.42, w: 140, h: 18 },
-    ];
-    for (const cd of cloudData) {
-      const cloud = this.add.ellipse(cd.x, cd.y, cd.w, cd.h, 0xffddaa, 0.1).setDepth(0);
+    // AI sunrise panorama over Tel Aviv (Am Yisrael Chai) — fills the frame.
+    if (this.textures.exists('credits_sky')) {
+      const sky = this.add.image(W / 2, H / 2, 'credits_sky').setDepth(0);
+      sky.setDisplaySize(W, H);
+      // Very slow zoom for a living, breathing dawn
       this.tweens.add({
-        targets: cloud, x: cd.x + 40, duration: 20000 + Math.random() * 10000,
-        yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        targets: sky, scaleX: sky.scaleX * 1.06, scaleY: sky.scaleY * 1.06,
+        duration: 30000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
       });
+    } else {
+      // Fallback: simple warm gradient if the PNG is missing
+      const bgGfx = this.add.graphics().setDepth(0);
+      for (let y = 0; y < H; y++) {
+        const t = y / H;
+        bgGfx.fillStyle(Phaser.Display.Color.GetColor(18 + t * 140 | 0, 8 + t * 70 | 0, 40 - t * 30 | 0), 1);
+        bgGfx.fillRect(0, y, W, 1);
+      }
     }
 
-    // Dark overlay so credits text remains readable
-    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.5).setDepth(1);
+    // AI cloud parallax drifting across the upper sky
+    if (this.textures.exists('cloud_layer')) {
+      const clouds = this.add.tileSprite(W / 2, H * 0.28, W, 160, 'cloud_layer')
+        .setDepth(0.5).setAlpha(0.55);
+      this._cloudScroll = clouds;
+    }
+
+    // Dark overlay so credits text remains readable (kept light to show the sky)
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.38).setDepth(1);
 
     // Credits content
     const creditsLines = [
@@ -193,8 +176,12 @@ export default class CreditsScene extends BaseCinematicScene {
   }
 
   update() {
+    if (this._cloudScroll) this._cloudScroll.tilePositionX += 0.15;
+    if (this.inputManager) this.inputManager.update();
     this._handleMuteToggle();
-    if (!this.done && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+    const skip = Phaser.Input.Keyboard.JustDown(this.enterKey) ||
+      (this.inputManager && this.inputManager.justDown('primary'));
+    if (!this.done && skip) {
       this._finish();
     }
   }
