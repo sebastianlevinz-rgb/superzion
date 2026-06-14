@@ -1561,10 +1561,12 @@ export function generateBombermanTextures(scene) {
   // ── Player character (4 dirs x 2 frames) — centralized SuperZionRenderer ──
   for (const dir of ['up', 'down', 'left', 'right']) {
     for (const frame of [0, 1]) {
+      const key = `bm_player_${dir}_${frame}`;
+      if (scene.textures.exists(key)) continue; // AI PNG already loaded
       const c = mc(T, T);
       const ctx = c.getContext('2d');
       drawSuperZionTopDown(ctx, T / 2, T / 2, T / 16, dir, frame);
-      scene.textures.addCanvas(`bm_player_${dir}_${frame}`, c);
+      scene.textures.addCanvas(key, c);
     }
   }
 
@@ -1605,4 +1607,15 @@ export function generateBombermanTextures(scene) {
   scene.textures.addCanvas('bm_boss1_normal', drawBoss1FoamBeard('normal'));
   scene.textures.addCanvas('bm_boss1_angry', drawBoss1FoamBeard('angry'));
   scene.textures.addCanvas('bm_boss1_dead', drawBoss1FoamBeard('dead'));
+
+  // ── Boss projectile: thrown document ──
+  const docCvs = document.createElement('canvas');
+  docCvs.width = 8; docCvs.height = 6;
+  const dctx = docCvs.getContext('2d');
+  dctx.fillStyle = '#f5f0e0'; // beige paper
+  dctx.fillRect(0, 0, 8, 6);
+  dctx.fillStyle = '#888';    // text lines
+  dctx.fillRect(1, 1, 5, 1);
+  dctx.fillRect(1, 3, 4, 1);
+  scene.textures.addCanvas('bm_document', docCvs);
 }

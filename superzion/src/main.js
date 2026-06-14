@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import './utils/aiTexturePatch.js'; // make procedural generators yield to AI PNGs
 import BootScene from './scenes/BootScene.js';
 import GameIntroScene from './scenes/GameIntroScene.js';
 import MenuScene from './scenes/MenuScene.js';
@@ -36,6 +37,9 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+  input: {
+    activePointers: 3, // support multi-touch (d-pad + 2 buttons)
   },
   scene: [BootScene, GameIntroScene, MenuScene, IntroCinematicScene, FlightRouteScene, PlatformerScene, GameScene, ExplosionCinematicScene, BeirutIntroCinematicScene, BeirutRadarScene, DeepStrikeIntroCinematicScene, BomberScene, UndergroundIntroCinematicScene, DroneScene, MountainBreakerIntroCinematicScene, B2BomberScene, LastStandCinematicScene, BossScene, VictoryScene, CreditsScene],
   pixelArt: false,
