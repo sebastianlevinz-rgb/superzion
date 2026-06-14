@@ -31,6 +31,19 @@ export default class IntroCinematicScene extends BaseCinematicScene {
     // Background silhouette: mosque dome + minaret + mountain ridge
     this._drawTehranSilhouette();
 
+    // -- Animated scan line (slow green sweep top-to-bottom) --
+    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0x00ff00, 0.07).setDepth(6);
+    this.tweens.add({
+      targets: scanLine, y: H, duration: 4000, repeat: -1, ease: 'Linear',
+    });
+
+    // -- Pulsing grid overlay (very subtle alpha oscillation) --
+    const gridPulse = this.add.rectangle(W / 2, H / 2, W, H, 0x00ff00, 0.015).setDepth(6);
+    this.tweens.add({
+      targets: gridPulse, alpha: { from: 0.015, to: 0.035 },
+      duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
     this._initPages([
       {
         text: 'Tehran. The heart of the spider web. From here, they fund every enemy we have.',
@@ -47,6 +60,14 @@ export default class IntroCinematicScene extends BaseCinematicScene {
             shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 10, fill: true },
           }).setOrigin(0.5).setDepth(20);
           this._addPageVisual(title);
+          // Military terminal text flicker (brief alpha jitter)
+          this.tweens.add({
+            targets: title,
+            alpha: { from: 1, to: 0.7 },
+            duration: 80, yoyo: true, repeat: -1,
+            hold: 1800 + Math.random() * 2000,
+            ease: 'Stepped',
+          });
         },
       },
       {
@@ -105,7 +126,12 @@ export default class IntroCinematicScene extends BaseCinematicScene {
 
   /** Briefing CRT overlay */
   _briefingOverlay() {
-    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080808).setDepth(1).setAlpha(0.85);
+    // AI panorama backdrop (dimmed) behind the terminal, instead of a black void
+    if (this.textures.exists('cin_tehran')) {
+      const bgImg = this.add.image(W / 2, H / 2, 'cin_tehran').setDepth(0).setAlpha(0.6);
+      this._addPageVisual(bgImg);
+    }
+    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x040a06).setDepth(1).setAlpha(0.5);
     this._addPageVisual(bg);
     const crt = this.add.graphics().setDepth(2);
     this._addPageVisual(crt);
