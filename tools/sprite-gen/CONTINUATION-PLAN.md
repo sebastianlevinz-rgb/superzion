@@ -138,3 +138,38 @@ git log for history. Last commits: de-tint+bunker (28495e7), L1 briefing (f453ee
 **Definition of done:** play through the whole game (intro → every level + its cinematic +
 its festejo → credits) and nothing looks procedural/old/dim — everything is spectacular AI
 pixel-art consistent with the hero & bosses.
+
+---
+
+## 8. Session update (2026-06-15, continuation)
+
+New AI assets generated + integrated this session (group `overhaul` in prompts.js):
+- `credits_sky` — Tel Aviv sunrise panorama → CreditsScene backdrop (+ AI cloud_layer
+  parallax drift, lighter overlay). Replaced crude grey ellipse clouds.
+- Level-select **thumbnails** now reuse existing AI panoramas (cin_tehran /
+  cin_lebanon_coast / cin_destroyed_city / cin_natanz / cin_fortress) — MenuScene
+  `_drawLevelPreview` reduced to just the border; `_previewImg` carries the art.
+- `plt_mountains` / `plt_skyline` / `plt_near_buildings` — DAYTIME sunlit Tehran
+  silhouette bands (tileAlpha) for the Platformer parallax. (First gen was night → wrong;
+  the platformer is DAY — regenerated.)
+- `beirut_city` (tileAlpha war-torn skyline) + `beirut_ground` (tile rubble street) for the
+  final BossScene parallax — integrates with the warm beirut_sky.
+- Fixed generate.js stale log line (said superzion-kaplay; output is superzion/).
+- Rebuilt + committed `superzion/dist` for the live deploy.
+
+**Verified by screenshot, left PROCEDURAL by judgment (detailed/deliberate, NOT crude):**
+- DroneScene city = grey building OBSTACLES (gameplay collision); clean readable arcade.
+- B2BomberScene = atmospheric top-down night-stealth terrain (ocean→coast→land, faint at
+  10 km altitude) — deliberate minimal mood, an elaborate procedural renderer.
+- VictoryScene finale = animated procedural sunrise (`_drawSunrise(progress)` redraws
+  per-frame) with AI hero + fireworks; warm-tinted clouds animate cohesively. Swapping in
+  AI clouds would need a risky refactor of the per-frame redraw — not worth it.
+- GameIntro "empire silhouettes" (Babylon/Rome/Swastika-X) are intentionally FAINT
+  (alpha 0.2-0.3) thematic symbols on a dark narrative page — not crude foreground sprites.
+  Title reveal already uses `__title_bg` (AI).
+
+⚠️ **Pre-existing uncommitted work** (predates this session, untouched by me): a large diff
+across superzion scene/util files (BossScene, DroneScene, GameScene, PlatformerScene,
+PortSwapScene, Guard, Player, B2/Bomber/Boss/RadarTextures, MusicManager, SoundManager,
+EndScreen, LevelConfig…) AND all of superzion-kaplay. Likely Antigravity / a prior session.
+Ask Sebastian before committing it — I only committed files I directly authored.
