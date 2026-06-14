@@ -34,6 +34,42 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
     // Background silhouette: Ayatollah Ali Khamenei threatening figure + lightning
     this._drawLastStandSilhouette();
 
+    // -- Dark red ambient pulsing (tension/war atmosphere) --
+    const redPulse = this.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0.025).setDepth(6);
+    this.tweens.add({
+      targets: redPulse, alpha: { from: 0.025, to: 0.07 },
+      duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // -- Lightning/flash effects (brief white flash every 5-8 seconds) --
+    const lightningFlash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0).setDepth(8);
+    const triggerLightning = () => {
+      if (this.skipped) return;
+      lightningFlash.setAlpha(0.12 + Math.random() * 0.08);
+      this.tweens.add({
+        targets: lightningFlash, alpha: 0, duration: 150,
+        onComplete: () => {
+          // Occasional double flash
+          if (Math.random() > 0.6) {
+            this.time.delayedCall(80, () => {
+              if (this.skipped) return;
+              lightningFlash.setAlpha(0.06);
+              this.tweens.add({ targets: lightningFlash, alpha: 0, duration: 100 });
+            });
+          }
+          // Schedule next flash
+          this.time.delayedCall(5000 + Math.random() * 3000, triggerLightning);
+        },
+      });
+    };
+    this.time.delayedCall(2000, triggerLightning);
+
+    // -- Amber scan line --
+    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0xCCAA00, 0.04).setDepth(6);
+    this.tweens.add({
+      targets: scanLine, y: H, duration: 3000, repeat: -1, ease: 'Linear',
+    });
+
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
       {
@@ -53,7 +89,7 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
           ];
           for (const bd of bossData) {
             if (this.textures.exists(bd.key)) {
-              const boss = this.add.image(bd.x, H * 0.28, bd.key).setScale(0.55).setDepth(2).setTint(0x666666);
+              const boss = this.add.image(bd.x, H * 0.28, bd.key).setScale(0.55).setDepth(2);
               this._addPageVisual(boss);
               const xg = this.add.graphics().setDepth(3);
               xg.lineStyle(3, 0xff0000, 0.8);
@@ -139,6 +175,10 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
           this._addPageVisual(bg);
           bg.fillStyle(0x000000, 0.85);
           bg.fillRect(0, 0, W, H);
+          // Single dramatic flash on this dark page
+          const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.15).setDepth(3);
+          this._addPageVisual(flash);
+          this.tweens.add({ targets: flash, alpha: 0, duration: 400, ease: 'Cubic.easeOut' });
         },
       },
       // -- PAGE 3: Ayatollah Ali Khamenei reveal with full war background --
@@ -270,13 +310,26 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
           });
 
           if (this.textures.exists('parade_supremeturban')) {
+            // Dramatic scale-up entrance with shadow
+            const bossShadow = this.add.sprite(W / 2 + 4, H * 0.35 + 4, 'parade_supremeturban')
+              .setDepth(9).setScale(0.5).setAlpha(0).setTint(0x000000);
+            this._addPageVisual(bossShadow);
             const boss = this.add.sprite(W / 2, H * 0.35, 'parade_supremeturban')
-              .setDepth(10).setScale(2.8).setAlpha(0);
+              .setDepth(10).setScale(0.5).setAlpha(0);
             this._addPageVisual(boss);
-            this.tweens.add({ targets: boss, alpha: 1, duration: 600 });
+            // Scale-up from small to large (dramatic reveal)
+            this.tweens.add({
+              targets: [boss, bossShadow], alpha: 1, scale: 2.8, duration: 800,
+              ease: 'Back.easeOut',
+            });
+            // Ongoing menacing pulse
             this.tweens.add({
               targets: boss, alpha: 0.8,
-              duration: 1200, yoyo: true, repeat: -1,
+              duration: 1200, yoyo: true, repeat: -1, delay: 900,
+            });
+            this.tweens.add({
+              targets: bossShadow, alpha: 0.3,
+              duration: 1200, yoyo: true, repeat: -1, delay: 900,
             });
             SoundManager.get().playBossEntrance();
             this.time.delayedCall(300, () => { SoundManager.get().playExplosion(); });
@@ -318,6 +371,18 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
           this._addPageVisual(bg);
           bg.fillStyle(0x000000, 0.85);
           bg.fillRect(0, 0, W, H);
+          // Distant red glow on the horizon
+          const horizon = this.add.graphics().setDepth(2);
+          this._addPageVisual(horizon);
+          horizon.fillStyle(0xff2200, 0.08);
+          horizon.fillRect(0, H * 0.7, W, H * 0.3);
+          horizon.fillStyle(0xff4400, 0.04);
+          horizon.fillEllipse(W / 2, H * 0.72, W * 0.8, 60);
+          // Pulsing glow
+          this.tweens.add({
+            targets: horizon, alpha: { from: 1, to: 0.5 },
+            duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+          });
         },
       },
       // -- PAGE 6: Hero reveal --

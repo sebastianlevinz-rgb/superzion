@@ -31,6 +31,43 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
     // Background silhouette: F-15 jet + stars
     this._drawDeepStrikeSilhouette();
 
+    // -- Animated radar sweep (rotating line on subtle radar circle) --
+    const radarCx = W * 0.85, radarCy = H * 0.2, radarR = 40;
+    const radarBg = this.add.graphics().setDepth(6);
+    radarBg.lineStyle(1, 0xCCAA00, 0.08);
+    radarBg.strokeCircle(radarCx, radarCy, radarR);
+    radarBg.strokeCircle(radarCx, radarCy, radarR * 0.5);
+    radarBg.fillStyle(0xCCAA00, 0.03);
+    radarBg.fillCircle(radarCx, radarCy, radarR);
+    // Crosshair lines
+    radarBg.lineStyle(1, 0xCCAA00, 0.05);
+    radarBg.lineBetween(radarCx - radarR, radarCy, radarCx + radarR, radarCy);
+    radarBg.lineBetween(radarCx, radarCy - radarR, radarCx, radarCy + radarR);
+
+    const sweepLine = this.add.graphics().setDepth(7);
+    sweepLine.lineStyle(2, 0xCCAA00, 0.25);
+    sweepLine.lineBetween(0, 0, radarR, 0);
+    sweepLine.setPosition(radarCx, radarCy);
+    this.tweens.add({
+      targets: sweepLine, angle: 360, duration: 3000, repeat: -1, ease: 'Linear',
+    });
+
+    // -- Blinking status lights at screen edges --
+    const edgeLights = [
+      { x: W - 20, y: H * 0.3, color: 0xCCAA00 },
+      { x: W - 20, y: H * 0.5, color: 0xff4444 },
+      { x: W - 20, y: H * 0.7, color: 0xCCAA00 },
+      { x: 20, y: H * 0.4, color: 0x44ff44 },
+      { x: 20, y: H * 0.6, color: 0xff4444 },
+    ];
+    for (const el of edgeLights) {
+      const dot = this.add.circle(el.x, el.y, 2, el.color, 0.5).setDepth(6);
+      this.tweens.add({
+        targets: dot, alpha: 0.05, duration: 600 + Math.random() * 800,
+        yoyo: true, repeat: -1, delay: Math.random() * 1000,
+      });
+    }
+
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
       {
@@ -45,7 +82,7 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
           }).setOrigin(0.5).setDepth(2));
           // Haniyeh eliminated
           if (this.textures.exists('parade_foambeard')) {
-            const boss1 = this.add.image(W / 2 - 60, H * 0.35, 'parade_foambeard').setScale(0.8).setDepth(2).setTint(0x666666);
+            const boss1 = this.add.image(W / 2 - 60, H * 0.35, 'parade_foambeard').setScale(0.8).setDepth(2);
             this._addPageVisual(boss1);
             const x1 = this.add.graphics().setDepth(3);
             x1.lineStyle(3, 0xff0000, 0.8);
@@ -102,7 +139,22 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
       {
         text: 'No ground team can reach that bunker. But 2,000 pounds of precision-guided steel can.',
         color: '#00e5ff', size: 18, y: H * 0.45,
-        setup: () => this._briefingOverlay(),
+        setup: () => {
+          this._briefingOverlay();
+          // Animated coordinates appearing character-by-character
+          const coordsText = 'TARGET: 33\u00b050\'12"N  35\u00b045\'08"E  ALT: -280m';
+          const coordLabel = this.add.text(W / 2, H * 0.22, '', {
+            fontFamily: 'monospace', fontSize: '11px', color: '#CCAA00',
+            shadow: { offsetX: 0, offsetY: 0, color: '#CCAA00', blur: 4, fill: true },
+          }).setOrigin(0.5).setDepth(5);
+          this._addPageVisual(coordLabel);
+          let ci = 0;
+          const coordTimer = this.time.addEvent({
+            delay: 40, repeat: coordsText.length - 1,
+            callback: () => { ci++; coordLabel.setText(coordsText.substring(0, ci)); },
+          });
+          this._addPageVisual({ destroy: () => coordTimer.remove() });
+        },
       },
       {
         text: "The sunset over the Mediterranean will be beautiful tonight. He won't see the sunrise.",

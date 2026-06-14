@@ -23,8 +23,27 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
     // Military HUD overlay
     this._drawMilitaryHUD(this, 'OPERATION GRIM BEEPER', "33\u00b053'N 35\u00b030'E", '#00AA44');
 
+    // Status LEDs on HUD border -- blinking green dots
+    for (let i = 0; i < 3; i++) {
+      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
+      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
+    }
+
     // Background silhouette: port crane + container stacks
     this._drawBeirutSilhouette();
+
+    // -- Animated horizontal scan line (military terminal aesthetic) --
+    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0x00ff00, 0.06).setDepth(6);
+    this.tweens.add({
+      targets: scanLine, y: H, duration: 3500, repeat: -1, ease: 'Linear',
+    });
+
+    // -- Subtle CRT flicker overlay --
+    const crtFlicker = this.add.rectangle(W / 2, H / 2, W, H, 0x00ff00, 0.01).setDepth(6);
+    this.tweens.add({
+      targets: crtFlicker, alpha: { from: 0.01, to: 0.03 },
+      duration: 150, yoyo: true, repeat: -1,
+    });
 
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
@@ -40,7 +59,7 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
           }).setOrigin(0.5).setDepth(2));
           // Boss eliminated
           if (this.textures.exists('parade_foambeard')) {
-            const boss = this.add.image(W / 2, H * 0.35, 'parade_foambeard').setScale(1.2).setDepth(2).setTint(0x666666);
+            const boss = this.add.image(W / 2, H * 0.35, 'parade_foambeard').setScale(1.2).setDepth(2);
             this._addPageVisual(boss);
             const xGfx = this.add.graphics().setDepth(3);
             xGfx.lineStyle(4, 0xff0000, 0.8);
@@ -75,17 +94,29 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
         },
       },
       {
-        text: 'The enemy adapted. New communication networks. New supply routes.',
+        text: 'The enemy adapted. New communication networks. Thousands of encrypted beepers.',
         color: '#cccccc', size: 20, y: H * 0.45,
         setup: () => this._darkOverlay(),
       },
       {
-        text: 'A Beeper shipment is arriving at the Port of Beirut. Hidden in cargo containers.',
+        text: 'The beepers are manufactured in Hong Kong. One factory. One shipment. One chance.',
         color: '#00e5ff', size: 18, y: H * 0.45,
-        setup: () => this._briefingOverlay(),
+        setup: () => {
+          this._briefingOverlay();
+          // "CLASSIFIED" stamp with scale-bounce reveal
+          const stamp = this.add.text(W * 0.72, H * 0.22, 'CLASSIFIED', {
+            fontFamily: 'monospace', fontSize: '18px', color: '#ff2222', fontStyle: 'bold',
+            shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 8, fill: true },
+          }).setOrigin(0.5).setDepth(5).setAlpha(0).setScale(2.5).setAngle(-12);
+          this._addPageVisual(stamp);
+          this.tweens.add({
+            targets: stamp, alpha: 0.85, scale: 1, duration: 300,
+            delay: 400, ease: 'Back.easeOut',
+          });
+        },
       },
       {
-        text: 'Time to become invisible.',
+        text: 'Plant the explosives at the source. Then wait for the perfect moment to detonate.',
         color: '#FFD700', size: 24, y: H * 0.82,
         setup: () => {
           this._darkOverlay();

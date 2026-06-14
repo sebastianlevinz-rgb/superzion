@@ -31,6 +31,48 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
     // Background silhouette: B-2 bomber + mountain + radiation symbol
     this._drawMountainBreakerSilhouette();
 
+    // -- Night sky twinkling stars --
+    for (let i = 0; i < 20; i++) {
+      const sx = Math.random() * W;
+      const sy = Math.random() * (H * 0.45);
+      const star = this.add.circle(sx, sy, 0.8 + Math.random() * 1.2, 0xffffff, 0.15 + Math.random() * 0.2).setDepth(4);
+      this.tweens.add({
+        targets: star,
+        alpha: { from: star.alpha, to: 0.03 },
+        duration: 1500 + Math.random() * 2500,
+        yoyo: true, repeat: -1,
+        delay: Math.random() * 3000,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    // -- Subtle crosshair animation tracking across screen --
+    const crosshairGfx = this.add.graphics().setDepth(7);
+    crosshairGfx.lineStyle(1, 0xCCAA00, 0.12);
+    // Horizontal line
+    crosshairGfx.lineBetween(-12, 0, -4, 0);
+    crosshairGfx.lineBetween(4, 0, 12, 0);
+    // Vertical line
+    crosshairGfx.lineBetween(0, -12, 0, -4);
+    crosshairGfx.lineBetween(0, 4, 0, 12);
+    // Center dot
+    crosshairGfx.fillStyle(0xCCAA00, 0.15);
+    crosshairGfx.fillCircle(0, 0, 1.5);
+    crosshairGfx.setPosition(W * 0.3, H * 0.35);
+    // Slow drift across the screen
+    this.tweens.add({
+      targets: crosshairGfx,
+      x: { from: W * 0.3, to: W * 0.7 },
+      y: { from: H * 0.35, to: H * 0.45 },
+      duration: 12000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // -- Scan line (amber for this level) --
+    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0xCCAA00, 0.05).setDepth(6);
+    this.tweens.add({
+      targets: scanLine, y: H, duration: 4500, repeat: -1, ease: 'Linear',
+    });
+
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
       {
@@ -50,7 +92,7 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
           ];
           for (const bd of bossData) {
             if (this.textures.exists(bd.key)) {
-              const boss = this.add.image(bd.x, H * 0.32, bd.key).setScale(0.6).setDepth(2).setTint(0x666666);
+              const boss = this.add.image(bd.x, H * 0.32, bd.key).setScale(0.6).setDepth(2);
               this._addPageVisual(boss);
               const xg = this.add.graphics().setDepth(3);
               xg.lineStyle(3, 0xff0000, 0.8);
@@ -122,6 +164,25 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
           bg.fillStyle(0x2a3a2a, 1);
           bg.fillRect(0, H - 60, W, 60);
           SoundManager.get().playRadarAlert();
+
+          // Slow zoom-in tween on the entire overlay (satellite imagery feel)
+          bg.setScale(1);
+          this.tweens.add({
+            targets: bg,
+            scaleX: 1.08, scaleY: 1.08,
+            duration: 8000, ease: 'Sine.easeInOut',
+          });
+
+          // Pulsing nuclear glow
+          const nukeGlow = this.add.circle(W / 2, H * 0.45, 80, 0x44ff44, 0.06).setDepth(2);
+          this._addPageVisual(nukeGlow);
+          this.tweens.add({
+            targets: nukeGlow,
+            alpha: { from: 0.06, to: 0.15 },
+            scaleX: { from: 1, to: 1.15 },
+            scaleY: { from: 1, to: 1.15 },
+            duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+          });
         },
       },
       {

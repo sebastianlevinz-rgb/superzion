@@ -8,6 +8,7 @@ import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import { generateAllParadeTextures } from '../utils/ParadeTextures.js';
+import { createB2SideSprite, createB2Silhouette } from '../utils/B2Textures.js';
 
 export default class GameIntroScene extends BaseCinematicScene {
   constructor() { super('GameIntroScene'); }
@@ -15,6 +16,11 @@ export default class GameIntroScene extends BaseCinematicScene {
   create() {
     this._initCinematic();
     generateAllParadeTextures(this);
+    createB2SideSprite(this);
+    createB2Silhouette(this);
+
+    // Pre-generate heavy canvas textures NOW (not during page transition)
+    this._pregenTitleTextures();
 
     // Start menu music (Am trance) from first frame — plays continuously into MenuScene
     MusicManager.get().playMenuMusic();
@@ -22,7 +28,7 @@ export default class GameIntroScene extends BaseCinematicScene {
     // ── Define narrative pages (5 lines + boss parade + arsenal + hero + title) ──
     this._initPages([
       {
-        text: 'For 3,000 years, they tried to erase us.',
+        text: 'For 3,000 years, they tried to erase us. The oldest living civilization on Earth.',
         color: '#ffffff', size: 26, y: H * 0.45,
         setup: () => this._setupDestructionBg(),
       },
@@ -33,7 +39,7 @@ export default class GameIntroScene extends BaseCinematicScene {
       },
       {
         text: 'New enemies. Hamas. Hezbollah. The Iranian regime. Same mistake.',
-        color: '#FF4444', size: 22, y: H * 0.45,
+        color: '#FF4444', size: 22, y: H * 0.20,
         setup: () => this._setupBossSilhouettes(),
       },
       {
@@ -42,19 +48,15 @@ export default class GameIntroScene extends BaseCinematicScene {
         setup: () => this._setupEnemyParade(),
       },
       {
-        text: 'One Nation. One mission. 3,000 years of not giving up.',
+        text: 'One Nation. One mission. 3,000 years of resilience.',
         color: '#FFD700', size: 24, y: H * 0.85,
         setup: () => this._setupHeroReveal(),
       },
-
-      // --- Title page (auto-advance after 4 seconds as fallback) ---
       {
         text: ' ',
         color: '#000000', size: 1, y: -100,
         charDelay: 1,
-        autoAdvance: 4000,
         setup: () => this._setupTitleReveal(),
-        cleanup: () => { if (this._emberTimer) { this._emberTimer.remove(); this._emberTimer = null; } },
       },
     ], 'MenuScene');
   }
@@ -168,6 +170,45 @@ export default class GameIntroScene extends BaseCinematicScene {
           ember.alpha = 0.6;
         },
       });
+    }
+
+    // Historical empire silhouettes (crumbling empires that tried to destroy us)
+    const empireGfx = this.add.graphics().setDepth(6);
+    this._addPageVisual(empireGfx);
+
+    // Babylon — ziggurat/tower silhouette (left)
+    empireGfx.fillStyle(0x443322, 0.3);
+    empireGfx.beginPath();
+    empireGfx.moveTo(80, 140); empireGfx.lineTo(120, 40); empireGfx.lineTo(160, 140);
+    empireGfx.closePath(); empireGfx.fill();
+    // Steps on ziggurat
+    empireGfx.fillRect(90, 100, 60, 5); empireGfx.fillRect(95, 80, 50, 5); empireGfx.fillRect(100, 60, 40, 5);
+
+    // Rome — column/arch silhouette (center-left)
+    empireGfx.fillStyle(0x554433, 0.25);
+    empireGfx.fillRect(310, 50, 12, 100); empireGfx.fillRect(360, 50, 12, 100); // pillars
+    // Arch between pillars
+    empireGfx.lineStyle(3, 0x554433, 0.25);
+    empireGfx.beginPath(); empireGfx.arc(341, 55, 30, Math.PI, 0); empireGfx.strokePath();
+
+    // Swastika crossed out — just an X over a dark square (Nazis, center-right)
+    empireGfx.fillStyle(0x333333, 0.2);
+    empireGfx.fillRect(580, 50, 50, 50);
+    empireGfx.lineStyle(4, 0xff0000, 0.3);
+    empireGfx.lineBetween(580, 50, 630, 100);
+    empireGfx.lineBetween(630, 50, 580, 100);
+    // Circle around
+    empireGfx.lineStyle(3, 0xff0000, 0.25);
+    empireGfx.strokeCircle(605, 75, 30);
+
+    // Crumbling effect — cracks emanating from each symbol
+    empireGfx.lineStyle(1, 0x332211, 0.15);
+    for (let i = 0; i < 8; i++) {
+      const cx = [120, 341, 605][i % 3];
+      const cy = [90, 75, 75][i % 3];
+      const angle = Math.random() * Math.PI * 2;
+      const len = 20 + Math.random() * 30;
+      empireGfx.lineBetween(cx, cy, cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
     }
   }
 
@@ -642,6 +683,8 @@ export default class GameIntroScene extends BaseCinematicScene {
 
   /** 4 boss silhouettes with red glow */
   _setupBossSilhouettes() {
+    SoundManager.get().playBossEntrance();
+
     // Very dark bg
     const bg = this.add.graphics().setDepth(0);
     this._addPageVisual(bg);
@@ -665,9 +708,9 @@ export default class GameIntroScene extends BaseCinematicScene {
       this._addPageVisual(glow);
       this.tweens.add({ targets: glow, alpha: 0.45, duration: 600, delay: i * 200, yoyo: true, repeat: -1 });
 
-      // Boss sprite (brighter red tint so details are visible)
+      // Boss sprite — full colour so the detailed AI art is visible (no dark tint)
       if (this.textures.exists(key)) {
-        const boss = this.add.sprite(bx, by, key).setDepth(5).setScale(0.5).setAlpha(0).setTint(0x882222);
+        const boss = this.add.sprite(bx, by, key).setDepth(5).setScale(0.5).setAlpha(0);
         this._addPageVisual(boss);
         // Zoom-in entrance: start at 0.5 scale, tween to 1.0
         this.tweens.add({
@@ -691,6 +734,8 @@ export default class GameIntroScene extends BaseCinematicScene {
 
   /** Enemy parade — missiles, explosions, chaos */
   _setupEnemyParade() {
+    SoundManager.get().playMissileWarning();
+
     // Red sky
     const bg = this.add.graphics().setDepth(0);
     this._addPageVisual(bg);
@@ -724,6 +769,41 @@ export default class GameIntroScene extends BaseCinematicScene {
       this.time.delayedCall(i * 400, () => {
         if (this.skipped) return;
         this._spawnMissile();
+      });
+    }
+
+    // F-15 formation flyover (3 jets, staggered speeds for dynamic formation)
+    const jetDefs = [
+      { yOff: 0,  delay: 0,   duration: 2500 },  // Jet 1: fastest, leads
+      { yOff: 25, delay: 400, duration: 3000 },  // Jet 2: medium
+      { yOff: 50, delay: 800, duration: 3500 },  // Jet 3: slowest, trails
+    ];
+    for (const jd of jetDefs) {
+      const jetY = H * 0.15 + jd.yOff;
+      const jet = this.add.graphics().setDepth(8);
+      this._addPageVisual(jet);
+      // F-15 side silhouette (small, dark)
+      jet.fillStyle(0x445566, 0.7);
+      jet.beginPath();
+      jet.moveTo(-60, jetY);
+      jet.lineTo(-45, jetY - 3);
+      jet.lineTo(-30, jetY - 2);
+      jet.lineTo(-25, jetY - 8); // wing up
+      jet.lineTo(-20, jetY - 2);
+      jet.lineTo(-10, jetY);
+      jet.lineTo(-20, jetY + 2);
+      jet.lineTo(-25, jetY + 8); // wing down
+      jet.lineTo(-30, jetY + 2);
+      jet.lineTo(-45, jetY + 3);
+      jet.closePath();
+      jet.fill();
+      // Engine glow
+      jet.fillStyle(0xff6600, 0.4);
+      jet.fillCircle(-58, jetY, 3);
+      // Fly across screen
+      this.tweens.add({
+        targets: jet, x: W + 120, duration: jd.duration, delay: jd.delay,
+        ease: 'Linear',
       });
     }
   }
@@ -796,566 +876,538 @@ export default class GameIntroScene extends BaseCinematicScene {
     // (flyover removed — was causing performance freeze)
   }
 
-  /** SuperZion hero reveal — smoky battlefield, hero walks in */
+  /** SuperZion hero reveal — B-2 top-down over sunlit Mediterranean */
   _setupHeroReveal() {
-    // Smoky battlefield
-    const bg = this.add.graphics().setDepth(0);
-    this._addPageVisual(bg);
-    for (let y = 0; y < H; y++) {
-      const t = y / H;
-      bg.fillStyle(Phaser.Display.Color.GetColor(12 + t * 30 | 0, 10 + t * 22 | 0, 8 + t * 18 | 0));
-      bg.fillRect(0, y, W, 1);
-    }
-    bg.fillStyle(0x3a2818, 1);
-    bg.fillRect(0, H - 80, W, 80);
+    SoundManager.get().playAfterburner();
+    this.time.delayedCall(1000, () => {
+      if (!this.skipped) SoundManager.get().playFinalVictory();
+    });
 
-    // Background fires and smoke
-    const smokeGfx = this.add.graphics().setDepth(1);
-    this._addPageVisual(smokeGfx);
-    for (const [cx, cy, r] of [[80, 200, 50], [40, 300, 40], [150, 340, 35], [850, 180, 45], [780, 300, 35]]) {
-      smokeGfx.fillStyle(0x3a1a08, 0.25);
-      smokeGfx.fillCircle(cx, cy, r);
+    // Ocean background (like B-2 escape scene)
+    const seaBg = this.add.graphics().setDepth(0);
+    this._addPageVisual(seaBg);
+    // Dark night sky
+    seaBg.fillStyle(0x060a14, 1);
+    seaBg.fillRect(0, 0, W, H * 0.4);
+    // Ocean
+    seaBg.fillStyle(0x0a1628, 1);
+    seaBg.fillRect(0, H * 0.4, W, H * 0.6);
+    // Horizon line
+    seaBg.lineStyle(1, 0x1a2a48, 0.4);
+    seaBg.lineBetween(0, H * 0.4, W, H * 0.4);
+    // Stars
+    for (let i = 0; i < 15; i++) {
+      seaBg.fillStyle(0xffffff, 0.3 + Math.random() * 0.3);
+      seaBg.fillCircle(Math.random() * W, Math.random() * H * 0.35, 0.8);
     }
-    smokeGfx.fillStyle(0xff3300, 0.06);
-    smokeGfx.fillCircle(60, 260, 55);
-    smokeGfx.fillCircle(850, 250, 45);
+    // Wave lines
+    seaBg.lineStyle(1, 0x2a4a6a, 0.15);
+    for (let y = H * 0.45; y < H; y += 20) {
+      for (let x = 0; x < W; x += 8) {
+        const wy = y + Math.sin(x * 0.03 + y * 0.1) * 3;
+        seaBg.lineBetween(x, wy, x + 8, wy);
+      }
+    }
 
-    // SuperZion walks in
+    // Epic B-2 flyover — escape-style banked view over sea
+    const b2Gfx = this.add.graphics().setDepth(10).setPosition(-160, H * 0.38);
+    this._addPageVisual(b2Gfx);
+
+    // Draw the B-2 in banked escape view (nose left, one wing up, one wing down)
+    const bs = 1.8;
+    const bx = 0, by = 0;
+    const bankUp = 0.3, bankDown = 0.3;
+
+    // Main body
+    b2Gfx.fillStyle(0x3a3a3a, 1);
+    b2Gfx.beginPath();
+    b2Gfx.moveTo(bx - 25 * bs, by);
+    b2Gfx.lineTo(bx + 10 * bs, by - (55 + bankUp * 25) * bs);
+    b2Gfx.lineTo(bx + 18 * bs, by - (35 + bankUp * 18) * bs);
+    b2Gfx.lineTo(bx + 12 * bs, by);
+    b2Gfx.lineTo(bx + 18 * bs, by + (35 + bankDown * 18) * bs);
+    b2Gfx.lineTo(bx + 10 * bs, by + (55 + bankDown * 25) * bs);
+    b2Gfx.closePath();
+    b2Gfx.fill();
+
+    // Inner surface
+    b2Gfx.fillStyle(0x2e2e2e, 0.5);
+    b2Gfx.beginPath();
+    b2Gfx.moveTo(bx - 18 * bs, by);
+    b2Gfx.lineTo(bx + 8 * bs, by - (30 + bankUp * 12) * bs);
+    b2Gfx.lineTo(bx + 10 * bs, by);
+    b2Gfx.lineTo(bx + 8 * bs, by + (30 + bankDown * 12) * bs);
+    b2Gfx.closePath();
+    b2Gfx.fill();
+
+    // Leading edge highlight
+    b2Gfx.lineStyle(1.5 * bs, 0x5a5a5a, 0.5);
+    b2Gfx.beginPath();
+    b2Gfx.moveTo(bx + 9 * bs, by - (53 + bankUp * 24) * bs);
+    b2Gfx.lineTo(bx - 24 * bs, by);
+    b2Gfx.lineTo(bx + 9 * bs, by + (53 + bankDown * 24) * bs);
+    b2Gfx.strokePath();
+
+    // Engine glow
+    b2Gfx.fillStyle(0xff4400, 0.35);
+    b2Gfx.fillCircle(bx + 14 * bs, by - 8 * bs, 5 * bs);
+    b2Gfx.fillCircle(bx + 14 * bs, by + 8 * bs, 5 * bs);
+    b2Gfx.fillStyle(0xff8800, 0.7);
+    b2Gfx.fillCircle(bx + 14 * bs, by - 8 * bs, 2 * bs);
+    b2Gfx.fillCircle(bx + 14 * bs, by + 8 * bs, 2 * bs);
+
+    // Fly across screen (left to right)
+    this.tweens.add({ targets: b2Gfx, x: W + 200, duration: 4500, ease: 'Linear' });
+    // Subtle altitude oscillation
+    this.tweens.add({ targets: b2Gfx, y: H * 0.34, duration: 2200, yoyo: true, ease: 'Sine.easeInOut' });
+
+    // SuperZion walks in from the right
     if (this.textures.exists('parade_superzion')) {
       const heroY = H - 160;
       const hero = this.add.sprite(W + 80, heroY, 'parade_superzion').setDepth(20).setScale(2.0);
       this._addPageVisual(hero);
-
-      // Walk bob
-      this.tweens.add({
-        targets: hero, y: heroY - 4,
-        duration: 300, yoyo: true, repeat: 5, ease: 'Sine.easeInOut',
-      });
-
-      // Walk to center
-      this.tweens.add({
-        targets: hero, x: W / 2,
-        duration: 2500, ease: 'Sine.easeOut',
-      });
+      this.tweens.add({ targets: hero, y: heroY - 4, duration: 300, yoyo: true, repeat: 5, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: hero, x: W / 2, duration: 2500, ease: 'Sine.easeOut' });
     }
-
-    // (flyover removed — was causing performance freeze)
   }
 
-  /** SUPERZION title reveal — post-apocalyptic chrome metal epic */
-  _setupTitleReveal() {
-    const cx = W / 2, cy = H / 2;
-    const sm = SoundManager.get();
+  /** Pre-generate heavy canvas textures during create() — not during page transition */
+  _pregenTitleTextures() {
+    const cx = W / 2;
 
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 0 — POST-APOCALYPTIC SKY (dark gradient with fire glow)
-    // ══════════════════════════════════════════════════════════════
-    const bg = this.add.graphics().setDepth(0);
-    this._addPageVisual(bg);
-    for (let y = 0; y < H; y++) {
-      const t = y / H;
-      // Dark smoky sky: top #080408 → mid #1a0a08 → bottom #0a0604
-      const r = Math.round(8 + t * 18 * Math.sin(t * Math.PI));
-      const g = Math.round(4 + t * 6 * Math.sin(t * Math.PI));
-      const b = Math.round(8 - t * 6);
-      bg.fillStyle(Phaser.Display.Color.GetColor(
-        Math.max(0, r), Math.max(0, g), Math.max(0, Math.min(b, 10))
-      ));
-      bg.fillRect(0, y, W, 1);
-    }
-
-    // Distant fire glow at top center (explosion on horizon)
-    for (let lr = 200; lr > 5; lr -= 8) {
-      const a = 0.015 * (lr / 200);
-      bg.fillStyle(0xff6600, a);
-      bg.fillCircle(cx + 40, H * 0.22, lr);
-    }
-    for (let lr = 120; lr > 5; lr -= 6) {
-      bg.fillStyle(0xffaa00, 0.02 * (lr / 120));
-      bg.fillCircle(cx + 40, H * 0.18, lr);
-    }
-    // White-hot core
-    bg.fillStyle(0xffeedd, 0.08);
-    bg.fillCircle(cx + 40, H * 0.2, 30);
-
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 1 — DESTROYED CITY SKYLINE (horizon silhouettes)
-    // ══════════════════════════════════════════════════════════════
-    const skyline = this.add.graphics().setDepth(1);
-    this._addPageVisual(skyline);
+    // ── Background texture ──
+    const bgKey = '__title_bg';
+    if (this.textures.exists(bgKey)) this.textures.remove(bgKey);
+    const bgC = document.createElement('canvas');
+    bgC.width = W; bgC.height = H;
+    const bgCtx = bgC.getContext('2d');
+    const skyGrad = bgCtx.createLinearGradient(0, 0, 0, H);
+    skyGrad.addColorStop(0, '#080408'); skyGrad.addColorStop(0.4, '#1a0a08');
+    skyGrad.addColorStop(0.62, '#0a0604'); skyGrad.addColorStop(1, '#060404');
+    bgCtx.fillStyle = skyGrad; bgCtx.fillRect(0, 0, W, H);
+    // Fire glow
+    const fireGlow = bgCtx.createRadialGradient(cx + 40, H * 0.2, 10, cx + 40, H * 0.2, 200);
+    fireGlow.addColorStop(0, 'rgba(255,238,221,0.08)'); fireGlow.addColorStop(0.3, 'rgba(255,170,0,0.04)');
+    fireGlow.addColorStop(0.7, 'rgba(255,102,0,0.02)'); fireGlow.addColorStop(1, 'rgba(255,102,0,0)');
+    bgCtx.fillStyle = fireGlow; bgCtx.fillRect(0, 0, W, H * 0.5);
+    // Skyline
     const horizY = H * 0.62;
-
-    // Dark building silhouettes — jagged, broken
-    skyline.fillStyle(0x0a0808, 1);
+    bgCtx.fillStyle = '#0a0808';
     const buildings = [
-      { x: 0, w: 45, h: 80 }, { x: 50, w: 30, h: 120, broken: true },
-      { x: 85, w: 50, h: 60 }, { x: 140, w: 25, h: 140, broken: true },
-      { x: 170, w: 40, h: 90 }, { x: 215, w: 55, h: 70 },
-      { x: 275, w: 35, h: 110, broken: true }, { x: 315, w: 45, h: 65 },
-      { x: 365, w: 30, h: 130, broken: true }, { x: 400, w: 50, h: 85 },
-      { x: 455, w: 40, h: 100 }, { x: 500, w: 55, h: 75 },
-      { x: 560, w: 30, h: 145, broken: true }, { x: 595, w: 45, h: 95 },
-      { x: 645, w: 35, h: 60 }, { x: 685, w: 50, h: 115, broken: true },
-      { x: 740, w: 40, h: 80 }, { x: 785, w: 55, h: 70 },
-      { x: 845, w: 30, h: 125, broken: true }, { x: 880, w: 45, h: 90 },
-      { x: 930, w: 35, h: 75 },
+      [0,45,80],[50,30,120,1],[85,50,60],[140,25,140,1],[170,40,90],[215,55,70],
+      [275,35,110,1],[315,45,65],[365,30,130,1],[400,50,85],[455,40,100],[500,55,75],
+      [560,30,145,1],[595,45,95],[645,35,60],[685,50,115,1],[740,40,80],[785,55,70],
+      [845,30,125,1],[880,45,90],[930,35,75],
     ];
     for (const b of buildings) {
-      const by = horizY - b.h;
-      if (b.broken) {
-        // Jagged broken top
-        skyline.beginPath();
-        skyline.moveTo(b.x, horizY);
-        skyline.lineTo(b.x, by + 15);
-        skyline.lineTo(b.x + b.w * 0.3, by);
-        skyline.lineTo(b.x + b.w * 0.5, by + 20);
-        skyline.lineTo(b.x + b.w * 0.7, by + 5);
-        skyline.lineTo(b.x + b.w, by + 25);
-        skyline.lineTo(b.x + b.w, horizY);
-        skyline.closePath();
-        skyline.fill();
-      } else {
-        skyline.fillRect(b.x, by, b.w, b.h);
-      }
-      // Dim window flickers on some buildings
-      if (b.h > 80 && Math.random() > 0.4) {
-        skyline.fillStyle(0xff6600, 0.06);
-        for (let wy = 0; wy < 3; wy++) {
-          skyline.fillRect(b.x + 4 + Math.random() * (b.w - 10), by + 10 + wy * 20, 3, 4);
-        }
-        skyline.fillStyle(0x0a0808, 1);
+      const [bx, bw, bh, broken] = b;
+      const by = horizY - bh;
+      if (broken) {
+        bgCtx.beginPath(); bgCtx.moveTo(bx, horizY); bgCtx.lineTo(bx, by + 15);
+        bgCtx.lineTo(bx + bw * 0.3, by); bgCtx.lineTo(bx + bw * 0.5, by + 20);
+        bgCtx.lineTo(bx + bw * 0.7, by + 5); bgCtx.lineTo(bx + bw, by + 25);
+        bgCtx.lineTo(bx + bw, horizY); bgCtx.closePath(); bgCtx.fill();
+      } else { bgCtx.fillRect(bx, by, bw, bh); }
+    }
+    bgCtx.fillStyle = '#060404'; bgCtx.fillRect(0, horizY, W, H - horizY);
+    // Smoke
+    for (let i = 0; i < 6; i++) {
+      const sx = 80 + Math.random() * (W - 160);
+      const sy = horizY - 25 - Math.random() * 35;
+      for (let j = 0; j < 4; j++) {
+        bgCtx.fillStyle = `rgba(34,34,24,${0.04 + Math.random() * 0.03})`;
+        bgCtx.beginPath(); bgCtx.arc(sx + (Math.random() - 0.5) * 20, sy - j * 25, 15 + Math.random() * 20, 0, Math.PI * 2); bgCtx.fill();
       }
     }
-    // Ground fill below horizon
-    skyline.fillStyle(0x060404, 1);
-    skyline.fillRect(0, horizY, W, H - horizY);
-
-    // Rubble texture on ground
-    skyline.fillStyle(0x1a1210, 1);
-    for (let i = 0; i < 30; i++) {
-      const rx = Math.random() * W;
-      const ry = horizY + 5 + Math.random() * (H - horizY - 20);
-      skyline.fillRect(rx, ry, 3 + Math.random() * 8, 2 + Math.random() * 3);
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 2 — SMOKE & ATMOSPHERE
-    // ══════════════════════════════════════════════════════════════
-    const smokeGfx = this.add.graphics().setDepth(2);
-    this._addPageVisual(smokeGfx);
-    // Smoke columns rising from ruins
-    for (let i = 0; i < 8; i++) {
-      const sx = 60 + Math.random() * (W - 120);
-      const sy = horizY - 20 - Math.random() * 40;
-      for (let j = 0; j < 6; j++) {
-        smokeGfx.fillStyle(0x222218, 0.04 + Math.random() * 0.03);
-        smokeGfx.fillCircle(sx + (Math.random() - 0.5) * 20, sy - j * 25 - Math.random() * 15, 15 + Math.random() * 25);
-      }
-    }
-    // Haze layer
-    smokeGfx.fillStyle(0x1a1008, 0.15);
-    smokeGfx.fillRect(0, horizY - 40, W, 60);
-
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 3 — SOLDIER SILHOUETTE (bottom-left foreground)
-    // ══════════════════════════════════════════════════════════════
-    const soldierGfx = this.add.graphics().setDepth(3);
-    this._addPageVisual(soldierGfx);
+    // Soldier
     const solX = 100, solBaseY = H - 30;
-    soldierGfx.fillStyle(0x050303, 1);
-    // Body — standing, slightly turned
-    soldierGfx.fillRect(solX - 4, solBaseY - 50, 8, 30); // torso
-    soldierGfx.fillRect(solX - 5, solBaseY - 20, 4, 22); // left leg
-    soldierGfx.fillRect(solX + 1, solBaseY - 20, 4, 22); // right leg
-    // Head
-    soldierGfx.fillCircle(solX, solBaseY - 55, 6);
-    // Helmet rim
-    soldierGfx.fillRect(solX - 7, solBaseY - 58, 14, 3);
-    // Rifle (held diagonally)
-    soldierGfx.lineStyle(2, 0x050303, 1);
-    soldierGfx.lineBetween(solX + 5, solBaseY - 46, solX + 22, solBaseY - 65);
-    // Rifle stock
-    soldierGfx.lineBetween(solX + 5, solBaseY - 46, solX + 2, solBaseY - 38);
-    // Slight orange-lit edge (backlit by fire)
-    soldierGfx.lineStyle(1, 0x663300, 0.3);
-    soldierGfx.lineBetween(solX + 4, solBaseY - 50, solX + 4, solBaseY - 22);
-    // Rubble at feet
-    soldierGfx.fillStyle(0x0a0606, 1);
-    for (let i = 0; i < 8; i++) {
-      soldierGfx.fillRect(solX - 20 + Math.random() * 50, solBaseY - 2 + Math.random() * 4, 4 + Math.random() * 8, 2 + Math.random() * 3);
-    }
+    bgCtx.fillStyle = '#050303';
+    bgCtx.fillRect(solX - 4, solBaseY - 50, 8, 30);
+    bgCtx.fillRect(solX - 5, solBaseY - 20, 4, 22);
+    bgCtx.fillRect(solX + 1, solBaseY - 20, 4, 22);
+    bgCtx.beginPath(); bgCtx.arc(solX, solBaseY - 55, 6, 0, Math.PI * 2); bgCtx.fill();
+    bgCtx.fillRect(solX - 7, solBaseY - 58, 14, 3);
+    // Scanlines
+    for (let sy = 0; sy < H; sy += 2) { bgCtx.fillStyle = 'rgba(0,0,0,0.08)'; bgCtx.fillRect(0, sy, W, 1); }
+    this.textures.addCanvas(bgKey, bgC);
 
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 4 — EMBERS & FIRE PARTICLES (continuous)
-    // ══════════════════════════════════════════════════════════════
-    const spawnEmber = () => {
-      if (this.skipped) return;
-      const ex = Math.random() * W;
-      const ey = H + 10;
-      const eSize = 1 + Math.random() * 2;
-      const colors = [0xff6600, 0xff9900, 0xffcc00, 0xff4400, 0xffaa33];
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      const ember = this.add.circle(ex, ey, eSize, color, 0.5 + Math.random() * 0.4).setDepth(4);
-      this._addPageVisual(ember);
-      const drift = (Math.random() - 0.5) * 80;
-      this.tweens.add({
-        targets: ember, y: -20, x: ex + drift, alpha: 0,
-        duration: 3000 + Math.random() * 4000, ease: 'Linear',
-        onComplete: () => { if (ember && ember.destroy) ember.destroy(); },
-      });
+    // ── Star of David texture ──
+    const starKey = '__star_metal_tex';
+    if (this.textures.exists(starKey)) this.textures.remove(starKey);
+    const starC = document.createElement('canvas');
+    starC.width = 460; starC.height = 460;
+    const sCtx = starC.getContext('2d');
+    const sCx = 230, sCy = 230;
+    const drawTri = (rot, grad) => {
+      sCtx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = rot + (i * 2 * Math.PI) / 3;
+        const tx = sCx + Math.cos(a) * 200, ty = sCy + Math.sin(a) * 200;
+        i === 0 ? sCtx.moveTo(tx, ty) : sCtx.lineTo(tx, ty);
+      }
+      sCtx.closePath(); sCtx.fillStyle = grad; sCtx.fill();
     };
-    // Continuous ember spawning
-    this._emberTimer = this.time.addEvent({
-      delay: 80, repeat: -1,
-      callback: () => { if (!this.skipped) spawnEmber(); },
-    });
-    // Initial batch
-    for (let i = 0; i < 30; i++) {
-      const e = this.add.circle(Math.random() * W, Math.random() * H, 1 + Math.random(), 0xff6600, 0.2 + Math.random() * 0.3).setDepth(4);
-      this._addPageVisual(e);
-      this.tweens.add({
-        targets: e, y: -20, x: e.x + (Math.random() - 0.5) * 60, alpha: 0,
-        duration: 2000 + Math.random() * 3000, ease: 'Linear',
-        onComplete: () => { if (e && e.destroy) e.destroy(); },
-      });
+    const g1 = sCtx.createLinearGradient(sCx, sCy - 200, sCx, sCy + 100);
+    g1.addColorStop(0, '#e8c44a'); g1.addColorStop(0.3, '#c49520'); g1.addColorStop(0.5, '#8B6914');
+    g1.addColorStop(0.7, '#c49520'); g1.addColorStop(1, '#a07818');
+    drawTri(-Math.PI / 2, g1);
+    const g2 = sCtx.createLinearGradient(sCx - 100, sCy + 100, sCx + 100, sCy - 100);
+    g2.addColorStop(0, '#a07818'); g2.addColorStop(0.3, '#c49520'); g2.addColorStop(0.5, '#e8c44a');
+    g2.addColorStop(0.7, '#8B6914'); g2.addColorStop(1, '#c49520');
+    drawTri(Math.PI / 2, g2);
+    for (const [style, lw, r] of [['#FFD700', 2.5, 200], ['rgba(255,240,180,0.4)', 1.5, 180]]) {
+      sCtx.strokeStyle = style; sCtx.lineWidth = lw;
+      for (const rot of [-Math.PI / 2, Math.PI / 2]) {
+        sCtx.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const a = rot + (i * 2 * Math.PI) / 3;
+          i === 0 ? sCtx.moveTo(sCx + Math.cos(a) * r, sCy + Math.sin(a) * r)
+                   : sCtx.lineTo(sCx + Math.cos(a) * r, sCy + Math.sin(a) * r);
+        }
+        sCtx.closePath(); sCtx.stroke();
+      }
     }
+    const cGlow = sCtx.createRadialGradient(sCx, sCy, 5, sCx, sCy, 80);
+    cGlow.addColorStop(0, 'rgba(255,250,220,0.5)'); cGlow.addColorStop(0.3, 'rgba(255,215,0,0.2)');
+    cGlow.addColorStop(0.7, 'rgba(200,150,30,0.05)'); cGlow.addColorStop(1, 'rgba(200,150,30,0)');
+    sCtx.fillStyle = cGlow; sCtx.fillRect(0, 0, 460, 460);
+    this.textures.addCanvas(starKey, starC);
 
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 5 — GOLDEN AURA (light source behind star)
-    // ══════════════════════════════════════════════════════════════
-    const auraGfx = this.add.graphics().setDepth(5);
-    this._addPageVisual(auraGfx);
-    // Large warm radial glow
-    for (let lr = 280; lr > 10; lr -= 6) {
-      const t = lr / 280;
-      // Amber-gold glow: brighter near center
-      const r2 = Math.round(255 * (1 - t * 0.6));
-      const g2 = Math.round(180 * (1 - t * 0.7));
-      const b2 = Math.round(40 * (1 - t * 0.8));
-      auraGfx.fillStyle(Phaser.Display.Color.GetColor(r2, g2, b2), 0.008 + (1 - t) * 0.015);
-      auraGfx.fillCircle(cx, cy - 10, lr);
+    // ── SUPERZION chrome title texture ──
+    const titleKey = '__title_reveal_tex';
+    if (this.textures.exists(titleKey)) this.textures.remove(titleKey);
+    const titleC = document.createElement('canvas');
+    titleC.width = W; titleC.height = 140;
+    const tCtx = titleC.getContext('2d');
+    tCtx.textAlign = 'center'; tCtx.textBaseline = 'middle';
+    tCtx.font = '72px "Impact", "Arial Black", sans-serif';
+    const titleStr = 'SUPERZION';
+    const drawX = W / 2, drawY = 70;
+    const letters = titleStr.split('');
+    const letterWidths = letters.map(l => tCtx.measureText(l).width);
+    const totalW = tCtx.measureText(titleStr).width;
+    let lx = drawX - totalW / 2;
+    for (let li = 0; li < letters.length; li++) {
+      const x = lx + letterWidths[li] / 2;
+      const depthColors = ['#2a1a08', '#3a2510', '#5a3a15', '#7a5518', '#8B6914', '#a07818'];
+      for (let d = 5; d >= 0; d--) { tCtx.fillStyle = depthColors[d]; tCtx.fillText(letters[li], x + d, drawY + d); }
+      tCtx.strokeStyle = '#000000'; tCtx.lineWidth = 3; tCtx.lineJoin = 'round'; tCtx.strokeText(letters[li], x, drawY);
+      const cg = tCtx.createLinearGradient(x, drawY - 30, x, drawY + 30);
+      cg.addColorStop(0, '#e0e0e8'); cg.addColorStop(0.15, '#c0c0c8'); cg.addColorStop(0.3, '#a0a0a8');
+      cg.addColorStop(0.45, '#d0d0d8'); cg.addColorStop(0.55, '#909098'); cg.addColorStop(0.7, '#c8c8d0');
+      cg.addColorStop(0.85, '#a8a8b0'); cg.addColorStop(1, '#808088');
+      tCtx.fillStyle = cg; tCtx.fillText(letters[li], x, drawY);
+      tCtx.save(); tCtx.globalAlpha = 0.5; tCtx.fillStyle = '#ffffff'; tCtx.fillText(letters[li], x, drawY - 1); tCtx.restore();
+      tCtx.strokeStyle = '#c49520'; tCtx.lineWidth = 1.2; tCtx.strokeText(letters[li], x, drawY);
+      lx += letterWidths[li];
     }
-    // Pulsing glow
-    this.tweens.add({
-      targets: auraGfx, alpha: { from: 0.7, to: 1 },
-      duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
+    this.textures.addCanvas(titleKey, titleC);
+  }
 
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 6 — METALLIC STAR OF DAVID (bronze/gold, light source)
-    // ══════════════════════════════════════════════════════════════
-    const starR = 180;
+  /** SUPERZION title reveal — zero delayedCall, zero undefined sounds */
+  _setupTitleReveal() {
+    const cx = W / 2, cy = H / 2;
+    const titleY = cy - 10;
     const starCy = cy - 10;
 
-    // Star golden glow halo behind
-    const starHaloGfx = this.add.graphics().setDepth(6);
-    this._addPageVisual(starHaloGfx);
-    for (let lr = 220; lr > 10; lr -= 5) {
-      starHaloGfx.fillStyle(0xFFD700, 0.005 + (1 - lr / 220) * 0.01);
-      starHaloGfx.fillCircle(cx, starCy, lr);
+    // ── Layer 0: Sky gradient — Tel Aviv beach sunset ──
+    const skyBg = this.add.graphics().setDepth(0);
+    this._addPageVisual(skyBg);
+    // Multi-stop sky gradient: deep purple-blue → pink → orange-red → golden
+    const skyStops = [
+      { pos: 0.00, r: 26,  g: 10, b: 46  },  // #1a0a2e deep purple
+      { pos: 0.10, r: 32,  g: 14, b: 52  },  // darker purple
+      { pos: 0.20, r: 42,  g: 16, b: 64  },  // #2a1040
+      { pos: 0.30, r: 106, g: 32, b: 80  },  // #6a2050 warm purple-pink
+      { pos: 0.40, r: 204, g: 64, b: 96  },  // #cc4060 hot pink
+      { pos: 0.47, r: 221, g: 96, b: 48  },  // #dd6030 orange-red
+      { pos: 0.52, r: 238, g: 136, b: 32 },  // #ee8820 hot orange
+      { pos: 0.57, r: 238, g: 168, b: 48 },  // #eea830 golden
+      { pos: 0.65, r: 255, g: 204, b: 64 },  // #ffcc40 bright gold
+      { pos: 1.00, r: 255, g: 204, b: 64 },  // stays golden at horizon
+    ];
+    for (let y = 0; y < H * 0.58; y++) {
+      const t = y / H;
+      // Find surrounding stops
+      let lo = skyStops[0], hi = skyStops[skyStops.length - 1];
+      for (let s = 0; s < skyStops.length - 1; s++) {
+        if (t >= skyStops[s].pos && t <= skyStops[s + 1].pos) {
+          lo = skyStops[s]; hi = skyStops[s + 1]; break;
+        }
+      }
+      const range = hi.pos - lo.pos || 1;
+      const f = (t - lo.pos) / range;
+      const r = Math.round(lo.r + (hi.r - lo.r) * f);
+      const g = Math.round(lo.g + (hi.g - lo.g) * f);
+      const b = Math.round(lo.b + (hi.b - lo.b) * f);
+      skyBg.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      skyBg.fillRect(0, y, W, 1);
     }
 
-    // Main metallic star — canvas texture for gradient control
-    const starTexKey = '__star_metal_tex';
-    if (this.textures.exists(starTexKey)) this.textures.remove(starTexKey);
-    const starCanvas = this.textures.createCanvas(starTexKey, 460, 460);
-    const sCtx = starCanvas.context;
-    const sCx = 230, sCy = 230;
+    // ── Layer 1: Animated clouds — warm orange/pink tones with drift ──
+    const cloudDefs = [
+      { x: 150, y: H * 0.12, rx: 50, ry: 14, color: 0xff8866, alpha: 0.35, drift: 20, dur: 10000 },
+      { x: 400, y: H * 0.18, rx: 65, ry: 18, color: 0xff9977, alpha: 0.3, drift: -15, dur: 12000 },
+      { x: 650, y: H * 0.10, rx: 55, ry: 15, color: 0xffaa88, alpha: 0.25, drift: 25, dur: 9000 },
+      { x: 280, y: H * 0.25, rx: 40, ry: 12, color: 0xff7755, alpha: 0.3, drift: -20, dur: 11000 },
+      { x: 820, y: H * 0.15, rx: 45, ry: 13, color: 0xffbb99, alpha: 0.2, drift: 18, dur: 13000 },
+      { x: 520, y: H * 0.22, rx: 35, ry: 10, color: 0xff9966, alpha: 0.28, drift: -12, dur: 10000 },
+    ];
+    for (const c of cloudDefs) {
+      const cloud = this.add.ellipse(c.x, c.y, c.rx * 2, c.ry * 2, c.color, c.alpha).setDepth(1);
+      this._addPageVisual(cloud);
+      // Secondary puff
+      const puff = this.add.ellipse(c.x + c.rx * 0.4, c.y - 3, c.rx * 1.4, c.ry * 1.5, c.color, c.alpha * 0.7).setDepth(1);
+      this._addPageVisual(puff);
+      // Drift animation
+      this.tweens.add({ targets: [cloud, puff], x: `+=${c.drift}`, duration: c.dur, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
 
-    // Draw metallic star of david
-    const drawStarTriangle = (rotation, fillGrad) => {
-      sCtx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        const a = rotation + (i * 2 * Math.PI) / 3;
-        const tx = sCx + Math.cos(a) * 200;
-        const ty = sCy + Math.sin(a) * 200;
-        i === 0 ? sCtx.moveTo(tx, ty) : sCtx.lineTo(tx, ty);
+    // ── Layer 2: Sun — golden disc sitting on the horizon ──
+    const sunGfx = this.add.graphics().setDepth(2);
+    this._addPageVisual(sunGfx);
+    const sunX = W * 0.45, sunY = H * 0.52;
+    // Outer glow
+    sunGfx.fillStyle(0xffcc44, 0.15);
+    sunGfx.fillCircle(sunX, sunY, 130);
+    sunGfx.fillStyle(0xffcc44, 0.25);
+    sunGfx.fillCircle(sunX, sunY, 100);
+    // Sun disc
+    sunGfx.fillStyle(0xffffcc, 0.9);
+    sunGfx.fillCircle(sunX, sunY, 70);
+    sunGfx.fillStyle(0xffffff, 0.4);
+    sunGfx.fillCircle(sunX - 8, sunY - 10, 40);
+    // Sun rays
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2;
+      const rx = Math.cos(angle), ry = Math.sin(angle);
+      sunGfx.lineStyle(1, 0xffdd88, 0.08);
+      sunGfx.beginPath();
+      sunGfx.moveTo(sunX + rx * 75, sunY + ry * 75);
+      sunGfx.lineTo(sunX + rx * 220, sunY + ry * 220);
+      sunGfx.strokePath();
+    }
+
+    // ── Layer 3: Sea / water ──
+    const seaGfx = this.add.graphics().setDepth(3);
+    this._addPageVisual(seaGfx);
+    const horizonY = H * 0.58;
+    const sandY = H * 0.82;
+    // Water body gradient — dark teal
+    for (let y = Math.round(horizonY); y < Math.round(sandY); y++) {
+      const wt = (y - horizonY) / (sandY - horizonY);
+      const wr = Math.round(10 - wt * 6);
+      const wg = Math.round(42 - wt * 18);
+      const wb = Math.round(74 - wt * 20);
+      seaGfx.fillStyle(Phaser.Display.Color.GetColor(wr, wg, wb), 1);
+      seaGfx.fillRect(0, y, W, 1);
+    }
+    // Sun reflection on water — golden vertical strip
+    const refX = sunX;
+    for (let y = Math.round(horizonY); y < Math.round(sandY); y++) {
+      const wt = (y - horizonY) / (sandY - horizonY);
+      const refAlpha = 0.35 * (1 - wt * 0.9);
+      const refWidth = 20 + wt * 30; // widens toward viewer
+      seaGfx.fillStyle(0xffcc44, refAlpha);
+      seaGfx.fillRect(refX - refWidth / 2, y, refWidth, 1);
+      // Shimmer — slightly brighter center
+      seaGfx.fillStyle(0xffeedd, refAlpha * 0.4);
+      seaGfx.fillRect(refX - 5, y, 10, 1);
+    }
+    // Water wave lines
+    for (let wy = Math.round(horizonY) + 4; wy < Math.round(sandY); wy += 8) {
+      seaGfx.lineStyle(1, 0x1a4a6a, 0.25);
+      seaGfx.beginPath();
+      for (let x = 0; x < W; x += 2) {
+        const yOff = Math.sin(x * 0.03 + wy * 0.1) * 2;
+        if (x === 0) seaGfx.moveTo(x, wy + yOff);
+        else seaGfx.lineTo(x, wy + yOff);
       }
-      sCtx.closePath();
-      sCtx.fillStyle = fillGrad;
-      sCtx.fill();
+      seaGfx.strokePath();
+    }
+    // Animated wave shimmer
+    for (let i = 0; i < 4; i++) {
+      const waveY = H * 0.62 + i * 18;
+      const wave = this.add.rectangle(W / 2 + (i % 2 ? 20 : -20), waveY, W * 0.5, 1, 0xffffff, 0.06).setDepth(3);
+      this._addPageVisual(wave);
+      this.tweens.add({ targets: wave, alpha: 0.02, x: wave.x + (i % 2 ? -15 : 15), duration: 2500 + i * 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+
+    // ── Layer 4: Beach / sand ──
+    const sandGfx = this.add.graphics().setDepth(4);
+    this._addPageVisual(sandGfx);
+    // Sand gradient — wet dark tan to dry warm beige
+    for (let y = Math.round(sandY); y < H; y++) {
+      const st = (y - sandY) / (H - sandY);
+      const sr = Math.round(138 + st * 66);   // 0x8a → 0xcc
+      const sg = Math.round(112 + st * 58);   // 0x70 → 0xaa
+      const sb = Math.round(80 + st * 32);    // 0x50 → 0x70
+      sandGfx.fillStyle(Phaser.Display.Color.GetColor(sr, sg, sb), 1);
+      sandGfx.fillRect(0, y, W, 1);
+    }
+    // Sand grain texture — tiny dots
+    for (let i = 0; i < 50; i++) {
+      const gx = Math.random() * W;
+      const gy = sandY + Math.random() * (H - sandY);
+      const shade = 0.06 + Math.random() * 0.08;
+      sandGfx.fillStyle(0x998860, shade);
+      sandGfx.fillCircle(gx, gy, 1 + Math.random());
+    }
+    // Foam line at water-sand boundary
+    sandGfx.lineStyle(2, 0xffffff, 0.3);
+    sandGfx.beginPath();
+    for (let x = 0; x < W; x += 2) {
+      const fy = sandY + Math.sin(x * 0.04) * 2 - 1;
+      if (x === 0) sandGfx.moveTo(x, fy);
+      else sandGfx.lineTo(x, fy);
+    }
+    sandGfx.strokePath();
+
+    // ── Layer 5: Beach details — palm silhouettes + Tel Aviv skyline ──
+    const detailGfx = this.add.graphics().setDepth(5);
+    this._addPageVisual(detailGfx);
+    // Tel Aviv skyline silhouette — left side
+    detailGfx.fillStyle(0x1a0a1a, 0.6);
+    const buildings = [
+      { x: W * 0.05, w: 30, h: 110 },
+      { x: W * 0.10, w: 22, h: 80 },
+      { x: W * 0.14, w: 35, h: 140 },
+      { x: W * 0.20, w: 28, h: 95 },
+      { x: W * 0.26, w: 20, h: 65 },
+      { x: W * 0.30, w: 32, h: 120 },
+      { x: W * 0.36, w: 18, h: 50 },
+    ];
+    buildings.forEach(b => {
+      const bTop = horizonY - b.h;
+      detailGfx.fillRect(b.x, bTop, b.w, b.h + 4);
+    });
+    // Window lights on buildings
+    detailGfx.fillStyle(0xffdd66, 0.4);
+    buildings.forEach(b => {
+      const bTop = horizonY - b.h;
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 2; c++) {
+          if (Math.random() > 0.4) {
+            detailGfx.fillRect(b.x + 4 + c * 10, bTop + 8 + r * 20, 3, 4);
+          }
+        }
+      }
+    });
+
+    // Palm tree silhouettes — right side (each on own graphics for sway animation)
+    const palmColor = 0x1a0a1a;
+    const drawPalmOnGfx = (palmGfx, baseX, baseY, topY, trunkW) => {
+      palmGfx.fillStyle(palmColor, 0.85);
+      // Curved trunk — draw as narrow rect segments
+      const segments = 20;
+      for (let i = 0; i < segments; i++) {
+        const t = i / segments;
+        const py = baseY + (topY - baseY) * t;
+        const curve = Math.sin(t * Math.PI * 0.8) * 15;
+        const w = trunkW * (1 - t * 0.4);
+        palmGfx.fillRect(baseX + curve - w / 2, py, w, (baseY - topY) / segments + 1);
+      }
+      // Palm fronds — 5 curved lines radiating from top
+      const topX = baseX + Math.sin(0.8 * Math.PI) * 15;
+      palmGfx.lineStyle(3, palmColor, 0.85);
+      for (let f = 0; f < 5; f++) {
+        const fAngle = -0.8 + f * 0.4; // spread from left to right
+        palmGfx.beginPath();
+        palmGfx.moveTo(topX, topY);
+        const cpX = topX + Math.cos(fAngle) * 40;
+        const cpY = topY + Math.sin(fAngle) * 20 - 15;
+        const endX = topX + Math.cos(fAngle) * 65;
+        const endY = topY + Math.sin(fAngle) * 35 + 5;
+        // Approximate quadratic bezier with line segments
+        for (let s = 1; s <= 8; s++) {
+          const bt = s / 8;
+          const bx = (1 - bt) * (1 - bt) * topX + 2 * (1 - bt) * bt * cpX + bt * bt * endX;
+          const by = (1 - bt) * (1 - bt) * topY + 2 * (1 - bt) * bt * cpY + bt * bt * endY;
+          palmGfx.lineTo(bx, by);
+        }
+        palmGfx.strokePath();
+      }
     };
-
-    // Bronze/gold metallic gradient for triangle 1 (pointing up)
-    const grad1 = sCtx.createLinearGradient(sCx, sCy - 200, sCx, sCy + 100);
-    grad1.addColorStop(0, '#e8c44a');   // bright gold top
-    grad1.addColorStop(0.3, '#c49520');  // warm bronze
-    grad1.addColorStop(0.5, '#8B6914');  // dark bronze
-    grad1.addColorStop(0.7, '#c49520');  // light again (metallic banding)
-    grad1.addColorStop(1, '#a07818');
-    drawStarTriangle(-Math.PI / 2, grad1);
-
-    // Triangle 2 (pointing down) — slightly different gradient angle for metal effect
-    const grad2 = sCtx.createLinearGradient(sCx - 100, sCy + 100, sCx + 100, sCy - 100);
-    grad2.addColorStop(0, '#a07818');
-    grad2.addColorStop(0.3, '#c49520');
-    grad2.addColorStop(0.5, '#e8c44a');
-    grad2.addColorStop(0.7, '#8B6914');
-    grad2.addColorStop(1, '#c49520');
-    drawStarTriangle(Math.PI / 2, grad2);
-
-    // Edge highlights — bright stroke on both triangles
-    sCtx.strokeStyle = '#FFD700';
-    sCtx.lineWidth = 2.5;
-    for (const rot of [-Math.PI / 2, Math.PI / 2]) {
-      sCtx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        const a = rot + (i * 2 * Math.PI) / 3;
-        const tx = sCx + Math.cos(a) * 200;
-        const ty = sCy + Math.sin(a) * 200;
-        i === 0 ? sCtx.moveTo(tx, ty) : sCtx.lineTo(tx, ty);
-      }
-      sCtx.closePath();
-      sCtx.stroke();
+    const palmDefs = [
+      { bx: W * 0.78, by: H, ty: H * 0.28, tw: 8, dur: 3000 },
+      { bx: W * 0.88, by: H, ty: H * 0.42, tw: 6, dur: 3500 },
+      { bx: W * 0.72, by: H, ty: H * 0.50, tw: 5, dur: 2800 },
+    ];
+    for (const pd of palmDefs) {
+      const palmGfx = this.add.graphics().setDepth(5);
+      this._addPageVisual(palmGfx);
+      drawPalmOnGfx(palmGfx, pd.bx, pd.by, pd.ty, pd.tw);
+      // Subtle sway animation
+      this.tweens.add({ targets: palmGfx, angle: 1.5, duration: pd.dur, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
 
-    // Inner bright highlight lines — chrome reflection streaks
-    sCtx.strokeStyle = 'rgba(255, 240, 180, 0.4)';
-    sCtx.lineWidth = 1.5;
-    for (const rot of [-Math.PI / 2, Math.PI / 2]) {
-      sCtx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        const a = rot + (i * 2 * Math.PI) / 3;
-        const tx = sCx + Math.cos(a) * 180;
-        const ty = sCy + Math.sin(a) * 180;
-        i === 0 ? sCtx.moveTo(tx, ty) : sCtx.lineTo(tx, ty);
-      }
-      sCtx.closePath();
-      sCtx.stroke();
-    }
-
-    // Center glow (intense light source)
-    const cGlow = sCtx.createRadialGradient(sCx, sCy, 5, sCx, sCy, 80);
-    cGlow.addColorStop(0, 'rgba(255, 250, 220, 0.5)');
-    cGlow.addColorStop(0.3, 'rgba(255, 215, 0, 0.2)');
-    cGlow.addColorStop(0.7, 'rgba(200, 150, 30, 0.05)');
-    cGlow.addColorStop(1, 'rgba(200, 150, 30, 0)');
-    sCtx.fillStyle = cGlow;
-    sCtx.fillRect(0, 0, 460, 460);
-
-    starCanvas.refresh();
-
-    // Display star — entrance: scale from 0 with sound
-    const starImg = this.add.image(cx, starCy, starTexKey).setDepth(7).setScale(0).setAlpha(0);
-    this._addPageVisual(starImg);
-    sm.playStarReveal();
-    this.tweens.add({
-      targets: starImg, scaleX: 0.82, scaleY: 0.82, alpha: 1,
-      duration: 1200, ease: 'Back.easeOut',
+    // ── Layer 6: Atmosphere — lens flare + floating embers ──
+    const atmosGfx = this.add.graphics().setDepth(6);
+    this._addPageVisual(atmosGfx);
+    // Lens flare — small warm circles along a diagonal from the sun
+    const flares = [
+      { dist: 0.18, size: 12, color: 0xffcc88, alpha: 0.10 },
+      { dist: 0.35, size: 8,  color: 0xff9966, alpha: 0.07 },
+      { dist: 0.55, size: 15, color: 0xffddaa, alpha: 0.05 },
+    ];
+    flares.forEach(fl => {
+      const fx = sunX + (cx - sunX) * fl.dist * 2;
+      const fy = sunY + (cy - sunY) * fl.dist * 2;
+      atmosGfx.fillStyle(fl.color, fl.alpha);
+      atmosGfx.fillCircle(fx, fy, fl.size);
     });
-    // Gentle pulse
-    this.tweens.add({
-      targets: starImg, scaleX: { from: 0.80, to: 0.84 }, scaleY: { from: 0.80, to: 0.84 },
-      duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 1500,
-    });
-
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 8 — "SUPERZION" CHROME METAL 3D TEXT
-    // ══════════════════════════════════════════════════════════════
-    const titleStr = 'SUPERZION';
-    const titleFont = '72px "Impact", "Arial Black", sans-serif';
-    const titleY = cy - 10;
-
-    const titleTexKey = '__title_reveal_tex';
-    if (this.textures.exists(titleTexKey)) this.textures.remove(titleTexKey);
-    const titleCanvas = this.textures.createCanvas(titleTexKey, W, 140);
-    const tCtx = titleCanvas.context;
-    tCtx.textAlign = 'center';
-    tCtx.textBaseline = 'middle';
-    tCtx.font = titleFont;
-
-    const drawX = W / 2;
-    const drawY = 70;
-
-    const letters = titleStr.split('');
-    const totalWidth = tCtx.measureText(titleStr).width;
-    const letterWidths = letters.map(l => tCtx.measureText(l).width);
-    let letterX = drawX - totalWidth / 2;
-
-    for (let li = 0; li < letters.length; li++) {
-      const lx = letterX + letterWidths[li] / 2;
-
-      // DEPTH LAYERS: 6px deep 3D extrusion (gold/bronze bevel)
-      const depthColors = ['#2a1a08', '#3a2510', '#5a3a15', '#7a5518', '#8B6914', '#a07818'];
-      for (let d = 5; d >= 0; d--) {
-        tCtx.fillStyle = depthColors[d];
-        tCtx.fillText(letters[li], lx + d, drawY + d);
-      }
-
-      // Black outline on the face
-      tCtx.strokeStyle = '#000000';
-      tCtx.lineWidth = 3;
-      tCtx.lineJoin = 'round';
-      tCtx.strokeText(letters[li], lx, drawY);
-
-      // Chrome face — vertical gradient (silver metal with horizontal banding)
-      const chromeGrad = tCtx.createLinearGradient(lx, drawY - 30, lx, drawY + 30);
-      chromeGrad.addColorStop(0, '#e0e0e8');    // bright chrome top
-      chromeGrad.addColorStop(0.15, '#c0c0c8');  // slightly darker
-      chromeGrad.addColorStop(0.3, '#a0a0a8');   // mid gray
-      chromeGrad.addColorStop(0.45, '#d0d0d8');  // bright band (metal reflection)
-      chromeGrad.addColorStop(0.55, '#909098');   // dark band
-      chromeGrad.addColorStop(0.7, '#c8c8d0');   // another bright band
-      chromeGrad.addColorStop(0.85, '#a8a8b0');   // tapering
-      chromeGrad.addColorStop(1, '#808088');      // darker bottom
-      tCtx.fillStyle = chromeGrad;
-      tCtx.fillText(letters[li], lx, drawY);
-
-      // Top highlight line (bright chrome edge)
-      tCtx.save();
-      tCtx.globalAlpha = 0.5;
-      tCtx.fillStyle = '#ffffff';
-      tCtx.fillText(letters[li], lx, drawY - 1);
-      tCtx.restore();
-
-      // Gold bevel outline (inner edge tint)
-      tCtx.strokeStyle = '#c49520';
-      tCtx.lineWidth = 1.2;
-      tCtx.strokeText(letters[li], lx, drawY);
-
-      letterX += letterWidths[li];
-    }
-    titleCanvas.refresh();
-
-    // ── Letter-by-letter slam entrance with metallic SFX ──
-    // Create individual letter images from the canvas
-    const letterImgs = [];
-    let lxPos = 0;
-    for (let li = 0; li < letters.length; li++) {
-      const lw = letterWidths[li];
-      // Crop each letter region from the full canvas
-      const frameKey = `__title_letter_${li}`;
-      // We'll use the full texture but position each as one image per letter
-      // Instead: show full title image but with staggered entrance
-      lxPos += lw;
-    }
-
-    // Full title image — letters slam in as one piece
-    const titleImg = this.add.image(cx, titleY, titleTexKey).setDepth(20).setAlpha(0);
-    this._addPageVisual(titleImg);
-
-    // Swoosh sound before slam
-    this.time.delayedCall(600, () => {
-      if (this.skipped) return;
-      sm.playTitleRevealSwoosh();
-    });
-
-    // SLAM entrance: drop from above with camera shake
-    titleImg.setPosition(cx, titleY - 80).setScale(1.8);
-    this.time.delayedCall(900, () => {
-      if (this.skipped) return;
-      sm.playMetalSlam(1.0);
-      this.cameras.main.shake(200, 0.02);
-    });
-    this.tweens.add({
-      targets: titleImg, y: titleY, scaleX: 1, scaleY: 1, alpha: 1,
-      duration: 350, ease: 'Bounce.easeOut', delay: 800,
-    });
-
-    // Second smaller impact (echo)
-    this.time.delayedCall(1250, () => {
-      if (this.skipped) return;
-      sm.playMetalSlam(1.3);
-      this.cameras.main.shake(80, 0.008);
-    });
-
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 9 — LENS FLARES on metal edges
-    // ══════════════════════════════════════════════════════════════
-    const spawnLensFlare = () => {
-      if (this.skipped) return;
-      // Random position near title or star edges
-      const onTitle = Math.random() > 0.4;
-      let fx, fy;
-      if (onTitle) {
-        fx = cx + (Math.random() - 0.5) * (totalWidth * 0.9);
-        fy = titleY + (Math.random() - 0.5) * 30;
-      } else {
-        // On star points
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 120 + Math.random() * 50;
-        fx = cx + Math.cos(angle) * dist;
-        fy = starCy + Math.sin(angle) * dist;
-      }
-
-      const flareGfx = this.add.graphics().setDepth(35).setPosition(fx, fy).setAlpha(0);
-      this._addPageVisual(flareGfx);
-
-      // Cross flare (4-ray star)
-      const flareSize = 6 + Math.random() * 10;
-      flareGfx.lineStyle(1.5, 0xffffff, 0.9);
-      flareGfx.lineBetween(-flareSize, 0, flareSize, 0);
-      flareGfx.lineBetween(0, -flareSize, 0, flareSize);
-      // Diagonal rays (dimmer)
-      flareGfx.lineStyle(1, 0xffffff, 0.4);
-      const ds = flareSize * 0.6;
-      flareGfx.lineBetween(-ds, -ds, ds, ds);
-      flareGfx.lineBetween(-ds, ds, ds, -ds);
-      // Central dot glow
-      flareGfx.fillStyle(0xffffff, 0.7);
-      flareGfx.fillCircle(0, 0, 2);
-      flareGfx.fillStyle(0xFFD700, 0.3);
-      flareGfx.fillCircle(0, 0, 4);
-
+    // Floating embers / warm particles drifting upward
+    for (let i = 0; i < 10; i++) {
+      const ex = 80 + Math.random() * (W - 160);
+      const ey = H * 0.4 + Math.random() * (H * 0.5);
+      const eSize = 1.5 + Math.random() * 2;
+      const eColor = [0xff8844, 0xffaa66, 0xffcc88, 0xffdd44][i % 4];
+      const ember = this.add.circle(ex, ey, eSize, eColor, 0.5 + Math.random() * 0.3).setDepth(6);
+      this._addPageVisual(ember);
       this.tweens.add({
-        targets: flareGfx, alpha: { from: 0, to: 0.8 },
-        duration: 200 + Math.random() * 200, yoyo: true, ease: 'Sine.easeInOut',
+        targets: ember,
+        y: ey - 60 - Math.random() * 80,
+        x: ex + (Math.random() - 0.5) * 30,
+        alpha: 0,
+        duration: 3000 + Math.random() * 2000,
+        ease: 'Sine.easeIn',
+        repeat: -1,
+        delay: Math.random() * 2000,
+      });
+    }
+
+    // Pre-generated star — scales up from 0
+    if (this.textures.exists('__star_metal_tex')) {
+      const star = this.add.image(cx, starCy, '__star_metal_tex').setDepth(7).setScale(0).setAlpha(0);
+      this._addPageVisual(star);
+      this.tweens.add({ targets: star, scaleX: 0.82, scaleY: 0.82, alpha: 1, duration: 1200, ease: 'Back.easeOut' });
+    }
+
+    // Pre-generated SUPERZION title — slams down from above
+    if (this.textures.exists('__title_reveal_tex')) {
+      const title = this.add.image(cx, titleY - 80, '__title_reveal_tex').setDepth(20).setAlpha(0).setScale(1.8);
+      this._addPageVisual(title);
+      this.tweens.add({
+        targets: title, y: titleY, scaleX: 1, scaleY: 1, alpha: 1,
+        duration: 350, ease: 'Bounce.easeOut', delay: 800,
         onComplete: () => {
-          if (flareGfx && flareGfx.destroy) flareGfx.destroy();
-          this.time.delayedCall(300 + Math.random() * 800, spawnLensFlare);
+          this.cameras.main.shake(200, 0.015);
+          SoundManager.get().playMegaExplosion();
         },
       });
-    };
-    // Start flare chains after title appears
-    for (let i = 0; i < 8; i++) {
-      this.time.delayedCall(1200 + i * 200, spawnLensFlare);
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 10 — SUBTITLE + PRESS SPACE
-    // ══════════════════════════════════════════════════════════════
-    this.time.delayedCall(2000, () => {
-      if (this.skipped) return;
-      const sub = this.add.text(cx, titleY + 55, 'THEY FIGHT TO CONQUER. WE FIGHT TO EXIST.', {
-        fontFamily: '"Impact", "Arial Black", sans-serif', fontSize: '18px', color: '#ffffff',
-        shadow: { offsetX: 0, offsetY: 0, color: '#ffffff', blur: 8, fill: true },
-      }).setOrigin(0.5).setDepth(25).setAlpha(0);
-      this._addPageVisual(sub);
-      this.tweens.add({ targets: sub, alpha: 1, duration: 800 });
-    });
-
-    const pressSpace = this.add.text(cx, H - 40, 'PRESS SPACE TO CONTINUE', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#FFD700',
+    // Subtitle — fades in via tween delay (no delayedCall)
+    const sub = this.add.text(cx, titleY + 55, 'THEY FIGHT TO CONQUER. WE FIGHT TO EXIST.', {
+      fontFamily: '"Impact", "Arial Black", sans-serif', fontSize: '18px', color: '#ffffff',
+      shadow: { offsetX: 0, offsetY: 0, color: '#ffffff', blur: 8, fill: true },
     }).setOrigin(0.5).setDepth(25).setAlpha(0);
-    this._addPageVisual(pressSpace);
-    this.time.delayedCall(2800, () => {
-      if (this.skipped) return;
-      this.tweens.add({
-        targets: pressSpace, alpha: { from: 0, to: 1 },
-        duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-      });
+    this._addPageVisual(sub);
+    this.tweens.add({ targets: sub, alpha: 1, duration: 800, delay: 1800 });
+    this.time.delayedCall(1800, () => {
+      if (!this.skipped) SoundManager.get().playRadarBlip();
     });
 
-    // ══════════════════════════════════════════════════════════════
-    // LAYER 11 — SCANLINES + VIGNETTE (top layer)
-    // ══════════════════════════════════════════════════════════════
-    const scanGfx = this.add.graphics().setDepth(40);
-    this._addPageVisual(scanGfx);
-    for (let sy = 0; sy < H; sy += 2) {
-      scanGfx.fillStyle(0x000000, 0.08);
-      scanGfx.fillRect(0, sy, W, 1);
-    }
-    // Vignette
-    const vigGfx = this.add.graphics().setDepth(41);
-    this._addPageVisual(vigGfx);
-    for (const c of [{ x: 0, y: 0 }, { x: W, y: 0 }, { x: 0, y: H }, { x: W, y: H }]) {
-      for (let lr = 300; lr > 40; lr -= 15) {
-        vigGfx.fillStyle(0x000000, 0.25 * (lr / 300) * 0.15);
-        vigGfx.fillCircle(c.x, c.y, lr);
-      }
-    }
-
-    // Make this page ready immediately
     this.typewriterComplete = true;
     this.pageReady = true;
   }

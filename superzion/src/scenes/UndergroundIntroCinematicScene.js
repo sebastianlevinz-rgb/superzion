@@ -31,6 +31,35 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
     // Background silhouette: destroyed building rubble
     this._drawUndergroundSilhouette();
 
+    // -- Subtle pulsing red ambient glow (tunnel danger atmosphere) --
+    const redGlow = this.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0.02).setDepth(6);
+    this.tweens.add({
+      targets: redGlow, alpha: { from: 0.02, to: 0.06 },
+      duration: 2500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // -- Static/noise effect: random pixels flashing each frame --
+    const staticGfx = this.add.graphics().setDepth(6);
+    this._staticTimer = this.time.addEvent({
+      delay: 120, repeat: -1,
+      callback: () => {
+        if (this.skipped) return;
+        staticGfx.clear();
+        for (let i = 0; i < 30; i++) {
+          const sx = Math.random() * W;
+          const sy = Math.random() * H;
+          staticGfx.fillStyle(0xffffff, 0.03 + Math.random() * 0.04);
+          staticGfx.fillRect(sx, sy, 1 + Math.random() * 2, 1);
+        }
+      },
+    });
+
+    // -- Scan line (slower, darker for underground atmosphere) --
+    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0x00ff00, 0.04).setDepth(6);
+    this.tweens.add({
+      targets: scanLine, y: H, duration: 5000, repeat: -1, ease: 'Linear',
+    });
+
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
       {
@@ -45,7 +74,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
           }).setOrigin(0.5).setDepth(2));
           // Haniyeh eliminated
           if (this.textures.exists('parade_foambeard')) {
-            const boss1 = this.add.image(W / 2 - 80, H * 0.32, 'parade_foambeard').setScale(0.7).setDepth(2).setTint(0x666666);
+            const boss1 = this.add.image(W / 2 - 80, H * 0.32, 'parade_foambeard').setScale(0.7).setDepth(2);
             this._addPageVisual(boss1);
             const x1 = this.add.graphics().setDepth(3);
             x1.lineStyle(3, 0xff0000, 0.8);
@@ -58,7 +87,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
           }).setOrigin(0.5).setDepth(2));
           // Nasrallah eliminated
           if (this.textures.exists('parade_turboturban')) {
-            const boss2 = this.add.image(W / 2 + 80, H * 0.32, 'parade_turboturban').setScale(0.7).setDepth(2).setTint(0x666666);
+            const boss2 = this.add.image(W / 2 + 80, H * 0.32, 'parade_turboturban').setScale(0.7).setDepth(2);
             this._addPageVisual(boss2);
             const x2 = this.add.graphics().setDepth(3);
             x2.lineStyle(3, 0xff0000, 0.8);

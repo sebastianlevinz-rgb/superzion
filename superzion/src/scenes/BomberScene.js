@@ -1095,6 +1095,7 @@ export default class BomberScene extends Phaser.Scene {
 
     // Draw bunker layers as game objects (outer shell)
     this.bunkerLayerSprites = [];
+    this._bunkerCleaned = false; // reset cleanup guard for this bombing run
     const colors = [0x8a8a92, 0x7a7a82, 0x6a6a72, 0x5a5a62, 0x4a4a52];
     for (let i = 0; i < BUNKER_LAYERS; i++) {
       const ly = BUNKER_TOP_Y + i * LAYER_H;
@@ -1960,6 +1961,8 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   _cleanupBunkerSprites() {
+    if (this._bunkerCleaned) return; // idempotent — safe to call from multiple paths
+    this._bunkerCleaned = true;
     // Cleanup boss HP bar
     if (this.bossHPBarBg) { this.bossHPBarBg.destroy(); this.bossHPBarBg = null; }
     if (this.bossHPBarFill) { this.bossHPBarFill.destroy(); this.bossHPBarFill = null; }
@@ -2005,6 +2008,9 @@ export default class BomberScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
   _startReturn() {
     this.phase = 'returning';
+    // Always clear the bunker first — otherwise (e.g. out-of-ordnance return,
+    // before the full explosion) its walls/edges stay stuck on screen in flight.
+    this._cleanupBunkerSprites();
     try { MusicManager.get().playLevel3Music('landing'); } catch (e) { /* audio */ }
 
     // Save checkpoint: bunker destroyed, now in return phase
