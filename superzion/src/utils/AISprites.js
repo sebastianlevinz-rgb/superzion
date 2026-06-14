@@ -31,6 +31,8 @@ export const AI_SPRITES = [
   'plt_player_idle', 'plt_player_run_0', 'plt_player_run_1',
   'plt_player_run_2', 'plt_player_run_3', 'plt_player_jump',
   'plt_guard_walk_0', 'plt_guard_walk_1', 'plt_guard_walk_2', 'plt_guard_walk_3',
+  // Parallax background bands (night Tehran)
+  'plt_mountains', 'plt_skyline', 'plt_near_buildings',
 
   // ── Port Swap (PortSwapScene) ──
   'ps_player_down_0', 'ps_player_down_1', 'ps_player_up_0', 'ps_player_up_1',
@@ -59,6 +61,7 @@ export const AI_SPRITES = [
 
   // ── Final boss (BossScene) ──
   'player_fighter', 'bunker_fortress',
+  'beirut_city', 'beirut_ground',
 
   // ── Full-screen backgrounds (opaque) ──
   'sunset_sky', 'night_sky', 'daytime_sky', 'beirut_sky',

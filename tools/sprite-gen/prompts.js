@@ -414,6 +414,21 @@ export const SPRITES = {
     // Credits "Am Yisrael Chai" — sunrise over Tel Aviv skyline & sea
     { name: "credits_sky", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A breathtaking sunrise over the Tel Aviv coastline seen from the sea — a glowing golden sun rising on the horizon, warm orange-and-pink sky fading to soft blue above, a distant modern city skyline silhouette of towers along the horizon, calm reflective Mediterranean sea in the lower third with shimmering sun reflection, hopeful peaceful dawn atmosphere, cinematic.` },
+
+    // ── Platformer (Tehran rooftops, DAYTIME) parallax silhouette bands ──
+    // Content along the BOTTOM, solid green above so the bright day sky shows through.
+    { name: "plt_mountains", size: { w: 768, h: 256 }, tileAlpha: true,
+      prompt: `16-bit retro pixel-art parallax scenery layer, NO characters, NO people, NO creatures, NO text, NO border. A row of distant hazy pale blue-grey daytime mountain-range silhouettes along the BOTTOM third only, soft atmospheric haze, bright day; the ENTIRE rest of the image above is a solid flat pure ${KEY_COLOR} green empty sky. Horizontal seamless band, detailed pixel art.` },
+    { name: "plt_skyline", size: { w: 768, h: 256 }, tileAlpha: true,
+      prompt: `16-bit retro pixel-art parallax scenery layer, NO characters, NO people, NO text, NO border. A sunlit middle-eastern city skyline along the BOTTOM half in DAYTIME — light tan and beige towers, domes and minarets, soft hazy daylight, NO glowing windows; the ENTIRE upper area is a solid flat pure ${KEY_COLOR} green empty sky. Horizontal seamless band, detailed pixel art.` },
+    { name: "plt_near_buildings", size: { w: 768, h: 256 }, tileAlpha: true,
+      prompt: `16-bit retro pixel-art parallax scenery layer, NO characters, NO people, NO text, NO border. Closer foreground sunlit rooftops and building facades in DAYTIME along the BOTTOM half — warm sandstone and concrete buildings, water tanks and rooftop boxes, satellite dishes, bright daylight, NO glowing windows; the ENTIRE upper area is a solid flat pure ${KEY_COLOR} green empty sky. Horizontal seamless band, detailed pixel art.` },
+
+    // ── Beirut final-boss parallax ──
+    { name: "beirut_city", size: { w: 768, h: 256 }, tileAlpha: true,
+      prompt: `16-bit retro pixel-art parallax scenery layer, NO characters, NO people, NO text, NO border. A war-torn middle-eastern city skyline silhouette along the BOTTOM half — damaged dark buildings, broken towers, faint distant fire-glow on a few, smoke; the ENTIRE upper area is a solid flat pure ${KEY_COLOR} green empty sky. Horizontal seamless band, detailed pixel art.` },
+    { name: "beirut_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A war-torn city street ground band seen straight-on — cracked asphalt and rubble, scattered debris and craters, dim reddish night lighting, fills the frame as a horizontal seamless terrain band. NO sky.` },
   ],
 
   // Final boss level (BossScene)
