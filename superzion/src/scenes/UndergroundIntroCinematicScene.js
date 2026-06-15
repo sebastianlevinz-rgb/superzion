@@ -71,18 +71,23 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
         text: "The general is gone. But the tunnels remain.",
         color: '#ff6644', size: 20, y: H * 0.82,
         setup: () => {
-          // Bunker exploding overlay
-          const bg = this.add.graphics().setDepth(1);
-          this._addPageVisual(bg);
-          bg.fillStyle(0x000000, 0.7);
-          bg.fillRect(0, 0, W, H);
-          // Mountain with explosion
-          bg.fillStyle(0x3a4a3a, 0.8);
-          bg.fillTriangle(W / 2, 100, W / 2 - 250, H - 70, W / 2 + 250, H - 70);
-          bg.fillStyle(0xff4400, 0.3);
-          bg.fillCircle(W / 2, H * 0.4, 60);
-          bg.fillStyle(0x2a3a2a, 1);
-          bg.fillRect(0, H - 70, W, 70);
+          if (this.textures.exists('cin_destroyed_city')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_destroyed_city').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.5).setDepth(0.5));
+          } else {
+            // Bunker exploding overlay
+            const bg = this.add.graphics().setDepth(1);
+            this._addPageVisual(bg);
+            bg.fillStyle(0x000000, 0.7);
+            bg.fillRect(0, 0, W, H);
+            // Mountain with explosion
+            bg.fillStyle(0x3a4a3a, 0.8);
+            bg.fillTriangle(W / 2, 100, W / 2 - 250, H - 70, W / 2 + 250, H - 70);
+            bg.fillStyle(0xff4400, 0.3);
+            bg.fillCircle(W / 2, H * 0.4, 60);
+            bg.fillStyle(0x2a3a2a, 1);
+            bg.fillRect(0, H - 70, W, 70);
+          }
           this.cameras.main.shake(300, 0.015);
           SoundManager.get().playExplosion();
         },
@@ -91,21 +96,26 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
         text: "Hundreds of kilometers underground. Built with cement meant for schools. Filled with weapons meant for war.",
         color: '#cccccc', size: 18, y: H * 0.82,
         setup: () => {
-          // Tunnel cross-section overlay
-          const bg = this.add.graphics().setDepth(1);
-          this._addPageVisual(bg);
-          bg.fillStyle(0x0a0a0a, 0.85);
-          bg.fillRect(0, 0, W, H);
-          bg.lineStyle(2, 0x444444, 0.5);
-          for (let i = 0; i < 5; i++) {
-            const ty = 100 + i * 80;
-            bg.strokeRect(W * 0.2, ty, W * 0.6, 30);
-            bg.lineStyle(1, 0x333333, 0.3);
-            bg.lineBetween(W * 0.2, ty + 15, W * 0.8, ty + 15);
+          if (this.textures.exists('cin_tunnel_xsection')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_tunnel_xsection').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.5).setDepth(0.5));
+          } else {
+            // Tunnel cross-section overlay
+            const bg = this.add.graphics().setDepth(1);
+            this._addPageVisual(bg);
+            bg.fillStyle(0x0a0a0a, 0.85);
+            bg.fillRect(0, 0, W, H);
+            bg.lineStyle(2, 0x444444, 0.5);
+            for (let i = 0; i < 5; i++) {
+              const ty = 100 + i * 80;
+              bg.strokeRect(W * 0.2, ty, W * 0.6, 30);
+              bg.lineStyle(1, 0x333333, 0.3);
+              bg.lineBetween(W * 0.2, ty + 15, W * 0.8, ty + 15);
+            }
+            bg.fillStyle(0x444400, 0.15);
+            bg.fillRect(W * 0.3, 130, W * 0.4, 20);
+            bg.fillRect(W * 0.25, 290, W * 0.5, 20);
           }
-          bg.fillStyle(0x444400, 0.15);
-          bg.fillRect(W * 0.3, 130, W * 0.4, 20);
-          bg.fillRect(W * 0.25, 290, W * 0.5, 20);
           SoundManager.get().playDroneScan();
 
           // Sonar ping — pulsing green circle that expands and fades

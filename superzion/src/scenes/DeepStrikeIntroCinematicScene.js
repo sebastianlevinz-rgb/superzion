@@ -55,23 +55,35 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
         text: 'The tracker worked. We know where everything was going.',
         color: '#4488ff', size: 20, y: H * 0.82,
         setup: () => {
-          const bg = this.add.graphics().setDepth(1);
-          this._addPageVisual(bg);
-          bg.fillStyle(0x000000, 0.7);
-          bg.fillRect(0, 0, W, H);
-          // Night city lights
-          bg.fillStyle(0x334455, 0.6);
-          bg.fillRect(100, H - 120, 80, 50);
-          bg.fillRect(200, H - 130, 90, 60);
-          bg.fillRect(600, H - 125, 85, 55);
-          bg.fillStyle(0x2a3a4a, 1);
-          bg.fillRect(0, H - 70, W, 70);
+          if (this.textures.exists('cin_beirut_port')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_beirut_port').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
+          } else {
+            const bg = this.add.graphics().setDepth(1);
+            this._addPageVisual(bg);
+            bg.fillStyle(0x000000, 0.7);
+            bg.fillRect(0, 0, W, H);
+            // Night city lights
+            bg.fillStyle(0x334455, 0.6);
+            bg.fillRect(100, H - 120, 80, 50);
+            bg.fillRect(200, H - 130, 90, 60);
+            bg.fillRect(600, H - 125, 85, 55);
+            bg.fillStyle(0x2a3a4a, 1);
+            bg.fillRect(0, H - 70, W, 70);
+          }
         },
       },
       {
         text: 'A fortified bunker in the mountains. The nerve center.',
         color: '#ffffff', size: 20, y: H * 0.45,
-        setup: () => this._darkOverlay(),
+        setup: () => {
+          if (this.textures.exists('cin_fortress')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_fortress').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
+          } else {
+            this._darkOverlay();
+          }
+        },
       },
       {
         text: 'Inside: Hassan Nasrallah. Every rocket that fell on our schools, our hospitals, our homes \u2014 he gave the order.',
@@ -117,7 +129,12 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
         text: "The sunset over the Mediterranean will be beautiful tonight. He won't see the sunrise.",
         color: '#FFD700', size: 20, y: H * 0.82,
         setup: () => {
-          this._darkOverlay();
+          if (this.textures.exists('cin_lebanon_coast')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_lebanon_coast').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
+          } else {
+            this._darkOverlay();
+          }
           // Sunset glow
           const glow = this.add.graphics().setDepth(2);
           this._addPageVisual(glow);

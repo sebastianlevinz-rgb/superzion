@@ -58,14 +58,26 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
         text: 'Tehran: done. But cutting one head means nothing if the body keeps moving.',
         color: '#ff6644', size: 20, y: H * 0.82,
         setup: () => {
-          // Tehran exploding overlay
-          const bg = this.add.graphics().setDepth(1);
-          this._addPageVisual(bg);
-          bg.fillStyle(0x000000, 0.7);
-          bg.fillRect(0, 0, W, H);
-          for (let i = 0; i < 8; i++) {
-            bg.fillStyle(0xff4400, 0.1);
-            bg.fillCircle(Math.random() * W, H * 0.3 + Math.random() * H * 0.4, 30 + Math.random() * 50);
+          if (this.textures.exists('cin_tehran')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_tehran').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
+            // A few fire-glow circles on top of the AI backdrop
+            const glow = this.add.graphics().setDepth(1);
+            this._addPageVisual(glow);
+            for (let i = 0; i < 4; i++) {
+              glow.fillStyle(0xff4400, 0.1);
+              glow.fillCircle(Math.random() * W, H * 0.3 + Math.random() * H * 0.4, 30 + Math.random() * 50);
+            }
+          } else {
+            // Tehran exploding overlay
+            const bg = this.add.graphics().setDepth(1);
+            this._addPageVisual(bg);
+            bg.fillStyle(0x000000, 0.7);
+            bg.fillRect(0, 0, W, H);
+            for (let i = 0; i < 8; i++) {
+              bg.fillStyle(0xff4400, 0.1);
+              bg.fillCircle(Math.random() * W, H * 0.3 + Math.random() * H * 0.4, 30 + Math.random() * 50);
+            }
           }
           this.cameras.main.shake(200, 0.01);
           SoundManager.get().playExplosion();
@@ -74,7 +86,14 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
       {
         text: 'The enemy adapted. New communication networks. Thousands of encrypted beepers.',
         color: '#cccccc', size: 20, y: H * 0.45,
-        setup: () => this._darkOverlay(),
+        setup: () => {
+          if (this.textures.exists('cin_ops_room')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_ops_room').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
+          } else {
+            this._darkOverlay();
+          }
+        },
       },
       {
         text: 'The beepers are manufactured in Hong Kong. One factory. One shipment. One chance.',
@@ -97,7 +116,12 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
         text: 'Plant the explosives at the source. Then wait for the perfect moment to detonate.',
         color: '#FFD700', size: 24, y: H * 0.82,
         setup: () => {
-          this._darkOverlay();
+          if (this.textures.exists('cin_beirut_port')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_beirut_port').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
+          } else {
+            this._darkOverlay();
+          }
           if (this.textures.exists('cin_superzion')) {
             const hero = this.add.image(W / 2, H * 0.45, 'cin_superzion').setScale(1.6).setDepth(10).setAlpha(0);
             this._addPageVisual(hero);

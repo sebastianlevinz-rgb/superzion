@@ -77,7 +77,7 @@ export const AI_SPRITES = [
   'cin_superzion', 'cin_superzion_cliff',
   '__title_bg', 'b2_silhouette',
   // Opening intro narrative backdrops + enemy faction flags
-  'intro_empires', 'intro_warzone',
+  'intro_empires', 'intro_warzone', 'intro_telaviv_sunset', 'cin_tunnel_xsection',
   // Drone level (Last Chair): Gaza ruins backdrop + top-down boss arena floor + Sinwar boss states
   'drone_gaza', 'drone_room', 'boss_sinwar', 'boss_sinwar_angry', 'boss_sinwar_furious', 'boss_sinwar_dead',
   // Victory finale celebrating crowd

@@ -64,17 +64,22 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
         text: "The underground empire is finished. Yahya Sinwar won't give orders again.",
         color: '#4488ff', size: 20, y: H * 0.82,
         setup: () => {
-          // Tunnels collapsing overlay
-          const bg = this.add.graphics().setDepth(1);
-          this._addPageVisual(bg);
-          bg.fillStyle(0x0a0a0a, 0.85);
-          bg.fillRect(0, 0, W, H);
-          bg.fillStyle(0x3a2a1a, 0.6);
-          for (let i = 0; i < 6; i++) {
-            bg.fillRect(W * 0.15 + i * 110, H * 0.3 + Math.random() * 30, 80, 15 + Math.random() * 10);
+          if (this.textures.exists('cin_tunnel_xsection')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_tunnel_xsection').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.5).setDepth(0.5));
+          } else {
+            // Tunnels collapsing overlay
+            const bg = this.add.graphics().setDepth(1);
+            this._addPageVisual(bg);
+            bg.fillStyle(0x0a0a0a, 0.85);
+            bg.fillRect(0, 0, W, H);
+            bg.fillStyle(0x3a2a1a, 0.6);
+            for (let i = 0; i < 6; i++) {
+              bg.fillRect(W * 0.15 + i * 110, H * 0.3 + Math.random() * 30, 80, 15 + Math.random() * 10);
+            }
+            bg.fillStyle(0x555544, 0.3);
+            bg.fillRect(W * 0.1, H * 0.6, W * 0.8, 5);
           }
-          bg.fillStyle(0x555544, 0.3);
-          bg.fillRect(W * 0.1, H * 0.6, W * 0.8, 5);
           this.cameras.main.shake(200, 0.01);
         },
       },
@@ -90,11 +95,17 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
           // Natanz glow overlay
           const bg = this.add.graphics().setDepth(1);
           this._addPageVisual(bg);
-          bg.fillStyle(0x060608, 0.85);
-          bg.fillRect(0, 0, W, H);
-          // Mountain
-          bg.fillStyle(0x2a3a2a, 0.8);
-          bg.fillTriangle(W / 2, 120, W / 2 - 300, H - 60, W / 2 + 300, H - 60);
+          if (this.textures.exists('cin_natanz')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_natanz').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.5).setDepth(0.5));
+          } else {
+            bg.fillStyle(0x060608, 0.85);
+            bg.fillRect(0, 0, W, H);
+            // Mountain
+            bg.fillStyle(0x2a3a2a, 0.8);
+            bg.fillTriangle(W / 2, 120, W / 2 - 300, H - 60, W / 2 + 300, H - 60);
+          }
+          const hasNatanz = this.textures.exists('cin_natanz');
           // Green glow from inside
           bg.fillStyle(0x22ff22, 0.15);
           bg.fillCircle(W / 2, H * 0.45, 80);
@@ -110,8 +121,10 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
             bg.arc(W / 2, H * 0.45, 25, angle - 0.4, angle + 0.4, false);
             bg.strokePath();
           }
-          bg.fillStyle(0x2a3a2a, 1);
-          bg.fillRect(0, H - 60, W, 60);
+          if (!hasNatanz) {
+            bg.fillStyle(0x2a3a2a, 1);
+            bg.fillRect(0, H - 60, W, 60);
+          }
           SoundManager.get().playRadarAlert();
 
           // Slow zoom-in tween on the entire overlay (satellite imagery feel)

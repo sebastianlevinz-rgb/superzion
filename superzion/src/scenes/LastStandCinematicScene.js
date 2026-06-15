@@ -86,26 +86,31 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
         text: "Fordow is a crater. The centrifuges are scrap metal. The bomb will never exist.",
         color: '#ff8844', size: 20, y: H * 0.82,
         setup: () => {
-          const bg = this.add.graphics().setDepth(1);
-          this._addPageVisual(bg);
-          bg.fillStyle(0x000000, 0.75);
-          bg.fillRect(0, 0, W, H);
-          // Explosion aftermath glow
-          bg.fillStyle(0xff6600, 0.25);
-          bg.fillCircle(W / 2, H * 0.4, 120);
-          bg.fillStyle(0xffaa00, 0.12);
-          bg.fillCircle(W / 2, H * 0.4, 180);
-          bg.fillStyle(0xff3300, 0.08);
-          bg.fillCircle(W / 2, H * 0.35, 200);
-          // Dark scorched ground
-          bg.fillStyle(0x1a0a05, 1);
-          bg.fillRect(0, H - 70, W, 70);
-          // Smoke plumes
-          for (const sx of [W * 0.35, W * 0.5, W * 0.65]) {
-            bg.fillStyle(0x2a1a10, 0.4);
-            bg.fillCircle(sx, H * 0.3, 30);
-            bg.fillCircle(sx - 10, H * 0.22, 40);
-            bg.fillCircle(sx + 5, H * 0.15, 50);
+          if (this.textures.exists('cin_natanz')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_natanz').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
+          } else {
+            const bg = this.add.graphics().setDepth(1);
+            this._addPageVisual(bg);
+            bg.fillStyle(0x000000, 0.75);
+            bg.fillRect(0, 0, W, H);
+            // Explosion aftermath glow
+            bg.fillStyle(0xff6600, 0.25);
+            bg.fillCircle(W / 2, H * 0.4, 120);
+            bg.fillStyle(0xffaa00, 0.12);
+            bg.fillCircle(W / 2, H * 0.4, 180);
+            bg.fillStyle(0xff3300, 0.08);
+            bg.fillCircle(W / 2, H * 0.35, 200);
+            // Dark scorched ground
+            bg.fillStyle(0x1a0a05, 1);
+            bg.fillRect(0, H - 70, W, 70);
+            // Smoke plumes
+            for (const sx of [W * 0.35, W * 0.5, W * 0.65]) {
+              bg.fillStyle(0x2a1a10, 0.4);
+              bg.fillCircle(sx, H * 0.3, 30);
+              bg.fillCircle(sx - 10, H * 0.22, 40);
+              bg.fillCircle(sx + 5, H * 0.15, 50);
+            }
           }
           // Flickering fire glow
           const fireGlow = this.add.circle(W / 2, H * 0.4, 90, 0xff6600, 0.15).setDepth(2);
@@ -200,20 +205,32 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
         text: "He's in his last fortress. Everything he has left, protecting one man.",
         color: '#cccccc', size: 20, y: H * 0.45,
         setup: () => {
-          const bg = this.add.graphics().setDepth(1);
-          this._addPageVisual(bg);
-          bg.fillStyle(0x000000, 0.85);
-          bg.fillRect(0, 0, W, H);
-          // Fortress silhouette
-          bg.fillStyle(0x060404, 1);
-          bg.fillRect(W * 0.3, H * 0.35, W * 0.4, H * 0.35);
-          bg.fillRect(W * 0.25, H * 0.3, W * 0.1, H * 0.4);
-          bg.fillRect(W * 0.65, H * 0.3, W * 0.1, H * 0.4);
-          // Distant fire glows
-          bg.fillStyle(0xff6600, 0.08);
-          bg.fillCircle(W * 0.15, H * 0.6, 40);
-          bg.fillStyle(0xff4400, 0.06);
-          bg.fillCircle(W * 0.85, H * 0.55, 35);
+          if (this.textures.exists('cin_fortress')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_fortress').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
+            // Distant fire glows on top
+            const fg = this.add.graphics().setDepth(2);
+            this._addPageVisual(fg);
+            fg.fillStyle(0xff6600, 0.08);
+            fg.fillCircle(W * 0.15, H * 0.6, 40);
+            fg.fillStyle(0xff4400, 0.06);
+            fg.fillCircle(W * 0.85, H * 0.55, 35);
+          } else {
+            const bg = this.add.graphics().setDepth(1);
+            this._addPageVisual(bg);
+            bg.fillStyle(0x000000, 0.85);
+            bg.fillRect(0, 0, W, H);
+            // Fortress silhouette
+            bg.fillStyle(0x060404, 1);
+            bg.fillRect(W * 0.3, H * 0.35, W * 0.4, H * 0.35);
+            bg.fillRect(W * 0.25, H * 0.3, W * 0.1, H * 0.4);
+            bg.fillRect(W * 0.65, H * 0.3, W * 0.1, H * 0.4);
+            // Distant fire glows
+            bg.fillStyle(0xff6600, 0.08);
+            bg.fillCircle(W * 0.15, H * 0.6, 40);
+            bg.fillStyle(0xff4400, 0.06);
+            bg.fillCircle(W * 0.85, H * 0.55, 35);
+          }
         },
       },
       // -- PAGE 5: History --
@@ -221,10 +238,15 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
         text: "Babylon tried. Rome tried. The Inquisition tried. The Nazis tried.",
         color: '#ffffff', size: 20, y: H * 0.45,
         setup: () => {
-          const bg = this.add.graphics().setDepth(1);
-          this._addPageVisual(bg);
-          bg.fillStyle(0x000000, 0.85);
-          bg.fillRect(0, 0, W, H);
+          if (this.textures.exists('cin_destroyed_city')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_destroyed_city').setDepth(0).setDisplaySize(W, H));
+            this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.6).setDepth(0.5));
+          } else {
+            const bg = this.add.graphics().setDepth(1);
+            this._addPageVisual(bg);
+            bg.fillStyle(0x000000, 0.85);
+            bg.fillRect(0, 0, W, H);
+          }
           // Distant red glow on the horizon
           const horizon = this.add.graphics().setDepth(2);
           this._addPageVisual(horizon);

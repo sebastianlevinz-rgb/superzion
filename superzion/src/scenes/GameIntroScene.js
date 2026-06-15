@@ -749,28 +749,35 @@ export default class GameIntroScene extends BaseCinematicScene {
     });
 
     // Ocean background (like B-2 escape scene)
-    const seaBg = this.add.graphics().setDepth(0);
-    this._addPageVisual(seaBg);
-    // Dark night sky
-    seaBg.fillStyle(0x060a14, 1);
-    seaBg.fillRect(0, 0, W, H * 0.4);
-    // Ocean
-    seaBg.fillStyle(0x0a1628, 1);
-    seaBg.fillRect(0, H * 0.4, W, H * 0.6);
-    // Horizon line
-    seaBg.lineStyle(1, 0x1a2a48, 0.4);
-    seaBg.lineBetween(0, H * 0.4, W, H * 0.4);
-    // Stars
-    for (let i = 0; i < 15; i++) {
-      seaBg.fillStyle(0xffffff, 0.3 + Math.random() * 0.3);
-      seaBg.fillCircle(Math.random() * W, Math.random() * H * 0.35, 0.8);
-    }
-    // Wave lines
-    seaBg.lineStyle(1, 0x2a4a6a, 0.15);
-    for (let y = H * 0.45; y < H; y += 20) {
-      for (let x = 0; x < W; x += 8) {
-        const wy = y + Math.sin(x * 0.03 + y * 0.1) * 3;
-        seaBg.lineBetween(x, wy, x + 8, wy);
+    if (this.textures.exists('cin_lebanon_coast')) {
+      const bg = this.add.image(W / 2, H / 2, 'cin_lebanon_coast').setDepth(0).setDisplaySize(W, H);
+      this._addPageVisual(bg);
+      const scrim = this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5);
+      this._addPageVisual(scrim);
+    } else {
+      const seaBg = this.add.graphics().setDepth(0);
+      this._addPageVisual(seaBg);
+      // Dark night sky
+      seaBg.fillStyle(0x060a14, 1);
+      seaBg.fillRect(0, 0, W, H * 0.4);
+      // Ocean
+      seaBg.fillStyle(0x0a1628, 1);
+      seaBg.fillRect(0, H * 0.4, W, H * 0.6);
+      // Horizon line
+      seaBg.lineStyle(1, 0x1a2a48, 0.4);
+      seaBg.lineBetween(0, H * 0.4, W, H * 0.4);
+      // Stars
+      for (let i = 0; i < 15; i++) {
+        seaBg.fillStyle(0xffffff, 0.3 + Math.random() * 0.3);
+        seaBg.fillCircle(Math.random() * W, Math.random() * H * 0.35, 0.8);
+      }
+      // Wave lines
+      seaBg.lineStyle(1, 0x2a4a6a, 0.15);
+      for (let y = H * 0.45; y < H; y += 20) {
+        for (let x = 0; x < W; x += 8) {
+          const wy = y + Math.sin(x * 0.03 + y * 0.1) * 3;
+          seaBg.lineBetween(x, wy, x + 8, wy);
+        }
       }
     }
 
@@ -934,6 +941,11 @@ export default class GameIntroScene extends BaseCinematicScene {
     const titleY = cy - 10;
     const starCy = cy - 10;
 
+    // ── Backdrop: AI Tel Aviv beach sunset, or procedural fallback (Layers 0–5) ──
+    if (this.textures.exists('intro_telaviv_sunset')) {
+      const sky = this.add.image(W / 2, H / 2, 'intro_telaviv_sunset').setDepth(0).setDisplaySize(W, H);
+      this._addPageVisual(sky);
+    } else {
     // ── Layer 0: Sky gradient — Tel Aviv beach sunset ──
     const skyBg = this.add.graphics().setDepth(0);
     this._addPageVisual(skyBg);
@@ -1165,7 +1177,7 @@ export default class GameIntroScene extends BaseCinematicScene {
       this.tweens.add({ targets: palmGfx, angle: 1.5, duration: pd.dur, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
 
-    // ── Layer 6: Atmosphere — lens flare + floating embers ──
+    // ── Layer 6: Atmosphere — lens flare anchored to procedural sun ──
     const atmosGfx = this.add.graphics().setDepth(6);
     this._addPageVisual(atmosGfx);
     // Lens flare — small warm circles along a diagonal from the sun
@@ -1180,6 +1192,9 @@ export default class GameIntroScene extends BaseCinematicScene {
       atmosGfx.fillStyle(fl.color, fl.alpha);
       atmosGfx.fillCircle(fx, fy, fl.size);
     });
+    } // end procedural backdrop fallback
+
+    // ── Foreground atmosphere: floating embers (always on top of backdrop) ──
     // Floating embers / warm particles drifting upward
     for (let i = 0; i < 10; i++) {
       const ex = 80 + Math.random() * (W - 160);

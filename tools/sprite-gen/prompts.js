@@ -291,7 +291,7 @@ export const SPRITES = {
     { name: "parade_turboturban", size: { w: 70, h: 120 }, ref: "turbo_turban",
       prompt: sprite("a round cartoon cleric villain, full body front view, wearing a COMICALLY ENORMOUS oversized BLACK turban, a brown clerical robe, round glasses, a thick grey-black beard, comic-villain proportions") },
     { name: "parade_angryeyebrows", size: { w: 64, h: 110 },
-      prompt: sprite("a cartoon military-general villain, full body front view, with ENORMOUS comically thick bushy connected eyebrows and a deep scowl, an olive-green general's dress uniform COVERED in golden medals and epaulettes, a peaked military cap (NO turban), a short trimmed beard, comic-villain proportions") },
+      prompt: sprite("a lean wiry middle-aged middle-eastern man (Yahya Sinwar), full body standing front view, SHORT fully GREY-WHITE hair buzzed low on the sides, a short trimmed darker-grey beard and mustache, an angular thin face with DARK THICK VERY BUSHY EYEBROWS that strongly contrast his white hair, dark deep-set sunken eyes with a severe fixed stare, notably PROMINENT protruding ears, marked forehead and eye expression lines, wearing plain dark olive-grey civilian-military clothing (NO uniform, NO medals, NO cap, NO turban), stern intimidating and intense, gritty realistic pixel art") },
     { name: "parade_supremeturban", size: { w: 96, h: 160 },
       prompt: sprite("a tall gaunt imposing cartoon supreme-leader villain, full body front view, a dignified medium BLACK turban, round glasses, a long flowing WHITE beard down to his chest, flowing dark-charcoal robes, the most serious and intimidating of villains, comic-villain proportions") },
     // Hero + soldier
@@ -434,6 +434,14 @@ export const SPRITES = {
     { name: "beirut_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A war-torn city street ground band seen straight-on — cracked asphalt and rubble, scattered debris and craters, dim reddish night lighting, fills the frame as a horizontal seamless terrain band. NO sky.` },
 
+    // ── GameIntro finale: Tel Aviv beach sunset (palm trees) — "they fight to conquer, we fight to exist" ──
+    { name: "intro_telaviv_sunset", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A breathtaking TEL AVIV beach at golden-hour SUNSET — tall PALM TREE silhouettes along a sandy Mediterranean shore, calm sea with a warm shimmering golden sun reflection, gentle waves, a distant modern city skyline silhouette on the right, a glowing orange-to-purple sunset sky with soft clouds, peaceful hopeful majestic atmosphere, cinematic. NO text, NO people.` },
+
+    // ── L3/L4 brief: underground tunnel network cross-section ──
+    { name: "cin_tunnel_xsection", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A dramatic cutaway CROSS-SECTION of a deep underground militant TUNNEL NETWORK beneath a war-torn city — dark earth and concrete with multiple horizontal tunnel galleries connected by shafts, dim yellow-orange tunnel lighting, stacked weapon crates and rockets hidden in side chambers, support beams, the ruined city silhouette far above on the surface, ominous and claustrophobic, military intel diagram feel, cinematic pixel art.` },
+
     // ── Victory celebration crowd (transparent band for the bottom) ──
     { name: "victory_crowd", size: { w: 720, h: 200 }, key: "magenta",
       prompt: `16-bit retro pixel-art game sprite, a CROWD of diverse cheering Israeli civilians and soldiers celebrating together — men, women and children, several waving WHITE-AND-BLUE Israel flags (white field with two blue horizontal stripes and a blue Star of David), arms raised in joy, packed shoulder-to-shoulder in two or three rows forming a wide horizontal crowd band, seen from the front, warm joyful smiling faces, detailed pixel art, bold dark outline, clean readable pixels. NO text, NO watermark, NO single hero in the centre. The crowd fills the LOWER portion as a wide band; solid flat pure #FF00FF magenta background everywhere above and around the crowd.` },
@@ -495,12 +503,12 @@ export const SPRITES = {
   // dusty keffiyeh (only the eyes show), tactical vest, caked in grey dust.
   drone_boss: [
     { name: "boss_sinwar", size: 128,
-      prompt: sprite("a wounded middle-eastern militant fighter sitting and leaning back in a battered single armchair, front view, his head and most of his face WRAPPED in a dark grey-and-black keffiyeh scarf leaving ONLY his intense eyes visible, wearing a dark tactical combat vest / plate-carrier over dark military clothing, his whole body, scarf and clothes COVERED in a thick layer of pale GREY DUST and concrete powder, his RIGHT arm hangs limp and injured at his side while his left hand rests forward, staring fixedly and defiantly ahead, grim and exhausted, dramatic, gritty realistic pixel art, NOT a cartoon, NO turban, NO medals, NO peaked cap") },
+      prompt: sprite("a wounded middle-eastern militant fighter, head and upper body, front view, HUNCHED and crouching low as if hiding behind cover and peering over the top of it, his head and face TIGHTLY WRAPPED in a large dark grey-and-black KEFFIYEH scarf that is very prominent and clearly visible, leaving ONLY his intense narrowed eyes showing, wearing a dark tactical combat plate-carrier VEST over dark clothing, his whole body, scarf and vest CAKED in thick pale GREY DUST and concrete powder, his RIGHT arm limp and injured held against his body, his good LEFT hand gripping forward ready, staring fixed and defiant, NO chair, NO furniture, NO seat, an isolated standing/crouching figure on the empty background, gritty realistic pixel art, bold dark outline, NOT a cartoon, NO turban, NO medals, NO peaked cap") },
     { name: "boss_sinwar_angry", size: 128, ref: "boss_sinwar",
-      prompt: sprite("the SAME dust-covered wounded fighter (dark keffiyeh wrapping the face with only the eyes visible, tactical vest, grey dust everywhere, limp injured right arm), now defiant and ENRAGED — leaning forward off the armchair, eyes blazing with fury above the scarf, his good left arm raised to hurl something, dust shaking off, gritty realistic pixel art") },
+      prompt: sprite("the SAME wounded fighter (big prominent dark KEFFIYEH wrapping the whole face with only the eyes visible, dusty tactical vest, limp injured right arm), now rising up defiant and ENRAGED — his good LEFT arm cocked back overhead to HURL a rock/object, eyes blazing with fury above the scarf, grey dust flying off him, NO chair, isolated figure, gritty realistic pixel art") },
     { name: "boss_sinwar_furious", size: 128, ref: "boss_sinwar",
-      prompt: sprite("the SAME dust-covered wounded fighter (dark keffiyeh face-wrap, only eyes visible, tactical vest, grey dust, injured right arm), DESPERATE last stand — scarf and vest torn and bloodied, more grey rubble dust, panting, eyes wild and furious, slumping but still glaring, gritty realistic pixel art") },
+      prompt: sprite("the SAME wounded fighter (big prominent dark KEFFIYEH face-wrap, only eyes visible, dusty tactical vest, injured right arm), DESPERATE last stand — keffiyeh and vest torn and bloodied, caked in even more grey rubble dust, lunging/charging forward, eyes wild and furious, NO chair, isolated figure, gritty realistic pixel art") },
     { name: "boss_sinwar_dead", size: 128, ref: "boss_sinwar",
-      prompt: sprite("the SAME dust-covered fighter (dark keffiyeh face-wrap, tactical vest, grey dust), DEFEATED and lifeless — slumped fully back and sideways into the wrecked armchair, head tilted down, the keffiyeh loosening, eyes shut, arms limp, completely still, buried in grey dust and debris, somber, gritty realistic pixel art") },
+      prompt: sprite("the SAME wounded fighter (big prominent dark KEFFIYEH face-wrap, dusty tactical vest), DEFEATED and lifeless — collapsed and slumped forward face-down, the keffiyeh loosening off his head, eyes shut, arms limp at his sides, completely still, buried in grey dust and debris, NO chair, isolated figure, somber, gritty realistic pixel art") },
   ],
 };

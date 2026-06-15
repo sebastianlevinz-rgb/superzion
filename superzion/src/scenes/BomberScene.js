@@ -367,38 +367,8 @@ export default class BomberScene extends Phaser.Scene {
           const shimmer = Math.sin(scrollOff * 0.01 + i) * 2;
           gd.fillRect(sx < 0 ? sx + W : sx, baseY + 10 + shimmer, 3, 12);
         }
-      } else if (this.flightTerrainStage >= 1) {
-        // LAND: tiny roads and building clusters
-        const roadScroll = scrollOff * 0.8;
-
-        // Tiny roads
-        gd.lineStyle(1, 0x555555, 0.2);
-        for (let i = 0; i < 3; i++) {
-          const rx = ((i * 330 + 100) - roadScroll) % (W + 200) - 100;
-          gd.lineBetween(rx, baseY + 5, rx, baseY + 90);
-        }
-
-        // Building clusters (small rectangles)
-        gd.fillStyle(0x8a7a6a, 0.15);
-        for (let i = 0; i < 8; i++) {
-          const bx = ((i * 137 + 50) - roadScroll * 0.6) % (W + 100) - 50;
-          const bh = 4 + (i % 3) * 3;
-          gd.fillRect(bx, baseY + 15 + (i % 4) * 8, 6, bh);
-        }
-
-        // River/water (blue winding line) — only on coast/land
-        if (this.flightTerrainStage === 1) {
-          gd.lineStyle(2, 0x3366aa, 0.15);
-          const riverX0 = (200 - roadScroll * 0.3) % W;
-          gd.beginPath();
-          gd.moveTo(riverX0, baseY + 10);
-          for (let seg = 0; seg < 6; seg++) {
-            const segX = riverX0 + seg * 30 + Math.sin(seg * 1.2) * 15;
-            gd.lineTo(segX, baseY + 15 + seg * 12);
-          }
-          gd.strokePath();
-        }
       }
+      // LAND (stage >= 1): no procedural overlay — the AI terrain tile shows clean.
     }
   }
 
