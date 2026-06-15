@@ -13,6 +13,12 @@ export default class BootScene extends Phaser.Scene {
   preload() {
     // Load hand-made AI sprite PNGs so their texture keys exist before any
     // scene's procedural generator runs (those generators skip existing keys).
+    // Surface a missing/404 PNG instead of silently shipping a blank texture.
+    // (Phaser fires 'complete' regardless, so boot still proceeds; when the key
+    // has no texture the procedural generator will draw it as a fallback.)
+    this.load.on('loaderror', (file) => {
+      console.warn(`[BootScene] AI sprite failed to load: "${file.key}" — procedural fallback will be used if available`);
+    });
     preloadAISprites(this);
   }
 

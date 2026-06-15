@@ -436,5 +436,13 @@ export const SPRITES = {
     { name: "player_fighter", size: 64, prompt: sideVeh("an F-16 fighter jet, side view facing right, grey military jet with afterburner") },
     { name: "bunker_fortress", size: 256,
       prompt: sprite("a massive armored underground bunker fortress war-machine boss, heavy metal plating, multiple gun turrets, glowing red weak-point core, menacing") },
+    // HP-driven damage states of the SAME mech (ref keeps it consistent),
+    // swapped via setTexture as the boss loses health.
+    { name: "bunker_fortress_angry", size: 256, ref: "bunker_fortress",
+      prompt: sprite("the SAME massive armored war-machine fortress boss, now enraged and powering up — weapons charging, brighter intense orange-red glowing core, a few battle scuffs, aggressive menacing stance") },
+    { name: "bunker_fortress_furious", size: 256, ref: "bunker_fortress",
+      prompt: sprite("the SAME massive armored war-machine fortress boss, heavily battle-damaged — cracked dented plating, sparks and exposed wiring, one turret broken, blazing white-hot overloading core, smoke wisps, desperate furious") },
+    { name: "bunker_fortress_dead", size: 256, ref: "bunker_fortress",
+      prompt: sprite("the SAME massive armored war-machine fortress boss, DESTROYED and defeated — shattered blackened scorched plating, dark dead lifeless core, slumped broken posture, heavy smoke and small fading embers, wreckage") },
   ],
 };

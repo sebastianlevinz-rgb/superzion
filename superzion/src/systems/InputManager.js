@@ -8,13 +8,15 @@
 import Phaser from 'phaser';
 import TouchControls from './TouchControls.js';
 
-/** Detect if running on a touch-primary device */
+/** Detect a touch-PRIMARY device.
+ * NOTE: `maxTouchPoints > 0` alone wrongly flags touchscreen laptops (which have a
+ * fine, hovering primary pointer) as mobile. Gate on a coarse/no-hover primary
+ * pointer (the real signal for phones/tablets) or a known mobile UA instead. */
 function isTouchDevice() {
-  return (
-    'ontouchstart' in window ||
-    navigator.maxTouchPoints > 0 ||
-    /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-  );
+  const coarsePrimary = typeof window.matchMedia === 'function' &&
+    window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  const mobileUA = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  return coarsePrimary || mobileUA;
 }
 
 // Shared flag — computed once
@@ -159,6 +161,10 @@ export default class InputManager {
     if (this.mobile) {
       this.touchControls = new TouchControls(scene, this.preset);
     }
+
+    // Auto-destroy on scene shutdown so the touch overlay never stacks across
+    // scenes (destroy() is idempotent, so a manual destroy() stays safe too).
+    scene.events.once('shutdown', this.destroy, this);
   }
 
   _setupKeyboard(keyMap) {

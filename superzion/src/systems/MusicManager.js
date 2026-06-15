@@ -43,6 +43,9 @@ export default class MusicManager {
           }
           // Return no-op for undefined methods to prevent TypeError crashes
           if (val === undefined && typeof prop === 'string' && prop.startsWith('play')) {
+            if (import.meta.env && import.meta.env.DEV) {
+              console.warn(`[MusicManager] no-op for undefined method "${prop}" — typo / dead audio?`);
+            }
             return function () {};
           }
           return val;

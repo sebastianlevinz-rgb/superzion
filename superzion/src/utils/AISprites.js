@@ -61,6 +61,8 @@ export const AI_SPRITES = [
 
   // ── Final boss (BossScene) ──
   'player_fighter', 'bunker_fortress',
+  // HP-driven damage states (swapped via setTexture as the boss loses health)
+  'bunker_fortress_angry', 'bunker_fortress_furious', 'bunker_fortress_dead',
   'beirut_city', 'beirut_ground',
 
   // ── Full-screen backgrounds (opaque) ──

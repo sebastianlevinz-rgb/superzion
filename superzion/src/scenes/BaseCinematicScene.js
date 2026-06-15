@@ -26,6 +26,12 @@ export default class BaseCinematicScene extends Phaser.Scene {
     // Unified input (shows tap-anywhere zone on mobile)
     this.inputManager = new InputManager(this, { preset: 'cinematic' });
 
+    // Safety-net teardown: kills orphan timers/tweens and any ambient sound a
+    // page started, so nothing (a looping ping, a battle drone) bleeds into the
+    // next scene when the player skips/advances fast. (InputManager self-destroys.)
+    this._ambientRef = null;
+    this.events.once('shutdown', this._cinematicShutdown, this);
+
     this.enterKey = this.input.keyboard.addKey('ENTER');
     this.spaceKey = this.input.keyboard.addKey('SPACE');
     this.escKey = this.input.keyboard.addKey('ESC');
@@ -320,6 +326,23 @@ export default class BaseCinematicScene extends Phaser.Scene {
       this.cameras.main.fadeIn(400, 0, 0, 0);
       this._startAct3();
     });
+  }
+
+  /** Stop a Web-Audio sound ref of the common { source, osc, stopRumble } shape */
+  _stopAmbientRef(ref) {
+    if (!ref) return;
+    try {
+      if (ref.source) ref.source.stop();
+      if (ref.osc) ref.osc.stop();
+      if (ref.stopRumble) ref.stopRumble();
+    } catch (e) { /* already stopped */ }
+  }
+
+  /** Scene-exit teardown for every cinematic (registered in _initCinematic) */
+  _cinematicShutdown() {
+    this.time.removeAllEvents();
+    this.tweens.killAll();
+    if (this._ambientRef) { this._stopAmbientRef(this._ambientRef); this._ambientRef = null; }
   }
 
   /** Helper: clear page visuals (objects pushed to _pageVisuals) */

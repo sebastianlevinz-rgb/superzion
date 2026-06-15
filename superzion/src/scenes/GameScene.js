@@ -287,7 +287,7 @@ export default class GameScene extends Phaser.Scene {
       sprite, col: bossCol, row: bossRow,
       hp: 5, maxHp: 5, alive: true, entered: false,
       // Movement state
-      spawnX: bx, moveDir: -1, moveSpeed: 30,
+      spawnX: bx, homeY: by, moveDir: -1, moveSpeed: 30,
       moveRangeMin: bx - 4 * TILE, moveRangeMax: bx + 4 * TILE,
       // Projectile attack state
       attackTimer: 2.5, attackInterval: 2.5,
@@ -373,7 +373,10 @@ export default class GameScene extends Phaser.Scene {
       const kLen = Math.sqrt(kdx * kdx + kdy * kdy) || 1;
       const knockDist = 20;
       const targetX = Math.max(this.boss.moveRangeMin, Math.min(this.boss.moveRangeMax, sp.x + (kdx / kLen) * knockDist));
-      const targetY = sp.y + (kdy / kLen) * knockDist;
+      // Clamp Y to the boss's home row band so repeated knockbacks can't drift it
+      // off its grid row (which would make the 3x3 bomb-damage check miss).
+      const yBand = TILE * 0.4;
+      const targetY = Math.max(this.boss.homeY - yBand, Math.min(this.boss.homeY + yBand, sp.y + (kdy / kLen) * knockDist));
       this.tweens.add({
         targets: sp,
         x: targetX, y: targetY,
@@ -532,8 +535,9 @@ export default class GameScene extends Phaser.Scene {
     // Reverse at range edges
     if (sp.x <= b.moveRangeMin) { sp.x = b.moveRangeMin; b.moveDir = 1; }
     if (sp.x >= b.moveRangeMax) { sp.x = b.moveRangeMax; b.moveDir = -1; }
-    // Update boss grid col for explosion checks
+    // Update boss grid col AND row for explosion checks (row can shift via knockback)
     b.col = toCol(sp.x);
+    b.row = toRow(sp.y);
 
     // --- Enrage: faster attacks when HP < 30% ---
     const enraged = b.hp < b.maxHp * 0.3; // < 2 out of 5
@@ -1011,8 +1015,12 @@ export default class GameScene extends Phaser.Scene {
     // Powerup pickup
     this._checkPowerups();
 
-    // Endgame
-    this.endgame.update(delta);
+    // Endgame: the boss IS the level objective — defeating it completes the
+    // mission (see _killBoss). Only run the legacy plant/escape path when there
+    // is no living boss, so the PLANT prompt never appears on top of the boss.
+    if (!this.boss || !this.boss.alive) {
+      this.endgame.update(delta);
+    }
 
     // HUD
     this.hud.update();

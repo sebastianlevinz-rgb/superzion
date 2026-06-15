@@ -13,6 +13,12 @@
 // So any key with an AI PNG keeps the PNG; everything else draws procedurally.
 // Import this ONCE, before the game boots (see main.js). Safe because no
 // generator in this project uses addCanvas's return value.
+//
+// LIMITATION: this overrides SINGLE-IMAGE textures only — it does NOT replicate
+// spritesheet frame definitions. Never add an animated/multi-frame key (walk
+// sheets, flag `wavingSheet`s) to AI_SPRITES: a single PNG can't supply its
+// frames, so the animation would silently break. Per-state art (e.g. a boss's
+// expressions) must use SEPARATE keys swapped via setTexture, not one redrawn key.
 
 import Phaser from 'phaser';
 import { AI_SPRITES } from './AISprites.js';

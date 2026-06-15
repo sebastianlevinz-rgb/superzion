@@ -189,7 +189,7 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
           const bg = this.add.graphics().setDepth(1);
           this._addPageVisual(bg);
 
-          const battleRef = SoundManager.get().playAmbientBattle();
+          const battleRef = this._ambientRef = SoundManager.get().playAmbientBattle();
           this.time.delayedCall(5000, () => {
             try { if (battleRef) { if (battleRef.source) battleRef.source.stop(); if (battleRef.osc) battleRef.osc.stop(); if (battleRef.stopRumble) battleRef.stopRumble(); } } catch(e) {}
           });

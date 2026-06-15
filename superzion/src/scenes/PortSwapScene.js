@@ -464,6 +464,7 @@ export default class PortSwapScene extends Phaser.Scene {
         x: def.x,
         y: def.y,
         angle: def.angle,
+        baseAngle: def.angle,  // mount angle to sweep around
         direction: 1,  // oscillation direction
       });
     });
@@ -966,15 +967,16 @@ export default class PortSwapScene extends Phaser.Scene {
   // ════════════════════════════════════════════════════════════
 
   _updateCameras(dt) {
+    // Sweep back and forth ±SWEEP around each camera's mounted base angle
+    // (real security-cam behaviour) instead of spinning a full 360°, which
+    // previously let cameras "see" the player from any direction.
+    const SWEEP = Math.PI / 3; // ±60°
     for (const cam of this.secCams) {
       cam.angle += CAM_ROT_SPEED * cam.direction * dt;
-      // Oscillate between limits
-      if (cam.angle > cam.direction * Math.PI * 2) {
-        cam.direction = -cam.direction;
-      }
-      // Simpler: just rotate continuously
-      if (cam.angle > Math.PI * 2) cam.angle -= Math.PI * 2;
-      if (cam.angle < 0) cam.angle += Math.PI * 2;
+      const hi = cam.baseAngle + SWEEP;
+      const lo = cam.baseAngle - SWEEP;
+      if (cam.angle > hi) { cam.angle = hi; cam.direction = -1; }
+      else if (cam.angle < lo) { cam.angle = lo; cam.direction = 1; }
     }
   }
 
@@ -1038,9 +1040,11 @@ export default class PortSwapScene extends Phaser.Scene {
       }
     }
 
-    // Camera vision cones
+    // Camera vision cones (with LOS blocking, like guards)
     for (const cam of this.secCams) {
       if (this._isInCameraCone(cam)) {
+        // Containers block the camera's line of sight too
+        if (this._isLineBlocked(cam.x, cam.y, this.player.x, this.player.y)) continue;
         if (!this.isHiding) {
           susIncrease += SUS_CAMERA_RATE;
           inCone = true;
@@ -1356,9 +1360,14 @@ export default class PortSwapScene extends Phaser.Scene {
     // Show/hide guard warning
     this.guardWarnText.setAlpha(this.guardNearSwap ? 0.7 + Math.sin(this.time.now / 150) * 0.3 : 0);
 
-    // If guard catches open container
+    // If guard catches the open container: spike suspicion ONCE (not every frame
+    // — the player is frozen during the swap, so re-pinning to the fail floor each
+    // frame was an unescapable instant-fail).
     if (this.guardNearSwap && this.swapStep > 0 && this.swapStep < 3) {
-      this.suspicion = Math.max(this.suspicion, SUS_SWAP_CAUGHT);
+      if (!this._swapCaughtBumped) {
+        this._swapCaughtBumped = true;
+        this.suspicion = Math.max(this.suspicion, SUS_SWAP_CAUGHT);
+      }
     }
 
     // Progress the swap steps
@@ -1543,6 +1552,7 @@ export default class PortSwapScene extends Phaser.Scene {
       }
       this.phase = PHASE_SWAP;
       this.swapStep = 1;
+      this._swapCaughtBumped = false; // allow one caught-spike per swap attempt
       this.swapProgress = 0;
       this.hudPhase.setText('PHASE 2: PLANT EXPLOSIVES IN BEEPERS');
       this.promptText.setAlpha(0);

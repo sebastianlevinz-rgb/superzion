@@ -217,7 +217,7 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
           // Spotlight
           b2.fillStyle(0xffffcc, 0.06);
           b2.fillTriangle(cx, 0, cx - 80, cy - 20, cx + 80, cy - 20);
-          const b2Ref = SoundManager.get().playB2Engine();
+          const b2Ref = this._ambientRef = SoundManager.get().playB2Engine();
           this.time.delayedCall(4000, () => {
             try { if (b2Ref && b2Ref.source) b2Ref.source.stop(); if (b2Ref && b2Ref.osc) b2Ref.osc.stop(); } catch(e) {}
           });

@@ -493,6 +493,8 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
 
   // ── VICTORY SCREEN ──────────────────────────────────────────
   _showVictory() {
+    if (this._victoryStarted) return; // defensive: never build the screen twice
+    this._victoryStarted = true;
     this.victoryShown = true;
     SoundManager.get().playVictory();
     if (this.skipHint) this.skipHint.destroy();

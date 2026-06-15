@@ -199,7 +199,7 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
           droneGfx.fillStyle(0x88aacc, 0.8);
           droneGfx.fillCircle(dx, dy + 3, 3);
           this.tweens.add({ targets: droneGfx, y: droneGfx.y - 5, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-          const droneRef = SoundManager.get().playDroneHum();
+          const droneRef = this._ambientRef = SoundManager.get().playDroneHum();
           this.time.delayedCall(3000, () => {
             try { if (droneRef && droneRef.source) droneRef.source.stop(); if (droneRef && droneRef.osc) droneRef.osc.stop(); } catch(e) {}
           });

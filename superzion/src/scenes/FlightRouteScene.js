@@ -193,6 +193,7 @@ export default class FlightRouteScene extends Phaser.Scene {
     this.nextSceneData = data;
     this.skipped = false;
     this.transitioning = false;
+    this.events.once('shutdown', this.shutdown, this);
 
     this.cameras.main.setBackgroundColor('#0A1A0A');
     this.cameras.main.fadeIn(300, 10, 26, 10);
@@ -763,6 +764,14 @@ export default class FlightRouteScene extends Phaser.Scene {
       try { if (this._jetRef.source) this._jetRef.source.stop(); if (this._jetRef.osc) this._jetRef.osc.stop(); } catch (e) {}
       this._jetRef = null;
     }
+  }
+
+  shutdown() {
+    // Stop the looping jet engine + tear down infinite radar tweens/timers so
+    // nothing bleeds into the next scene. (InputManager auto-destroys itself.)
+    this._stopJetSound();
+    this.tweens.killAll();
+    this.time.removeAllEvents();
   }
 
   _goToNextScene() {

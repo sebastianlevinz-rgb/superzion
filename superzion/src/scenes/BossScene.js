@@ -211,8 +211,7 @@ export default class BossScene extends Phaser.Scene {
 
     // Ambient battle sounds
     this.ambientRef = SoundManager.get().playAmbientBattle();
-
-    this.events.on('shutdown', this.shutdown, this);
+    // (shutdown already registered once via events.once above — no duplicate here)
 
     // Tutorial overlay (pauses gameplay until dismissed)
     showTutorialOverlay(this, [
@@ -1913,9 +1912,19 @@ export default class BossScene extends Phaser.Scene {
     if (targetExpression !== this._lastBossExpression) {
       this._lastBossExpression = targetExpression;
       this._bossExpression = targetExpression;
-      createBunkerFortress(this);
+      // Each HP state is a SEPARATE AI texture key (the AI-override patch can't
+      // re-render a single key — see aiTexturePatch). Swap to it; if the per-state
+      // PNG is missing, fall back to the procedural redraw of the base key.
+      const aiKey = targetExpression === 'normal'
+        ? 'bunker_fortress'
+        : `bunker_fortress_${targetExpression}`;
       if (this.bunkerSprite && this.bunkerSprite.active) {
-        this.bunkerSprite.setTexture('bunker_fortress');
+        if (this.textures.exists(aiKey)) {
+          this.bunkerSprite.setTexture(aiKey);
+        } else {
+          createBunkerFortress(this);
+          this.bunkerSprite.setTexture('bunker_fortress');
+        }
       }
     }
   }

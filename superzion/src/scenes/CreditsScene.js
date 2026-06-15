@@ -119,9 +119,6 @@ export default class CreditsScene extends BaseCinematicScene {
       },
     });
 
-    // Set completion flag
-    try { localStorage.setItem('superzion_completed', 'true'); } catch (e) { /* ignore */ }
-
     // Skip hint
     this.add.text(W - 16, H - 14, 'ENTER TO SKIP', {
       fontFamily: 'monospace', fontSize: '10px', color: '#444444',
@@ -170,6 +167,9 @@ export default class CreditsScene extends BaseCinematicScene {
 
   _finish() {
     this.done = true;
+    // Flag the game as completed only when the credits actually finish (or are
+    // skipped to the end), not merely on entering the scene.
+    try { localStorage.setItem('superzion_completed', 'true'); } catch (e) { /* ignore */ }
     MusicManager.get().stop(0.5);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(600, () => this.scene.start('MenuScene'));

@@ -26,6 +26,7 @@ export default class B2BomberScene extends Phaser.Scene {
   constructor() { super('B2BomberScene'); }
 
   create() {
+    this.time.timeScale = 1; // reset in case a GameJuice freeze left it slowed
     this.cameras.main.setBackgroundColor('#000000');
 
     // Controls overlay
@@ -2539,6 +2540,7 @@ export default class B2BomberScene extends Phaser.Scene {
   // VICTORY / RESULTS
   // ═════════════════════════════════════════════════════════════
   _showVictory() {
+    if (this.phase === 'victory') return;
     this.phase = 'victory';
     this.instrText.setVisible(false);
     this.cameras.main.resetFX();
