@@ -78,6 +78,8 @@ export const AI_SPRITES = [
   '__title_bg', 'b2_silhouette',
   // Opening intro narrative backdrops + enemy faction flags
   'intro_empires', 'intro_warzone',
+  // Drone level (Last Chair): Gaza ruins backdrop + Sinwar boss states
+  'drone_gaza', 'boss_sinwar', 'boss_sinwar_angry', 'boss_sinwar_furious', 'boss_sinwar_dead',
   'flag_iran_ai', 'flag_hamas_ai', 'flag_hezbollah_ai', 'flag_palestine_ai',
   // Natanz destruction cinematic — target building (sliced floors + roof)
   'target_bldg_floor_0', 'target_bldg_floor_1', 'target_bldg_floor_2',

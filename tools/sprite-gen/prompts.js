@@ -430,6 +430,10 @@ export const SPRITES = {
     { name: "beirut_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A war-torn city street ground band seen straight-on — cracked asphalt and rubble, scattered debris and craters, dim reddish night lighting, fills the frame as a horizontal seamless terrain band. NO sky.` },
 
+    // ── Drone level (Last Chair) — Gaza ruins backdrop ──
+    { name: "drone_gaza", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A dense war-torn GAZA city skyline at dusk — rows of damaged low-rise concrete middle-eastern apartment buildings packed tightly, many partially collapsed with blown-out floors and exposed rebar, rubble and dust, a hazy smoky orange-grey sky, distant sea on one side, grim. A realistic ruined coastal town, NOT plain rectangles.` },
+
     // ── Opening intro narrative backdrops (GameIntroScene pages) ──
     { name: "intro_empires", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
       prompt: `${BG_STYLE}. The ruins of fallen ancient MIDDLE-EASTERN empires (Babylon, Mesopotamia, Rome) under a dark ominous blood-red and black smoky sky — a crumbling ancient MESOPOTAMIAN ziggurat with the Ishtar-gate style and a tall stepped temple-tower, broken Roman marble columns and arches, toppled stone lamassu statues, desert rubble and drifting ash, faint distant fire-glow on the horizon, grim apocalyptic dusk. NOT aztec, NOT mayan, NOT a mesoamerican pyramid — this is ancient near-east / middle-east. Cinematic, moody.` },
@@ -472,5 +476,17 @@ export const SPRITES = {
       prompt: sprite("the SAME supreme-leader villain boss (black turban, glasses, white beard, dark robes, crescent staff), DESPERATE and wounded — robes torn and scorched, turban askew, the cracked staff sputtering, intense burning red eyes and a wild furious expression, surrounded by dark crackling energy, last-stand rage") },
     { name: "boss_ayatollah_dead", size: 256, ref: "boss_ayatollah",
       prompt: sprite("the SAME supreme-leader villain boss (black turban, glasses, white beard, dark robes), DEFEATED — slumped and collapsing, robes tattered and smoking, the golden crescent staff broken and falling, dim lifeless eyes, the throne behind him crumbling, fading embers, vanquished") },
+  ],
+
+  // Drone-level boss = Yahya Sinwar / "Angry Eyebrows" general (HP-state variants)
+  drone_boss: [
+    { name: "boss_sinwar", size: 128, ref: "parade_angryeyebrows",
+      prompt: sprite("a cartoon military-general villain boss, head and upper body front view, ENORMOUS comically thick bushy connected black eyebrows and a deep scowl, an olive-green general's dress uniform covered in golden medals, a peaked military cap (NO turban), a short trimmed beard, menacing arms-crossed boss pose, comic-villain proportions") },
+    { name: "boss_sinwar_angry", size: 128, ref: "boss_sinwar",
+      prompt: sprite("the SAME military-general villain boss (huge bushy eyebrows, peaked cap, medals), now ENRAGED — furious snarl, gritted teeth, glowing red angry eyes, fists clenched, dramatic") },
+    { name: "boss_sinwar_furious", size: 128, ref: "boss_sinwar",
+      prompt: sprite("the SAME military-general villain boss (huge eyebrows, peaked cap), DESPERATE and wounded — uniform torn and dirtied, cap askew, sweating, panicked furious expression, last-stand rage") },
+    { name: "boss_sinwar_dead", size: 128, ref: "boss_sinwar",
+      prompt: sprite("the SAME military-general villain boss (huge eyebrows, peaked cap), DEFEATED — eyes as X marks or rolled back, slumped collapsing, cap falling off, dazed knocked-out comic expression") },
   ],
 };
