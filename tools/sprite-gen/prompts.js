@@ -447,11 +447,11 @@ export const SPRITES = {
 
     // ── B-2 night-flight terrain (Mountain Breaker) — top-down seamless dark tiles ──
     { name: "b2_terrain_sea", size: { w: 512, h: 512 }, bg: true,
-      prompt: `${BG_STYLE}. EXACT top-down aerial view straight down at a dark NIGHT OCEAN — deep navy-black water with faint cool moonlit ripple highlights evenly scattered, a SEAMLESS repeating texture with no horizon, no land, no center feature, uniform across the whole frame. Moody night.` },
+      prompt: `${BG_STYLE}. EXACT top-down aerial view straight down at a moonlit NIGHT OCEAN — clearly READABLE deep blue water (not black) with well-defined wave crests and bright silvery-white MOONLIGHT ripple highlights and foam streaks evenly distributed across the whole frame, good contrast, crisp detailed waves, a SEAMLESS repeating texture with no horizon, no land, no single center feature. Moonlit night sea, legible and pretty.` },
     { name: "b2_terrain_coast", size: { w: 512, h: 512 }, bg: true,
       prompt: `${BG_STYLE}. EXACT top-down aerial NIGHT view straight down at a coastline — dark navy sea on one side meeting a faint moonlit sandy shore and dark scrubland on the other, subtle, a seamless horizontal-ish band, moody night, no center feature.` },
     { name: "b2_terrain_land", size: { w: 512, h: 512 }, bg: true,
-      prompt: `${BG_STYLE}. EXACT top-down aerial NIGHT view straight down at dark desert farmland and rocky ground — muted dark browns and greys with faint thin roads and field patches under moonlight, a SEAMLESS repeating texture, uniform, no center feature, moody night.` },
+      prompt: `${BG_STYLE}. EXACT top-down aerial NIGHT view looking straight DOWN at the GROUND — moonlit desert and farmland seen from directly overhead. Clearly READABLE warm grey-brown and tan earth (not black) with good contrast, irregular organic crop-field patches, a few winding dirt ROADS and dry riverbeds, scattered rocky outcrops and low scrub, soft moonlit shading. A SEAMLESS evenly-distributed ground TEXTURE filling the whole frame. ABSOLUTELY NO moon, NO sky, NO horizon, NO straight ruled GRID lines, NO map grid, NO single center feature — only natural ground seen from above.` },
 
     // ── GameIntro finale: Tel Aviv beach sunset (palm trees) — "they fight to conquer, we fight to exist" ──
     { name: "intro_telaviv_sunset", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
