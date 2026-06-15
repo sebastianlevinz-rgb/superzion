@@ -1315,6 +1315,12 @@ export default class PortSwapScene extends Phaser.Scene {
     this.scanning = false;
     this.scanBarBg.setVisible(false);
     this.scanBarFill.setVisible(false);
+    // Defensive: if the scan target was cleared mid-scan, abort cleanly
+    // instead of throwing (Cannot set 'scanned' of null).
+    if (!this.scanTarget) {
+      this.scanLabel.setVisible(false);
+      return;
+    }
     this.scanTarget.scanned = true;
     this.containersScanned++;
 
