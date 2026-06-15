@@ -14,7 +14,7 @@ import InputManager from '../systems/InputManager.js';
 import { screenFlash, impactParticles, hitFeedback } from '../systems/GameJuice.js';
 import {
   createF15SideSprite, createCarrierSide, createSunsetSky,
-  createCloudLayer, createSeaSurface, createFarMountains,
+  createCloudLayer, createSeaSurface, createSeaShine, createFarMountains,
   createCoastGround, createMountainGround, createValleyGround,
   createTurboTurbanSprite, createTurboTurbanYelling, createMiniSoldier,
 } from '../utils/BomberTextures.js';
@@ -22,6 +22,7 @@ import {
 const W = 960;
 const H = 540;
 const GROUND_Y = 420;     // horizon / ground line
+const GROUND_FADE_MS = 520; // terrain-band crossfade duration (tunable 400-600)
 const DECK_Y = 395;       // carrier deck surface Y
 const GRAVITY = 480;      // bomb gravity px/s²
 const JET_SPEED = 440;    // base horizontal speed px/s (doubled for phase-23)
@@ -79,6 +80,7 @@ export default class BomberScene extends Phaser.Scene {
     createSunsetSky(this);
     createCloudLayer(this);
     createSeaSurface(this);
+    createSeaShine(this);
     createFarMountains(this);
     createCoastGround(this);
     createMountainGround(this);
@@ -237,6 +239,13 @@ export default class BomberScene extends Phaser.Scene {
 
     // Ground (near parallax)
     this.groundTile = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_surface').setDepth(1);
+    // Crossfade overlay ground tile — used to blend between terrain bands
+    this.groundFade = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_surface')
+      .setDepth(1.2).setAlpha(0);
+    // Animated water-shine overlay (only visible over the sea band)
+    this.seaShine = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_shine')
+      .setDepth(1.3).setAlpha(0.5);
+    this._seaShineT = 0;
 
     // ── Ground detail overlay (drawn per-frame based on flight stage) ──
     this.groundDetailGfx = this.add.graphics().setDepth(1.5);
@@ -331,6 +340,23 @@ export default class BomberScene extends Phaser.Scene {
     if (this.cloudTile3) this.cloudTile3.tilePositionX += dx * 0.18;
     this.farTerrain.tilePositionX += dx * 0.3;
     this.groundTile.tilePositionX += dx * 0.8;
+    if (this.groundFade) this.groundFade.tilePositionX = this.groundTile.tilePositionX;
+
+    // ── Animated water-shine: only over sea; scroll faster + gentle pulse ──
+    if (this.seaShine) {
+      const overSea = (this.groundTile.texture && this.groundTile.texture.key === 'sea_surface')
+        || (this.groundFade && this.groundFade.alpha > 0 && this.groundFade.texture
+            && this.groundFade.texture.key === 'sea_surface');
+      if (overSea) {
+        this._seaShineT += dt;
+        this.seaShine.visible = true;
+        this.seaShine.tilePositionX += dx * 1.25;          // drifts faster than water
+        this.seaShine.tilePositionY = Math.sin(this._seaShineT * 0.8) * 3; // bob
+        this.seaShine.setAlpha(0.4 + Math.sin(this._seaShineT * 2.0) * 0.18); // shimmer pulse
+      } else {
+        this.seaShine.visible = false;
+      }
+    }
 
     // ── Ground detail: roads, building clusters, river ──
     if (this.groundDetailGfx) {
@@ -381,6 +407,37 @@ export default class BomberScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  // Crossfade the ground band to a new terrain texture (no hard color cut).
+  // Uses the overlay tile (groundFade) faded in over GROUND_FADE_MS, then
+  // promoted to the base tile.
+  _setGroundTexture(key, duration = GROUND_FADE_MS) {
+    if (!this.groundTile) return;
+    if (this.groundTile.texture && this.groundTile.texture.key === key) return;
+    if (!this.groundFade) { this.groundTile.setTexture(key); return; }
+
+    // Cancel any in-flight fade and commit it instantly to avoid flicker.
+    if (this._groundFadeTween) {
+      this._groundFadeTween.stop();
+      if (this._groundFadePending) this.groundTile.setTexture(this._groundFadePending);
+    }
+    this._groundFadePending = key;
+    this.groundFade.setTexture(key);
+    this.groundFade.tilePositionX = this.groundTile.tilePositionX;
+    this.groundFade.setAlpha(0);
+    this._groundFadeTween = this.tweens.add({
+      targets: this.groundFade,
+      alpha: 1,
+      duration,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        this.groundTile.setTexture(key);
+        this.groundFade.setAlpha(0);
+        this._groundFadeTween = null;
+        this._groundFadePending = null;
+      },
+    });
   }
 
   _updateHUD() {
@@ -788,13 +845,13 @@ export default class BomberScene extends Phaser.Scene {
     // Terrain transitions (distance-based)
     if (this.flightDistance > FLIGHT_COAST_DIST && this.flightTerrainStage === 0) {
       this.flightTerrainStage = 1;
-      this.groundTile.setTexture('coast_ground');
+      this._setGroundTexture('coast_ground');
       this.farTerrain.setVisible(true);
       this.instrText.setText('Approaching Lebanon...');
     }
     if (this.flightDistance > FLIGHT_MTN_DIST && this.flightTerrainStage === 1) {
       this.flightTerrainStage = 2;
-      this.groundTile.setTexture('mountain_ground');
+      this._setGroundTexture('mountain_ground');
       this.instrText.setText('Over the mountains...');
     }
 
@@ -2090,12 +2147,12 @@ export default class BomberScene extends Phaser.Scene {
     // Terrain reverse transitions (distance-based)
     if (this.returnDistance > RETURN_COAST_DIST && this.returnTerrainStage === 0) {
       this.returnTerrainStage = 1;
-      this.groundTile.setTexture('coast_ground');
+      this._setGroundTexture('coast_ground');
       this.instrText.setText('Passing over Lebanon...');
     }
     if (this.returnDistance > RETURN_SEA_DIST && this.returnTerrainStage === 1) {
       this.returnTerrainStage = 2;
-      this.groundTile.setTexture('sea_surface');
+      this._setGroundTexture('sea_surface');
       this.farTerrain.setVisible(false);
       this.instrText.setText('Over the sea... carrier ahead');
     }

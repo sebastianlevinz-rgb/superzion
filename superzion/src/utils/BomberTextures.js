@@ -487,28 +487,76 @@ export function createSeaSurface(scene) {
     ctx.fillRect(rx, ry, 15 + Math.random() * 50, 1);
   }
 
-  // Wave patterns
-  ctx.strokeStyle = 'rgba(100,180,200,0.06)';
-  ctx.lineWidth = 0.5;
+  // Wave patterns — stronger so the band clearly reads as moving water
   for (let y = 0; y < th; y += 6) {
+    // Alternate a brighter crest line and a darker trough line
+    const crest = (y / 6) % 2 === 0;
+    ctx.strokeStyle = crest ? 'rgba(120,200,225,0.22)' : 'rgba(20,50,70,0.20)';
+    ctx.lineWidth = crest ? 1.4 : 1.0;
     ctx.beginPath();
     ctx.moveTo(0, y);
-    for (let x = 0; x < tw; x += 15) {
-      ctx.lineTo(x, y + Math.sin(x * 0.025 + y * 0.1) * 2);
+    for (let x = 0; x < tw; x += 12) {
+      ctx.lineTo(x, y + Math.sin(x * 0.025 + y * 0.1) * 2.5);
     }
     ctx.stroke();
   }
 
+  // Bright specular wave-cap dashes (give the base texture real glints)
+  ctx.fillStyle = 'rgba(255,235,170,0.18)';
+  for (let i = 0; i < 40; i++) {
+    const sx = Math.random() * tw;
+    const sy = Math.random() * th;
+    ctx.fillRect(sx, sy, 6 + Math.random() * 10, 1.2);
+  }
+
   // Shimmer
-  ctx.fillStyle = 'rgba(255,220,100,0.03)';
-  for (let i = 0; i < 10; i++) {
+  ctx.fillStyle = 'rgba(255,220,100,0.06)';
+  for (let i = 0; i < 14; i++) {
     const sx = Math.random() * tw;
     ctx.beginPath();
-    ctx.ellipse(sx, 5 + Math.random() * 30, 12, 1.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, 5 + Math.random() * 50, 14, 1.8, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
   scene.textures.addCanvas('sea_surface', c);
+}
+
+// ── Animated water-shine overlay (960×120) — tileable specular streaks ─
+// Layered over the sea band and scrolled/pulsed in update() for live shimmer.
+export function createSeaShine(scene) {
+  if (scene.textures.exists('sea_shine')) return;
+
+  const tw = W, th = 120;
+  const c = document.createElement('canvas');
+  c.width = tw; c.height = th;
+  const ctx = c.getContext('2d');
+
+  // Transparent base; only draw thin diagonal glints
+  ctx.clearRect(0, 0, tw, th);
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 26; i++) {
+    const x = Math.random() * tw;
+    const y = Math.random() * th;
+    const len = 14 + Math.random() * 36;
+    const a = 0.10 + Math.random() * 0.18;
+    ctx.strokeStyle = `rgba(255,238,180,${a.toFixed(3)})`;
+    ctx.lineWidth = 0.8 + Math.random() * 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + len, y + (Math.random() - 0.5) * 2);
+    ctx.stroke();
+  }
+  // A few soft golden sun-glints
+  for (let i = 0; i < 8; i++) {
+    const x = Math.random() * tw;
+    const y = Math.random() * th;
+    ctx.fillStyle = `rgba(255,210,120,${(0.08 + Math.random() * 0.10).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 10 + Math.random() * 14, 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  scene.textures.addCanvas('sea_shine', c);
 }
 
 // ── Far mountains (960×250) — tileable mountain silhouettes ──
