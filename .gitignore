@@ -12,6 +12,10 @@ node_modules/
 # Vercel local link
 .vercel/
 
+# Superseded experimental Kaplay iteration (kept on disk, excluded from repo —
+# replaced by the superzion-kaplay/ buildout). Delete locally if no longer needed.
+superzion-v2/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
