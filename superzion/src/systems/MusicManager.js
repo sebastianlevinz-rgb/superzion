@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 let instance = null;
+let safeProxy = null;
 
 // Note frequencies (Hz)
 const NOTE = {
@@ -29,7 +30,26 @@ export default class MusicManager {
       instance = new MusicManager();
       window.__musicManager = instance;
     }
-    return instance;
+    // Return a Proxy that wraps every method call in try-catch.
+    // This prevents audio failures from crashing the game loop.
+    if (!safeProxy) {
+      safeProxy = new Proxy(instance, {
+        get(target, prop) {
+          const val = target[prop];
+          if (typeof val === 'function') {
+            return function (...args) {
+              try { return val.apply(target, args); } catch (e) { /* audio fail — silent */ }
+            };
+          }
+          // Return no-op for undefined methods to prevent TypeError crashes
+          if (val === undefined && typeof prop === 'string' && prop.startsWith('play')) {
+            return function () {};
+          }
+          return val;
+        },
+      });
+    }
+    return safeProxy;
   }
 
   constructor() {
@@ -466,113 +486,123 @@ export default class MusicManager {
   }
 
   // ═════════════════════════════════════════════════════════════
-  // MENU MUSIC — Calm epic retro melody, Am pentatonic, 100 BPM
-  // No percussion — pure melody + pads + arpeggio
+  // MENU MUSIC — Israeli Psy Trance, A minor, 140 BPM
+  // Full energy: 4-on-the-floor kick, acid bass, arps, lead
   // ═════════════════════════════════════════════════════════════
 
   playMenuMusic() {
-    const bpm = 72; // Slow, epic
-    const beat = 60 / bpm;
-    const loopLen = beat * 26; // ~21.7 seconds
+    const bpm = 140;
+    const beat = 60 / bpm;      // ~0.4286s
+    const bar = beat * 4;       // ~1.714s
+    const loopLen = bar * 16;   // ~27.4s — 16 bars
 
     this._startLoop('menu', loopLen, (startT) => {
       const t = startT;
 
-      // LAYER 1: Pad/drone — C3 + G3 fifths, triangle, warm
-      const padNotes = [130.81, 196.00]; // C3, G3
-      for (const freq of padNotes) {
-        const osc = this.ctx.createOscillator();
-        const filter = this.ctx.createBiquadFilter();
-        const gain = this.ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = freq;
-        filter.type = 'lowpass';
-        filter.frequency.value = 800;
-        gain.gain.setValueAtTime(0.07, t);
-        gain.gain.setValueAtTime(0.07, t + loopLen - 0.5);
-        gain.gain.linearRampToValueAtTime(0.05, t + loopLen);
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.musicGain);
-        osc.start(t);
-        osc.stop(t + loopLen);
-        this._nodes.push(osc, filter, gain);
-      }
-
-      // LAYER 2: Epic melody — square wave, C minor, slow notes
-      // C4, Eb4, G4(long), F4, Eb4, D4, C4(long), pause, Bb3, C4, Eb4(long), D4, C4(long), pause
-      const melody = [
-        { freq: 261.63, dur: 1.2 },  // C4
-        { freq: 311.13, dur: 1.2 },  // Eb4
-        { freq: 392.00, dur: 1.5 },  // G4
-        { freq: 349.23, dur: 1.0 },  // F4
-        { freq: 311.13, dur: 1.0 },  // Eb4
-        { freq: 293.66, dur: 0.8 },  // D4
-        { freq: 261.63, dur: 2.0 },  // C4
-        { freq: 0,      dur: 1.5 },  // pause
-        { freq: 233.08, dur: 1.0 },  // Bb3
-        { freq: 261.63, dur: 1.0 },  // C4
-        { freq: 311.13, dur: 1.5 },  // Eb4
-        { freq: 293.66, dur: 1.2 },  // D4
-        { freq: 261.63, dur: 2.5 },  // C4
-        { freq: 0,      dur: 2.0 },  // pause
+      // Bass note pattern (repeating every 4 bars): A2, A2, E2, E2, A2, A2, D3, C3
+      const bassPattern = [
+        NOTE.A2, NOTE.A2, NOTE.E3 * 0.5, NOTE.E3 * 0.5,  // E2 = E3/2 ≈ 82.4
+        NOTE.A2, NOTE.A2, NOTE.D3, NOTE.C3
       ];
 
-      let offset = 0;
-      for (const note of melody) {
-        if (note.freq > 0) {
-          const osc = this.ctx.createOscillator();
-          const filter = this.ctx.createBiquadFilter();
-          const gain = this.ctx.createGain();
-          osc.type = 'square';
-          osc.frequency.value = note.freq;
-          filter.type = 'lowpass';
-          filter.frequency.value = 2000;
-          // Smooth envelope: attack 0.05s, sustain, release 0.3s
-          gain.gain.setValueAtTime(0, t + offset);
-          gain.gain.linearRampToValueAtTime(0.09, t + offset + 0.05);
-          gain.gain.setValueAtTime(0.09, t + offset + note.dur - 0.3);
-          gain.gain.linearRampToValueAtTime(0, t + offset + note.dur);
-          osc.connect(filter);
-          filter.connect(gain);
-          gain.connect(this.musicGain);
-          osc.start(t + offset);
-          osc.stop(t + offset + note.dur + 0.01);
-          this._nodes.push(osc, filter, gain);
+      // ──────────────────────────────────────────────────
+      // LAYER 1: PAD — A minor chord drone (all 16 bars)
+      // Soft detuned sawtooth bed under everything
+      // ──────────────────────────────────────────────────
+      this._pad(t, NOTE.A3, loopLen, 0.06);   // A3 = 220
+      this._pad(t, NOTE.C4, loopLen, 0.04);   // C4 = 261.63
+      this._pad(t, NOTE.E4, loopLen, 0.035);  // E4 = 329.63
+
+      // ──────────────────────────────────────────────────
+      // LAYER 2: KICK — 4-on-the-floor (all 16 bars)
+      // The trance foundation, every beat
+      // ──────────────────────────────────────────────────
+      const totalBeats = 16 * 4; // 64 beats
+      for (let i = 0; i < totalBeats; i++) {
+        this._kick(t + i * beat, 0.5);
+      }
+
+      // ──────────────────────────────────────────────────
+      // LAYER 3: ACID BASS — 303-style (all 16 bars)
+      // One note per bar, following the bass pattern
+      // ──────────────────────────────────────────────────
+      for (let i = 0; i < 16; i++) {
+        const freq = bassPattern[i % bassPattern.length];
+        this._acidBass(t + i * bar, freq, beat * 3.2, 0.35);
+      }
+
+      // ──────────────────────────────────────────────────
+      // LAYER 4: SNARE — beats 2 and 4 (bars 1–16)
+      // Subtle backbeat, builds presence
+      // ──────────────────────────────────────────────────
+      for (let i = 0; i < 16; i++) {
+        this._snare(t + i * bar + beat, 0.2);
+        this._snare(t + i * bar + beat * 3, 0.2);
+      }
+
+      // ──────────────────────────────────────────────────
+      // LAYER 5: HI-HATS — 8th notes (bars 5–16)
+      // Closed hats on every 8th, open hats on off-beats
+      // ──────────────────────────────────────────────────
+      for (let i = 0; i < 12 * 8; i++) { // 12 bars × 8 eighth-notes
+        const hatTime = t + bar * 4 + i * (beat / 2);
+        this._hihat(hatTime, 0.15);
+      }
+      // Open hats on upbeats, every other bar (bars 5,7,9,11,13,15)
+      for (let b = 4; b < 16; b += 2) {
+        for (let i = 0; i < 4; i++) {
+          this._openHat(t + b * bar + i * beat + beat / 2, 0.1);
         }
-        offset += note.dur;
       }
 
-      // LAYER 3: Subtle triangle arpeggio — C minor triad broken
-      const arpStep = 0.25;
-      const arpNotes = [261.63, 311.13, 392.00, 311.13]; // C4,Eb4,G4,Eb4
-      for (let i = 0; i < Math.floor(loopLen / arpStep); i++) {
-        const arpT = t + i * arpStep;
-        if (arpT >= t + loopLen - 0.5) break;
+      // ──────────────────────────────────────────────────
+      // LAYER 6: LEAD MELODY — A minor pentatonic (bars 5–16)
+      // Hypnotic repeating phrase, enters after intro build
+      // ──────────────────────────────────────────────────
+      const leadNotes = [
+        NOTE.A4,  // 440
+        NOTE.C5,  // 523.25
+        NOTE.A4,  // 440
+        NOTE.G4,  // 392
+        NOTE.E4,  // 329.63
+        NOTE.D4,  // 293.66
+        NOTE.E4,  // 329.63
+        0          // rest
+      ];
+      const halfBeat = beat / 2;
+      // Play melody phrase across bars 5–16 (3 full repetitions of 4-bar phrase)
+      for (let rep = 0; rep < 3; rep++) {
+        const repStart = t + bar * (4 + rep * 4);
+        for (let n = 0; n < leadNotes.length; n++) {
+          if (leadNotes[n] > 0) {
+            // Each note lasts ~half a beat, placed on half-beat grid
+            this._lead(repStart + n * halfBeat, leadNotes[n], halfBeat * 0.85, 0.08);
+          }
+        }
+        // Second phrase in bars 2-3 of each 4-bar group (variation)
+        const phrase2 = [NOTE.A4, NOTE.E5, NOTE.D5, NOTE.C5, NOTE.A4, NOTE.G4, NOTE.A4, 0];
+        for (let n = 0; n < phrase2.length; n++) {
+          if (phrase2[n] > 0) {
+            this._lead(repStart + bar * 2 + n * halfBeat, phrase2[n], halfBeat * 0.85, 0.07);
+          }
+        }
+      }
+
+      // ──────────────────────────────────────────────────
+      // LAYER 7: ARPEGGIO — 16th notes (bars 9–16)
+      // Fast ascending A minor triad, adds intensity
+      // ──────────────────────────────────────────────────
+      const arpNotes = [NOTE.A3, NOTE.C4, NOTE.E4, NOTE.A4]; // ascending Am triad
+      const sixteenth = beat / 4;
+      for (let i = 0; i < 8 * 16; i++) { // 8 bars × 16 sixteenth-notes
+        const arpTime = t + bar * 8 + i * sixteenth;
         const freq = arpNotes[i % arpNotes.length];
-        this._arp(arpT, freq, arpStep * 0.7, 0.04, 'triangle');
+        // Slight volume increase in last 4 bars for intensity
+        const arpVol = (i >= 4 * 16) ? 0.04 : 0.03;
+        this._arp(arpTime, freq, sixteenth * 0.7, arpVol, 'triangle');
       }
 
-      // LAYER 4: Bass — sine, C2, deep
-      const bass = this.ctx.createOscillator();
-      const bassFilter = this.ctx.createBiquadFilter();
-      const bassGain = this.ctx.createGain();
-      bass.type = 'sine';
-      bass.frequency.value = 65.41; // C2
-      bassFilter.type = 'lowpass';
-      bassFilter.frequency.value = 400;
-      bassGain.gain.setValueAtTime(0.10, t);
-      bassGain.gain.setValueAtTime(0.10, t + loopLen - 0.5);
-      bassGain.gain.linearRampToValueAtTime(0.06, t + loopLen);
-      bass.connect(bassFilter);
-      bassFilter.connect(bassGain);
-      bassGain.connect(this.musicGain);
-      bass.start(t);
-      bass.stop(t + loopLen);
-      this._nodes.push(bass, bassFilter, bassGain);
-
-      // NO KICKS, NO HI-HATS, NO SNARES, NO NOISE BURSTS
-    }, 0.4);
+    }, 0.5);
   }
 
   // ═════════════════════════════════════════════════════════════

@@ -20,11 +20,16 @@ import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import { showDefeatScreen } from '../ui/EndScreen.js';
 import { showControlsOverlay } from '../ui/ControlsOverlay.js';
+import InputManager from '../systems/InputManager.js';
+import { screenFlash, impactParticles, bossPhaseTransition, hitFeedback } from '../systems/GameJuice.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
 
   create() {
+    // Reset timeScale — Phaser doesn't reset it on scene restart
+    this.time.timeScale = 1;
+
     // Top-down: no gravity
     this.physics.world.gravity.y = 0;
     this.cameras.main.setBackgroundColor('#87CEEB');
@@ -86,7 +91,12 @@ export default class GameScene extends Phaser.Scene {
     // 11. Endgame
     this.endgame = new BombermanEndgame(this, this.player);
 
+    // Boss phase transition flags
+    this._phase2Triggered = false;
+    this._phase3Triggered = false;
+
     // 12. Input keys
+    this.inputManager = new InputManager(this, { preset: 'bomberman' });
     this.escKey = this.input.keyboard.addKey('ESC');
     this.skipKey = this.input.keyboard.addKey('P');
     this.restartKey = this.input.keyboard.addKey('R');
@@ -98,6 +108,7 @@ export default class GameScene extends Phaser.Scene {
 
     // 13. Controls overlay
     showControlsOverlay(this, 'ARROWS/WASD: Move | SPACE: Bomb | E: Plant | SHIFT: Dodge | ESC: Pause');
+    this.events.once('shutdown', this.shutdown, this);
 
     // 14. Ambient wind sound
     this.ambientRef = SoundManager.get().playAmbientWind();
@@ -274,7 +285,13 @@ export default class GameScene extends Phaser.Scene {
 
     this.boss = {
       sprite, col: bossCol, row: bossRow,
-      hp: 3, maxHp: 3, alive: true, entered: false,
+      hp: 5, maxHp: 5, alive: true, entered: false,
+      // Movement state
+      spawnX: bx, moveDir: -1, moveSpeed: 30,
+      moveRangeMin: bx - 4 * TILE, moveRangeMax: bx + 4 * TILE,
+      // Projectile attack state
+      attackTimer: 2.5, attackInterval: 2.5,
+      documents: [],
     };
 
     // Dramatic entrance: fall from above with bounce
@@ -329,20 +346,40 @@ export default class GameScene extends Phaser.Scene {
     this.bossHpFill.setFillStyle(color);
   }
 
-  _damageBoss() {
+  _damageBoss(bombX, bombY) {
     if (!this.boss || !this.boss.alive) return;
     this.boss.hp--;
-    this.cameras.main.shake(100, 0.005);
+    this.cameras.main.shake(100, 0.006);
     SoundManager.get().playDroneHit();
 
-    // White flash then red then clear
+    // GameJuice impact particles on boss
+    const bossX = this.boss.sprite.x, bossY = this.boss.sprite.y;
+    impactParticles(this, bossX, bossY, { count: 6, colors: [0xff4444, 0xff8800, 0xffcc00] });
+
+    // White flash for 200ms then red then clear
     this.boss.sprite.setTint(0xffffff);
-    this.time.delayedCall(50, () => {
+    this.time.delayedCall(200, () => {
       if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.setTint(0xff4444);
       this.time.delayedCall(100, () => {
         if (this.boss.sprite && this.boss.sprite.active) this.boss.sprite.clearTint();
       });
     });
+
+    // Knockback: push boss away from explosion
+    if (bombX !== undefined && bombY !== undefined) {
+      const sp = this.boss.sprite;
+      const kdx = sp.x - bombX;
+      const kdy = sp.y - bombY;
+      const kLen = Math.sqrt(kdx * kdx + kdy * kdy) || 1;
+      const knockDist = 20;
+      const targetX = Math.max(this.boss.moveRangeMin, Math.min(this.boss.moveRangeMax, sp.x + (kdx / kLen) * knockDist));
+      const targetY = sp.y + (kdy / kLen) * knockDist;
+      this.tweens.add({
+        targets: sp,
+        x: targetX, y: targetY,
+        duration: 150, ease: 'Quad.easeOut',
+      });
+    }
 
     // Scale bump
     this.tweens.add({
@@ -376,10 +413,18 @@ export default class GameScene extends Phaser.Scene {
     const hpRatio = this.boss.hp / this.boss.maxHp;
     if (hpRatio <= 0.33 && this.boss.hp > 0) {
       this.boss.sprite.setTexture('bm_boss1_angry');
+      if (!this._phase3Triggered) {
+        this._phase3Triggered = true;
+        bossPhaseTransition(this, 'DESPERATE!', 0xff0000);
+      }
     } else if (hpRatio <= 0.66 && hpRatio > 0.33) {
       // Intermediate damage — tint briefly to show stress
       if (this.textures.exists('bm_boss1_angry')) {
         this.boss.sprite.setTexture('bm_boss1_angry');
+      }
+      if (!this._phase2Triggered) {
+        this._phase2Triggered = true;
+        bossPhaseTransition(this, 'ENRAGED!', 0xff4444);
       }
     }
 
@@ -390,6 +435,9 @@ export default class GameScene extends Phaser.Scene {
 
   _killBoss() {
     this.boss.alive = false;
+    // Destroy all boss document projectiles
+    for (const doc of this.boss.documents) doc.sprite.destroy();
+    this.boss.documents = [];
     const sp = this.boss.sprite;
     const bx = sp.x, by = sp.y;
 
@@ -451,6 +499,92 @@ export default class GameScene extends Phaser.Scene {
       targets: txt, alpha: 0, y: by - 70, duration: 1500, delay: 2600,
       onComplete: () => txt.destroy(),
     });
+
+    // Boss dead = mission complete — skip escape, go straight to victory
+    this.gameOver = true;
+    this.endgame.phase = 'done';
+    try { localStorage.removeItem('superzion_checkpoint_l1'); } catch (e) { /* ok */ }
+    const elapsed = this.time.now - (this.stats?.startTime || 0);
+    this.time.delayedCall(3000, () => {
+      MusicManager.get().stop(0.3);
+      this.scene.start('ExplosionCinematicScene', {
+        stats: {
+          timesDetected: 0,
+          guardsKilled: this.hud.guardsKilled,
+          powerupsCollected: this.hud.powerupsCollected,
+          elapsed,
+          hp: this.player.hp,
+          maxHp: this.player.maxHp,
+        },
+      });
+    });
+  }
+
+  // ── Boss AI: movement + projectile attack ──────────────────────
+  _updateBoss(delta) {
+    if (!this.boss || !this.boss.alive || !this.boss.entered) return;
+    const dt = delta / 1000;
+    const b = this.boss;
+    const sp = b.sprite;
+
+    // --- Movement: walk left-right within 4-tile range ---
+    sp.x += b.moveDir * b.moveSpeed * dt;
+    // Reverse at range edges
+    if (sp.x <= b.moveRangeMin) { sp.x = b.moveRangeMin; b.moveDir = 1; }
+    if (sp.x >= b.moveRangeMax) { sp.x = b.moveRangeMax; b.moveDir = -1; }
+    // Update boss grid col for explosion checks
+    b.col = toCol(sp.x);
+
+    // --- Enrage: faster attacks when HP < 30% ---
+    const enraged = b.hp < b.maxHp * 0.3; // < 2 out of 5
+    b.attackInterval = enraged ? 1.5 : 2.5;
+    const docSpeed = enraged ? 160 : 120;
+
+    // --- Projectile attack timer ---
+    b.attackTimer -= dt;
+    if (b.attackTimer <= 0) {
+      b.attackTimer = b.attackInterval;
+      this._bossThrowDocument(docSpeed);
+    }
+
+    // --- Update existing document projectiles ---
+    for (let i = b.documents.length - 1; i >= 0; i--) {
+      const doc = b.documents[i];
+      doc.sprite.x += doc.vx * dt;
+      doc.sprite.y += doc.vy * dt;
+      // Rotate for visual flair
+      doc.sprite.angle += 360 * dt;
+
+      // Check player collision (distance-based, 12px radius)
+      const px = this.player.sprite.x, py = this.player.sprite.y;
+      const ddx = doc.sprite.x - px, ddy = doc.sprite.y - py;
+      if (Math.sqrt(ddx * ddx + ddy * ddy) < 12) {
+        this.player.takeDamage();
+        doc.sprite.destroy();
+        b.documents.splice(i, 1);
+        continue;
+      }
+
+      // Remove if out of bounds
+      const sx = doc.sprite.x, sy = doc.sprite.y;
+      if (sx < 0 || sx > 960 || sy < 0 || sy > 540) {
+        doc.sprite.destroy();
+        b.documents.splice(i, 1);
+      }
+    }
+  }
+
+  _bossThrowDocument(speed) {
+    const b = this.boss;
+    const sp = b.sprite;
+    const px = this.player.sprite.x, py = this.player.sprite.y;
+    const dx = px - sp.x, dy = py - sp.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const vx = (dx / len) * speed;
+    const vy = (dy / len) * speed;
+    const docSprite = this.add.image(sp.x, sp.y, 'bm_document').setDepth(15);
+    b.documents.push({ sprite: docSprite, vx, vy });
+    try { SoundManager.get().playBombDrop(); } catch (e) { /* ok */ }
   }
 
   // ── Place bomb ──────────────────────────────────────────────────
@@ -471,6 +605,7 @@ export default class GameScene extends Phaser.Scene {
   _handleExplosion(col, row, range) {
     SoundManager.get().playExplosion();
     this.cameras.main.shake(150, 0.012);
+    screenFlash(this, 0xff8800, 80, 0.2);
 
     this._spawnExplosionParticles(gx(col), gy(row));
 
@@ -528,11 +663,11 @@ export default class GameScene extends Phaser.Scene {
         this.stats.guardsKilled++;
       }
     }
-    // Boss: check 3x3 area around boss
+    // Boss: check 3x3 area around boss (use current col from movement)
     if (this.boss && this.boss.alive && this.boss.entered) {
       const bc = this.boss.col, br = this.boss.row;
       if (col >= bc - 1 && col <= bc + 1 && row >= br - 1 && row <= br + 1) {
-        this._damageBoss();
+        this._damageBoss(gx(col), gy(row));
       }
     }
   }
@@ -679,7 +814,7 @@ export default class GameScene extends Phaser.Scene {
         txt.setOrigin(0.5).setDepth(50);
         this.tweens.add({ targets: txt, y: txt.y - 25, alpha: 0, duration: 800, onComplete: () => txt.destroy() });
 
-        SoundManager.get().playPickup();
+        SoundManager.get().playVictory();
         this.powerupSprites.splice(i, 1);
       }
     }
@@ -702,9 +837,10 @@ export default class GameScene extends Phaser.Scene {
 
   // ── Game over screen ────────────────────────────────────────────
   _gameOverScreen(msg) {
+    if (this.gameOver) return;
     this.gameOver = true;
     this.cameras.main.flash(300, 255, 0, 0);
-    SoundManager.get().playGameOver();
+    try { SoundManager.get().playGameOver(); } catch (e) { /* audio may fail */ }
 
     // If checkpoint exists, R restarts from bomberman (GameScene) directly
     // If no checkpoint, R restarts from the platformer (PlatformerScene)
@@ -784,10 +920,12 @@ export default class GameScene extends Phaser.Scene {
 
   // ── Main update loop ────────────────────────────────────────────
   update(time, delta) {
+    const im = this.inputManager;
+    im.update();
     if (this.stats.startTime === 0) this.stats.startTime = this.time.now;
 
     // Mute toggle (always works)
-    if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
+    if (Phaser.Input.Keyboard.JustDown(this.muteKey) || im.justDown('mute')) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
@@ -812,8 +950,13 @@ export default class GameScene extends Phaser.Scene {
       this._showSkipPrompt(); return;
     }
 
+    // Game over — EndScreen handles R/S/ESC key bindings
+    if (this.gameOver) {
+      return;
+    }
+
     // ESC = pause
-    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+    if (Phaser.Input.Keyboard.JustDown(this.escKey) || im.justDown('pause')) {
       this._togglePause(); return;
     }
 
@@ -827,11 +970,6 @@ export default class GameScene extends Phaser.Scene {
         this.isPaused = false; this.physics.world.resume(); this.tweens.resumeAll();
         MusicManager.get().stop(0.5); this.scene.start('MenuScene');
       }
-      return;
-    }
-
-    // Game over — EndScreen handles R/S key bindings
-    if (this.gameOver) {
       return;
     }
 
@@ -879,11 +1017,15 @@ export default class GameScene extends Phaser.Scene {
     // HUD
     this.hud.update();
 
+    // Boss AI: movement + projectile attack
+    this._updateBoss(delta);
+
     // Boss HP bar
     this._updateBossHpBar();
   }
 
   shutdown() {
+    this.time.timeScale = 1;
     if (this.ambientRef) {
       try { this.ambientRef.source.stop(); } catch (e) { /* ok */ }
       this.ambientRef = null;

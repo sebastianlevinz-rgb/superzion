@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
+import InputManager from '../systems/InputManager.js';
 
 const W = 960;
 const H = 540;
@@ -21,6 +22,9 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this.actObjects = [];
     this.currentAct = 0;
     this.skipped = false;
+
+    // Unified input (shows tap-anywhere zone on mobile)
+    this.inputManager = new InputManager(this, { preset: 'cinematic' });
 
     this.enterKey = this.input.keyboard.addKey('ENTER');
     this.spaceKey = this.input.keyboard.addKey('SPACE');
@@ -53,8 +57,9 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this.targetScene = targetScene;
     this.targetSceneData = targetSceneData || null;
 
-    // Blinking "► SPACE" indicator — always visible
-    this._spaceHint = this.add.text(W / 2, H - 28, '\u25ba SPACE', {
+    // Blinking "► SPACE" / "► TAP" indicator — always visible
+    const hintLabel = this.inputManager?.mobile ? '\u25ba TAP' : '\u25ba SPACE';
+    this._spaceHint = this.add.text(W / 2, H - 28, hintLabel, {
       fontFamily: 'monospace', fontSize: '14px', color: '#ffcc00',
       shadow: { offsetX: 0, offsetY: 0, color: '#ffcc00', blur: 4, fill: true },
     }).setOrigin(0.5).setDepth(200).setAlpha(0);
@@ -65,10 +70,12 @@ export default class BaseCinematicScene extends Phaser.Scene {
       duration: 500, yoyo: true, repeat: -1,
     });
 
-    // ESC hint
-    this._escHint = this.add.text(W - 16, H - 14, 'ESC TO SKIP', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#444444',
-    }).setOrigin(1, 1).setDepth(200);
+    // ESC hint (hidden on mobile — pause button serves this purpose)
+    if (!this.inputManager?.mobile) {
+      this._escHint = this.add.text(W - 16, H - 14, 'ESC TO SKIP', {
+        fontFamily: 'monospace', fontSize: '10px', color: '#444444',
+      }).setOrigin(1, 1).setDepth(200);
+    }
 
     // Start first page
     this._advancePage();
@@ -90,7 +97,6 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this.currentPage++;
 
     if (this.currentPage >= this.pages.length) {
-      // End of cinematic
       this._endCinematic();
       return;
     }
@@ -164,24 +170,28 @@ export default class BaseCinematicScene extends Phaser.Scene {
     this.pageReady = true;
   }
 
-  /** Handle SPACE/ENTER/ESC input in page mode — call in update() */
+  /** Handle SPACE/ENTER/ESC/touch input in page mode — call in update() */
   _handlePageInput() {
+    if (this.inputManager) this.inputManager.update();
     this._handleMuteToggle();
     if (this.skipped) return;
 
-    // ESC → skip entire cinematic
-    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+    // ESC or touch pause → skip entire cinematic
+    const escPressed = Phaser.Input.Keyboard.JustDown(this.escKey) ||
+      (this.inputManager && this.inputManager.justDown('pause'));
+    if (escPressed) {
       this._endCinematic();
       return;
     }
 
-    // SPACE or ENTER
-    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) || Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+    // SPACE/ENTER or touch primary → advance/complete
+    const advancePressed = Phaser.Input.Keyboard.JustDown(this.spaceKey) ||
+      Phaser.Input.Keyboard.JustDown(this.enterKey) ||
+      (this.inputManager && this.inputManager.justDown('primary'));
+    if (advancePressed) {
       if (!this.typewriterComplete) {
-        // First press during typewriter → complete text instantly
         this._completeTypewriter();
       } else if (this.pageReady) {
-        // Text already complete → advance to next page
         this._advancePage();
       }
     }
@@ -244,8 +254,11 @@ export default class BaseCinematicScene extends Phaser.Scene {
   }
 
   _handleSkip(targetScene) {
+    if (this.inputManager) this.inputManager.update();
     this._handleMuteToggle();
-    if (!this.skipped && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+    const skipPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) ||
+      (this.inputManager && this.inputManager.justDown('primary'));
+    if (!this.skipped && skipPressed) {
       const nextAct = this.currentAct + 1;
       const nextMethod = `_startAct${nextAct}`;
       if (typeof this[nextMethod] === 'function') {
@@ -264,7 +277,8 @@ export default class BaseCinematicScene extends Phaser.Scene {
   _showBeginPrompt(delay = 5000) {
     this.time.delayedCall(delay, () => {
       if (this.skipped) return;
-      const prompt = this.add.text(W / 2, H - 50, 'PRESS ENTER TO BEGIN', {
+      const beginLabel = this.inputManager?.mobile ? 'TAP TO BEGIN' : 'PRESS ENTER TO BEGIN';
+      const prompt = this.add.text(W / 2, H - 50, beginLabel, {
         fontFamily: 'monospace', fontSize: '16px', color: '#ffffff',
       }).setOrigin(0.5).setDepth(20);
       this.actObjects.push(prompt);
@@ -310,6 +324,10 @@ export default class BaseCinematicScene extends Phaser.Scene {
 
   /** Helper: clear page visuals (objects pushed to _pageVisuals) */
   _clearPageVisuals() {
+    // Kill all tweens targeting page visuals BEFORE destroying them
+    for (const obj of this._pageVisuals) {
+      if (obj) this.tweens.killTweensOf(obj);
+    }
     for (const obj of this._pageVisuals) {
       if (obj && obj.destroy) obj.destroy();
     }
@@ -320,5 +338,104 @@ export default class BaseCinematicScene extends Phaser.Scene {
   _addPageVisual(obj) {
     this._pageVisuals.push(obj);
     return obj;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // Military terminal HUD helpers (used by all level intro scenes)
+  // ══════════════════════════════════════════════════════════════
+
+  /** Dark gradient background + grid lines + scanlines + corner vignette */
+  _drawMilitaryBg(scene) {
+    const gfx = scene.add.graphics().setDepth(0).setScrollFactor(0);
+    // Dark gradient
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      gfx.fillStyle(Phaser.Display.Color.GetColor(4 + t * 12 | 0, 6 + t * 14 | 0, 10 + t * 18 | 0));
+      gfx.fillRect(0, y, W, 1);
+    }
+    // Grid lines every 30px
+    gfx.lineStyle(1, 0x00ff00, 0.04);
+    for (let x = 0; x < W; x += 30) { gfx.lineBetween(x, 0, x, H); }
+    for (let y = 0; y < H; y += 30) { gfx.lineBetween(0, y, W, y); }
+    // Scanlines
+    for (let y = 0; y < H; y += 2) {
+      gfx.fillStyle(0x000000, 0.12);
+      gfx.fillRect(0, y, W, 1);
+    }
+    // Corner vignette
+    for (const c of [{ x: 0, y: 0 }, { x: W, y: 0 }, { x: 0, y: H }, { x: W, y: H }]) {
+      for (let r = 250; r > 40; r -= 20) {
+        gfx.fillStyle(0x000000, 0.02);
+        gfx.fillCircle(c.x, c.y, r);
+      }
+    }
+  }
+
+  /** Military HUD overlay: title, coords, timestamp, brackets, accent */
+  _drawMilitaryHUD(scene, title, coords, accentColor) {
+    const color = accentColor || '#00AA44';
+    const depth = 50;
+    // Operation title
+    scene.add.text(W / 2, 24, title, {
+      fontFamily: 'monospace', fontSize: '20px', color: color, fontStyle: 'bold',
+      shadow: { offsetX: 0, offsetY: 0, color: color, blur: 8, fill: true },
+    }).setOrigin(0.5).setDepth(depth);
+    // Coordinates
+    scene.add.text(W / 2, 48, coords, {
+      fontFamily: 'monospace', fontSize: '11px', color: '#555555',
+    }).setOrigin(0.5).setDepth(depth);
+    // Timestamp
+    const now = new Date();
+    const ts = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')} UTC`;
+    scene.add.text(W - 12, 12, ts, {
+      fontFamily: 'monospace', fontSize: '9px', color: '#444444',
+    }).setOrigin(1, 0).setDepth(depth);
+    // Classification label
+    scene.add.text(12, 12, 'TOP SECRET // MOSSAD', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#553333',
+    }).setDepth(depth);
+    // Corner brackets
+    const bGfx = scene.add.graphics().setDepth(depth);
+    const bLen = 20;
+    bGfx.lineStyle(1, Phaser.Display.Color.HexStringToColor(color).color, 0.4);
+    // Top-left
+    bGfx.lineBetween(8, 8, 8 + bLen, 8);
+    bGfx.lineBetween(8, 8, 8, 8 + bLen);
+    // Top-right
+    bGfx.lineBetween(W - 8, 8, W - 8 - bLen, 8);
+    bGfx.lineBetween(W - 8, 8, W - 8, 8 + bLen);
+    // Bottom-left
+    bGfx.lineBetween(8, H - 8, 8 + bLen, H - 8);
+    bGfx.lineBetween(8, H - 8, 8, H - 8 - bLen);
+    // Bottom-right
+    bGfx.lineBetween(W - 8, H - 8, W - 8 - bLen, H - 8);
+    bGfx.lineBetween(W - 8, H - 8, W - 8, H - 8 - bLen);
+    // Accent line under title
+    bGfx.lineStyle(1, Phaser.Display.Color.HexStringToColor(color).color, 0.3);
+    bGfx.lineBetween(W * 0.3, 60, W * 0.7, 60);
+  }
+
+  /** Multi-layer pseudo-3D operation title text */
+  _draw3DOperationTitle(scene, text, size) {
+    const depth = 55;
+    const fSize = size || 42;
+    const y = H * 0.45;
+    // Brown shadow
+    scene.add.text(W / 2 + 3, y + 3, text, {
+      fontFamily: 'monospace', fontSize: `${fSize}px`, color: '#3a2510', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(depth);
+    // Dark gold
+    scene.add.text(W / 2 + 1.5, y + 1.5, text, {
+      fontFamily: 'monospace', fontSize: `${fSize}px`, color: '#8B6914', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(depth + 1);
+    // Main gold
+    scene.add.text(W / 2, y, text, {
+      fontFamily: 'monospace', fontSize: `${fSize}px`, color: '#FFD700', fontStyle: 'bold',
+      shadow: { offsetX: 0, offsetY: 0, color: '#FFD700', blur: 10, fill: true },
+    }).setOrigin(0.5).setDepth(depth + 2);
+    // Top highlight
+    scene.add.text(W / 2 - 0.5, y - 0.5, text, {
+      fontFamily: 'monospace', fontSize: `${fSize}px`, color: '#fff0c0', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(depth + 3).setAlpha(0.3);
   }
 }

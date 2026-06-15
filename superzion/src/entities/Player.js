@@ -55,15 +55,18 @@ export default class BombermanPlayer {
     this.dodgeVX = 0;
     this.dodgeVY = 0;
 
-    // Input
-    this.cursors = scene.input.keyboard.createCursorKeys();
-    this.keyW = scene.input.keyboard.addKey('W');
-    this.keyA = scene.input.keyboard.addKey('A');
-    this.keyS = scene.input.keyboard.addKey('S');
-    this.keyD = scene.input.keyboard.addKey('D');
-    this.bombKey = scene.input.keyboard.addKey('SPACE');
-    this.interactKey = scene.input.keyboard.addKey('E');
-    this.dodgeKey = scene.input.keyboard.addKey('SHIFT');
+    // Input — use scene's InputManager if available, else fall back to keyboard
+    this.inputManager = scene.inputManager || null;
+    if (!this.inputManager) {
+      this.cursors = scene.input.keyboard.createCursorKeys();
+      this.keyW = scene.input.keyboard.addKey('W');
+      this.keyA = scene.input.keyboard.addKey('A');
+      this.keyS = scene.input.keyboard.addKey('S');
+      this.keyD = scene.input.keyboard.addKey('D');
+      this.bombKey = scene.input.keyboard.addKey('SPACE');
+      this.interactKey = scene.input.keyboard.addKey('E');
+      this.dodgeKey = scene.input.keyboard.addKey('SHIFT');
+    }
   }
 
   get speed() {
@@ -113,11 +116,12 @@ export default class BombermanPlayer {
       return;
     }
 
-    // Movement
-    const left = this.cursors.left.isDown || this.keyA.isDown;
-    const right = this.cursors.right.isDown || this.keyD.isDown;
-    const up = this.cursors.up.isDown || this.keyW.isDown;
-    const down = this.cursors.down.isDown || this.keyS.isDown;
+    // Movement — read from InputManager or keyboard
+    const im = this.inputManager;
+    const left = im ? im.left : (this.cursors.left.isDown || this.keyA.isDown);
+    const right = im ? im.right : (this.cursors.right.isDown || this.keyD.isDown);
+    const up = im ? im.up : (this.cursors.up.isDown || this.keyW.isDown);
+    const down = im ? im.down : (this.cursors.down.isDown || this.keyS.isDown);
 
     let vx = 0, vy = 0;
     if (left) vx = -this.speed;
@@ -140,7 +144,8 @@ export default class BombermanPlayer {
     else if (vx > 0) this.facing = 'right';
 
     // SHIFT = dodge/dash
-    if (Phaser.Input.Keyboard.JustDown(this.dodgeKey) && this.dodgeCooldownTimer <= 0 && !this.isDodging) {
+    const dodgePressed = im ? im.justDown('secondary') : Phaser.Input.Keyboard.JustDown(this.dodgeKey);
+    if (dodgePressed && this.dodgeCooldownTimer <= 0 && !this.isDodging) {
       this._startDodge(left, right, up, down);
     }
 
@@ -221,10 +226,12 @@ export default class BombermanPlayer {
   }
 
   wantsBomb() {
+    if (this.inputManager) return this.inputManager.justDown('primary');
     return Phaser.Input.Keyboard.JustDown(this.bombKey);
   }
 
   wantsInteract() {
+    if (this.inputManager) return this.inputManager.justDown('tertiary');
     return Phaser.Input.Keyboard.JustDown(this.interactKey);
   }
 

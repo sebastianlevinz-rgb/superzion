@@ -4,11 +4,31 @@
 // ═══════════════════════════════════════════════════════════════
 
 let instance = null;
+let safeProxy = null;
 
 export default class SoundManager {
   static get() {
     if (!instance) instance = new SoundManager();
-    return instance;
+    // Return a Proxy that wraps every method call in try-catch.
+    // This prevents audio failures from crashing the game loop.
+    if (!safeProxy) {
+      safeProxy = new Proxy(instance, {
+        get(target, prop) {
+          const val = target[prop];
+          if (typeof val === 'function') {
+            return function (...args) {
+              try { return val.apply(target, args); } catch (e) { /* audio fail — silent */ }
+            };
+          }
+          // Return no-op for undefined methods to prevent TypeError crashes
+          if (val === undefined && typeof prop === 'string' && prop.startsWith('play')) {
+            return function () {};
+          }
+          return val;
+        },
+      });
+    }
+    return safeProxy;
   }
 
   constructor() {

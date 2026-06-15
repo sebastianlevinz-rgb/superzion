@@ -5,6 +5,7 @@
 import Phaser from 'phaser';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
+import InputManager from '../systems/InputManager.js';
 import { showVictoryScreen } from '../ui/EndScreen.js';
 
 const W = 960;
@@ -27,9 +28,10 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor('#87CEEB');
-    MusicManager.get().stop(0.5);
+    this.events.once('shutdown', this.shutdown, this);
+    try { MusicManager.get().stop(0.5); } catch (e) { /* audio */ }
     // Start cinematic music after brief fade to avoid silence
-    this.time.delayedCall(600, () => MusicManager.get().playCinematicMusic(1));
+    this.time.delayedCall(600, () => MusicManager.get().playCinematicDrone());
     this.cameras.main.setBounds(0, 0, WORLD_W, H);
 
     this.buildingX = 950;
@@ -42,7 +44,8 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
     // Camera starts centered on building
     this.cameras.main.scrollX = Math.min(this.buildingX - W / 2, WORLD_W - W);
 
-    // Input
+    // Input — keyboard keys + unified keyboard/touch manager (tap-to-skip on mobile)
+    this.inputManager = new InputManager(this, { preset: 'cinematic' });
     this.enterKey = this.input.keyboard.addKey('ENTER');
     this.spaceKey = this.input.keyboard.addKey('SPACE');
     this.mKey = this.input.keyboard.addKey('M');
@@ -514,6 +517,12 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
     const starCount = lives === maxLives ? 3 : lives >= 2 ? 2 : lives >= 1 ? 1 : 0;
     try { localStorage.setItem('superzion_stars_1', String(starCount)); } catch(e) {}
 
+    // Save level progress: completing level 1 unlocks level 2
+    try {
+      const prev = parseInt(localStorage.getItem('superzion_level_progress') || '1');
+      if (2 > prev) localStorage.setItem('superzion_level_progress', '2');
+    } catch(e) {}
+
     const stats = this.stats._bomberman ? [
       { label: 'TIME', value: timeStr },
       { label: 'LIVES REMAINING', value: `${lives}/${maxLives}` },
@@ -532,12 +541,14 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
       stats,
       stars: starCount,
       currentScene: 'GameScene',
-      nextScene: 'BeirutIntroCinematicScene',
+      nextScene: 'DeepStrikeIntroCinematicScene',
     });
   }
 
   // ── UPDATE ──────────────────────────────────────────────────
   update() {
+    if (this.inputManager) this.inputManager.update();
+
     if (Phaser.Input.Keyboard.JustDown(this.mKey)) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
@@ -548,8 +559,10 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
       return;
     }
 
-    // During cinematic: ENTER/SPACE = skip to victory
-    const skip = Phaser.Input.Keyboard.JustDown(this.enterKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey);
+    // During cinematic: ENTER/SPACE/tap = skip to victory
+    const skip = Phaser.Input.Keyboard.JustDown(this.enterKey) ||
+      Phaser.Input.Keyboard.JustDown(this.spaceKey) ||
+      (this.inputManager && this.inputManager.justDown('primary'));
     if (skip && !this.victoryShown) {
       this.victoryShown = true;
       this.tweens.killAll();
@@ -561,5 +574,6 @@ export default class ExplosionCinematicScene extends Phaser.Scene {
 
   shutdown() {
     if (this._endScreen) this._endScreen.destroy();
+    if (this.inputManager) { this.inputManager.destroy(); this.inputManager = null; }
   }
 }

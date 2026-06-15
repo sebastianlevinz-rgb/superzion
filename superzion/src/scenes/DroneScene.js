@@ -19,6 +19,8 @@ import {
 } from '../utils/DroneTextures.js';
 import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
 import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.js';
+import InputManager from '../systems/InputManager.js';
+import { screenFlash, impactParticles, bossPhaseTransition, hitFeedback } from '../systems/GameJuice.js';
 
 const W = 960;
 const H = 540;
@@ -1223,12 +1225,16 @@ export default class DroneScene extends Phaser.Scene {
   constructor() { super('DroneScene'); }
 
   create() {
+    // Reset timeScale — Phaser doesn't reset it on scene restart
+    this.time.timeScale = 1;
+
     const dm = DifficultyManager.get();
     this.dm = dm;
     this.cameras.main.setBackgroundColor('#000000');
 
     // Controls overlay
     showControlsOverlay(this, 'ARROWS: Move | SPACE: Shoot | X: Missile | SHIFT: Dash | ESC: Pause');
+    this.events.once('shutdown', this.shutdown, this);
 
     // Generate textures
     createDroneSprite(this);
@@ -1349,7 +1355,9 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   _setupInput() {
-    this.keys = {
+    // Start with drone preset (phase 1 = just d-pad), switch to combat on boss phase
+    this.inputManager = new InputManager(this, { preset: 'drone' });
+    const rawKeys = {
       left: this.input.keyboard.addKey('LEFT'),
       right: this.input.keyboard.addKey('RIGHT'),
       up: this.input.keyboard.addKey('UP'),
@@ -1366,6 +1374,12 @@ export default class DroneScene extends Phaser.Scene {
       r: this.input.keyboard.addKey('R'),
       s: this.input.keyboard.addKey('S'),
     };
+    this.keys = this.inputManager.enhanceKeys(rawKeys, {
+      left: 'left', right: 'right', up: 'up', down: 'down',
+      space: 'primary', x: 'special', shift: 'secondary',
+      esc: 'pause',
+    });
+    this._rawKeys = rawKeys;
     this.isPaused = false;
     this.pauseObjects = [];
   }
@@ -1401,10 +1415,14 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   _takeDamage(amount) {
+    if (this.phase === 'dead' || this.phase === 'victory') return;
     const dmg = amount || 1;
     this.droneHP -= dmg;
-    SoundManager.get().playDroneHit();
+    try { SoundManager.get().playDroneHit(); } catch (e) { /* audio may fail */ }
     this.cameras.main.shake(200, 0.015);
+
+    // GameJuice: hit feedback on drone damage
+    hitFeedback(this, { color: 0xff0000, shakeIntensity: 0.015, freezeMs: 50 });
 
     const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0.3).setDepth(45).setScrollFactor(0);
     this.tweens.add({ targets: flash, alpha: 0, duration: 300, onComplete: () => flash.destroy() });
@@ -2010,10 +2028,10 @@ export default class DroneScene extends Phaser.Scene {
             duration: 800,
           });
 
-          // After reveal, transition to boss fight
+          // After reveal, transition through infiltration cinematic
           this.time.delayedCall(2500, () => {
             this._cleanupCityIntro();
-            this._startBossFight();
+            this._startInfiltrationCinematic();
           });
         });
       },
@@ -2034,21 +2052,148 @@ export default class DroneScene extends Phaser.Scene {
     this._city = null;
   }
   _startBossTransition() {
+    this._startInfiltrationCinematic();
+  }
+
+  _startInfiltrationCinematic() {
     this.phase = 'transition';
-    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.9).setDepth(40);
-    const txt = this.add.text(W / 2, H / 2 - 20, 'APPROACHING TARGET BUILDING...', {
-      fontFamily: 'monospace', fontSize: '20px', color: '#ff8800',
-      shadow: { offsetX: 0, offsetY: 0, color: '#ff8800', blur: 10, fill: true },
-    }).setOrigin(0.5).setDepth(41);
+    const els = [];
 
-    const sub = this.add.text(W / 2, H / 2 + 20, 'SOMETHING IS WAITING...', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#ff4444',
-    }).setOrigin(0.5).setDepth(41);
+    // ── PHASE 1 (0s): Glass break — white flash + shatter ──
+    SoundManager.get().playExplosion();
+    this.cameras.main.flash(400, 255, 255, 255);
+    this.cameras.main.shake(500, 0.04);
 
-    this.time.delayedCall(2500, () => {
-      overlay.destroy();
-      txt.destroy();
-      sub.destroy();
+    // Black overlay fades in fast
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(45);
+    els.push(overlay);
+    this.tweens.add({ targets: overlay, alpha: 1, duration: 400 });
+
+    // Immediate glass shards from impact point (center-right where window was)
+    const impactX = W * 0.75;
+    const impactY = H * 0.4;
+    for (let i = 0; i < 20; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 20 + Math.random() * 60;
+      const sx = impactX + Math.cos(angle) * 10;
+      const sy = impactY + Math.sin(angle) * 10;
+      const w = 2 + Math.random() * 8;
+      const h = 1 + Math.random() * 4;
+      const shard = this.add.rectangle(sx, sy, w, h, 0xaaddff, 0.7 + Math.random() * 0.3)
+        .setDepth(48).setAngle(Math.random() * 360);
+      els.push(shard);
+      this.tweens.add({
+        targets: shard,
+        x: sx + Math.cos(angle) * dist,
+        y: sy + Math.sin(angle) * dist + 80,
+        angle: shard.angle + (Math.random() - 0.5) * 360,
+        alpha: 0,
+        duration: 600 + Math.random() * 500,
+      });
+    }
+
+    // ── PHASE 2 (0.5s): Drone enters — green HUD text ──
+    this.time.delayedCall(500, () => {
+      // Drone buzzing enters
+      this._infiltrationDroneRef = SoundManager.get().playDroneHum();
+
+      // Green scan line sweeping down (drone camera activating)
+      const scanLine = this.add.rectangle(W / 2, 0, W, 3, 0x00ff44, 0.6).setDepth(48);
+      els.push(scanLine);
+      this.tweens.add({
+        targets: scanLine, y: H, duration: 800,
+        onComplete: () => { if (scanLine.active) scanLine.setAlpha(0); },
+      });
+
+      const infText = this.add.text(W / 2, H * 0.35, 'DRONE INFILTRATING', {
+        fontFamily: 'monospace', fontSize: '24px', color: '#00ff44',
+        fontStyle: 'bold',
+        shadow: { offsetX: 0, offsetY: 0, color: '#00ff44', blur: 16, fill: true },
+      }).setOrigin(0.5).setDepth(49).setAlpha(0);
+      els.push(infText);
+      this.tweens.add({ targets: infText, alpha: 1, duration: 300 });
+
+      // Blinking cursor effect on the text
+      this.time.addEvent({
+        delay: 400, repeat: 4,
+        callback: () => { if (infText.active) infText.setAlpha(infText.alpha > 0.5 ? 0.3 : 1); },
+      });
+    });
+
+    // ── PHASE 3 (1.6s): Room fades in from below — camera descend ──
+    this.time.delayedCall(1600, () => {
+      // Dark warm room background
+      const roomBg = this.add.rectangle(W / 2, H, W, H, 0x1a1810, 0).setDepth(46);
+      els.push(roomBg);
+      this.tweens.add({ targets: roomBg, alpha: 0.85, y: H / 2, duration: 900, ease: 'Sine.easeOut' });
+
+      // Floor — darker strip at bottom
+      const floor = this.add.rectangle(W / 2, H + 50, W, 120, 0x0e0c08, 0).setDepth(46);
+      els.push(floor);
+      this.tweens.add({ targets: floor, alpha: 0.7, y: H - 60, duration: 900, ease: 'Sine.easeOut' });
+
+      // Armchair (large, recognizable)
+      const chair = this.add.rectangle(W * 0.58, H + 30, 60, 45, 0x4a3520, 0).setDepth(47);
+      els.push(chair);
+      this.tweens.add({ targets: chair, alpha: 0.8, y: H * 0.52, duration: 900, ease: 'Sine.easeOut' });
+      // Chair back
+      const chairBack = this.add.rectangle(W * 0.58, H + 10, 56, 12, 0x5a4530, 0).setDepth(47);
+      els.push(chairBack);
+      this.tweens.add({ targets: chairBack, alpha: 0.7, y: H * 0.44, duration: 900, ease: 'Sine.easeOut' });
+
+      // Overturned table
+      const table = this.add.rectangle(W * 0.32, H + 20, 50, 8, 0x2a2a2a, 0).setDepth(47).setAngle(15);
+      els.push(table);
+      this.tweens.add({ targets: table, alpha: 0.6, y: H * 0.58, duration: 900, ease: 'Sine.easeOut' });
+
+      // Scattered papers/documents on floor
+      for (let i = 0; i < 6; i++) {
+        const doc = this.add.rectangle(
+          W * 0.3 + Math.random() * W * 0.4, H + Math.random() * 30,
+          6 + Math.random() * 8, 4 + Math.random() * 5,
+          0xddddcc, 0
+        ).setDepth(46).setAngle(Math.random() * 360);
+        els.push(doc);
+        this.tweens.add({ targets: doc, alpha: 0.3, y: H * 0.6 + Math.random() * 100, duration: 900, ease: 'Sine.easeOut' });
+      }
+    });
+
+    // ── PHASE 4 (2.8s): Sinwar stands up from behind armchair ──
+    this.time.delayedCall(2800, () => {
+      // Head appears behind chair
+      const head = this.add.circle(W * 0.58, H * 0.42, 12, 0x8a6644, 0).setDepth(48);
+      els.push(head);
+
+      // Body rises
+      const body = this.add.rectangle(W * 0.58, H * 0.48, 24, 8, 0x3a3a3a, 0).setDepth(48);
+      els.push(body);
+
+      // Stand up animation
+      this.tweens.add({
+        targets: head, alpha: 0.9, y: H * 0.36, duration: 500, ease: 'Back.easeOut',
+      });
+      this.tweens.add({
+        targets: body, alpha: 0.8, scaleY: 4, y: H * 0.42, duration: 500, ease: 'Back.easeOut',
+      });
+
+      // Big red "!" with impact
+      this.time.delayedCall(350, () => {
+        const excl = this.add.text(W * 0.58, H * 0.26, '!', {
+          fontFamily: 'Impact', fontSize: '48px', color: '#ff2222',
+          shadow: { offsetX: 0, offsetY: 0, color: '#ff0000', blur: 20, fill: true },
+        }).setOrigin(0.5).setDepth(50).setAlpha(0).setScale(3);
+        els.push(excl);
+        this.tweens.add({ targets: excl, alpha: 1, scaleX: 1, scaleY: 1, duration: 200, ease: 'Back.easeOut' });
+
+        SoundManager.get().playBossRoar();
+        this.cameras.main.shake(300, 0.015);
+      });
+    });
+
+    // ── PHASE 5 (4.2s): Transition to boss fight ──
+    this.time.delayedCall(4200, () => {
+      this.cameras.main.flash(250, 255, 255, 255);
+      for (const el of els) { if (el && el.active) el.destroy(); }
       this._startBossFight();
     });
   }
@@ -2083,7 +2228,18 @@ export default class DroneScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
   _startBossFight() {
     this.phase = 'boss';
+    // Switch to combat preset (adds shoot/missile/dash buttons on mobile)
+    this.inputManager.setPreset('combat');
     MusicManager.get().playLevel4Music('command');
+
+    // Stop infiltration drone hum (120s duration — would leak otherwise)
+    if (this._infiltrationDroneRef) {
+      try {
+        if (this._infiltrationDroneRef.source) this._infiltrationDroneRef.source.stop();
+        if (this._infiltrationDroneRef.osc) this._infiltrationDroneRef.osc.stop();
+      } catch (e) { /* already stopped */ }
+      this._infiltrationDroneRef = null;
+    }
 
     // Underground tunnel ambient
     this._stopAmbient();
@@ -2124,6 +2280,8 @@ export default class DroneScene extends Phaser.Scene {
     this.bossVisible = false;
     this.bossActive = false;
     this.bossPhase = 1;
+    this._phase2Triggered = false;
+    this._phase3Triggered = false;
     this.bossState = 'hiding';
     this.bossStateTimer = BOSS_P1_HIDE_MIN + Math.random() * (BOSS_P1_HIDE_MAX - BOSS_P1_HIDE_MIN);
     this.bossPeekScale = 0.4;
@@ -2450,6 +2608,10 @@ export default class DroneScene extends Phaser.Scene {
       if (this.bossSprite) {
         this.tweens.add({ targets: this.bossSprite, alpha: 0.2, duration: 60, yoyo: true, repeat: 8 });
       }
+      if (!this._phase3Triggered) {
+        this._phase3Triggered = true;
+        bossPhaseTransition(this, 'PHASE 3 — DESPERATE', 0xff0000);
+      }
     } else if (hpRatio <= BOSS_PHASE2_THRESHOLD && this.bossPhase < 2) {
       this.bossPhase = 2;
       this.bossState = 'moving';
@@ -2471,6 +2633,10 @@ export default class DroneScene extends Phaser.Scene {
             ease: 'Sine.easeInOut',
           });
         }
+      }
+      if (!this._phase2Triggered) {
+        this._phase2Triggered = true;
+        bossPhaseTransition(this, 'PHASE 2 — HUNTING', 0xff8800);
       }
     }
 
@@ -3260,6 +3426,10 @@ export default class DroneScene extends Phaser.Scene {
     this.bossHP -= amount;
     SoundManager.get().playBossHit();
 
+    // GameJuice: impact particles + screen flash on boss hit
+    impactParticles(this, this.bossX, this.bossY, { count: 8, colors: [0xff4444, 0xff8800, 0xffcc00], speed: 100 });
+    screenFlash(this, 0xffffff, 80, 0.2);
+
     // White flash → red flash → clear
     if (this.bossSprite) {
       this.bossSprite.setTint(0xffffff);
@@ -3979,10 +4149,11 @@ export default class DroneScene extends Phaser.Scene {
   // VICTORY / RESULTS
   // ═════════════════════════════════════════════════════════════
   _showVictory() {
+    if (this.phase === 'victory') return;
     this.phase = 'victory';
     this.instrText.setVisible(false);
     this._stopAmbient();
-    MusicManager.get().stop(1);
+    try { MusicManager.get().stop(1); } catch (e) { /* audio may fail */ }
 
     // Clear checkpoint on level completion
     try { localStorage.removeItem('superzion_checkpoint_l4'); } catch (e) { /* ignore */ }
@@ -3997,6 +4168,14 @@ export default class DroneScene extends Phaser.Scene {
       : this.bossHP <= this.bossMaxHP * 0.5 ? 1 : 0;
 
     try { localStorage.setItem('superzion_stars_4', String(starCount)); } catch(e) { /* ignore */ }
+
+    // Save level progress: completing level 3 (DroneScene) unlocks level 4
+    if (missionSuccess) {
+      try {
+        const prev = parseInt(localStorage.getItem('superzion_level_progress') || '1');
+        if (4 > prev) localStorage.setItem('superzion_level_progress', '4');
+      } catch(e) {}
+    }
 
     const bossStatus = this.bossDefeated ? 'ELIMINATED' : `${this.bossHP}/${this.bossMaxHP} HP remaining`;
     const stats = [
@@ -4030,17 +4209,18 @@ export default class DroneScene extends Phaser.Scene {
   update(time, delta) {
     // Tutorial active: skip all gameplay
     if (this.tutorialActive) return;
+    this.inputManager.update();
 
     const dt = delta / 1000;
 
     // Mute toggle
-    if (Phaser.Input.Keyboard.JustDown(this.keys.m)) {
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.m) || this.inputManager.justDown('mute')) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
 
     // ESC pause
-    if (Phaser.Input.Keyboard.JustDown(this.keys.esc) && this.phase !== 'victory') {
+    if ((Phaser.Input.Keyboard.JustDown(this._rawKeys.esc) || this.inputManager.justDown('pause')) && this.phase !== 'victory' && this.phase !== 'dead') {
       this._togglePause();
       return;
     }
@@ -4074,10 +4254,19 @@ export default class DroneScene extends Phaser.Scene {
   }
 
   shutdown() {
+    this.time.timeScale = 1;
     if (this._endScreen) this._endScreen.destroy();
     this._cleanupCityIntro();
     this._cleanupBoss();
     this._stopAmbient();
+    // Stop infiltration drone hum if still playing
+    if (this._infiltrationDroneRef) {
+      try {
+        if (this._infiltrationDroneRef.source) this._infiltrationDroneRef.source.stop();
+        if (this._infiltrationDroneRef.osc) this._infiltrationDroneRef.osc.stop();
+      } catch (e) { /* ok */ }
+      this._infiltrationDroneRef = null;
+    }
     this.tweens.killAll();
     this.time.removeAllEvents();
   }

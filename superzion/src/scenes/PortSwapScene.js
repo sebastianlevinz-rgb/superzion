@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
-// PortSwapScene — Level 2: Operation Explosive Interception
-// Top-down stealth: infiltrate Beirut port, find container, swap, escape
+// PortSwapScene — Level 2: Operation Grim Beeper
+// Top-down stealth: infiltrate Hong Kong port, find the beeper
+// shipment container, plant explosives inside, and escape
 // ═══════════════════════════════════════════════════════════════
 
 import Phaser from 'phaser';
@@ -10,6 +11,8 @@ import DifficultyManager from '../systems/DifficultyManager.js';
 import { generatePortSwapTextures } from '../utils/PortSwapTextures.js';
 import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
 import { showControlsOverlay } from '../ui/ControlsOverlay.js';
+import InputManager from '../systems/InputManager.js';
+import { screenFlash, hitFeedback } from '../systems/GameJuice.js';
 
 const W = 960;
 const H = 540;
@@ -26,16 +29,16 @@ const SPRINT_SPEED  = 170;
 const SCAN_TIME     = 1500;
 
 // ── Swap sub-steps (ms) ──
-const SWAP_REMOVE  = 3000;
-const SWAP_PLANT   = 2000;
-const SWAP_CLOSE   = 1000;
+const SWAP_REMOVE  = 2000;
+const SWAP_PLANT   = 1500;
+const SWAP_CLOSE   = 800;
 
 // ── Suspicion ──
-const SUS_GUARD_RATE   = 20;   // %/s in guard cone
-const SUS_CAMERA_RATE  = 15;   // %/s in camera cone
-const SUS_DECAY_RATE   = 5;    // %/s passive
-const SUS_WORKER_DECAY = 3;    // extra %/s near workers
-const SUS_SPRINT_ADD   = 4;    // %/s while sprinting near guard
+const SUS_GUARD_RATE   = 14;   // %/s in guard cone
+const SUS_CAMERA_RATE  = 10;   // %/s in camera cone
+const SUS_DECAY_RATE   = 8;    // %/s passive
+const SUS_WORKER_DECAY = 4;    // extra %/s near workers
+const SUS_SPRINT_ADD   = 3;    // %/s while sprinting near guard
 const SUS_SWAP_CAUGHT  = 80;   // instant % if guard near open container
 
 // ── Guard ──
@@ -442,6 +445,7 @@ export default class PortSwapScene extends Phaser.Scene {
         distracted: false,
         distractTimer: 0,
         distractTarget: null,
+        alertTimer: 0,
       };
       this.guards.push(guard);
     }
@@ -502,12 +506,12 @@ export default class PortSwapScene extends Phaser.Scene {
       .setDepth(100).setScrollFactor(0);
 
     // Title
-    this.hudTitle = this.add.text(W / 2, 8, 'OPERATION GRIM BEEPER', {
+    this.hudTitle = this.add.text(W / 2, 8, 'HONG KONG PORT — INTERCEPT BEEPER SHIPMENT', {
       fontFamily: 'monospace', fontSize: '12px', color: '#FFD700', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setDepth(101).setScrollFactor(0);
 
     // Phase text
-    this.hudPhase = this.add.text(W / 2, 26, 'PHASE 1: LOCATE TARGET', {
+    this.hudPhase = this.add.text(W / 2, 26, 'PHASE 1: FIND BEEPER CONTAINER', {
       fontFamily: 'monospace', fontSize: '10px', color: '#00ddaa',
     }).setOrigin(0.5, 0).setDepth(101).setScrollFactor(0);
 
@@ -593,8 +597,12 @@ export default class PortSwapScene extends Phaser.Scene {
   // ════════════════════════════════════════════════════════════
 
   _setupInput() {
+    this.inputManager = new InputManager(this, {
+      preset: 'stealth',
+      keyMap: { tertiary: 'E', special: 'Q' },
+    });
     const K = Phaser.Input.Keyboard.KeyCodes;
-    this.keys = {
+    const rawKeys = {
       up:    this.input.keyboard.addKey(K.W),
       down:  this.input.keyboard.addKey(K.S),
       left:  this.input.keyboard.addKey(K.A),
@@ -614,6 +622,13 @@ export default class PortSwapScene extends Phaser.Scene {
       yKey:   this.input.keyboard.addKey(K.Y),
       nKey:   this.input.keyboard.addKey(K.N),
     };
+    this.keys = this.inputManager.enhanceKeys(rawKeys, {
+      up: 'up', down: 'down', left: 'left', right: 'right',
+      arrowUp: 'up', arrowDown: 'down', arrowLeft: 'left', arrowRight: 'right',
+      space: 'primary', interact: 'tertiary', distract: 'special',
+      sprint: 'secondary', esc: 'pause',
+    });
+    this._rawKeys = rawKeys;
   }
 
   // ════════════════════════════════════════════════════════════
@@ -644,13 +659,14 @@ export default class PortSwapScene extends Phaser.Scene {
     this._briefingActive = true;
     const markings = this.intel.text[2].replace('Has ', '').toUpperCase();
     const lines = [
-      `FIND THE ${this.intel.color.toUpperCase()} CONTAINER`,
+      `LOCATE THE ${this.intel.color.toUpperCase()} CONTAINER`,
       `WITH ${markings}`,
       `IN THE ${this.intel.zone.toUpperCase()} DOCK`,
+      `PLANT EXPLOSIVES IN THE BEEPERS INSIDE`,
     ];
     const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.85)
       .setDepth(500).setScrollFactor(0);
-    const title = this.add.text(W / 2, H / 2 - 80, 'MISSION OBJECTIVE', {
+    const title = this.add.text(W / 2, H / 2 - 90, 'INTERCEPT BEEPER SHIPMENT', {
       fontFamily: 'monospace', fontSize: '14px', color: '#00ddaa',
     }).setOrigin(0.5).setDepth(501).setScrollFactor(0);
     const obj = this.add.text(W / 2, H / 2 - 10, lines.join('\n'), {
@@ -753,6 +769,8 @@ export default class PortSwapScene extends Phaser.Scene {
   // ════════════════════════════════════════════════════════════
 
   update(time, delta) {
+    this.inputManager.update();
+
     if (this.missionFailed || this.missionComplete) {
       this._handleEndInput();
       return;
@@ -765,7 +783,7 @@ export default class PortSwapScene extends Phaser.Scene {
     }
 
     // Mute
-    if (Phaser.Input.Keyboard.JustDown(this.keys.mute)) {
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.mute) || this.inputManager.justDown('mute')) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
@@ -1005,13 +1023,17 @@ export default class PortSwapScene extends Phaser.Scene {
   _updateSuspicion(dt) {
     let susIncrease = 0;
     let inCone = false;
+    let detectingGuard = null;
 
-    // Guard vision cones
+    // Guard vision cones (with LOS blocking)
     for (const guard of this.guards) {
       if (this._isInGuardCone(guard)) {
+        // Check if line of sight is blocked by containers
+        if (this._isLineBlocked(guard.sprite.x, guard.sprite.y, this.player.x, this.player.y)) continue;
         if (!this.isHiding) {
           susIncrease += SUS_GUARD_RATE;
           inCone = true;
+          detectingGuard = guard;
         }
       }
     }
@@ -1040,17 +1062,52 @@ export default class PortSwapScene extends Phaser.Scene {
     // Apply increase
     if (susIncrease > 0) {
       this.suspicion += susIncrease * dt;
+
+      // Guard communication: when suspicion > 70%, alert nearby guards
+      if (this.suspicion > 70 && detectingGuard) {
+        for (const otherGuard of this.guards) {
+          if (otherGuard === detectingGuard) continue;
+          const dist = Phaser.Math.Distance.Between(
+            detectingGuard.sprite.x, detectingGuard.sprite.y,
+            otherGuard.sprite.x, otherGuard.sprite.y
+          );
+          if (dist < 200) {
+            otherGuard.alertTimer = 5;
+            otherGuard.sprite.setTint(0xffaa00);
+          }
+        }
+      }
+
       if (inCone && !this._detectionFlashing) {
         this._detectionFlashing = true;
         this.cameras.main.flash(200, 255, 50, 50);
         SoundManager.get().playSearchlightDetect();
         this.time.delayedCall(1500, () => { this._detectionFlashing = false; });
       }
+
+      // Detection visual feedback at 50%
+      if (this.suspicion > 50 && !this._sus50Flashed) {
+        this._sus50Flashed = true;
+        screenFlash(this, 0xff0000, 100, 0.1);
+      }
     } else {
       // Decay
       let decay = SUS_DECAY_RATE;
       if (this.nearWorker) decay += SUS_WORKER_DECAY;
       this.suspicion -= decay * dt;
+      // Reset 50% flash flag when suspicion drops below 40
+      if (this.suspicion < 40) this._sus50Flashed = false;
+    }
+
+    // Decrement guard alert timers and clear tint
+    for (const guard of this.guards) {
+      if (guard.alertTimer > 0) {
+        guard.alertTimer -= dt;
+        if (guard.alertTimer <= 0) {
+          guard.alertTimer = 0;
+          guard.sprite.clearTint();
+        }
+      }
     }
 
     this.suspicion = Phaser.Math.Clamp(this.suspicion, 0, 100);
@@ -1058,6 +1115,7 @@ export default class PortSwapScene extends Phaser.Scene {
 
     // Alert! — mission failed
     if (this.suspicion >= 100) {
+      hitFeedback(this, { color: 0xff0000, shakeIntensity: 0.02, freezeMs: 60 });
       this._missionFailed('DETECTED — COVER BLOWN');
     }
   }
@@ -1097,6 +1155,24 @@ export default class PortSwapScene extends Phaser.Scene {
       case 'up':    return -Math.PI / 2;
     }
     return 0;
+  }
+
+  // Line-of-sight blocking: check if any container blocks the line from guard to player
+  _isLineBlocked(x1, y1, x2, y2) {
+    for (const c of this.containers) {
+      if (!c || !c.sprite || !c.sprite.active) continue;
+      const cx = c.sprite.x, cy = c.sprite.y;
+      const hw = 20, hh = 9; // half-width, half-height of container body
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 1) continue;
+      // Check 5 points along the line
+      for (let t = 0.2; t <= 0.8; t += 0.15) {
+        const px = x1 + dx * t, py = y1 + dy * t;
+        if (px > cx - hw && px < cx + hw && py > cy - hh && py < cy + hh) return true;
+      }
+    }
+    return false;
   }
 
   // ════════════════════════════════════════════════════════════
@@ -1321,7 +1397,7 @@ export default class PortSwapScene extends Phaser.Scene {
     SoundManager.get().playInterceptSuccess();
     MusicManager.get().playLevel2Music(true); // intense mode
 
-    this.hudPhase.setText('PHASE 3: EVACUATE');
+    this.hudPhase.setText('PHASE 3: GET OUT — SHIPMENT RIGGED');
     this.promptText.setText('ESCAPE TO EXIT — GO SOUTH').setAlpha(1).setColor('#ff3333');
     this._showBigMessage('ESCAPE TO EXIT — GO SOUTH', '#ff3333', 4000);
 
@@ -1468,7 +1544,7 @@ export default class PortSwapScene extends Phaser.Scene {
       this.phase = PHASE_SWAP;
       this.swapStep = 1;
       this.swapProgress = 0;
-      this.hudPhase.setText('PHASE 2: SWAP PACKAGE');
+      this.hudPhase.setText('PHASE 2: PLANT EXPLOSIVES IN BEEPERS');
       this.promptText.setAlpha(0);
       SoundManager.get().playDoorOpen();
     }

@@ -10,15 +10,19 @@ import { createPlatformerLevel1Textures } from '../utils/PlatformerLevel1Texture
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.js';
+import InputManager from '../systems/InputManager.js';
+import { screenFlash, impactParticles, hitFeedback } from '../systems/GameJuice.js';
 
 const W = 960;
 const H = 540;
-const WORLD_WIDTH = 1600; // short warm-up level (~1.5 screens)
+const WORLD_WIDTH = 2400; // longer warm-up level
 // Player scale is 1 (no scaling needed)
 const PLAYER_SPEED = 200;
 const JUMP_VELOCITY = -420;
 const COYOTE_TIME = 80;   // ms
 const JUMP_BUFFER = 100;  // ms
+const BULLET_SPEED = 500;
+const SHOOT_COOLDOWN = 300; // ms
 
 // ===================================================================
 // RooftopGuard -- inline guard class for platformer patrols
@@ -41,6 +45,11 @@ class RooftopGuard {
     this.patrolMaxX = x + patrolRange;
     this.dir = 1; // 1=right, -1=left
     this.speed = 50;
+    this.basePatrolSpeed = 50;
+
+    // Alert state
+    this.alertTimer = 0;
+    this.isAlert = false;
 
     // Walk animation
     this.walkFrame = 0;
@@ -52,17 +61,42 @@ class RooftopGuard {
     });
   }
 
-  update(delta) {
+  update(delta, playerSprite) {
     // Only move when on ground -- NEVER float
     if (!this.sprite.body.blocked.down) return;
 
-    // Patrol left/right
+    // Alert state: detect nearby player
+    if (playerSprite && playerSprite.active) {
+      const distToPlayer = Phaser.Math.Distance.Between(
+        this.sprite.x, this.sprite.y, playerSprite.x, playerSprite.y
+      );
+
+      if (distToPlayer < 150) {
+        // Alert: move toward player
+        this.isAlert = true;
+        this.speed = 90;
+        const dx = playerSprite.x - this.sprite.x;
+        this.dir = dx > 0 ? 1 : -1;
+        this.sprite.setTint(0xff4444);
+      } else if (distToPlayer > 200) {
+        // Resume patrol
+        if (this.isAlert) {
+          this.isAlert = false;
+          this.speed = this.basePatrolSpeed;
+          this.sprite.clearTint();
+        }
+      }
+    }
+
+    // Patrol left/right (or chase if alert)
     this.sprite.body.setVelocityX(this.speed * this.dir);
 
-    if (this.sprite.x >= this.patrolMaxX && this.dir > 0) {
-      this.dir = -1;
-    } else if (this.sprite.x <= this.patrolMinX && this.dir < 0) {
-      this.dir = 1;
+    if (!this.isAlert) {
+      if (this.sprite.x >= this.patrolMaxX && this.dir > 0) {
+        this.dir = -1;
+      } else if (this.sprite.x <= this.patrolMinX && this.dir < 0) {
+        this.dir = 1;
+      }
     }
 
     // Flip sprite based on direction
@@ -87,6 +121,9 @@ export default class PlatformerScene extends Phaser.Scene {
   }
 
   create() {
+    // Reset timeScale — Phaser doesn't reset it on scene restart
+    this.time.timeScale = 1;
+
     // ── Background color (bright daytime sky) ──
     this.cameras.main.setBackgroundColor('#87CEEB');
 
@@ -97,7 +134,8 @@ export default class PlatformerScene extends Phaser.Scene {
     createPlatformerLevel1Textures(this);
 
     // ── Controls overlay ──
-    this._controlsOverlay = showControlsOverlay(this, 'ARROWS: Move/Jump | ESC: Pause');
+    this._controlsOverlay = showControlsOverlay(this, 'ARROWS: Move/Jump | SPACE: Shoot | ESC: Pause');
+    this.events.once('shutdown', this.shutdown, this);
 
     // ── Physics world bounds — hard floor at street level (y=490) ──
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, 492);
@@ -124,11 +162,13 @@ export default class PlatformerScene extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     // ── Input ──
+    this.inputManager = new InputManager(this, { preset: 'platformer' });
     this.cursors = this.input.keyboard.createCursorKeys();
     this.escKey = this.input.keyboard.addKey('ESC');
     this.rKey = this.input.keyboard.addKey('R');
     this.qKey = this.input.keyboard.addKey('Q');
     this.mKey = this.input.keyboard.addKey('M');
+    this.spaceKey = this.input.keyboard.addKey('SPACE');
     this.pKey = this.input.keyboard.addKey('P');
     this.yKey = this.input.keyboard.addKey('Y');
     this.nKey = this.input.keyboard.addKey('N');
@@ -158,6 +198,12 @@ export default class PlatformerScene extends Phaser.Scene {
     this.playerRunFrame = 0;
     this.playerRunTimer = 0;
 
+    // ── Shooting state ──
+    this.shootCooldown = 0;
+    this.bullets = [];
+    this.guardsKilled = 0;
+    this.playerFacing = 1; // 1=right, -1=left
+
     // ── Coyote/jump buffer ──
     this.lastOnGround = 0;
     this.jumpBufferTimer = 0;
@@ -173,7 +219,7 @@ export default class PlatformerScene extends Phaser.Scene {
     showTutorialOverlay(this, [
       'LEVEL 1: The Tehran Guest Room',
       '',
-      'ARROWS: Move & Jump',
+      'ARROWS: Move & Jump | SPACE: Shoot',
       'Reach the target building',
       'Then: SPACE to place bombs',
       'Find the KEY to unlock the exit',
@@ -271,8 +317,11 @@ export default class PlatformerScene extends Phaser.Scene {
       { x: 560,  y: 395, sx: 8,  sy: 0.75 },  // Step up
       { x: 800,  y: 360, sx: 8,  sy: 0.75 },  // Step up (guard here)
       { x: 1060, y: 330, sx: 6,  sy: 0.75 },  // Jump across
-      { x: 1320, y: 360, sx: 12, sy: 0.75 },  // Target building roof
-      { x: 1540, y: 360, sx: 7,  sy: 0.75 },  // Target building extension
+      { x: 1300, y: 370, sx: 8,  sy: 0.75 },  // Mid section
+      { x: 1550, y: 340, sx: 6,  sy: 0.75 },  // Higher platform
+      { x: 1780, y: 370, sx: 8,  sy: 0.75 },  // Lower step
+      { x: 2020, y: 340, sx: 12, sy: 0.75 },  // Target building roof
+      { x: 2280, y: 340, sx: 7,  sy: 0.75 },  // Target extension
     ];
 
     for (const def of layout) {
@@ -298,7 +347,8 @@ export default class PlatformerScene extends Phaser.Scene {
     const waterTanks = [
       { x: 140, y: 408 },   // starting platform
       { x: 830, y: 338 },   // 3rd platform
-      { x: 1340, y: 338 },  // target building roof
+      { x: 1550, y: 318 },  // higher platform
+      { x: 2040, y: 318 },  // target building roof
     ];
     for (const wt of waterTanks) {
       // Tank body (gray rectangle with rounded top)
@@ -317,7 +367,8 @@ export default class PlatformerScene extends Phaser.Scene {
     const dishes = [
       { x: 520, y: 375 },
       { x: 1100, y: 310 },
-      { x: 1500, y: 340 },
+      { x: 1780, y: 350 },
+      { x: 2250, y: 320 },
     ];
     for (const d of dishes) {
       // Stem
@@ -338,6 +389,8 @@ export default class PlatformerScene extends Phaser.Scene {
       { x: 240, y: 415 },
       { x: 580, y: 380 },
       { x: 1070, y: 315 },
+      { x: 1320, y: 355 },
+      { x: 2000, y: 325 },
     ];
     for (const ac of acUnits) {
       roofGfx.fillStyle(0x777777, 0.6);
@@ -354,7 +407,8 @@ export default class PlatformerScene extends Phaser.Scene {
     // Laundry lines between platforms (thin colored lines)
     const laundryLines = [
       { x1: 450, y1: 400, x2: 530, y2: 375, color: 0xee8844 },
-      { x1: 1280, y1: 345, x2: 1360, y2: 345, color: 0xeeeeee },
+      { x1: 1280, y1: 355, x2: 1360, y2: 355, color: 0xeeeeee },
+      { x1: 1960, y1: 325, x2: 2060, y2: 325, color: 0xccccff },
     ];
     for (const ll of laundryLines) {
       // Main line
@@ -397,6 +451,7 @@ export default class PlatformerScene extends Phaser.Scene {
     // Minimal obstacles for short warm-up level
     this.secCameras = [
       { x: 600, y: 350, angleMin: 0.8, angleMax: 2.2, speed: 0.5, length: 100, halfAngle: 0.3 },
+      { x: 1600, y: 300, angleMin: 0.8, angleMax: 2.2, speed: 0.6, length: 100, halfAngle: 0.3 },
     ];
     for (const cam of this.secCameras) {
       cam.currentAngle = cam.angleMin;
@@ -414,8 +469,30 @@ export default class PlatformerScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════
   _createGuards() {
     this.guards = [];
-    // One guard on the middle platform — just enough to add tension
     this.guards.push(new RooftopGuard(this, 800, 320, 80));
+    this.guards.push(new RooftopGuard(this, 1300, 330, 60));
+    this.guards.push(new RooftopGuard(this, 1780, 330, 70));
+    this.guards.push(new RooftopGuard(this, 2020, 300, 90));
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SHOOTING
+  // ═══════════════════════════════════════════════════════════════
+  _fireBullet() {
+    if (this.shootCooldown > 0 || this.gameOver || this.transitioning) return;
+    this.shootCooldown = SHOOT_COOLDOWN;
+
+    const bx = this.player.x + this.playerFacing * 20;
+    const by = this.player.y - 5;
+    const bullet = this.add.circle(bx, by, 3, 0xffcc00).setDepth(11);
+    this.bullets.push({ sprite: bullet, x: bx, y: by, vx: BULLET_SPEED * this.playerFacing });
+
+    try { SoundManager.get().playAfterburner(); } catch (e) { /* audio */ }
+
+    // Muzzle flash (GameJuice screen flash + local circle)
+    screenFlash(this, 0xffff88, 60, 0.15);
+    const flash = this.add.circle(bx, by, 6, 0xffff00, 0.8).setDepth(11);
+    this.tweens.add({ targets: flash, alpha: 0, scale: 2, duration: 100, onComplete: () => flash.destroy() });
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -423,10 +500,10 @@ export default class PlatformerScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════
   _createTarget() {
     // Target building — at the end of the short route
-    this.targetBuilding = this.add.image(1400, 280, 'plt_target_building').setDepth(5);
+    this.targetBuilding = this.add.image(2100, 280, 'plt_target_building').setDepth(5);
 
     // Golden glow/pulse around window area
-    this.targetGlow = this.add.rectangle(1400, 280, 70, 70, 0xffd700, 0.15).setDepth(4);
+    this.targetGlow = this.add.rectangle(2100, 280, 70, 70, 0xffd700, 0.15).setDepth(4);
     this.tweens.add({
       targets: this.targetGlow,
       alpha: 0.35,
@@ -437,7 +514,7 @@ export default class PlatformerScene extends Phaser.Scene {
     });
 
     // Overlap trigger zone at window
-    this.targetZone = this.add.zone(1400, 290, 60, 60);
+    this.targetZone = this.add.zone(2100, 290, 60, 60);
     this.physics.add.existing(this.targetZone, true);
     this.physics.add.overlap(this.player, this.targetZone, () => {
       this._enterBuilding();
@@ -547,7 +624,7 @@ export default class PlatformerScene extends Phaser.Scene {
 
     this.tweens.add({ targets: failText, alpha: 1, duration: 400 });
 
-    SoundManager.get().playDeath();
+    SoundManager.get().playGameOver();
     this.cameras.main.shake(300, 0.01);
 
     // Restart after delay
@@ -759,11 +836,14 @@ export default class PlatformerScene extends Phaser.Scene {
   // MAIN UPDATE LOOP
   // ═══════════════════════════════════════════════════════════════
   update(time, delta) {
+    const im = this.inputManager;
+    im.update();
+
     // ── Tutorial active: skip all gameplay ──
     if (this.tutorialActive) return;
 
     // ── Mute toggle ──
-    if (Phaser.Input.Keyboard.JustDown(this.mKey)) {
+    if (Phaser.Input.Keyboard.JustDown(this.mKey) || im.justDown('mute')) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
@@ -796,7 +876,7 @@ export default class PlatformerScene extends Phaser.Scene {
     }
 
     // ── Pause toggle ──
-    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+    if (Phaser.Input.Keyboard.JustDown(this.escKey) || im.justDown('pause')) {
       if (!this.gameOver && !this.transitioning) {
         this._togglePause();
       }
@@ -826,19 +906,21 @@ export default class PlatformerScene extends Phaser.Scene {
     }
 
     // Left/right movement
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || im.left) {
       this.player.body.setVelocityX(-PLAYER_SPEED);
       this.player.setFlipX(true);
-    } else if (this.cursors.right.isDown) {
+      this.playerFacing = -1;
+    } else if (this.cursors.right.isDown || im.right) {
       this.player.body.setVelocityX(PLAYER_SPEED);
       this.player.setFlipX(false);
+      this.playerFacing = 1;
     } else {
       this.player.body.setVelocityX(0);
     }
 
     // Jump handling with coyote time and jump buffer
     const canCoyoteJump = (time - this.lastOnGround) < COYOTE_TIME;
-    const wantsJump = Phaser.Input.Keyboard.JustDown(this.cursors.up);
+    const wantsJump = Phaser.Input.Keyboard.JustDown(this.cursors.up) || im.justDown('jump');
 
     if (wantsJump) {
       this.jumpBufferTimer = time;
@@ -867,7 +949,7 @@ export default class PlatformerScene extends Phaser.Scene {
       // In air
       this.player.setTexture('plt_player_jump');
       this.playerAnimState = 'jump';
-    } else if (this.cursors.left.isDown || this.cursors.right.isDown) {
+    } else if (this.cursors.left.isDown || this.cursors.right.isDown || im.left || im.right) {
       // On ground + moving: cycle run frames
       this.playerRunTimer += delta;
       if (this.playerRunTimer > 120) {
@@ -886,7 +968,45 @@ export default class PlatformerScene extends Phaser.Scene {
 
     // ── Guard updates ──
     for (const g of this.guards) {
-      g.update(delta);
+      g.update(delta, this.player);
+    }
+
+    // ── Bullets ──
+    if (this.shootCooldown > 0) this.shootCooldown -= delta;
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) || im.justDown('primary')) this._fireBullet();
+
+    for (let i = this.bullets.length - 1; i >= 0; i--) {
+      const b = this.bullets[i];
+      b.x += b.vx * delta / 1000;
+      b.sprite.setPosition(b.x, b.y);
+
+      // Check guard hits
+      let hit = false;
+      for (let g = this.guards.length - 1; g >= 0; g--) {
+        const guard = this.guards[g];
+        const dx = b.x - guard.sprite.x;
+        const dy = b.y - guard.sprite.y;
+        if (dx * dx + dy * dy < 400) { // 20px radius
+          // Kill guard
+          this.guardsKilled++;
+          const guardX = guard.sprite.x, guardY = guard.sprite.y;
+          guard.sprite.destroy();
+          this.guards.splice(g, 1);
+          hit = true;
+
+          // Impact feedback (GameJuice)
+          impactParticles(this, guardX, guardY, { count: 10, colors: [0xff6600, 0xff8800, 0xffaa00], speed: 150 });
+          this.cameras.main.shake(150, 0.008);
+          try { SoundManager.get().playExplosion(); } catch(e) {}
+          break;
+        }
+      }
+
+      // Remove if hit or off screen
+      if (hit || b.x < -20 || b.x > WORLD_WIDTH + 20) {
+        b.sprite.destroy();
+        this.bullets.splice(i, 1);
+      }
     }
 
     // ── Obstacle updates ──

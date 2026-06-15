@@ -83,7 +83,9 @@ function _makeButton(scene, x, y, label, borderColor, textColor) {
 
 function _transitionTo(scene, targetScene, onBeforeTransition) {
   if (onBeforeTransition) onBeforeTransition();
-  MusicManager.get().stop(0.3);
+  // Always restore timeScale before transitioning — Phaser does NOT reset it on scene restart
+  scene.time.timeScale = 1;
+  try { MusicManager.get().stop(0.3); } catch (e) { /* audio may fail */ }
   scene.cameras.main.fadeOut(300);
   scene.time.delayedCall(350, () => {
     scene.scene.start(targetScene);
@@ -156,18 +158,25 @@ export function showVictoryScreen(scene, opts = {}) {
   elements.push(escLabel);
 
   // 6. Key handling (delayed 500ms to prevent accidental skip)
+  let transitionStarted = false;
   scene.time.delayedCall(500, () => {
     const rKey = scene.input.keyboard.addKey('R');
     const enterKey = scene.input.keyboard.addKey('ENTER');
     const escKey = scene.input.keyboard.addKey('ESC');
 
     const rHandler = () => {
+      if (transitionStarted) return;
+      transitionStarted = true;
       _transitionTo(scene, currentScene, onBeforeTransition);
     };
     const enterHandler = () => {
+      if (transitionStarted) return;
+      transitionStarted = true;
       _transitionTo(scene, nextScene, onBeforeTransition);
     };
     const escHandler = () => {
+      if (transitionStarted) return;
+      transitionStarted = true;
       _transitionTo(scene, 'MenuScene', onBeforeTransition);
     };
 
@@ -178,6 +187,12 @@ export function showVictoryScreen(scene, opts = {}) {
     cleanups.push({ key: rKey, handler: rHandler });
     cleanups.push({ key: enterKey, handler: enterHandler });
     cleanups.push({ key: escKey, handler: escHandler });
+
+    // Mobile: make buttons tappable
+    restartBtn.btn.setInteractive();
+    restartBtn.btn.on('pointerdown', rHandler);
+    nextBtn.btn.setInteractive();
+    nextBtn.btn.on('pointerdown', enterHandler);
   });
 
   function destroy() {
@@ -220,23 +235,19 @@ export function showDefeatScreen(scene, opts = {}) {
 
   // ── Dramatic death effects (before overlay) ──
 
-  // 1. Red tint flash
-  const redFlash = scene.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0.3)
+  // 1. Red tint flash (long fade for dramatic effect)
+  const redFlash = scene.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0.4)
     .setDepth(499).setScrollFactor(0);
   scene.tweens.add({
-    targets: redFlash, alpha: 0, duration: 800,
+    targets: redFlash, alpha: 0, duration: 1000,
     onComplete: () => { redFlash.destroy(); },
   });
 
-  // 2. Camera slow-mo effect (brief pause)
-  scene.time.timeScale = 0.3;
-  scene.time.delayedCall(400, () => { scene.time.timeScale = 1; });
+  // 2. Screen shake (stronger for impact)
+  scene.cameras.main.shake(600, 0.025);
 
-  // 3. Screen shake
-  scene.cameras.main.shake(500, 0.02);
-
-  // 4. Heartbeat sound
-  SoundManager.get().playHeartbeat();
+  // 3. Heartbeat sound
+  try { SoundManager.get().playHeartbeat(); } catch (e) { /* audio may fail */ }
 
   // ── Overlay and UI (shown after brief dramatic pause) ──
 
@@ -303,18 +314,25 @@ export function showDefeatScreen(scene, opts = {}) {
   elements.push(escLabel);
 
   // 5. Key handling (delayed 800ms to allow dramatic effects to play out)
+  let transitionStarted = false;
   scene.time.delayedCall(800, () => {
     const rKey = scene.input.keyboard.addKey('R');
     const sKey = scene.input.keyboard.addKey('S');
     const escKey = scene.input.keyboard.addKey('ESC');
 
     const rHandler = () => {
+      if (transitionStarted) return;
+      transitionStarted = true;
       _transitionTo(scene, currentScene, onBeforeTransition);
     };
     const sHandler = () => {
+      if (transitionStarted) return;
+      transitionStarted = true;
       _transitionTo(scene, skipScene, onBeforeTransition);
     };
     const escHandler = () => {
+      if (transitionStarted) return;
+      transitionStarted = true;
       _transitionTo(scene, 'MenuScene', onBeforeTransition);
     };
 
@@ -325,9 +343,16 @@ export function showDefeatScreen(scene, opts = {}) {
     cleanups.push({ key: rKey, handler: rHandler });
     cleanups.push({ key: sKey, handler: sHandler });
     cleanups.push({ key: escKey, handler: escHandler });
+
+    // Mobile: make buttons tappable
+    retryBtn.btn.setInteractive();
+    retryBtn.btn.on('pointerdown', rHandler);
+    skipBtn.btn.setInteractive();
+    skipBtn.btn.on('pointerdown', sHandler);
   });
 
   function destroy() {
+    scene.time.timeScale = 1; // safety: always restore on cleanup
     if (typewriterEvent) typewriterEvent.destroy();
     for (const c of cleanups) {
       c.key.off('down', c.handler);

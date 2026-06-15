@@ -16,6 +16,8 @@ import {
 } from '../utils/BossTextures.js';
 import { showVictoryScreen, showDefeatScreen } from '../ui/EndScreen.js';
 import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.js';
+import InputManager from '../systems/InputManager.js';
+import { screenFlash, impactParticles, bossPhaseTransition, hitFeedback, impactFreeze } from '../systems/GameJuice.js';
 
 const W = 960;
 const H = 540;
@@ -50,10 +52,14 @@ export default class BossScene extends Phaser.Scene {
   constructor() { super('BossScene'); }
 
   create() {
+    // Reset timeScale — Phaser doesn't reset it on scene restart
+    this.time.timeScale = 1;
+
     this.cameras.main.setBackgroundColor('#000000');
 
     // Controls overlay
     showControlsOverlay(this, 'ARROWS: Move | SPACE: Shoot | X: Heavy Bomb | SHIFT: Roll | C: Pulse');
+    this.events.once('shutdown', this.shutdown, this);
 
     // Generate textures
     createPlayerFighter(this);
@@ -485,7 +491,8 @@ export default class BossScene extends Phaser.Scene {
   }
 
   _setupInput() {
-    this.keys = {
+    this.inputManager = new InputManager(this, { preset: 'boss' });
+    const rawKeys = {
       left: this.input.keyboard.addKey('LEFT'),
       right: this.input.keyboard.addKey('RIGHT'),
       up: this.input.keyboard.addKey('UP'),
@@ -500,6 +507,12 @@ export default class BossScene extends Phaser.Scene {
       c: this.input.keyboard.addKey('C'),
       x: this.input.keyboard.addKey('X'),
     };
+    this.keys = this.inputManager.enhanceKeys(rawKeys, {
+      left: 'left', right: 'right', up: 'up', down: 'down',
+      space: 'primary', shift: 'secondary', c: 'tertiary', x: 'special',
+      esc: 'pause',
+    });
+    this._rawKeys = rawKeys;
     this.isPaused = false;
     this.pauseObjects = [];
   }
@@ -549,17 +562,18 @@ export default class BossScene extends Phaser.Scene {
   update(time, delta) {
     // Tutorial active: skip all gameplay
     if (this.tutorialActive) return;
+    this.inputManager.update();
 
     const dt = delta / 1000;
 
     // Mute toggle
-    if (Phaser.Input.Keyboard.JustDown(this.keys.m)) {
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.m) || this.inputManager.justDown('mute')) {
       const muted = SoundManager.get().toggleMute();
       MusicManager.get().setMuted(muted);
     }
 
     // ESC pause
-    if (Phaser.Input.Keyboard.JustDown(this.keys.esc) && this.phase !== 'victory' && this.phase !== 'dead') {
+    if ((Phaser.Input.Keyboard.JustDown(this._rawKeys.esc) || this.inputManager.justDown('pause')) && this.phase !== 'victory' && this.phase !== 'dead') {
       this._togglePause();
       return;
     }
@@ -814,6 +828,9 @@ export default class BossScene extends Phaser.Scene {
         this.cameras.main.shake(250, 0.015);
         SoundManager.get().playBossHit();
 
+        // GameJuice: heavy bomb impact particles
+        impactParticles(this, bomb.x, bomb.y, { count: 10, colors: [0xff6600, 0xff8800, 0xffaa00], speed: 120 });
+
         for (let i = 0; i < HEAVY_BOMB_DAMAGE; i++) {
           this.bunkerHP--;
           if (this.bunkerHP <= 0) break;
@@ -862,7 +879,7 @@ export default class BossScene extends Phaser.Scene {
           this.cameras.main.flash(500, 100, 100, 255);
           SoundManager.get().playBossPhaseTransition();
           MusicManager.get().playLevel6Music(2);
-          this._showCenterMessage('ROTATING SHIELD — FLANK IT!', '#8888ff');
+          bossPhaseTransition(this, 'SHIELD OVERLOAD', 0xff8800);
           this.instrText.setText('Flank the rotating shield! | Dodge area bombs! | X: Bomb | Double-tap L/R: Roll');
           this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0; this.fanMissileTimer = 0;
         }
@@ -876,7 +893,7 @@ export default class BossScene extends Phaser.Scene {
           this.cameras.main.flash(500, 255, 50, 0);
           SoundManager.get().playBossPhaseTransition();
           MusicManager.get().playLevel6Music(3);
-          this._showCenterMessage('SUPREME FURY — NO SHIELD!', '#ff2222');
+          bossPhaseTransition(this, 'FINAL STAND', 0xff0000);
           this.instrText.setText('DODGE THE LASER GAP! | Double-tap L/R: Barrel Roll | X: Bomb');
           this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0; this.laserCooldown = 2;
           this.rapidShotTimer = 0;
@@ -1611,6 +1628,9 @@ export default class BossScene extends Phaser.Scene {
         this.energyShieldFlickerTimer = 0;
         SoundManager.get().playShieldDown();
         this._showCenterMessage('SHIELD DOWN — FIRE!', '#00ff00');
+        // GameJuice: shield drop visual feedback
+        screenFlash(this, 0x00aaff, 100, 0.3);
+        impactParticles(this, this.bunkerX, this.bunkerY, { count: 12, colors: [0x00aaff, 0x00ccff, 0xffffff], speed: 200 });
       }
     } else {
       // Shield is DOWN — 2 seconds of vulnerability
@@ -1654,7 +1674,7 @@ export default class BossScene extends Phaser.Scene {
           vy: (Math.random() - 0.5) * 60,
         });
       }
-      SoundManager.get().playDroneHum();
+      SoundManager.get().playDroneScan();
     });
   }
 
@@ -2348,6 +2368,9 @@ export default class BossScene extends Phaser.Scene {
         SoundManager.get().playBossHit();
         this.cameras.main.shake(100, 0.005);
 
+        // GameJuice: boss hit particles
+        impactParticles(this, b.x, b.y, { count: 10, colors: [0xff6600, 0xff8800, 0xffaa00], speed: 120 });
+
         // White flash → red flash → clear
         this.bunkerSprite.setTint(0xffffff);
         this.time.delayedCall(50, () => {
@@ -2391,7 +2414,7 @@ export default class BossScene extends Phaser.Scene {
           this.cameras.main.flash(500, 100, 100, 255);
           SoundManager.get().playBossPhaseTransition();
           MusicManager.get().playLevel6Music(2);
-          this._showCenterMessage('ROTATING SHIELD — FLANK IT!', '#8888ff');
+          bossPhaseTransition(this, 'SHIELD OVERLOAD', 0xff8800);
           this.instrText.setText('Flank the rotating shield! | Dodge area bombs! | X: Bomb | Double-tap L/R: Roll');
           this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0; this.fanMissileTimer = 0;
         }
@@ -2408,7 +2431,7 @@ export default class BossScene extends Phaser.Scene {
           this.cameras.main.flash(500, 255, 50, 0);
           SoundManager.get().playBossPhaseTransition();
           MusicManager.get().playLevel6Music(3);
-          this._showCenterMessage('SUPREME FURY — NO SHIELD!', '#ff2222');
+          bossPhaseTransition(this, 'FINAL STAND', 0xff0000);
           this.instrText.setText('DODGE THE LASER GAP! | Double-tap L/R: Barrel Roll | X: Bomb');
           this.samTimer = 0; this.spreadTimer = 0; this.homingTimer = 0; this.laserCooldown = 2;
           this.rapidShotTimer = 0;
@@ -2436,6 +2459,9 @@ export default class BossScene extends Phaser.Scene {
     this.invulnTimer = INVULN_TIME;
     this.cameras.main.shake(200, 0.01);
     SoundManager.get().playPlayerHit();
+
+    // GameJuice: hit feedback on player damage
+    hitFeedback(this, { color: 0xff0000, shakeIntensity: 0.018, freezeMs: 60 });
 
     if (this.playerHP <= 0) {
       this.playerHP = 0;
@@ -2614,6 +2640,25 @@ export default class BossScene extends Phaser.Scene {
 
   _drawAttackEffects() {
     this.effectsGfx.clear();
+    const time = this.time.now / 1000;
+    const gfx = this.effectsGfx;
+
+    // ── Progressive visual intensity per boss phase ──
+    if (this.bunkerPhase >= 2) {
+      gfx.fillStyle(0xff4400, 0.03 + Math.sin(time * 2) * 0.02);
+      gfx.fillRect(0, 0, 960, 540);
+    }
+    if (this.bunkerPhase >= 3) {
+      gfx.fillStyle(0xff0000, 0.06 + Math.sin(time * 4) * 0.04);
+      gfx.fillRect(0, 0, 960, 540);
+      // Pulsing edge glow
+      const edgeAlpha = 0.1 + Math.sin(time * 3) * 0.08;
+      gfx.fillStyle(0xff0000, edgeAlpha);
+      gfx.fillRect(0, 0, 960, 10);
+      gfx.fillRect(0, 530, 960, 10);
+      gfx.fillRect(0, 0, 10, 540);
+      gfx.fillRect(950, 0, 10, 540);
+    }
 
     // SAM missiles
     for (const m of this.samMissiles) {
@@ -2633,6 +2678,54 @@ export default class BossScene extends Phaser.Scene {
       this.effectsGfx.fillCircle(m.x, m.y, 5);
       this.effectsGfx.fillStyle(0xff6600, 0.5);
       this.effectsGfx.fillCircle(m.x, m.y, 8);
+    }
+
+    // ── Directional threat indicators (edge arrows for off-screen/near-edge missiles) ──
+    const allThreats = [...this.samMissiles, ...this.homingMissiles];
+    for (const missile of allThreats) {
+      if (!missile.active) continue;
+      const arrowAlpha = 0.5 + Math.sin(time * 10) * 0.3;
+      gfx.fillStyle(0xff0000, arrowAlpha);
+      // Left edge
+      if (missile.x < 50) {
+        const iy = Phaser.Math.Clamp(missile.y, 20, 520);
+        gfx.beginPath();
+        gfx.moveTo(5, iy);
+        gfx.lineTo(15, iy - 8);
+        gfx.lineTo(15, iy + 8);
+        gfx.closePath();
+        gfx.fillPath();
+      }
+      // Right edge
+      if (missile.x > 910) {
+        const iy = Phaser.Math.Clamp(missile.y, 20, 520);
+        gfx.beginPath();
+        gfx.moveTo(955, iy);
+        gfx.lineTo(945, iy - 8);
+        gfx.lineTo(945, iy + 8);
+        gfx.closePath();
+        gfx.fillPath();
+      }
+      // Top edge
+      if (missile.y < 30) {
+        const ix = Phaser.Math.Clamp(missile.x, 20, 940);
+        gfx.beginPath();
+        gfx.moveTo(ix, 5);
+        gfx.lineTo(ix - 8, 15);
+        gfx.lineTo(ix + 8, 15);
+        gfx.closePath();
+        gfx.fillPath();
+      }
+      // Bottom edge
+      if (missile.y > 510) {
+        const ix = Phaser.Math.Clamp(missile.x, 20, 940);
+        gfx.beginPath();
+        gfx.moveTo(ix, 535);
+        gfx.lineTo(ix - 8, 525);
+        gfx.lineTo(ix + 8, 525);
+        gfx.closePath();
+        gfx.fillPath();
+      }
     }
 
     // Flak bursts
@@ -2947,9 +3040,10 @@ export default class BossScene extends Phaser.Scene {
   // ═════════════════════════════════════════════════════════════
 
   _playerDeath() {
+    if (this.phase === 'dead' || this.phase === 'victory' || this.phase === 'complete') return;
     this.phase = 'dead';
-    MusicManager.get().stop(1);
-    SoundManager.get().playGameOver();
+    try { MusicManager.get().stop(1); } catch (e) { /* audio may fail */ }
+    try { SoundManager.get().playGameOver(); } catch (e) { /* audio may fail */ }
 
     this.cameras.main.flash(300, 255, 100, 0);
     this.cameras.main.shake(500, 0.03);
@@ -3210,6 +3304,11 @@ export default class BossScene extends Phaser.Scene {
     // Save star rating
     try { localStorage.setItem('superzion_stars_6', String(starCount)); } catch (e) {}
 
+    // Save level progress: all 5 levels complete
+    try {
+      localStorage.setItem('superzion_level_progress', '5');
+    } catch(e) {}
+
     const stats = [
       { label: 'DISTANCE COVERED', value: `${distCovered}m` },
       { label: 'SHOTS FIRED', value: `${this.shotsFired}` },
@@ -3270,6 +3369,7 @@ export default class BossScene extends Phaser.Scene {
   }
 
   shutdown() {
+    this.time.timeScale = 1;
     if (this.ambientRef) {
       try {
         this.ambientRef.source.stop();

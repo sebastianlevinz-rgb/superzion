@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 import Phaser from 'phaser';
-import { TILE, GROUND_Y } from '../data/LevelConfig.js';
+import { TILE } from '../data/LevelConfig.js';
+const GROUND_Y = 420; // ground line in pixels (not exported from LevelConfig)
 import DifficultyManager from '../systems/DifficultyManager.js';
 
 // ── Shared point-in-triangle (barycentric sign method) ────────

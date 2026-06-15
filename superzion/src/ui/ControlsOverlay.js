@@ -19,6 +19,11 @@ export function showControlsOverlay(scene, controlsText, opts = {}) {
   const barY = opts.barY || H - 22;
   const showDuration = opts.duration || 3000;
 
+  // On mobile, don't show keyboard control text (touch controls are self-explanatory)
+  if (scene.inputManager?.mobile) {
+    return { barBg: null, barText: null, setText() {}, destroy() {} };
+  }
+
   // ── Big centered overlay (shown first) ──
   const bigBg = scene.add.rectangle(W / 2, H / 2, 700, 80, 0x000000, 0.75)
     .setScrollFactor(0).setDepth(depth + 10);
@@ -134,8 +139,10 @@ export function showTutorialOverlay(scene, lines, opts = {}) {
     elements.push(txt);
   }
 
-  // "PRESS ANY KEY TO START" blinking at bottom
-  const promptText = scene.add.text(W / 2, H - 60, 'PRESS ANY KEY TO START', {
+  // "PRESS ANY KEY / TAP TO START" blinking at bottom
+  const isMobile = scene.inputManager?.mobile || false;
+  const promptLabel = isMobile ? 'TAP TO START' : 'PRESS ANY KEY TO START';
+  const promptText = scene.add.text(W / 2, H - 60, promptLabel, {
     fontFamily: 'monospace',
     fontSize: '14px',
     color: '#ffffff',
@@ -153,7 +160,7 @@ export function showTutorialOverlay(scene, lines, opts = {}) {
     ease: 'Sine.easeInOut',
   });
 
-  // Dismiss on any key press (delayed 300ms to prevent instant dismiss)
+  // Dismiss on any key press or tap (delayed 300ms to prevent instant dismiss)
   scene.time.delayedCall(300, () => {
     const dismissHandler = () => {
       scene.tutorialActive = false;
@@ -162,8 +169,12 @@ export function showTutorialOverlay(scene, lines, opts = {}) {
         if (el && el.active) el.destroy();
       }
       scene.input.keyboard.off('keydown', dismissHandler);
+      overlay.off('pointerdown', dismissHandler);
     };
     scene.input.keyboard.on('keydown', dismissHandler);
+    // Also allow tap to dismiss on mobile
+    overlay.setInteractive();
+    overlay.on('pointerdown', dismissHandler);
   });
 }
 

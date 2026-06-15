@@ -1,171 +1,156 @@
-// ═══════════════════════════════════════════════════════════════
-// Guard — patrol waypoints + vision cone + detection
-// ═══════════════════════════════════════════════════════════════
+// ===================================================================
+// Bomberman Guard — patrol and chaser types
+// Patrol: walks straight, turns 90 on wall collision
+// Chaser: random walk, chases player within 4 tiles
+// ===================================================================
 
 import Phaser from 'phaser';
+import { gx, gy, toCol, toRow, TILE, COLS, ROWS } from '../data/LevelConfig.js';
 
-export default class Guard {
-  constructor(scene, def) {
+const PATROL_SPEED = 75;
+const CHASER_SPEED = 60;
+const CHASE_SPEED = 82;
+const CHASE_RANGE = 3; // tiles
+const DIRS = [[0, -1], [0, 1], [-1, 0], [1, 0]]; // up, down, left, right
+const DIR_NAMES = ['up', 'down', 'left', 'right'];
+
+export default class BombermanGuard {
+  constructor(scene, def, map) {
     this.scene = scene;
-    this.patrol = def.patrol;
-    this.speed = def.speed;
-    this.coneLen = def.coneLen;
-    this.coneHalf = Math.PI / 6; // 30° half-angle
+    this.type = def.type; // 'patrol' or 'chaser'
+    this.map = map;
+    this.alive = true;
+    this.speedMult = 1; // multiplied during escape
 
-    this.waypointIdx = 0;
-    this.pauseTimer = 0;
-    this.pauseDuration = 600; // ms pause at each waypoint
+    const speed = this.type === 'patrol' ? PATROL_SPEED : CHASER_SPEED;
+    this.baseSpeed = speed;
 
-    const start = this.patrol[0];
-    this.sprite = scene.physics.add.sprite(start.x, start.y, 'guard_down_0');
+    // Sprite
+    const prefix = this.type === 'patrol' ? 'bm_patrol' : 'bm_chaser';
+    this.prefix = prefix;
+    this.sprite = scene.physics.add.sprite(gx(def.col), gy(def.row), `${prefix}_down_0`);
     this.sprite.setDepth(10);
-    this.sprite.body.setSize(12, 14);
-    this.sprite.body.setOffset(2, 4);
-    this.sprite.body.setImmovable(true);
+    // Body centered on lower half of sprite (feet grounded on floor tile)
+    this.sprite.body.setSize(22, 22);
+    this.sprite.body.setOffset(5, 5);
 
-    this.facing = 'down';
-    this.facingAngle = Math.PI / 2; // radians, down = PI/2
+    // Movement state
+    this.dirIdx = Math.floor(Math.random() * 4);
+    this.facing = DIR_NAMES[this.dirIdx];
+    this._applyVelocity();
+
+    // Animation
     this.animFrame = 0;
     this.animTimer = 0;
-    this.moving = false;
 
-    this.alertIcon = null;
-    this.graphics = scene.add.graphics();
-    this.graphics.setDepth(6);
+    // Direction change timer (patrol: periodic random turns)
+    this.turnTimer = 1500 + Math.random() * 2000;
   }
 
-  update(delta, playerX, playerY) {
-    // Pause at waypoint
-    if (this.pauseTimer > 0) {
-      this.pauseTimer -= delta;
-      this.sprite.body.setVelocity(0, 0);
-      this.moving = false;
-      this._drawCone();
-      this._animate(delta);
-      return this._checkDetection(playerX, playerY);
+  update(delta, playerSprite) {
+    if (!this.alive) return;
+
+    const speed = this.baseSpeed * this.speedMult;
+    const body = this.sprite.body;
+
+    if (this.type === 'chaser' && playerSprite) {
+      const dx = playerSprite.x - this.sprite.x;
+      const dy = playerSprite.y - this.sprite.y;
+      const dist = Math.abs(dx) + Math.abs(dy); // Manhattan in pixels
+      const tileDist = dist / TILE;
+
+      if (tileDist < CHASE_RANGE) {
+        // Chase mode: move toward player
+        const cs = CHASE_SPEED * this.speedMult;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          body.setVelocity(dx > 0 ? cs : -cs, 0);
+          this.facing = dx > 0 ? 'right' : 'left';
+        } else {
+          body.setVelocity(0, dy > 0 ? cs : -cs);
+          this.facing = dy > 0 ? 'down' : 'up';
+        }
+        this._animate(delta);
+        return;
+      }
     }
 
-    // Move toward current waypoint
-    const target = this.patrol[this.waypointIdx];
-    const dx = target.x - this.sprite.x;
-    const dy = target.y - this.sprite.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist < 3) {
-      // Reached waypoint
-      this.sprite.setPosition(target.x, target.y);
-      this.waypointIdx = (this.waypointIdx + 1) % this.patrol.length;
-      this.pauseTimer = this.pauseDuration;
-      this.sprite.body.setVelocity(0, 0);
-      this.moving = false;
-
-      // Turn to face next waypoint
-      const next = this.patrol[this.waypointIdx];
-      this._faceToward(next.x, next.y);
-    } else {
-      const vx = (dx / dist) * this.speed;
-      const vy = (dy / dist) * this.speed;
-      this.sprite.body.setVelocity(vx, vy);
-      this.moving = true;
-      this._faceToward(target.x, target.y);
+    // Wall collision detection — change direction
+    const blocked = body.blocked;
+    if (blocked.up || blocked.down || blocked.left || blocked.right) {
+      this._pickNewDirection();
     }
 
-    this._drawCone();
+    // Periodic random turn (patrol behavior)
+    this.turnTimer -= delta;
+    if (this.turnTimer <= 0) {
+      this.turnTimer = 1500 + Math.random() * 2000;
+      if (Math.random() < 0.4) this._pickNewDirection();
+    }
+
+    this._applyVelocity();
     this._animate(delta);
-    return this._checkDetection(playerX, playerY);
   }
 
-  _faceToward(tx, ty) {
-    const dx = tx - this.sprite.x;
-    const dy = ty - this.sprite.y;
-    this.facingAngle = Math.atan2(dy, dx);
-
-    // Cardinal direction for sprite
-    if (Math.abs(dx) > Math.abs(dy)) {
-      this.facing = dx > 0 ? 'right' : 'left';
-    } else {
-      this.facing = dy > 0 ? 'down' : 'up';
+  _pickNewDirection() {
+    // Try random perpendicular direction, then opposite
+    const current = this.dirIdx;
+    const candidates = [0, 1, 2, 3].filter(i => i !== current);
+    // Shuffle
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
     }
+    // Pick first unblocked direction
+    for (const idx of candidates) {
+      const [dx, dy] = DIRS[idx];
+      const col = toCol(this.sprite.x) + dx;
+      const row = toRow(this.sprite.y) + dy;
+      if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+        const tile = this.map[row][col];
+        if (tile === 0 || tile === 5) { // empty or objective
+          this.dirIdx = idx;
+          this.facing = DIR_NAMES[idx];
+          return;
+        }
+      }
+    }
+    // All blocked: reverse
+    this.dirIdx = (current < 2) ? (1 - current) : (current === 2 ? 3 : 2);
+    this.facing = DIR_NAMES[this.dirIdx];
+  }
+
+  _applyVelocity() {
+    const speed = this.baseSpeed * this.speedMult;
+    const [dx, dy] = DIRS[this.dirIdx];
+    this.sprite.body.setVelocity(dx * speed, dy * speed);
   }
 
   _animate(delta) {
     this.animTimer += delta;
-    if (this.animTimer > 250) {
+    if (this.animTimer > 200) {
       this.animTimer = 0;
       this.animFrame = 1 - this.animFrame;
     }
-    const texKey = this.moving
-      ? `guard_${this.facing}_${this.animFrame}`
-      : `guard_${this.facing}_0`;
-    this.sprite.setTexture(texKey);
+    this.sprite.setTexture(`${this.prefix}_${this.facing}_${this.animFrame}`);
   }
 
-  _drawCone() {
-    const g = this.graphics;
-    g.clear();
+  kill() {
+    if (!this.alive) return;
+    this.alive = false;
+    this.sprite.body.setVelocity(0, 0);
+    this.sprite.body.enable = false;
 
-    const cx = this.sprite.x;
-    const cy = this.sprite.y;
-    const a = this.facingAngle;
-
-    // Cone triangle
-    const bx = cx + Math.cos(a - this.coneHalf) * this.coneLen;
-    const by = cy + Math.sin(a - this.coneHalf) * this.coneLen;
-    const dx = cx + Math.cos(a + this.coneHalf) * this.coneLen;
-    const dy = cy + Math.sin(a + this.coneHalf) * this.coneLen;
-
-    // Fill
-    g.fillStyle(0xff0000, 0.15);
-    g.beginPath();
-    g.moveTo(cx, cy);
-    g.lineTo(bx, by);
-    g.lineTo(dx, dy);
-    g.closePath();
-    g.fillPath();
-
-    // Edge lines
-    g.lineStyle(1, 0xff0000, 0.35);
-    g.beginPath();
-    g.moveTo(cx, cy); g.lineTo(bx, by);
-    g.moveTo(cx, cy); g.lineTo(dx, dy);
-    g.strokePath();
-  }
-
-  _checkDetection(playerX, playerY) {
-    const cx = this.sprite.x;
-    const cy = this.sprite.y;
-    const a = this.facingAngle;
-
-    // Cone triangle vertices
-    const bx = cx + Math.cos(a - this.coneHalf) * this.coneLen;
-    const by = cy + Math.sin(a - this.coneHalf) * this.coneLen;
-    const dx = cx + Math.cos(a + this.coneHalf) * this.coneLen;
-    const dy = cy + Math.sin(a + this.coneHalf) * this.coneLen;
-
-    return this._pointInTriangle(playerX, playerY, cx, cy, bx, by, dx, dy);
-  }
-
-  _pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
-    const d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
-    const d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy);
-    const d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
-    const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-    const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-    return !(hasNeg && hasPos);
-  }
-
-  showAlert() {
-    if (this.alertIcon) return;
-    this.alertIcon = this.scene.add.image(this.sprite.x, this.sprite.y - 18, 'alert_icon');
-    this.alertIcon.setDepth(20);
-    this.alertIcon.setScale(1.5);
+    // Death animation: flash red, shrink, fade
+    this.sprite.setTintFill(0xff0000);
     this.scene.tweens.add({
-      targets: this.alertIcon,
-      y: this.sprite.y - 24, scaleX: 2, scaleY: 2,
-      duration: 200, yoyo: true,
-      onComplete: () => {
-        if (this.alertIcon) { this.alertIcon.destroy(); this.alertIcon = null; }
-      },
+      targets: this.sprite,
+      scaleX: 0, scaleY: 0, alpha: 0,
+      duration: 300,
+      onComplete: () => this.sprite.destroy(),
     });
+  }
+
+  setSpeedMultiplier(mult) {
+    this.speedMult = mult;
   }
 }

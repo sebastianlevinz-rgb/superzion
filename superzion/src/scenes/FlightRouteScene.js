@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import SoundManager from '../systems/SoundManager.js';
+import InputManager from '../systems/InputManager.js';
 
 const W = 960;
 const H = 540;
@@ -26,12 +27,14 @@ const ROUTES = {
     ],
   },
   2: {
-    city: 'BEIRUT, LEBANON',
-    dest: { x: 275, y: 220 },
+    city: 'HONG KONG, CHINA',
+    dest: { x: 850, y: 260 },
     waypoints: [
       { x: 280, y: 275 },  // Tel Aviv
-      { x: 278, y: 250 },  // north along coast
-      { x: 275, y: 220 },  // Beirut
+      { x: 420, y: 250 },  // across Middle East
+      { x: 580, y: 230 },  // central Asia
+      { x: 720, y: 250 },  // east Asia
+      { x: 850, y: 260 },  // Hong Kong
     ],
   },
   3: {
@@ -195,6 +198,7 @@ export default class FlightRouteScene extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 10, 26, 10);
 
     // -- Keys --
+    this.inputManager = new InputManager(this, { preset: 'cinematic' });
     this.spaceKey = this.input.keyboard.addKey('SPACE');
     this.escKey = this.input.keyboard.addKey('ESC');
     this.enterKey = this.input.keyboard.addKey('ENTER');
@@ -498,6 +502,10 @@ export default class FlightRouteScene extends Phaser.Scene {
     const trailDots = [];
 
     let progress = { t: 0 };
+    SoundManager.get().playRadarSweep();
+    this._jetRef = SoundManager.get().playJetEngine();
+    // Stop jet engine after flight completes (3.5 seconds) or on skip/shutdown
+    this.time.delayedCall(3500, () => this._stopJetSound());
     this.flightTween = this.tweens.add({
       targets: progress,
       t: 1,
@@ -699,7 +707,7 @@ export default class FlightRouteScene extends Phaser.Scene {
     });
 
     this.cameras.main.shake(200, 0.005);
-    SoundManager.get().playCinematicExplosion();
+    SoundManager.get().playExplosion();
   }
 
   // =============================================
@@ -738,6 +746,7 @@ export default class FlightRouteScene extends Phaser.Scene {
     this.time.delayedCall(200, () => {
       glitchGfx.clear();
       glitchGfx.destroy();
+      this._stopJetSound();
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.time.delayedCall(350, () => {
         this.scene.start(this.nextScene, this.nextSceneData);
@@ -749,9 +758,17 @@ export default class FlightRouteScene extends Phaser.Scene {
   // SKIP (immediate transition)
   // =============================================
 
+  _stopJetSound() {
+    if (this._jetRef) {
+      try { if (this._jetRef.source) this._jetRef.source.stop(); if (this._jetRef.osc) this._jetRef.osc.stop(); } catch (e) {}
+      this._jetRef = null;
+    }
+  }
+
   _goToNextScene() {
     if (this.skipped) return;
     this.skipped = true;
+    this._stopJetSound();
     this.cameras.main.fadeOut(250, 0, 0, 0);
     this.time.delayedCall(300, () => {
       this.scene.start(this.nextScene, this.nextSceneData);
@@ -763,6 +780,8 @@ export default class FlightRouteScene extends Phaser.Scene {
   // =============================================
 
   update() {
+    this.inputManager.update();
+
     // Mute toggle
     if (Phaser.Input.Keyboard.JustDown(this.mKey)) {
       SoundManager.get().toggleMute();
@@ -780,10 +799,11 @@ export default class FlightRouteScene extends Phaser.Scene {
       this.timestampText.setText(`${h}:${m}:${s}  T+${elapsed}s`);
     }
 
-    // Skip with ESC, SPACE, or ENTER
+    // Skip with ESC, SPACE, ENTER, or touch
     if (Phaser.Input.Keyboard.JustDown(this.escKey) ||
         Phaser.Input.Keyboard.JustDown(this.spaceKey) ||
-        Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+        Phaser.Input.Keyboard.JustDown(this.enterKey) ||
+        this.inputManager.justDown('primary')) {
       this._goToNextScene();
     }
   }
