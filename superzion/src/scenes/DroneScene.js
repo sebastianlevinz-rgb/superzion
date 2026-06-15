@@ -1475,6 +1475,17 @@ export default class DroneScene extends Phaser.Scene {
       const bg = this.add.image(W / 2, H / 2, 'drone_gaza').setDepth(0);
       bg.setDisplaySize(W, H);
       city.objects.push(bg);
+
+      // Ambient smoke plumes rising from the ruined skyline (drawn on city.gfx
+      // in _drawCityScene). Positioned over the mid/upper roofline so they
+      // drift up out of the AI ruins. Each gets a slightly different start
+      // phase so the columns don't pulse in unison.
+      city.smokePlumes = [
+        { x: 200, baseY: H * 0.50, scale: 1.0, seed: 0.0 },
+        { x: 470, baseY: H * 0.42, scale: 1.3, seed: 0.45 },
+        { x: 720, baseY: H * 0.46, scale: 0.85, seed: 0.78 },
+        { x: 880, baseY: H * 0.38, scale: 1.1, seed: 0.2 },
+      ];
     }
 
     // Pre-generate ambient dust
@@ -1859,6 +1870,23 @@ export default class DroneScene extends Phaser.Scene {
     gfx.lineTo(bldgX + 62, bldgTop + 28);
     gfx.strokePath();
     } // end static background
+
+    // --- Ambient rising smoke (over the AI ruins backdrop) ---
+    // Drawn early so the glowing window, debris and drone render on top.
+    if (city.smokePlumes) {
+      const t = Date.now() / 1000;
+      for (const pl of city.smokePlumes) {
+        for (let i = 0; i < 7; i++) {
+          const phase = (t * 0.18 + pl.seed + i / 7) % 1; // 0..1 rising progress
+          const y = pl.baseY - phase * 150 * pl.scale;
+          const x = pl.x + Math.sin(t * 0.5 + i + pl.seed * 6) * 12 * pl.scale;
+          const r = (5 + phase * 18) * pl.scale;
+          const a = 0.16 * (1 - phase); // fades as it rises
+          gfx.fillStyle(i % 2 === 0 ? 0x5a5a5a : 0x6a6a6a, a);
+          gfx.fillCircle(x, y, r);
+        }
+      }
+    }
 
     // --- Glowing window (target) ---
     const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);

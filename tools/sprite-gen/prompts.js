@@ -370,21 +370,21 @@ export const SPRITES = {
     { name: "ps_ship", size: { w: 160, h: 48 }, prompt: `${STYLE}. Sprite of a large cargo container ship seen from above (top-down), long grey hull, stacks of containers on deck, bridge tower.` },
     { name: "ps_crane", size: { w: 64, h: 40 }, prompt: `${STYLE}. Sprite of a port gantry container crane seen from above (top-down), yellow steel structure.` },
     { name: "ps_building", size: { w: 64, h: 48 }, prompt: `${STYLE}. Sprite of a port warehouse building seen from above (top-down), flat roof, industrial.` },
-    { name: "armchair", size: 120, prompt: `${STYLE}. Sprite of an ornate royal wingback armchair, plush deep-red velvet with gold trim, front view, empty.` },
-    { name: "armchair_side", size: { w: 90, h: 120 }, ref: "armchair", prompt: `${STYLE}. Sprite of an ornate royal wingback armchair, plush deep-red velvet with gold trim, side profile view, empty.` },
+    { name: "armchair", size: 120, prompt: `${STYLE}. Sprite of a BATTERED beat-up old single armchair in a war-torn ruined room — faded worn dark grey-brown upholstery, torn fabric with exposed stuffing and a poking spring, one leg damaged, the whole chair COATED in pale GREY DUST and concrete powder with bits of rubble on the seat, front view, empty, gritty realistic pixel art.` },
+    { name: "armchair_side", size: { w: 90, h: 120 }, ref: "armchair", prompt: `${STYLE}. Sprite of a BATTERED beat-up old single armchair in a war-torn ruined room — faded worn dark grey-brown upholstery, torn fabric with exposed stuffing, coated in pale GREY DUST and concrete powder, side profile view, empty, gritty realistic pixel art.` },
   ],
 
   // F-15 level scrolling terrain bands (tileSprites — must tile seamlessly).
   // Aerial side-scroller ground seen passing below the jet. tile:true mirrors.
   terrain: [
     { name: "sea_surface", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
-      prompt: `${BG_STYLE}. Aerial top-down view of deep blue ocean water with gentle waves and foam highlights, filling the frame as a horizontal terrain band.` },
+      prompt: `${BG_STYLE}. Aerial top-down view of a calm Mediterranean SEA at golden hour — clean teal-and-blue water with soft evenly-scattered gentle wave ripples and tiny warm golden sunset glints, smooth and pretty, evenly lit with NO single bright spot, NO horizon, NO land, NO boats. A SEAMLESS repeating horizontal terrain band with uniform texture across the whole frame (no obvious centre feature, no hard seams).` },
     { name: "coast_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
-      prompt: `${BG_STYLE}. Aerial top-down view of a sandy coastline where blue sea meets tan beach and green vegetation, horizontal terrain band.` },
+      prompt: `${BG_STYLE}. Aerial top-down view of a Mediterranean COASTLINE at golden hour — turquoise sea on one side blending into pale sandy beach and patches of green-and-tan scrubland, warm soft sunset lighting, clean and pretty, evenly textured. A SEAMLESS repeating horizontal terrain band, no hard seams, no single centre feature.` },
     { name: "mountain_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
-      prompt: `${BG_STYLE}. Aerial top-down view of rugged rocky brown mountain ridges and ravines, horizontal terrain band.` },
+      prompt: `${BG_STYLE}. Aerial top-down view of rugged mountain ridges at golden hour — warm tan and ochre rocky ridgelines and ravines with soft long shadows, sparse green pockets, pretty warm sunset lighting, clean detailed. A SEAMLESS repeating horizontal terrain band, evenly distributed ridges, no hard seams, no single centre feature.` },
     { name: "valley_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
-      prompt: `${BG_STYLE}. Aerial top-down view of an arid desert valley with sparse scrub and dry riverbeds, horizontal terrain band.` },
+      prompt: `${BG_STYLE}. Aerial top-down view of an arid desert VALLEY at golden hour — warm sandy-ochre ground with sparse scrub, dry winding riverbeds and rocky patches, soft warm sunset lighting, clean and pretty. A SEAMLESS repeating horizontal terrain band, evenly textured, no hard seams, no single centre feature.` },
     // Transparent parallax layers (sky shows through the keyed-out areas).
     // NOTE: use a NO-character style — the base STYLE adds figures.
     { name: "far_mountains", size: { w: 768, h: 256 }, tileAlpha: true,
@@ -490,15 +490,17 @@ export const SPRITES = {
       prompt: sprite("the SAME supreme-leader villain boss (black turban, glasses, white beard, dark robes), DEFEATED — slumped and collapsing, robes tattered and smoking, the golden crescent staff broken and falling, dim lifeless eyes, the throne behind him crumbling, fading embers, vanquished") },
   ],
 
-  // Drone-level boss = Yahya Sinwar / "Angry Eyebrows" general (HP-state variants)
+  // Drone-level boss = Yahya Sinwar, the iconic "last drone-footage" look:
+  // a wounded fighter slumped in a wrecked armchair, face wrapped in a dark
+  // dusty keffiyeh (only the eyes show), tactical vest, caked in grey dust.
   drone_boss: [
-    { name: "boss_sinwar", size: 128, ref: "parade_angryeyebrows",
-      prompt: sprite("a cartoon military-general villain boss, head and upper body front view, ENORMOUS comically thick bushy connected black eyebrows and a deep scowl, an olive-green general's dress uniform covered in golden medals, a peaked military cap (NO turban), a short trimmed beard, menacing arms-crossed boss pose, comic-villain proportions") },
+    { name: "boss_sinwar", size: 128,
+      prompt: sprite("a wounded middle-eastern militant fighter sitting and leaning back in a battered single armchair, front view, his head and most of his face WRAPPED in a dark grey-and-black keffiyeh scarf leaving ONLY his intense eyes visible, wearing a dark tactical combat vest / plate-carrier over dark military clothing, his whole body, scarf and clothes COVERED in a thick layer of pale GREY DUST and concrete powder, his RIGHT arm hangs limp and injured at his side while his left hand rests forward, staring fixedly and defiantly ahead, grim and exhausted, dramatic, gritty realistic pixel art, NOT a cartoon, NO turban, NO medals, NO peaked cap") },
     { name: "boss_sinwar_angry", size: 128, ref: "boss_sinwar",
-      prompt: sprite("the SAME military-general villain boss (huge bushy eyebrows, peaked cap, medals), now ENRAGED — furious snarl, gritted teeth, glowing red angry eyes, fists clenched, dramatic") },
+      prompt: sprite("the SAME dust-covered wounded fighter (dark keffiyeh wrapping the face with only the eyes visible, tactical vest, grey dust everywhere, limp injured right arm), now defiant and ENRAGED — leaning forward off the armchair, eyes blazing with fury above the scarf, his good left arm raised to hurl something, dust shaking off, gritty realistic pixel art") },
     { name: "boss_sinwar_furious", size: 128, ref: "boss_sinwar",
-      prompt: sprite("the SAME military-general villain boss (huge eyebrows, peaked cap), DESPERATE and wounded — uniform torn and dirtied, cap askew, sweating, panicked furious expression, last-stand rage") },
+      prompt: sprite("the SAME dust-covered wounded fighter (dark keffiyeh face-wrap, only eyes visible, tactical vest, grey dust, injured right arm), DESPERATE last stand — scarf and vest torn and bloodied, more grey rubble dust, panting, eyes wild and furious, slumping but still glaring, gritty realistic pixel art") },
     { name: "boss_sinwar_dead", size: 128, ref: "boss_sinwar",
-      prompt: sprite("the SAME military-general villain boss (huge eyebrows, peaked cap), DEFEATED — eyes as X marks or rolled back, slumped collapsing, cap falling off, dazed knocked-out comic expression") },
+      prompt: sprite("the SAME dust-covered fighter (dark keffiyeh face-wrap, tactical vest, grey dust), DEFEATED and lifeless — slumped fully back and sideways into the wrecked armchair, head tilted down, the keffiyeh loosening, eyes shut, arms limp, completely still, buried in grey dust and debris, somber, gritty realistic pixel art") },
   ],
 };

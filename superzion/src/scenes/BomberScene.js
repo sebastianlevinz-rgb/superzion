@@ -216,13 +216,6 @@ export default class BomberScene extends Phaser.Scene {
     sunsetGfx.fillRect(0, H * 0.35, W, H * 0.15);
     sunsetGfx.fillStyle(0x6622aa, 0.05);
     sunsetGfx.fillRect(0, H * 0.15, W, H * 0.2);
-    // Sun disc (near horizon)
-    sunsetGfx.fillStyle(0xff6600, 0.25);
-    sunsetGfx.fillCircle(W * 0.7, GROUND_Y - 30, 40);
-    sunsetGfx.fillStyle(0xffaa33, 0.15);
-    sunsetGfx.fillCircle(W * 0.7, GROUND_Y - 30, 55);
-    sunsetGfx.fillStyle(0xff8844, 0.06);
-    sunsetGfx.fillCircle(W * 0.7, GROUND_Y - 30, 80);
 
     // Clouds (slow parallax) — main layer
     this.cloudTile = this.add.tileSprite(W / 2, 100, W, 150, 'cloud_layer').setDepth(-7);
