@@ -1466,6 +1466,17 @@ export default class DroneScene extends Phaser.Scene {
     };
     const city = this._city;
 
+    // AI Gaza-ruins backdrop (BootScene preloads it). When present, the
+    // procedural sky + buildings in _drawCityScene are skipped and only the
+    // dynamic gameplay layer (target window, debris, dust, drone) is drawn on
+    // top. Delete the PNG and it falls back to the full procedural city.
+    city.aiBackdrop = this.textures.exists('drone_gaza');
+    if (city.aiBackdrop) {
+      const bg = this.add.image(W / 2, H / 2, 'drone_gaza').setDepth(0);
+      bg.setDisplaySize(W, H);
+      city.objects.push(bg);
+    }
+
     // Pre-generate ambient dust
     for (let i = 0; i < 25; i++) {
       city.dustParticles.push({
@@ -1635,6 +1646,9 @@ export default class DroneScene extends Phaser.Scene {
     const gfx = city.gfx;
     gfx.clear();
 
+    // Static background (sky + buildings) — skipped when the AI Gaza backdrop
+    // image is present; only the dynamic gameplay layer is drawn over it.
+    if (!city.aiBackdrop) {
     // --- Daytime sky ---
     gfx.fillStyle(0x5588cc);
     gfx.fillRect(0, 0, W, H);
@@ -1844,6 +1858,7 @@ export default class DroneScene extends Phaser.Scene {
     gfx.lineTo(bldgX + 65, bldgTop + 18);
     gfx.lineTo(bldgX + 62, bldgTop + 28);
     gfx.strokePath();
+    } // end static background
 
     // --- Glowing window (target) ---
     const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
@@ -2223,6 +2238,16 @@ export default class DroneScene extends Phaser.Scene {
     });
   }
 
+  // Resolve the boss texture key for a given expression.
+  // Prefers the AI "boss_sinwar" PNGs (loaded by BootScene); falls back to
+  // the procedural ts_boss4_* canvas if a PNG is missing (delete the PNG and
+  // the original art comes back automatically — nothing breaks).
+  _bossTex(expr) {
+    const ai = expr === 'normal' ? 'boss_sinwar' : 'boss_sinwar_' + expr;
+    if (this.textures.exists(ai)) return ai;
+    return 'ts_boss4_' + expr;
+  }
+
   // ═════════════════════════════════════════════════════════════
   // BOSS FIGHT: YAHYA SINWAR (top-down destroyed room)
   // ═════════════════════════════════════════════════════════════
@@ -2317,7 +2342,7 @@ export default class DroneScene extends Phaser.Scene {
 
     // Boss sprite — starts hidden BEHIND armchair (depth 8 < armchair 12)
     // Position boss so only top of head (hair/eyebrows/eyes) peeks above backrest
-    this.bossSprite = this.add.image(this.armchairX, this.armchairY, 'ts_boss4_normal').setDepth(8);
+    this.bossSprite = this.add.image(this.armchairX, this.armchairY, this._bossTex('normal')).setDepth(8);
     this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
     this.bossSprite.setAlpha(1);
 
@@ -2648,7 +2673,7 @@ export default class DroneScene extends Phaser.Scene {
 
     if (newExpr !== this.bossExpression) {
       this.bossExpression = newExpr;
-      const texKey = 'ts_boss4_' + newExpr;
+      const texKey = this._bossTex(newExpr);
       if (this.bossSprite && this.textures.exists(texKey)) {
         this.bossSprite.setTexture(texKey);
       }
@@ -2696,7 +2721,7 @@ export default class DroneScene extends Phaser.Scene {
         const trackOffsetX = Math.sign(this.droneX - this.armchairX) * 3;
         this.bossX = this.armchairX + trackOffsetX;
         if (this.bossSprite) {
-          this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
+          this.bossSprite.setTexture(this._bossTex(this.bossExpression));
           this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
           this.bossSprite.setDepth(8); // BEHIND armchair (depth 12)
           this.bossSprite.setAlpha(1);
@@ -2719,7 +2744,7 @@ export default class DroneScene extends Phaser.Scene {
         this.bossY = hideY + (attackY - hideY) * riseProgress;
 
         if (this.bossSprite) {
-          this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
+          this.bossSprite.setTexture(this._bossTex(this.bossExpression));
           this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
           // Transition depth: switch to IN FRONT when risen enough
           this.bossSprite.setDepth(riseProgress > 0.5 ? 15 : 8);
@@ -2740,7 +2765,7 @@ export default class DroneScene extends Phaser.Scene {
         this.bossVisible = true;
         this.bossY = this.armchairY - ARMCHAIR_H / 2 - BOSS_DISPLAY * 0.4;
         if (this.bossSprite) {
-          this.bossSprite.setTexture('ts_boss4_' + this.bossExpression);
+          this.bossSprite.setTexture(this._bossTex(this.bossExpression));
           this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
           this.bossSprite.setDepth(15); // IN FRONT of armchair
           this.bossSprite.setAlpha(1);
@@ -3912,8 +3937,9 @@ export default class DroneScene extends Phaser.Scene {
     if (this.armchairProjectile) this.armchairProjectile.alive = false;
 
     // Dead texture
-    if (this.bossSprite && this.textures.exists('ts_boss4_dead')) {
-      this.bossSprite.setTexture('ts_boss4_dead');
+    const deadTex = this._bossTex('dead');
+    if (this.bossSprite && this.textures.exists(deadTex)) {
+      this.bossSprite.setTexture(deadTex);
     }
 
     // Ensure boss is fully visible
