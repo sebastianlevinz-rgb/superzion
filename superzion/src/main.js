@@ -6,8 +6,6 @@ import MenuScene from './scenes/MenuScene.js';
 import IntroCinematicScene from './scenes/IntroCinematicScene.js';
 import GameScene from './scenes/GameScene.js';
 import ExplosionCinematicScene from './scenes/ExplosionCinematicScene.js';
-import BeirutIntroCinematicScene from './scenes/BeirutIntroCinematicScene.js';
-import BeirutRadarScene from './scenes/PortSwapScene.js';
 import DeepStrikeIntroCinematicScene from './scenes/DeepStrikeIntroCinematicScene.js';
 import BomberScene from './scenes/BomberScene.js';
 import UndergroundIntroCinematicScene from './scenes/UndergroundIntroCinematicScene.js';
@@ -41,7 +39,7 @@ const config = {
   input: {
     activePointers: 3, // support multi-touch (d-pad + 2 buttons)
   },
-  scene: [BootScene, GameIntroScene, MenuScene, IntroCinematicScene, FlightRouteScene, PlatformerScene, GameScene, ExplosionCinematicScene, BeirutIntroCinematicScene, BeirutRadarScene, DeepStrikeIntroCinematicScene, BomberScene, UndergroundIntroCinematicScene, DroneScene, MountainBreakerIntroCinematicScene, B2BomberScene, LastStandCinematicScene, BossScene, VictoryScene, CreditsScene],
+  scene: [BootScene, GameIntroScene, MenuScene, IntroCinematicScene, FlightRouteScene, PlatformerScene, GameScene, ExplosionCinematicScene, DeepStrikeIntroCinematicScene, BomberScene, UndergroundIntroCinematicScene, DroneScene, MountainBreakerIntroCinematicScene, B2BomberScene, LastStandCinematicScene, BossScene, VictoryScene, CreditsScene],
   pixelArt: false,
   antialias: true,
 };

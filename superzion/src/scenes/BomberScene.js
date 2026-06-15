@@ -1434,6 +1434,15 @@ export default class BomberScene extends Phaser.Scene {
 
   _updateBunkerDamage(layerIdx) {
     this.bossDamageStage = layerIdx;
+
+    // Nasrallah's face degrades as his bunker is torn apart: once the bunker is
+    // about half-destroyed he switches to the enraged, battle-damaged portrait.
+    if (layerIdx >= 2 && this.bossSprite && this.bossSprite.active
+        && this.textures.exists('turbo_turban_angry')
+        && this.bossSprite.texture.key !== 'turbo_turban_angry') {
+      this.bossSprite.setTexture('turbo_turban_angry');
+    }
+
     const bunkW = BUNKER_W + 40;
     const bunkLeft = BUNKER_X - bunkW / 2;
     const bunkTop = BUNKER_TOP_Y - 5;
@@ -1887,9 +1896,11 @@ export default class BomberScene extends Phaser.Scene {
 
     // Step 1: Boss looks up in terror (close-up effect via zoom)
     if (this.bossSprite && this.bossSprite.active) {
-      // Switch to yelling/terror
-      this.bossSprite.setVisible(false);
-      this.bossYellSprite.setVisible(true);
+      // Terror → knocked out: show the defeated portrait for the death close-up.
+      if (this.textures.exists('turbo_turban_dead')) this.bossSprite.setTexture('turbo_turban_dead');
+      this.bossSprite.clearTint();
+      this.bossSprite.setVisible(true);
+      if (this.bossYellSprite) this.bossYellSprite.setVisible(false);
 
       // Zoom camera toward bunker briefly
       this.cameras.main.zoomTo(1.5, 400, 'Power2');

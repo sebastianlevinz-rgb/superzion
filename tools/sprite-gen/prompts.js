@@ -163,9 +163,12 @@ const TURBAN_BASE =
   "round glasses, a thick grey-black beard, exaggerated comic-villain proportions, " +
   "front view, detailed pixel art arcade boss";
 function turban(state) {
-  const s = state === "yell"
-    ? "furious, mouth open shouting, both arms raised in rage"
-    : "stern menacing expression, arms at sides";
+  const s = {
+    normal: "stern menacing expression, arms at sides",
+    yell: "furious, mouth open shouting, both arms raised in rage",
+    angry: "ENRAGED and battle-damaged, his huge black turban knocked crooked and singed at the edges, his robe scorched and torn, teeth gritted in pain and fury, one fist clenched and raised, sweat on his brow, desperate",
+    dead: "DEFEATED and knocked out, eyes dazed and crossed, mouth hanging open, his huge black turban toppling off his head, robe in smoking tatters, slumping limply backwards in total defeat",
+  }[state] || "stern menacing expression, arms at sides";
   return `${STYLE}. Boss sprite of ${TURBAN_BASE}, ${s}.`;
 }
 
@@ -281,6 +284,8 @@ export const SPRITES = {
     { name: "carrier_side", size: { w: 480, h: 200 }, prompt: vehicle("carrier") },
     { name: "turbo_turban", size: 128, prompt: turban("normal") },
     { name: "turbo_turban_yell", size: 128, prompt: turban("yell"), ref: "turbo_turban" },
+    { name: "turbo_turban_angry", size: 128, prompt: turban("angry"), ref: "turbo_turban" },
+    { name: "turbo_turban_dead", size: 128, prompt: turban("dead"), ref: "turbo_turban" },
     { name: "guard_idle", size: 64, prompt: droneGuard("idle") },
     { name: "guard_shoot", size: 64, prompt: droneGuard("shoot"), ref: "guard_idle" },
     { name: "turret_idle", size: 64, prompt: turret("idle") },
@@ -500,6 +505,8 @@ export const SPRITES = {
       prompt: `16-bit pixel-art game sprite, NO people, NO characters, THICK bold black outline around the whole flag and pole, clean readable pixels, high contrast. A waving YELLOW cloth flag on a tall dark-grey flagpole with a green emblem of an upraised arm holding a rifle silhouette, fabric rippling in the wind, fully opaque. Solid flat pure #FF00FF magenta background only.` },
     { name: "flag_palestine_ai", size: { w: 96, h: 120 }, key: "magenta",
       prompt: `16-bit pixel-art game sprite, NO people, NO characters, NO text, THICK bold black outline around the whole flag and pole, clean readable pixels, high contrast. A waving cloth flag on a tall dark-grey flagpole — three equal horizontal stripes (top BLACK, middle WHITE, bottom GREEN) with a RED triangle on the hoist (left) side, fabric rippling in the wind, fully opaque. Solid flat pure #FF00FF magenta background only.` },
+    { name: "flag_israel_ai", size: { w: 96, h: 120 }, key: "magenta",
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, NO text, THICK bold black outline around the whole flag and pole, clean readable pixels, high contrast. A waving cloth flag of Israel on a tall dark-grey flagpole — a WHITE field with a horizontal BLUE stripe near the top and a horizontal BLUE stripe near the bottom, and a blue six-pointed STAR OF DAVID (hexagram) centered in the middle, fabric rippling in the wind, fully opaque solid colours. Solid flat pure #FF00FF magenta background only behind/around the flag.` },
   ],
 
   // Final boss level (BossScene)

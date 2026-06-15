@@ -34,20 +34,12 @@ export const AI_SPRITES = [
   // Parallax background bands (night Tehran) + night sky
   'plt_mountains', 'plt_skyline', 'plt_near_buildings', 'plt_stars_sky',
 
-  // ── Port Swap (PortSwapScene) ──
-  'ps_player_down_0', 'ps_player_down_1', 'ps_player_up_0', 'ps_player_up_1',
-  'ps_player_left_0', 'ps_player_left_1', 'ps_player_right_0', 'ps_player_right_1',
-  'ps_guard_down_0', 'ps_guard_down_1', 'ps_guard_up_0', 'ps_guard_up_1',
-  'ps_guard_left_0', 'ps_guard_left_1', 'ps_guard_right_0', 'ps_guard_right_1',
-  'ps_worker_down_0', 'ps_worker_down_1', 'ps_worker_up_0', 'ps_worker_up_1',
-  'ps_worker_left_0', 'ps_worker_left_1', 'ps_worker_right_0', 'ps_worker_right_1',
-
   // ── Air combat (BomberScene / DroneScene / B2BomberScene) ──
   'f15_side', 'b2_side', 'b2_top', 'drone_top', 'carrier_side',
   // F-15 level scrolling terrain bands (seamless tiles)
   'sea_surface', 'coast_ground', 'mountain_ground', 'valley_ground',
   'far_mountains', 'cloud_layer',
-  'turbo_turban', 'turbo_turban_yell',
+  'turbo_turban', 'turbo_turban_yell', 'turbo_turban_angry', 'turbo_turban_dead',
   'guard_idle', 'guard_shoot',
   'turret_idle', 'turret_alert', 'turret_shoot',
   'mini_soldier',
@@ -82,19 +74,13 @@ export const AI_SPRITES = [
   'drone_gaza', 'drone_room', 'boss_sinwar', 'boss_sinwar_angry', 'boss_sinwar_furious', 'boss_sinwar_dead',
   // Victory finale celebrating crowd
   'victory_crowd',
-  'flag_iran_ai', 'flag_hamas_ai', 'flag_hezbollah_ai', 'flag_palestine_ai',
+  'flag_iran_ai', 'flag_hamas_ai', 'flag_hezbollah_ai', 'flag_palestine_ai', 'flag_israel_ai',
   // Natanz destruction cinematic — target building (sliced floors + roof)
   'target_bldg_floor_0', 'target_bldg_floor_1', 'target_bldg_floor_2',
   'target_bldg_floor_3', 'target_bldg_floor_4', 'target_bldg_roof',
   'sky_gradient',
 
   // ── Props ──
-  'ps_container_red', 'ps_container_red_marked',
-  'ps_container_blue', 'ps_container_blue_marked',
-  'ps_container_green', 'ps_container_green_marked',
-  'ps_container_yellow', 'ps_container_yellow_marked',
-  'ps_container_orange', 'ps_container_orange_marked',
-  'ps_ship', 'ps_crane', 'ps_building', 'ps_mountains_bg',
   // B-2 night-flight terrain tiles
   'b2_terrain_sea', 'b2_terrain_coast', 'b2_terrain_land',
   // Ornate Star of David emblem (used by StarOfDavid.js everywhere)

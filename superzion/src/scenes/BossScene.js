@@ -1542,7 +1542,7 @@ export default class BossScene extends Phaser.Scene {
 
     // Update sprites + HUD
     this._updatePlayerSprite();
-    this.bunkerSprite.setPosition(this.bunkerX, this.bunkerY);
+    this.bunkerSprite.setPosition(this.bunkerX, this.bunkerY + (this._bossPoseYOffset || 0));
     this._updateAttackHUD();
     this._drawAttackEffects();
   }
@@ -1938,6 +1938,7 @@ export default class BossScene extends Phaser.Scene {
         this.fanMissileTimer = 0;
         // Telegraph: red flash 0.5s before firing
         this.bossFlashTimer = 0.5;
+        this._bossCastPose();
         this.time.delayedCall(500, () => {
           if (this.phase !== 'attack' || this.bunkerPhase !== 1) return;
           this._fireFanMissiles(5);
@@ -1968,6 +1969,7 @@ export default class BossScene extends Phaser.Scene {
       if (this.samTimer >= 3) {
         this.samTimer = 0;
         this.bossFlashTimer = 0.5;
+        this._bossCastPose();
         this.time.delayedCall(500, () => {
           if (this.phase !== 'attack' || this.bunkerPhase !== 2) return;
           this._spawnSAMFromBunker(250);
@@ -1995,6 +1997,7 @@ export default class BossScene extends Phaser.Scene {
         this.laserChargeWarningLine = 0;
         this.laserFiring = false;
         this.laserFireDuration = 0;
+        this._bossCastPose();
         this._showCenterMessage('LASER INCOMING', '#ff4444');
         SoundManager.get().playBossRoar();
       }
@@ -2066,6 +2069,79 @@ export default class BossScene extends Phaser.Scene {
         active: true,
       });
     }
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // ATTACK-POSE ANIMATION (tween-only, reuses existing textures)
+  // ═════════════════════════════════════════════════════════════
+  // "Raise the staff / draw power" anticipation then a forward thrust on
+  // release. Modeled on the Sinwar drone boss wind-up (DroneScene ~2820).
+  // Composes with the breathing idle (which owns scaleY) and the red-flash
+  // telegraph (which owns tint) by driving DISTINCT properties: scaleX (power
+  // bulge), angle (lean-back → snap-forward) and a dedicated _bossPoseYOffset
+  // (added into the per-frame position at the bunkerSprite.setPosition call).
+  _bossCastPose() {
+    const spr = this.bunkerSprite;
+    if (!spr || !spr.active) return;
+    // Avoid stacking poses if one is already running.
+    if (this._bossPoseActive) return;
+    this._bossPoseActive = true;
+
+    const baseScaleX = 1; // native texture scale (no setScale at creation)
+    const lean = spr.flipX ? 0.10 : -0.10; // lean back, away from player
+
+    // Reset any leftover transform from a prior interrupted pose.
+    spr.setAngle(0);
+    this._bossPoseYOffset = 0;
+
+    const finish = () => {
+      this._bossPoseActive = false;
+      if (!spr || !spr.active) return;
+      spr.setScale(baseScaleX, spr.scaleY); // restore scaleX; leave scaleY to idle tween
+      spr.setAngle(0);
+      this._bossPoseYOffset = 0;
+    };
+
+    // Stage 1 — ANTICIPATION (~300ms): rise a few px, lean back, power bulge.
+    this.tweens.add({
+      targets: spr,
+      scaleX: baseScaleX * 1.07,
+      angle: Phaser.Math.RadToDeg(lean),
+      duration: 300,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        if (!spr || !spr.active) { finish(); return; }
+        // Stage 2 — RELEASE (~200ms): snap forward through neutral, settle.
+        this.tweens.add({
+          targets: spr,
+          scaleX: baseScaleX,
+          angle: Phaser.Math.RadToDeg(-lean * 0.6),
+          duration: 130,
+          ease: 'Back.easeIn',
+          onComplete: () => {
+            if (!spr || !spr.active) { finish(); return; }
+            this.tweens.add({
+              targets: spr,
+              angle: 0,
+              duration: 100,
+              ease: 'Sine.easeOut',
+              onComplete: finish,
+            });
+          },
+        });
+      },
+    });
+
+    // Rise + drop, on the distinct pose-offset property (won't fight position).
+    this.tweens.add({
+      targets: this,
+      _bossPoseYOffset: -10,
+      duration: 300,
+      ease: 'Sine.easeOut',
+      yoyo: true,
+      hold: 30,
+      onComplete: () => { this._bossPoseYOffset = 0; },
+    });
   }
 
   // ═════════════════════════════════════════════════════════════

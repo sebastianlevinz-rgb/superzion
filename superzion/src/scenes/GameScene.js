@@ -300,8 +300,9 @@ export default class GameScene extends Phaser.Scene {
       onComplete: () => {
         this.boss.entered = true;
         this.cameras.main.shake(200, 0.02);
-        // Breathing idle animation
-        this.tweens.add({
+        // Breathing idle animation (stored so the attack telegraph can
+        // pause/resume it without fighting over the scale property)
+        this.boss.idleTween = this.tweens.add({
           targets: sprite,
           scaleY: 1.02,
           duration: 1200,
@@ -548,7 +549,8 @@ export default class GameScene extends Phaser.Scene {
     b.attackTimer -= dt;
     if (b.attackTimer <= 0) {
       b.attackTimer = b.attackInterval;
-      this._bossThrowDocument(docSpeed);
+      // Wind-up telegraph, then fire on the lunge so the player sees it coming
+      this._bossAttackTelegraph(() => this._bossThrowDocument(docSpeed));
     }
 
     // --- Update existing document projectiles ---
@@ -576,6 +578,77 @@ export default class GameScene extends Phaser.Scene {
         b.documents.splice(i, 1);
       }
     }
+  }
+
+  // ── Boss attack wind-up telegraph (tween-only, no art) ──────────
+  // Anticipation squash + slight lean-back glow, then a snap/lunge forward
+  // toward the player on release (fires the attack via onLunge), settling
+  // back to the idle bob. ~360ms total. Guards against death mid-telegraph.
+  _bossAttackTelegraph(onLunge) {
+    const b = this.boss;
+    if (!b || !b.alive) { if (onLunge) onLunge(); return; }
+    const sp = b.sprite;
+    if (!sp || !sp.active) { if (onLunge) onLunge(); return; }
+
+    // Don't stack telegraphs
+    if (b._telegraphing) { if (onLunge) onLunge(); return; }
+    b._telegraphing = true;
+
+    // Pause idle breathing so it doesn't fight the telegraph's scale tween
+    if (b.idleTween) b.idleTween.pause();
+
+    // Lean toward the player side
+    const leanDir = Math.sign(this.player.sprite.x - sp.x) || 1;
+
+    // Helper: full reset to a clean idle state, resume breathing
+    const settle = () => {
+      b._telegraphing = false;
+      if (sp && sp.active) {
+        sp.setScale(1, 1);
+        sp.setAngle(0);
+        sp.clearTint();
+      }
+      if (b.idleTween) b.idleTween.resume();
+    };
+
+    // Phase 1: anticipation — squash down/back + glow + tiny backward lean
+    this.tweens.add({
+      targets: sp,
+      scaleX: 1.12,
+      scaleY: 0.86,
+      angle: -6 * leanDir,
+      duration: 150,
+      ease: 'Quad.easeOut',
+      onStart: () => { if (sp && sp.active) sp.setTint(0xffaaaa); },
+      onComplete: () => {
+        if (!b.alive || !sp || !sp.active) { settle(); return; }
+        // Fire the actual attack on the lunge
+        if (onLunge) onLunge();
+        // Phase 2: snap/lunge forward (stretch + lean into the throw)
+        this.tweens.add({
+          targets: sp,
+          scaleX: 0.92,
+          scaleY: 1.1,
+          angle: 8 * leanDir,
+          duration: 90,
+          ease: 'Quad.easeIn',
+          onComplete: () => {
+            if (!b.alive || !sp || !sp.active) { settle(); return; }
+            if (sp && sp.active) sp.clearTint();
+            // Phase 3: settle back to neutral, then resume idle bob
+            this.tweens.add({
+              targets: sp,
+              scaleX: 1,
+              scaleY: 1,
+              angle: 0,
+              duration: 120,
+              ease: 'Back.easeOut',
+              onComplete: settle,
+            });
+          },
+        });
+      },
+    });
   }
 
   _bossThrowDocument(speed) {

@@ -803,6 +803,26 @@ export default class VictoryScene extends BaseCinematicScene {
    * Used on page 8 for flanking flags.
    */
   _drawFlag(cx, cy) {
+    // Prefer the AI Israel-flag sprite (pole + waving cloth + Star of David),
+    // matching the AI enemy faction flags. Procedural drawing below is the fallback.
+    if (this.textures.exists('flag_israel_ai')) {
+      const flag = this.add.image(cx, cy, 'flag_israel_ai').setOrigin(0.5, 1).setDepth(18);
+      flag.setDisplaySize(90, 112);
+      this._addPageVisual(flag);
+      const baseScaleX = flag.scaleX;
+      flag.setAlpha(0);
+      this.tweens.add({ targets: flag, alpha: 1, duration: 800 });
+      this.tweens.add({
+        targets: flag,
+        scaleX: baseScaleX * 0.96,
+        duration: 1200,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      });
+      return;
+    }
+
     const flagGfx = this.add.graphics().setDepth(18);
     this._addPageVisual(flagGfx);
 

@@ -68,13 +68,14 @@ const ROUTES = {
     ],
   },
   6: {
-    city: 'UNKNOWN TERRITORY',
-    dest: { x: 420, y: 160 },
+    city: 'TEHRAN — REGIME FORTRESS',
+    dest: { x: 800, y: 180 },
     waypoints: [
       { x: 280, y: 275 },  // Tel Aviv
-      { x: 320, y: 240 },  // north-east
-      { x: 370, y: 200 },  // into Syria
-      { x: 420, y: 160 },  // unknown
+      { x: 380, y: 260 },  // across Jordan
+      { x: 520, y: 230 },  // into Iraq
+      { x: 660, y: 200 },  // central Iraq
+      { x: 800, y: 180 },  // Tehran — the Supreme Turban's fortress
     ],
   },
 };
