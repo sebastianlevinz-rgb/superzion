@@ -63,12 +63,18 @@ function hero(dir, frame) {
 // Generic fictional enemy soldiers — NOT the hero (no kippah/star).
 function enemySoldier(dir, frame, variant) {
   const colors = {
-    patrol: "olive-drab green military uniform and a green beret",
-    chaser: "dark red and black military uniform and a black beret, more aggressive looking",
+    patrol:
+      "all-BLACK loose militant fatigues and a black chest rig/vest, " +
+      "a BLACK balaclava face-mask covering the whole face (only the eyes show), " +
+      "a GREEN militant headband tied around the forehead, NO beret, NO cap, scruffy irregular (NOT a clean uniform)",
+    chaser:
+      "dark grey-and-black tactical militant gear with a black load-bearing vest, " +
+      "a BLACK balaclava face-mask (only the eyes show), a RED militant headband, more aggressive looking, NO beret",
   }[variant];
   const base =
-    `a generic enemy foot-soldier, ${colors}, holding a rifle, ` +
-    "neutral menacing expression, detailed pixel art, top-down-ish 2.5D arcade view";
+    `a militant enemy fighter, ${colors}, holding a rifle, ` +
+    "clearly NOT an Israeli soldier — NO olive-green clean uniform, NO blue kippah, NO Star of David, " +
+    "menacing, detailed pixel art, top-down-ish 2.5D arcade view";
   const view = {
     down: "facing the camera (front view)",
     up: "seen from behind (back view)",
@@ -118,8 +124,9 @@ function pltGuard(frame) {
     "walking right, side view, leg back pose C",
   ][frame];
   const base =
-    "a generic enemy foot-soldier in olive-drab green uniform and green beret, " +
-    "holding a rifle, detailed pixel art";
+    "a militant enemy fighter in all-BLACK loose fatigues with a black chest vest, " +
+    "a BLACK balaclava face-mask (only the eyes show), a GREEN headband on the forehead, " +
+    "holding a rifle, clearly NOT an Israeli soldier — NO olive-green uniform, NO kippah, NO beret, detailed pixel art";
   return `${STYLE}. Sprite of ${base}, ${p}.`;
 }
 
@@ -286,8 +293,8 @@ export const SPRITES = {
   parade: [
     // Boss caricatures (generic cartoon arcade villains)
     // Each boss is DISTINCT — its name's signature trait dialed up, own colour/build.
-    { name: "parade_foambeard", size: { w: 60, h: 110 }, ref: "bm_boss1_normal",
-      prompt: sprite("a stocky cartoon militia-commander villain, full body front view, with an ENORMOUS wild foamy WHITE beard covering his chest, olive-green field fatigues, a black-and-white checkered keffiyeh scarf, no turban, comic-villain proportions") },
+    { name: "parade_foambeard", size: { w: 60, h: 110 },
+      prompt: sprite("Ismail Haniyeh, a heavy-set older middle-eastern political leader, full body front view, BALD on top with short grey hair on the sides, a full neatly-TRIMMED grey-and-white beard (not wild, not huge), a round face, wearing a dark charcoal business SUIT with a white shirt (NO uniform, NO keffiyeh, NO turban), calm stern authoritative expression, recognizable likeness, detailed pixel art") },
     { name: "parade_turboturban", size: { w: 70, h: 120 }, ref: "turbo_turban",
       prompt: sprite("a round cartoon cleric villain, full body front view, wearing a COMICALLY ENORMOUS oversized BLACK turban, a brown clerical robe, round glasses, a thick grey-black beard, comic-villain proportions") },
     { name: "parade_angryeyebrows", size: { w: 64, h: 110 },
@@ -298,7 +305,7 @@ export const SPRITES = {
     { name: "parade_superzion", size: { w: 96, h: 160 }, ref: "bm_player_down_0",
       prompt: sprite(HERO_BASE + ", full body heroic standing pose, front view, proud and confident") },
     { name: "parade_soldier", size: { w: 20, h: 40 }, ref: "bm_patrol_right_0",
-      prompt: sprite("a small generic enemy foot-soldier in olive-green uniform and beret with a rifle, side profile marching right") },
+      prompt: sprite("a small black-clad militant enemy fighter with a black balaclava face-mask and a green headband, holding a rifle, side profile marching right") },
     // Vehicles (side view)
     { name: "parade_missiletruck", size: { w: 70, h: 40 }, prompt: sideVeh("a military missile-launcher truck carrying a large missile") },
     { name: "parade_rockettruck", size: { w: 60, h: 36 }, prompt: sideVeh("a military rocket-artillery truck with multiple rocket tubes") },
@@ -377,17 +384,17 @@ export const SPRITES = {
   // F-15 level scrolling terrain bands (tileSprites — must tile seamlessly).
   // Aerial side-scroller ground seen passing below the jet. tile:true mirrors.
   terrain: [
-    { name: "sea_surface", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+    { name: "sea_surface", size: { w: 960, h: 120 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. Aerial top-down view of a calm Mediterranean SEA at golden hour — clean teal-and-blue water with soft evenly-scattered gentle wave ripples and tiny warm golden sunset glints, smooth and pretty, evenly lit with NO single bright spot, NO horizon, NO land, NO boats. A SEAMLESS repeating horizontal terrain band with uniform texture across the whole frame (no obvious centre feature, no hard seams).` },
-    { name: "coast_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+    { name: "coast_ground", size: { w: 960, h: 120 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. Aerial top-down view of a Mediterranean COASTLINE at golden hour — turquoise sea on one side blending into pale sandy beach and patches of green-and-tan scrubland, warm soft sunset lighting, clean and pretty, evenly textured. A SEAMLESS repeating horizontal terrain band, no hard seams, no single centre feature.` },
-    { name: "mountain_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+    { name: "mountain_ground", size: { w: 960, h: 120 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. Aerial top-down view of rugged mountain ridges at golden hour — warm tan and ochre rocky ridgelines and ravines with soft long shadows, sparse green pockets, pretty warm sunset lighting, clean detailed. A SEAMLESS repeating horizontal terrain band, evenly distributed ridges, no hard seams, no single centre feature.` },
-    { name: "valley_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
+    { name: "valley_ground", size: { w: 960, h: 120 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. Aerial top-down view of an arid desert VALLEY at golden hour — warm sandy-ochre ground with sparse scrub, dry winding riverbeds and rocky patches, soft warm sunset lighting, clean and pretty. A SEAMLESS repeating horizontal terrain band, evenly textured, no hard seams, no single centre feature.` },
     // Transparent parallax layers (sky shows through the keyed-out areas).
     // NOTE: use a NO-character style — the base STYLE adds figures.
-    { name: "far_mountains", size: { w: 768, h: 256 }, tileAlpha: true,
+    { name: "far_mountains", size: { w: 960, h: 250 }, tileAlpha: true,
       prompt: `16-bit retro pixel-art parallax scenery layer, NO characters, NO people, NO creatures, NO knights, NO text, NO border. A row of distant hazy blue-grey mountain-range silhouettes along the BOTTOM third only; the ENTIRE rest of the image is a solid flat pure ${KEY_COLOR} green empty sky. Horizontal band, detailed pixel art.` },
     { name: "cloud_layer", size: { w: 768, h: 160 }, tileAlpha: true,
       prompt: `16-bit retro pixel-art parallax layer, NO characters, NO people, NO text, NO border. A few soft wispy white and pale-grey clouds scattered across a solid flat pure ${KEY_COLOR} green background. Horizontal cloud band, detailed pixel art.` },
@@ -456,6 +463,10 @@ export const SPRITES = {
     // ── GameIntro finale: Tel Aviv beach sunset (palm trees) — "they fight to conquer, we fight to exist" ──
     { name: "intro_telaviv_sunset", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A breathtaking, INSTANTLY RECOGNIZABLE TEL AVIV beachfront at golden-hour sunset. Foreground: the sandy Mediterranean beach and the curving seaside PROMENADE (tayelet) with tall leaning PALM TREES and beach umbrellas. Midground skyline along the shore clearly showing Tel Aviv's iconic landmarks: the three distinctive AZRIELI CENTER skyscrapers (one CIRCULAR tower, one TRIANGULAR tower, one SQUARE tower standing together) and rows of white Bauhaus buildings. On the far-left headland, the historic OLD JAFFA hill with its stone clock tower and church spire jutting into the sea. Calm sea with a warm shimmering golden sun reflection, glowing orange-to-purple sunset sky with soft clouds, peaceful hopeful majestic atmosphere, cinematic pixel-art panorama. NO text, NO people.` },
+
+    // ── Final-boss (Endgame) fortress — distinct from cin_fortress (the L2 bunker) ──
+    { name: "cin_final_fortress", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A colossal ominous IRANIAN MOUNTAIN FORTRESS-PALACE at night — a towering dark fortress carved into a jagged mountain peak, massive stone ramparts and battlements, several tall slender minarets and a huge central domed throne-hall glowing with eerie red light from within, sweeping searchlights, a long fortified bridge approach, storm clouds and a blood-red moon behind it, lightning, epic and intimidating final-boss lair. Grand and palatial, NOT a small bunker entrance. Cinematic.` },
 
     // ── L3/L4 brief: underground tunnel network cross-section ──
     { name: "cin_tunnel_xsection", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",

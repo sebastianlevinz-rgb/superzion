@@ -22,7 +22,7 @@ import {
 const W = 960;
 const H = 540;
 const GROUND_Y = 420;     // horizon / ground line
-const GROUND_FADE_MS = 520; // terrain-band crossfade duration (tunable 400-600)
+const GROUND_FADE_MS = 200; // terrain-band crossfade duration (short, to avoid muddy two-texture blend)
 const DECK_Y = 395;       // carrier deck surface Y
 const GRAVITY = 480;      // bomb gravity px/s²
 const JET_SPEED = 440;    // base horizontal speed px/s (doubled for phase-23)
@@ -226,9 +226,13 @@ export default class BomberScene extends Phaser.Scene {
     this.cloudTile3 = this.add.tileSprite(W / 2, 180, W, 100, 'cloud_layer')
       .setDepth(-6).setAlpha(0.15).setScale(0.7, 0.5);
 
-    // Far mountains (mid parallax) — hidden during sea phases
-    this.farTerrain = this.add.tileSprite(W / 2, GROUND_Y - 55, W, 250, 'far_mountains').setDepth(-5);
+    // Far mountains (mid parallax) — hidden during sea phases.
+    // Anchored so the band's BOTTOM sits on the horizon (Y center GROUND_Y-95,
+    // height 250 → bottom ≈ 445, slightly overlapping the ground band at 420),
+    // instead of floating up in the sky.
+    this.farTerrain = this.add.tileSprite(W / 2, GROUND_Y - 95, W, 250, 'far_mountains').setDepth(-5);
     this.farTerrain.setVisible(false);
+    this._farTerrainShown = false; // guard so the fade-in only runs once per reveal
 
     // Ground (near parallax)
     this.groundTile = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_surface').setDepth(1);
@@ -337,9 +341,12 @@ export default class BomberScene extends Phaser.Scene {
 
     // ── Animated water-shine: only over sea; scroll faster + gentle pulse ──
     if (this.seaShine) {
-      const overSea = (this.groundTile.texture && this.groundTile.texture.key === 'sea_surface')
-        || (this.groundFade && this.groundFade.alpha > 0 && this.groundFade.texture
-            && this.groundFade.texture.key === 'sea_surface');
+      // Over sea only while the BASE ground is sea AND we are not currently
+      // crossfading to a land texture (otherwise glints linger over sand).
+      const fadingToLand = this._groundFadeTween
+        && this._groundFadePending && this._groundFadePending !== 'sea_surface';
+      const overSea = !fadingToLand
+        && this.groundTile.texture && this.groundTile.texture.key === 'sea_surface';
       if (overSea) {
         this._seaShineT += dt;
         this.seaShine.visible = true;
@@ -401,6 +408,24 @@ export default class BomberScene extends Phaser.Scene {
         this._groundFadePending = null;
       },
     });
+  }
+
+  // Reveal the far-mountains band with a soft fade-in (only once per reveal).
+  // Call _hideFarTerrain() to hide and re-arm the guard.
+  _revealFarTerrain() {
+    if (!this.farTerrain) return;
+    if (this._farTerrainShown && this.farTerrain.visible) return;
+    this._farTerrainShown = true;
+    this.farTerrain.setVisible(true);
+    this.farTerrain.setAlpha(0);
+    this.tweens.add({ targets: this.farTerrain, alpha: 1, duration: 500, ease: 'Sine.easeInOut' });
+  }
+
+  _hideFarTerrain() {
+    if (!this.farTerrain) return;
+    this.farTerrain.setVisible(false);
+    this.farTerrain.setAlpha(1);
+    this._farTerrainShown = false;
   }
 
   _updateHUD() {
@@ -527,7 +552,7 @@ export default class BomberScene extends Phaser.Scene {
 
     this.carrierSprite.setVisible(true);
     this.carrierSprite.setPosition(240, GROUND_Y - 10);
-    this.farTerrain.setVisible(false);
+    this._hideFarTerrain();
     this.groundTile.setTexture('sea_surface');
 
     this.instrText.setText('Engines spooling up... get ready to PULL UP!');
@@ -744,7 +769,7 @@ export default class BomberScene extends Phaser.Scene {
     this.flightDistance = 0;
     this.flightTerrainStage = 0;
 
-    this.farTerrain.setVisible(false);
+    this._hideFarTerrain();
     this.groundTile.setTexture('sea_surface');
 
     this.instrText.setText('ARROWS to dodge \u2014 C for chaff \u2014 Approaching target...');
@@ -809,7 +834,7 @@ export default class BomberScene extends Phaser.Scene {
     if (this.flightDistance > FLIGHT_COAST_DIST && this.flightTerrainStage === 0) {
       this.flightTerrainStage = 1;
       this._setGroundTexture('coast_ground');
-      this.farTerrain.setVisible(true);
+      this._revealFarTerrain();
       this.instrText.setText('Approaching Lebanon...');
     }
     if (this.flightDistance > FLIGHT_MTN_DIST && this.flightTerrainStage === 1) {
@@ -1099,9 +1124,9 @@ export default class BomberScene extends Phaser.Scene {
     this.jetY = 150;
     this.jetVX = 0; // hovering over target area — no constant forward speed
 
-    // Change ground to valley
-    this.groundTile.setTexture('valley_ground');
-    this.farTerrain.setVisible(true);
+    // Change ground to valley (crossfade for consistency; no hard cut)
+    this._setGroundTexture('valley_ground');
+    this._revealFarTerrain();
 
     // ── BUNKER with visible interior (cross-section / diorama) ──
     const bunkW = BUNKER_W + 40; // wider bunker for interior
@@ -2055,7 +2080,7 @@ export default class BomberScene extends Phaser.Scene {
     this.returnDistance = 0;
 
     this.groundTile.setTexture('mountain_ground');
-    this.farTerrain.setVisible(true);
+    this._revealFarTerrain();
 
     this.jetSprite.setRotation(0); // level out
 
@@ -2116,7 +2141,7 @@ export default class BomberScene extends Phaser.Scene {
     if (this.returnDistance > RETURN_SEA_DIST && this.returnTerrainStage === 1) {
       this.returnTerrainStage = 2;
       this._setGroundTexture('sea_surface');
-      this.farTerrain.setVisible(false);
+      this._hideFarTerrain();
       this.instrText.setText('Over the sea... carrier ahead');
     }
 

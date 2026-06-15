@@ -2728,7 +2728,7 @@ export default class DroneScene extends Phaser.Scene {
 
     // Update boss sprite position
     if (this.bossSprite) {
-      this.bossSprite.setPosition(this.bossX, this.bossY);
+      this.bossSprite.setPosition(this.bossX + (this._bossBobX || 0), this.bossY + (this._bossBobY || 0));
     }
 
     // Update projectiles
@@ -2760,6 +2760,9 @@ export default class DroneScene extends Phaser.Scene {
         // Slight X tracking toward player (eyes follow drone)
         const trackOffsetX = Math.sign(this.droneX - this.armchairX) * 3;
         this.bossX = this.armchairX + trackOffsetX;
+        // Gentle idle bob so the peeking head feels alive (purely cosmetic offset)
+        this._bossBobX = 0;
+        this._bossBobY = Math.sin(this.time.now / 350) * 3;
         if (this.bossSprite) {
           this.bossSprite.setTexture(this._bossTex(this.bossExpression));
           this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
@@ -2767,6 +2770,8 @@ export default class DroneScene extends Phaser.Scene {
           this.bossSprite.setAlpha(1);
         }
         if (this.bossStateTimer <= 0) {
+          // Leaving hiding — clear the idle bob offset
+          this._bossBobY = 0;
           this.bossState = 'peeking';
           this.bossStateTimer = BOSS_P1_PEEK_DUR;
           this.bossVisible = true;
@@ -2781,7 +2786,9 @@ export default class DroneScene extends Phaser.Scene {
         // Rise from behind-armchair position to fully above
         const hideY = this.armchairY + ARMCHAIR_H * 0.15;
         const attackY = this.armchairY - ARMCHAIR_H / 2 - BOSS_DISPLAY * 0.4;
-        this.bossY = hideY + (attackY - hideY) * riseProgress;
+        // Ease with slight overshoot so the head pops up
+        const eased = Phaser.Math.Easing.Back.Out(riseProgress);
+        this.bossY = hideY + (attackY - hideY) * eased;
 
         if (this.bossSprite) {
           this.bossSprite.setTexture(this._bossTex(this.bossExpression));
@@ -2811,17 +2818,31 @@ export default class DroneScene extends Phaser.Scene {
           this.bossSprite.setAlpha(1);
         }
 
-        // Wind-up animation: arm raises 0.5s before throw
+        // Wind-up animation: real telegraph — boss leans back & squashes,
+        // then snaps forward on release.
         if (this._bossWindUp) {
           this._bossWindUpTimer -= dt;
-          // Slight tilt during wind-up
           if (this.bossSprite) {
-            this.bossSprite.setRotation(Math.sin(this._bossWindUpTimer * 12) * 0.08);
+            // Progress 0 → 1 across the 0.5s wind-up
+            const wuProgress = Phaser.Math.Clamp(1 - this._bossWindUpTimer / 0.5, 0, 1);
+            const eased = Phaser.Math.Easing.Quadratic.Out(wuProgress);
+            // Lean toward ~0.15 rad (toward the player side)
+            const leanDir = Math.sign(this.droneX - this.bossX) || 1;
+            this.bossSprite.setRotation(eased * 0.15 * leanDir);
+            // Squash: scaleY down to ~0.92, scaleX up to ~1.06 of display
+            const base = BOSS_DISPLAY / 128;
+            const sx = base * (1 + eased * 0.06);
+            const sy = base * (1 - eased * 0.08);
+            this.bossSprite.setScale(sx, sy);
           }
           if (this._bossWindUpTimer <= 0) {
             this._bossWindUp = false;
             this._bossThrowObject();
-            if (this.bossSprite) this.bossSprite.setRotation(0);
+            // Snap back to neutral on release
+            if (this.bossSprite) {
+              this.bossSprite.setRotation(0);
+              this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
+            }
           }
         }
 
@@ -3515,6 +3536,19 @@ export default class DroneScene extends Phaser.Scene {
         yoyo: true,
         ease: 'Quad.easeOut',
       });
+
+      // Hit recoil — purely-visual knockback via the cosmetic offset
+      // (bossX/bossY untouched, so hitboxes stay correct).
+      const knockDir = Math.sign(this.bossX - this.droneX) || 1;
+      this._bossBobX = (this._bossBobX || 0) + knockDir * 8;
+      this._bossBobY = (this._bossBobY || 0) - 4;
+      this.tweens.add({
+        targets: this,
+        _bossBobX: 0,
+        _bossBobY: 0,
+        duration: 120,
+        ease: 'Back.easeOut',
+      });
     }
 
     // Screen shake
@@ -4001,15 +4035,14 @@ export default class DroneScene extends Phaser.Scene {
       this.bossSprite.setDisplaySize(BOSS_DISPLAY, BOSS_DISPLAY);
     }
 
-    // 1. Boss freezes then trembles
+    // 1. Boss freezes then trembles — drive the cosmetic offset (not x/y,
+    //    which is clobbered each frame) so the tremble reads smoothly.
     this.time.addEvent({
       delay: 50,
       repeat: 30,
       callback: () => {
-        if (this.bossSprite) {
-          this.bossSprite.x = this.bossX + (Math.random() - 0.5) * 10;
-          this.bossSprite.y = this.bossY + (Math.random() - 0.5) * 10;
-        }
+        this._bossBobX = (Math.random() - 0.5) * 6;
+        this._bossBobY = (Math.random() - 0.5) * 6;
       },
     });
 
@@ -4043,10 +4076,22 @@ export default class DroneScene extends Phaser.Scene {
         });
       }
 
-      // Scale down and fade (falls)
+      // Stop the tremble and topple over — rotation tween + downward
+      // offset so he falls rather than just fading in place.
+      this._bossBobX = 0;
+      this._bossBobY = 0;
+      const tumbleDir = (Math.random() < 0.5 ? -1 : 1) * 1.2;
+      this.tweens.add({
+        targets: this,
+        _bossBobY: 36,
+        _bossBobX: tumbleDir * 12,
+        duration: 1200,
+        ease: 'Quad.easeIn',
+      });
       if (this.bossSprite) {
         this.tweens.add({
           targets: this.bossSprite,
+          rotation: tumbleDir,
           scaleX: 0.8 * (BOSS_DISPLAY / 128),
           scaleY: 0.8 * (BOSS_DISPLAY / 128),
           alpha: 0,

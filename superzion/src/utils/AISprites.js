@@ -73,7 +73,7 @@ export const AI_SPRITES = [
 
   // ── Cinematic panoramas + hero portraits ──
   'cin_tehran', 'cin_beirut_port', 'cin_lebanon_coast', 'cin_fortress',
-  'cin_natanz', 'cin_gaza', 'cin_destroyed_city', 'cin_cliff_bg', 'cin_ops_room',
+  'cin_natanz', 'cin_gaza', 'cin_destroyed_city', 'cin_cliff_bg', 'cin_ops_room', 'cin_final_fortress',
   'cin_superzion', 'cin_superzion_cliff',
   '__title_bg', 'b2_silhouette',
   // Opening intro narrative backdrops + enemy faction flags

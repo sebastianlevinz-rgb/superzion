@@ -147,8 +147,8 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
         color: '#ff4444', size: 18, y: H * 0.82,
         setup: () => {
           // AI panorama backdrop behind the boss reveal
-          if (this.textures.exists('cin_fortress')) {
-            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_fortress').setDisplaySize(W, H).setDepth(0));
+          if (this.textures.exists('cin_final_fortress')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_final_fortress').setDisplaySize(W, H).setDepth(0));
           }
           this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.45).setDepth(1));
 
@@ -205,8 +205,8 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
         text: "He's in his last fortress. Everything he has left, protecting one man.",
         color: '#cccccc', size: 20, y: H * 0.45,
         setup: () => {
-          if (this.textures.exists('cin_fortress')) {
-            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_fortress').setDepth(0).setDisplaySize(W, H));
+          if (this.textures.exists('cin_final_fortress')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_final_fortress').setDepth(0).setDisplaySize(W, H));
             this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.45).setDepth(0.5));
             // Distant fire glows on top
             const fg = this.add.graphics().setDepth(2);
@@ -279,7 +279,7 @@ export default class LastStandCinematicScene extends BaseCinematicScene {
   }
 
   _darkOverlay() {
-    if (this.textures.exists("cin_fortress")) { this._addPageVisual(this.add.image(W / 2, H / 2, "cin_fortress").setDepth(0).setAlpha(0.6)); }
+    if (this.textures.exists("cin_final_fortress")) { this._addPageVisual(this.add.image(W / 2, H / 2, "cin_final_fortress").setDepth(0).setAlpha(0.6)); }
     const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080a10).setDepth(1).setAlpha(0.55);
     this._addPageVisual(bg);
   }

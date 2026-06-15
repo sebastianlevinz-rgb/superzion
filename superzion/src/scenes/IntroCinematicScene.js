@@ -32,15 +32,15 @@ export default class IntroCinematicScene extends BaseCinematicScene {
     this._drawTehranSilhouette();
 
     // -- Animated scan line (slow green sweep top-to-bottom) --
-    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0x00ff00, 0.07).setDepth(6);
+    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0x00ff00, 0.035).setDepth(6);
     this.tweens.add({
       targets: scanLine, y: H, duration: 4000, repeat: -1, ease: 'Linear',
     });
 
     // -- Pulsing grid overlay (very subtle alpha oscillation) --
-    const gridPulse = this.add.rectangle(W / 2, H / 2, W, H, 0x00ff00, 0.015).setDepth(6);
+    const gridPulse = this.add.rectangle(W / 2, H / 2, W, H, 0x00ff00, 0.007).setDepth(6);
     this.tweens.add({
-      targets: gridPulse, alpha: { from: 0.015, to: 0.035 },
+      targets: gridPulse, alpha: { from: 0.007, to: 0.017 },
       duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
@@ -120,7 +120,10 @@ export default class IntroCinematicScene extends BaseCinematicScene {
 
   /** Dark semi-transparent overlay for boss/hero pages */
   _darkOverlay() {
-    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080a10).setDepth(1).setAlpha(0.85);
+    if (this.textures.exists('cin_tehran')) {
+      this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_tehran').setDepth(0).setAlpha(0.6));
+    }
+    const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080a10).setDepth(1).setAlpha(0.55);
     this._addPageVisual(bg);
   }
 
@@ -145,7 +148,7 @@ export default class IntroCinematicScene extends BaseCinematicScene {
   _drawTehranSilhouette() {
     const gfx = this.add.graphics().setDepth(5).setScrollFactor(0);
     const c = 0x00AA44;
-    const a = 0.15;
+    const a = 0.04;
 
     // Mountain ridge across bottom
     gfx.fillStyle(c, a);
@@ -166,7 +169,7 @@ export default class IntroCinematicScene extends BaseCinematicScene {
     gfx.fill();
 
     // Mosque dome (center-right)
-    gfx.fillStyle(c, 0.18);
+    gfx.fillStyle(c, 0.04);
     const domeX = W * 0.65, domeY = H * 0.45;
     gfx.beginPath();
     gfx.arc(domeX, domeY, 35, Math.PI, 0, false);
@@ -179,7 +182,7 @@ export default class IntroCinematicScene extends BaseCinematicScene {
 
     // Minaret (tall thin tower left of dome)
     const minX = W * 0.55, minBaseY = H * 0.52;
-    gfx.fillStyle(c, 0.18);
+    gfx.fillStyle(c, 0.04);
     gfx.fillRect(minX - 3, minBaseY - 80, 6, 80);
     // Minaret cap
     gfx.beginPath();
