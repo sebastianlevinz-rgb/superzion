@@ -7,6 +7,7 @@ import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import InputManager from '../systems/InputManager.js';
+import { drawStarOfDavid } from '../utils/StarOfDavid.js';
 
 export default class CreditsScene extends BaseCinematicScene {
   constructor() { super('CreditsScene'); }
@@ -130,39 +131,7 @@ export default class CreditsScene extends BaseCinematicScene {
   }
 
   _drawStarOfDavid(gfx, cx, cy) {
-    const r = 40;
-    gfx.lineStyle(2, 0xdaa520, 0.8);
-
-    // Upward triangle
-    gfx.beginPath();
-    gfx.moveTo(cx, cy - r);
-    gfx.lineTo(cx + r * Math.cos(Math.PI / 6), cy + r * Math.sin(Math.PI / 6));
-    gfx.lineTo(cx - r * Math.cos(Math.PI / 6), cy + r * Math.sin(Math.PI / 6));
-    gfx.closePath();
-    gfx.strokePath();
-
-    // Downward triangle
-    gfx.beginPath();
-    gfx.moveTo(cx, cy + r);
-    gfx.lineTo(cx + r * Math.cos(Math.PI / 6), cy - r * Math.sin(Math.PI / 6));
-    gfx.lineTo(cx - r * Math.cos(Math.PI / 6), cy - r * Math.sin(Math.PI / 6));
-    gfx.closePath();
-    gfx.strokePath();
-
-    // Glow effect
-    gfx.lineStyle(4, 0xdaa520, 0.15);
-    gfx.beginPath();
-    gfx.moveTo(cx, cy - r);
-    gfx.lineTo(cx + r * Math.cos(Math.PI / 6), cy + r * Math.sin(Math.PI / 6));
-    gfx.lineTo(cx - r * Math.cos(Math.PI / 6), cy + r * Math.sin(Math.PI / 6));
-    gfx.closePath();
-    gfx.strokePath();
-    gfx.beginPath();
-    gfx.moveTo(cx, cy + r);
-    gfx.lineTo(cx + r * Math.cos(Math.PI / 6), cy - r * Math.sin(Math.PI / 6));
-    gfx.lineTo(cx - r * Math.cos(Math.PI / 6), cy - r * Math.sin(Math.PI / 6));
-    gfx.closePath();
-    gfx.strokePath();
+    drawStarOfDavid(gfx, cx, cy, 44, { lineWidth: 2.5, lineAlpha: 0.85, fillAlpha: 0.10, haloAlpha: 0.16 });
   }
 
   _finish() {

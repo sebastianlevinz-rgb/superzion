@@ -434,6 +434,14 @@ export const SPRITES = {
     { name: "beirut_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A war-torn city street ground band seen straight-on — cracked asphalt and rubble, scattered debris and craters, dim reddish night lighting, fills the frame as a horizontal seamless terrain band. NO sky.` },
 
+    // ── Victory celebration crowd (transparent band for the bottom) ──
+    { name: "victory_crowd", size: { w: 720, h: 200 }, key: "magenta",
+      prompt: `16-bit retro pixel-art game sprite, a CROWD of diverse cheering Israeli civilians and soldiers celebrating together — men, women and children, several waving WHITE-AND-BLUE Israel flags (white field with two blue horizontal stripes and a blue Star of David), arms raised in joy, packed shoulder-to-shoulder in two or three rows forming a wide horizontal crowd band, seen from the front, warm joyful smiling faces, detailed pixel art, bold dark outline, clean readable pixels. NO text, NO watermark, NO single hero in the centre. The crowd fills the LOWER portion as a wide band; solid flat pure #FF00FF magenta background everywhere above and around the crowd.` },
+
+    // ── Drone boss arena — top-down wrecked hideout floor ──
+    { name: "drone_room", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. EXACT top-down bird's-eye view looking STRAIGHT DOWN at the floor of a wrecked underground hideout room — cracked grey concrete and broken tiled floor seen from directly overhead, scattered chunks of rubble and shattered furniture, a torn dusty rug, spilled papers, blast scorch marks and dust, dim ominous overhead lighting with deep shadows. A flat top-down floor plan, NO walls drawn in side-perspective, grim and claustrophobic.` },
+
     // ── Drone level (Last Chair) — Gaza ruins backdrop ──
     { name: "drone_gaza", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A dense war-torn GAZA city skyline at dusk — rows of damaged low-rise concrete middle-eastern apartment buildings packed tightly, many partially collapsed with blown-out floors and exposed rebar, rubble and dust, a hazy smoky orange-grey sky, distant sea on one side, grim. A realistic ruined coastal town, NOT plain rectangles.` },

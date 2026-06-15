@@ -9,6 +9,7 @@ import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import { drawSuperZionForward } from '../utils/SuperZionRenderer.js';
+import { drawStarOfDavid } from '../utils/StarOfDavid.js';
 
 export default class VictoryScene extends BaseCinematicScene {
   constructor() { super('VictoryScene'); }
@@ -16,6 +17,14 @@ export default class VictoryScene extends BaseCinematicScene {
   create() {
     MusicManager.get().playVictoryMusic();
     this._initCinematic();
+
+    // Dim dawn backdrop behind the whole epilogue so the early text cards
+    // aren't flat black. Sits far behind every other visual; persists across
+    // pages (NOT tied to a page). Falls back to black if the texture is absent.
+    if (this.textures.exists('credits_sky')) {
+      this.add.image(W / 2, H / 2, 'credits_sky').setDepth(-20).setDisplaySize(W, H);
+      this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.78).setDepth(-19);
+    }
 
     // Confetti & celebrator tracking (Plan 03 will use these)
     this._confettiParticles = [];
@@ -263,16 +272,10 @@ export default class VictoryScene extends BaseCinematicScene {
     const starGfx = this.add.graphics().setDepth(3);
     this._addPageVisual(starGfx);
     const cx = W / 2, cy = H * 0.38;
-    const r = 100;
+    const r = 120;
 
-    // Outer glow
-    starGfx.fillStyle(0xFFD700, 0.1);
-    starGfx.fillCircle(cx, cy, 130);
-
-    // Star triangles
-    starGfx.fillStyle(0xFFD700, 0.25);
-    starGfx.fillTriangle(cx, cy - r, cx - r * 0.866, cy + r * 0.5, cx + r * 0.866, cy + r * 0.5);
-    starGfx.fillTriangle(cx, cy + r, cx - r * 0.866, cy - r * 0.5, cx + r * 0.866, cy - r * 0.5);
+    // Shared Maguen David (gold body, soft blue halo)
+    drawStarOfDavid(starGfx, cx, cy, r, { fillAlpha: 0.22, lineAlpha: 0.7, haloAlpha: 0.12 });
 
     // Fade in
     starGfx.setAlpha(0);
@@ -300,6 +303,17 @@ export default class VictoryScene extends BaseCinematicScene {
       SoundManager.get().playVictory();
     }
 
+    // AI cheering-crowd band (720x200) spanning the bottom. Depth 5 keeps it
+    // behind the hero (depth 6) so the AI hero stays the focal point.
+    if (this.textures.exists('victory_crowd')) {
+      const crowdImg = this.add.image(W / 2, H + 4, 'victory_crowd')
+        .setOrigin(0.5, 1).setDepth(5);
+      crowdImg.setDisplaySize(W * 1.02, W * 1.02 * (200 / 720));
+      this._addPageVisual(crowdImg);
+      return;
+    }
+
+    // ── Fallback: hand-drawn crowd if the AI sprite is missing ──
     const crowd = [];
     const flagHolders = [];
 

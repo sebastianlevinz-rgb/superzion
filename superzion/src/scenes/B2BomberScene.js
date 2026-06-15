@@ -2500,45 +2500,80 @@ export default class B2BomberScene extends Phaser.Scene {
     const bs = 1.2;  // slightly bigger for dramatic effect
     const bankFactor = bank || 0;
 
-    // The wing shape is drawn as if seen from slightly behind and to the side
-    // Bank angle tilts one wing up and one down
-    const upWing = -bankFactor;  // positive bank = left wing up
-    const downWing = bankFactor;
+    // Flying-wing planform, nose pointing LEFT, seen from behind/above and banked.
+    // Design units (nose-up baseline): nose (0,0); span x:-1..1; tail depth y:0..0.80.
+    // We map design (dx, dy) -> screen by: screen along-flight = -dy (nose left),
+    // screen across-span = dx, with the bank tilting the two wingtips (up/down).
+    // upper span = "left wing" (tilts up on positive bank), lower = "right wing".
+    const SP = 60 * bs;   // half-span in px
+    const LN = 80 * bs;   // nose-to-tail length in px
+    const upWing = -bankFactor;   // positive bank = upper wing up
+    const downWing = bankFactor;  // positive bank = lower wing down
 
-    gfx.fillStyle(0x3a3a3a, 1);
+    // helper: design point -> screen. side = +1 (upper) / -1 (lower) selects bank tilt
+    const px = (dy) => bx - dy * LN;                      // along flight (nose left)
+    const py = (dx, side) => {
+      const tilt = side >= 0 ? upWing : downWing;
+      return by + dx * SP + tilt * Math.abs(dx) * 22 * bs;
+    };
+
+    // Full flying-wing outline: nose -> upper leading edge to tip -> upper sawtooth
+    // back to centre rear -> lower sawtooth out to tip -> lower leading edge to nose.
+    gfx.fillStyle(0x2c3037, 1);
     gfx.beginPath();
-    // Nose points LEFT (flying left)
-    gfx.moveTo(bx - 25 * bs, by);                                    // nose (left)
-    gfx.lineTo(bx + 10 * bs, by - (55 + upWing * 25) * bs);        // upper wing tip
-    gfx.lineTo(bx + 18 * bs, by - (35 + upWing * 18) * bs);        // upper trailing
-    gfx.lineTo(bx + 12 * bs, by);                                    // center rear
-    gfx.lineTo(bx + 18 * bs, by + (35 + downWing * 18) * bs);      // lower trailing
-    gfx.lineTo(bx + 10 * bs, by + (55 + downWing * 25) * bs);      // lower wing tip
+    gfx.moveTo(px(0.0), by);                              // nose
+    gfx.lineTo(px(0.60), py(1.0, +1));                    // upper wingtip
+    // upper trailing sawtooth (tip -> centre)
+    gfx.lineTo(px(0.64), py(0.66, +1));                   // notch
+    gfx.lineTo(px(0.76), py(0.42, +1));                   // rear point
+    gfx.lineTo(px(0.68), py(0.22, +1));                   // notch
+    gfx.lineTo(px(0.80), py(0.0, +1));                    // centre rear point
+    // lower trailing sawtooth (centre -> tip)
+    gfx.lineTo(px(0.68), py(-0.22, -1));                  // notch
+    gfx.lineTo(px(0.76), py(-0.42, -1));                  // rear point
+    gfx.lineTo(px(0.64), py(-0.66, -1));                  // notch
+    gfx.lineTo(px(0.60), py(-1.0, -1));                   // lower wingtip
     gfx.closePath();
     gfx.fill();
 
-    // Darker inner surface
-    gfx.fillStyle(0x2e2e2e, 0.5);
+    // Darker centre spine
+    gfx.fillStyle(0x20242a, 1);
     gfx.beginPath();
-    gfx.moveTo(bx - 18 * bs, by);
-    gfx.lineTo(bx + 8 * bs, by - (30 + upWing * 12) * bs);
-    gfx.lineTo(bx + 10 * bs, by);
-    gfx.lineTo(bx + 8 * bs, by + (30 + downWing * 12) * bs);
+    gfx.moveTo(px(0.05), by);
+    gfx.lineTo(px(0.66), py(0.16, +1));
+    gfx.lineTo(px(0.80), py(0.0, +1));
+    gfx.lineTo(px(0.66), py(-0.16, -1));
     gfx.closePath();
     gfx.fill();
 
-    // Leading edge highlight
-    gfx.lineStyle(1 * bs, 0x5a5a5a, 0.5);
+    // Leading-edge highlight (nose -> each wingtip)
+    gfx.lineStyle(1.5 * bs, 0x3a3f47, 0.9);
     gfx.beginPath();
-    gfx.moveTo(bx + 9 * bs, by - (53 + upWing * 24) * bs);
-    gfx.lineTo(bx - 24 * bs, by);
-    gfx.lineTo(bx + 9 * bs, by + (53 + downWing * 24) * bs);
+    gfx.moveTo(px(0.60), py(1.0, +1));
+    gfx.lineTo(px(0.0), by);
+    gfx.lineTo(px(0.60), py(-1.0, -1));
     gfx.strokePath();
 
-    // Engine glow (at trailing edge, center)
-    const engY1 = by - 8 * bs;
-    const engY2 = by + 8 * bs;
-    const engX = bx + 14 * bs;
+    // Bold dark outline
+    gfx.lineStyle(1.5 * bs, 0x111316, 0.9);
+    gfx.beginPath();
+    gfx.moveTo(px(0.0), by);
+    gfx.lineTo(px(0.60), py(1.0, +1));
+    gfx.lineTo(px(0.64), py(0.66, +1));
+    gfx.lineTo(px(0.76), py(0.42, +1));
+    gfx.lineTo(px(0.68), py(0.22, +1));
+    gfx.lineTo(px(0.80), py(0.0, +1));
+    gfx.lineTo(px(0.68), py(-0.22, -1));
+    gfx.lineTo(px(0.76), py(-0.42, -1));
+    gfx.lineTo(px(0.64), py(-0.66, -1));
+    gfx.lineTo(px(0.60), py(-1.0, -1));
+    gfx.closePath();
+    gfx.strokePath();
+
+    // Engine glow (behind wing, near centre trailing edge)
+    const engY1 = py(0.16, +1);
+    const engY2 = py(-0.16, -1);
+    const engX = px(0.74);
     const pulse = Math.sin((this.phaseTimer || 0) * 10) * 0.2 + 0.8;
     gfx.fillStyle(0xff4400, 0.3 * pulse);
     gfx.fillCircle(engX, engY1, 5 * bs);
@@ -2549,12 +2584,13 @@ export default class B2BomberScene extends Phaser.Scene {
 
     // Water reflection/shadow below the lower wing tip
     if (downWing > 0) {
-      const tipY = by + (55 + downWing * 25) * bs;
+      const tipY = py(-1.0, -1);
       const waterY = H * 0.55 + 40;
       if (tipY > waterY - 20) {
         // Wing almost touching water — spray effect!
+        const tipX = px(0.60);
         for (let i = 0; i < 4; i++) {
-          const sx = bx + 10 * bs + Math.random() * 10;
+          const sx = tipX - 5 * bs + Math.random() * 10;
           const sy = tipY + Math.random() * 8;
           gfx.fillStyle(0x4a6a8a, 0.3);
           gfx.fillCircle(sx, sy, 1.5 + Math.random() * 2);
@@ -2781,42 +2817,74 @@ export default class B2BomberScene extends Phaser.Scene {
     const bank = (bankAngle || 0) * 0.15;
     const t = this.phaseTimer || 0;
 
-    // Nose points DOWN (mirror of normal)
-    gfx.fillStyle(0x3a3a3a, 1);
+    // Flying-wing planform, NOSE pointing DOWN (escaping toward bottom of screen),
+    // so the signature sawtooth trailing edge is at the TOP.
+    // Design units (nose-up baseline): nose (0,0); span x:-1..1; tail depth y:0..0.80.
+    // Map to screen: across-span = dx (with bank shifting the wingtips), and the
+    // nose is below centre while the tail/sawtooth is above (vertical flip).
+    const SP = 60 * bs;   // half-span in px
+    const LN = 40 * bs;   // nose-to-tail length in px (compact, distant)
+    // px: across span; bank tilts the two tips (right tip out, left tip in)
+    const px = (dx) => bx + dx * SP + bank * Math.sign(dx) * 10 * bs;
+    // py: nose down -> larger dy goes UP (negative screen-y)
+    const py = (dy) => by + 20 * bs - dy * LN;
+
+    // Full flying-wing outline (nose down, sawtooth on top)
+    gfx.fillStyle(0x2c3037, 1);
     gfx.beginPath();
-    gfx.moveTo(bx, by + 20 * bs);                                  // nose (bottom)
-    gfx.lineTo(bx + (60 + bank * 10) * bs, by - 15 * bs);         // right wing tip
-    gfx.lineTo(bx + (40 + bank * 6) * bs, by - 20 * bs);          // right trailing edge
-    gfx.lineTo(bx, by - 10 * bs);                                  // center rear
-    gfx.lineTo(bx - (40 - bank * 6) * bs, by - 20 * bs);          // left trailing edge
-    gfx.lineTo(bx - (60 - bank * 10) * bs, by - 15 * bs);         // left wing tip
+    gfx.moveTo(px(0.0), py(0.0));                          // nose (bottom)
+    gfx.lineTo(px(1.0), py(0.60));                         // right wingtip
+    // right trailing sawtooth (tip -> centre)
+    gfx.lineTo(px(0.66), py(0.64));                        // notch
+    gfx.lineTo(px(0.42), py(0.76));                        // rear point
+    gfx.lineTo(px(0.22), py(0.68));                        // notch
+    gfx.lineTo(px(0.0), py(0.80));                         // centre rear point (top-most)
+    // left trailing sawtooth (centre -> tip)
+    gfx.lineTo(px(-0.22), py(0.68));                       // notch
+    gfx.lineTo(px(-0.42), py(0.76));                       // rear point
+    gfx.lineTo(px(-0.66), py(0.64));                       // notch
+    gfx.lineTo(px(-1.0), py(0.60));                        // left wingtip
     gfx.closePath();
     gfx.fill();
 
-    gfx.fillStyle(0x2e2e2e, 0.6);
+    // Darker centre spine
+    gfx.fillStyle(0x20242a, 1);
     gfx.beginPath();
-    gfx.moveTo(bx, by + 15 * bs);
-    gfx.lineTo(bx + 35 * bs, by - 12 * bs);
-    gfx.lineTo(bx, by - 8 * bs);
-    gfx.lineTo(bx - 35 * bs, by - 12 * bs);
+    gfx.moveTo(px(0.0), py(0.06));
+    gfx.lineTo(px(0.16), py(0.66));
+    gfx.lineTo(px(0.0), py(0.80));
+    gfx.lineTo(px(-0.16), py(0.66));
     gfx.closePath();
     gfx.fill();
 
-    gfx.lineStyle(0.5 * bs, 0x555555, 0.5);
-    gfx.lineBetween(bx, by + 18 * bs, bx, by - 8 * bs);
-    gfx.lineBetween(bx - 20 * bs, by - 5 * bs, bx + 20 * bs, by - 5 * bs);
-
-    gfx.lineStyle(1 * bs, 0x4a4a4a, 0.6);
+    // Leading-edge highlight (nose -> each wingtip)
+    gfx.lineStyle(1 * bs, 0x3a3f47, 0.8);
     gfx.beginPath();
-    gfx.moveTo(bx - (58 - bank * 8) * bs, by - 14 * bs);
-    gfx.lineTo(bx, by + 19 * bs);
-    gfx.lineTo(bx + (58 + bank * 8) * bs, by - 14 * bs);
+    gfx.moveTo(px(-1.0), py(0.60));
+    gfx.lineTo(px(0.0), py(0.0));
+    gfx.lineTo(px(1.0), py(0.60));
     gfx.strokePath();
 
-    // Engine glow (at the top now — trailing edge)
-    const engLX = bx - 14 * bs;
-    const engRX = bx + 14 * bs;
-    const engY = by - 16 * bs;
+    // Bold dark outline
+    gfx.lineStyle(1 * bs, 0x111316, 0.9);
+    gfx.beginPath();
+    gfx.moveTo(px(0.0), py(0.0));
+    gfx.lineTo(px(1.0), py(0.60));
+    gfx.lineTo(px(0.66), py(0.64));
+    gfx.lineTo(px(0.42), py(0.76));
+    gfx.lineTo(px(0.22), py(0.68));
+    gfx.lineTo(px(0.0), py(0.80));
+    gfx.lineTo(px(-0.22), py(0.68));
+    gfx.lineTo(px(-0.42), py(0.76));
+    gfx.lineTo(px(-0.66), py(0.64));
+    gfx.lineTo(px(-1.0), py(0.60));
+    gfx.closePath();
+    gfx.strokePath();
+
+    // Engine glow (at the top now — behind wing near centre trailing edge)
+    const engLX = px(-0.18);
+    const engRX = px(0.18);
+    const engY = py(0.66);
     const pulse = Math.sin(t * 12) * 0.2 + 0.8;
 
     gfx.fillStyle(0xff4400, 0.25 * pulse);

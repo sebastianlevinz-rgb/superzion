@@ -2274,6 +2274,18 @@ export default class DroneScene extends Phaser.Scene {
     this.droneHP = this.dm.isHard() ? 4 : 6;
     this.droneMaxHP = this.droneHP;
 
+    // AI top-down room floor (BootScene preloads 'drone_room'). When present,
+    // the procedural floor fill / tiles / static debris / furniture in
+    // _drawRoom are skipped and only the walls + dynamic gameplay layer
+    // (floor cracks, projectiles, drone) are drawn on top. Sits at depth -1,
+    // below the room graphics (depth 0), boss (8), armchair (12). Delete the
+    // PNG and it falls back to the full procedural room.
+    this._roomAIFloor = this.textures.exists('drone_room');
+    if (this._roomAIFloor) {
+      this.roomFloorSprite = this.add.image(W / 2, H / 2, 'drone_room').setDepth(-1);
+      this.roomFloorSprite.setDisplaySize(W, H);
+    }
+
     // Graphics layer for room rendering
     this.roomGfx = this.add.graphics().setDepth(0);
 
@@ -3512,51 +3524,57 @@ export default class DroneScene extends Phaser.Scene {
     // ═══════════════════════════════════════════
     // 1. FLOOR (cracked concrete/tile base)
     // ═══════════════════════════════════════════
-    gfx.fillStyle(0x777770);
-    gfx.fillRect(ROOM_LEFT, ROOM_TOP, ROOM_RIGHT - ROOM_LEFT, ROOM_BOTTOM - ROOM_TOP);
+    // When the AI 'drone_room' floor is present, skip the procedural floor
+    // base/texture (fill, tile grid, static cracks, damp, rubble) — the painted
+    // image supplies all of that. Dynamic floor cracks from boss throws still
+    // render on top below.
+    if (!this._roomAIFloor) {
+      gfx.fillStyle(0x777770);
+      gfx.fillRect(ROOM_LEFT, ROOM_TOP, ROOM_RIGHT - ROOM_LEFT, ROOM_BOTTOM - ROOM_TOP);
 
-    // Tile grid (subtle)
-    gfx.lineStyle(0.5, 0x666660, 0.25);
-    for (let tx = ROOM_LEFT; tx < ROOM_RIGHT; tx += 40) {
-      gfx.beginPath(); gfx.moveTo(tx, ROOM_TOP); gfx.lineTo(tx, ROOM_BOTTOM); gfx.strokePath();
-    }
-    for (let ty = ROOM_TOP; ty < ROOM_BOTTOM; ty += 40) {
-      gfx.beginPath(); gfx.moveTo(ROOM_LEFT, ty); gfx.lineTo(ROOM_RIGHT, ty); gfx.strokePath();
-    }
+      // Tile grid (subtle)
+      gfx.lineStyle(0.5, 0x666660, 0.25);
+      for (let tx = ROOM_LEFT; tx < ROOM_RIGHT; tx += 40) {
+        gfx.beginPath(); gfx.moveTo(tx, ROOM_TOP); gfx.lineTo(tx, ROOM_BOTTOM); gfx.strokePath();
+      }
+      for (let ty = ROOM_TOP; ty < ROOM_BOTTOM; ty += 40) {
+        gfx.beginPath(); gfx.moveTo(ROOM_LEFT, ty); gfx.lineTo(ROOM_RIGHT, ty); gfx.strokePath();
+      }
 
-    // Floor cracks (dark crack lines)
-    gfx.lineStyle(1, 0x555548, 0.6);
-    const crackSeeds = [
-      [120, 150, 180, 160, 220, 190],
-      [400, 100, 430, 130, 460, 110],
-      [600, 350, 630, 380, 610, 420],
-      [300, 400, 340, 420, 320, 460],
-      [750, 200, 770, 240, 800, 220],
-      [200, 300, 230, 320, 210, 350],
-      [500, 250, 540, 260, 520, 290],
-    ];
-    for (const c of crackSeeds) {
-      gfx.beginPath();
-      gfx.moveTo(c[0], c[1]);
-      gfx.lineTo(c[2], c[3]);
-      gfx.lineTo(c[4], c[5]);
-      gfx.strokePath();
-    }
+      // Floor cracks (dark crack lines)
+      gfx.lineStyle(1, 0x555548, 0.6);
+      const crackSeeds = [
+        [120, 150, 180, 160, 220, 190],
+        [400, 100, 430, 130, 460, 110],
+        [600, 350, 630, 380, 610, 420],
+        [300, 400, 340, 420, 320, 460],
+        [750, 200, 770, 240, 800, 220],
+        [200, 300, 230, 320, 210, 350],
+        [500, 250, 540, 260, 520, 290],
+      ];
+      for (const c of crackSeeds) {
+        gfx.beginPath();
+        gfx.moveTo(c[0], c[1]);
+        gfx.lineTo(c[2], c[3]);
+        gfx.lineTo(c[4], c[5]);
+        gfx.strokePath();
+      }
 
-    // Damp patches (slightly darker areas)
-    for (const dp of this.roomDamp) {
-      gfx.fillStyle(0x606058, 0.3);
-      gfx.fillEllipse(dp.x, dp.y, dp.rx * 2, dp.ry * 2);
-    }
+      // Damp patches (slightly darker areas)
+      for (const dp of this.roomDamp) {
+        gfx.fillStyle(0x606058, 0.3);
+        gfx.fillEllipse(dp.x, dp.y, dp.rx * 2, dp.ry * 2);
+      }
 
-    // Small rubble pieces
-    for (const rb of this.roomRubble) {
-      const col = Phaser.Display.Color.GetColor(rb.shade, rb.shade, rb.shade - 8);
-      gfx.fillStyle(col, 0.7);
-      if (rb.isRect) {
-        gfx.fillRect(rb.x, rb.y, rb.w, rb.h);
-      } else {
-        gfx.fillCircle(rb.x, rb.y, rb.r);
+      // Small rubble pieces
+      for (const rb of this.roomRubble) {
+        const col = Phaser.Display.Color.GetColor(rb.shade, rb.shade, rb.shade - 8);
+        gfx.fillStyle(col, 0.7);
+        if (rb.isRect) {
+          gfx.fillRect(rb.x, rb.y, rb.w, rb.h);
+        } else {
+          gfx.fillCircle(rb.x, rb.y, rb.r);
+        }
       }
     }
 
@@ -3575,19 +3593,21 @@ export default class DroneScene extends Phaser.Scene {
       gfx.strokePath();
     }
 
-    // Scattered papers/documents on floor
-    for (const p of this.papers) {
-      const pcolor = p.isBeige ? 0xd8d0b8 : 0xe8e4dc;
-      gfx.fillStyle(pcolor, 0.7);
-      const pcos = Math.cos(p.rotation), psin = Math.sin(p.rotation);
-      const phw = p.w / 2, phh = p.h / 2;
-      gfx.beginPath();
-      gfx.moveTo(p.x + pcos * (-phw) - psin * (-phh), p.y + psin * (-phw) + pcos * (-phh));
-      gfx.lineTo(p.x + pcos * phw - psin * (-phh), p.y + psin * phw + pcos * (-phh));
-      gfx.lineTo(p.x + pcos * phw - psin * phh, p.y + psin * phw + pcos * phh);
-      gfx.lineTo(p.x + pcos * (-phw) - psin * phh, p.y + psin * (-phw) + pcos * phh);
-      gfx.closePath();
-      gfx.fillPath();
+    // Scattered papers/documents on floor (baked into AI floor when present)
+    if (!this._roomAIFloor) {
+      for (const p of this.papers) {
+        const pcolor = p.isBeige ? 0xd8d0b8 : 0xe8e4dc;
+        gfx.fillStyle(pcolor, 0.7);
+        const pcos = Math.cos(p.rotation), psin = Math.sin(p.rotation);
+        const phw = p.w / 2, phh = p.h / 2;
+        gfx.beginPath();
+        gfx.moveTo(p.x + pcos * (-phw) - psin * (-phh), p.y + psin * (-phw) + pcos * (-phh));
+        gfx.lineTo(p.x + pcos * phw - psin * (-phh), p.y + psin * phw + pcos * (-phh));
+        gfx.lineTo(p.x + pcos * phw - psin * phh, p.y + psin * phw + pcos * phh);
+        gfx.lineTo(p.x + pcos * (-phw) - psin * phh, p.y + psin * (-phw) + pcos * phh);
+        gfx.closePath();
+        gfx.fillPath();
+      }
     }
 
     // ═══════════════════════════════════════════
@@ -3702,6 +3722,9 @@ export default class DroneScene extends Phaser.Scene {
     // ═══════════════════════════════════════════
     // 5. FURNITURE & OBJECTS (non-interactive decoration)
     // ═══════════════════════════════════════════
+    // Static floor clutter (sections 5 & 6) is baked into the AI floor image
+    // when present, so skip it to avoid double-rendering on the painted floor.
+    if (!this._roomAIFloor) {
 
     // Scattered debris (gray irregular shapes)
     for (const d of this.roomDebris) {
@@ -3852,6 +3875,8 @@ export default class DroneScene extends Phaser.Scene {
       gfx.fillStyle(0xffffff, glint);
       gfx.fillCircle(g.x, g.y, g.size);
     }
+
+    } // end static furniture/clutter (skipped when AI floor present)
 
     // ═══════════════════════════════════════════
     // 10. ARMCHAIR (sprite-based) + projectile
@@ -4131,6 +4156,7 @@ export default class DroneScene extends Phaser.Scene {
   // CLEANUP
   // ═════════════════════════════════════════════════════════════
   _cleanupBoss() {
+    if (this.roomFloorSprite) { this.roomFloorSprite.destroy(); this.roomFloorSprite = null; }
     if (this.roomGfx) { this.roomGfx.destroy(); this.roomGfx = null; }
     if (this.bossSprite) { this.bossSprite.destroy(); this.bossSprite = null; }
     if (this.armchairSprite) { this.armchairSprite.destroy(); this.armchairSprite = null; }

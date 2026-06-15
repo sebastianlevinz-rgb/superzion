@@ -10,6 +10,7 @@ import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import DifficultyManager from '../systems/DifficultyManager.js';
 import InputManager from '../systems/InputManager.js';
+import { drawStarOfDavid } from '../utils/StarOfDavid.js';
 
 const W = 960;
 const H = 540;
@@ -179,27 +180,7 @@ export default class MenuScene extends Phaser.Scene {
     // Crisp golden Maguen David (two interlocking triangles) with a soft blue
     // halo — sits behind the title as the menu's identity mark.
     const starGfx = this.add.graphics().setDepth(-4);
-    const drawStar = (gfx, cx, cy, R, mode) => {
-      for (const off of [0, Math.PI]) {
-        gfx.beginPath();
-        for (let i = 0; i < 3; i++) {
-          const a = -Math.PI / 2 + off + i * (Math.PI * 2 / 3);
-          const px = cx + Math.cos(a) * R, py = cy + Math.sin(a) * R;
-          if (i === 0) gfx.moveTo(px, py); else gfx.lineTo(px, py);
-        }
-        gfx.closePath();
-        if (mode === 'fill') gfx.fillPath(); else gfx.strokePath();
-      }
-    };
-    // soft blue outer halo
-    starGfx.lineStyle(10, 0x1b4dad, 0.18);
-    drawStar(starGfx, starCx, starCy, starR + 4, 'stroke');
-    // faint gold body
-    starGfx.fillStyle(0xFFD700, 0.07);
-    drawStar(starGfx, starCx, starCy, starR, 'fill');
-    // crisp gold outline
-    starGfx.lineStyle(3, 0xFFD700, 0.55);
-    drawStar(starGfx, starCx, starCy, starR, 'stroke');
+    drawStarOfDavid(starGfx, starCx, starCy, starR, { lineAlpha: 0.55 });
     this.tweens.add({
       targets: starGfx, alpha: { from: 0.6, to: 1 },
       duration: 3500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
@@ -319,12 +300,12 @@ export default class MenuScene extends Phaser.Scene {
         });
         star.setOrigin(0.5).setDepth(10);
 
-        // Hard mode toggle
-        this.hardModeText = this.add.text(W / 2, 500, dm.isHard() ? 'HARD MODE: ON' : 'HARD MODE: OFF  (H to toggle)', {
+        // Hard mode toggle -- far left so it doesn't collide with the centered rows
+        this.hardModeText = this.add.text(20, 492, dm.isHard() ? 'HARD MODE: ON' : 'HARD MODE: OFF  (H to toggle)', {
           fontFamily: 'monospace', fontSize: '11px',
           color: dm.isHard() ? '#ff4444' : '#555555',
         });
-        this.hardModeText.setOrigin(0.5).setDepth(10);
+        this.hardModeText.setOrigin(0, 0.5).setDepth(10);
       }
     } catch (e) { /* localStorage unavailable */ }
 
@@ -404,7 +385,7 @@ export default class MenuScene extends Phaser.Scene {
     // DIFFICULTY SELECTOR
     // =====================================================================
     {
-      const diffY = H - 55;
+      const diffY = 476;
       this.add.text(W / 2, diffY - 18, 'DIFFICULTY', {
         fontFamily: 'monospace', fontSize: '10px', color: '#666666',
       }).setOrigin(0.5).setDepth(10);
@@ -434,13 +415,13 @@ export default class MenuScene extends Phaser.Scene {
     }
 
     // Controls hint -- amber monospace
-    const controls = this.add.text(W / 2, 475, 'UP/DOWN -- Select  |  ENTER/SPACE -- Start  |  M -- Mute  |  H -- Hard Mode', {
+    const controls = this.add.text(W / 2, 508, 'UP/DOWN -- Select  |  ENTER/SPACE -- Start  |  M -- Mute  |  H -- Hard Mode', {
       fontFamily: 'monospace', fontSize: '12px', color: '#AA8833',
     });
     controls.setOrigin(0.5); controls.setDepth(10);
 
     // Blinking prompt -- green arcade style
-    const prompt = this.add.text(W / 2, 435, 'SELECT A MISSION', {
+    const prompt = this.add.text(W / 2, 430, 'SELECT A MISSION', {
       fontFamily: 'monospace', fontSize: '16px', color: '#33FF33',
     });
     prompt.setOrigin(0.5); prompt.setDepth(10);
