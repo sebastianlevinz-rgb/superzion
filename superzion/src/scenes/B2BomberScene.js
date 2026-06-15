@@ -1661,33 +1661,31 @@ export default class B2BomberScene extends Phaser.Scene {
     this._samWarning = false;
     this._samWarningTimer = 0;
 
-    // Multi-pass state
-    this._passNumber = 1;
-    this._maxPasses = 6;
-    this._passDir = 1;              // 1 = left→right, -1 = right→left
-    this._passSpeed = 180;          // horizontal speed (auto)
-    this._bombsPerPass = 3;
-    this._bombsThisPass = 3;
-    this._passPaused = false;       // brief pause between passes
-    this._passPauseTimer = 0;
+    // ── Free-flight bombing: the player flies the B-2 and drops bombs by hand ──
+    this.busters = 12;              // generous ordnance supply for the run
+    this.bombingEnded = false;
+    this.missileSpawnTimer = 0;
+    this._cleanupMissiles();
+    this.chaffDecoys = [];
 
-    this.jetX = -40;                // start off-screen left
-    this.jetY = 100;
-    this.jetVY = 0;
+    this.jetX = W / 2;              // start at top-center
+    this.jetY = 120;
     this.jetBankAngle = 0;
     this.bombCooldown = 0;
     this.bustersUsed = 0;
 
-    // ── Player-controlled aiming reticle (LEFT/RIGHT) ──
-    this._reticleX = this._mtnCenterX;       // where the bomb is aimed
-    this._aimSpeed = 320;                    // reticle horizontal speed (px/s, tunable)
+    // Bomb sight + combo state
+    this._predImpactX = this._mtnCenterX;    // where a bomb dropped NOW would land
+    this._onTarget = false;                  // predictor currently over the kill zone
+    this._combo = 0;                         // consecutive direct hits
+    this._bestCombo = 0;
 
-    // Reticle marker (free-aim crosshair the player steers) — green
-    this._reticleGfx = this.add.graphics().setDepth(20);
-    // Predicted bomb-impact preview marker on the ground — amber
+    // Drop-trajectory preview (straight down) — green/amber
+    this._arcGfx = this.add.graphics().setDepth(20);
+    // Ground impact crosshair + fortress target bracket
     this._impactGfx = this.add.graphics().setDepth(19);
 
-    this.instrText.setText(`PASS 1/${this._maxPasses} — LEFT/RIGHT: Aim | UP/DOWN: Altitude | SPACE: Drop`);
+    this.instrText.setText('Fly over the fortress, SPACE to drop  |  ARROWS: Fly  |  C: Chaff');
     this.instrText.setColor('#00ff66');
 
     this.detBarBg.setVisible(false);
@@ -1700,156 +1698,91 @@ export default class B2BomberScene extends Phaser.Scene {
   _updateBombing(dt) {
     this.phaseTimer += dt;
     const BOMB_GRAVITY = 400;
-    // Precision hit zone. Shrinks slightly per layer destroyed (escalation),
-    // floored so the run stays winnable. NEAR-MISS band is HIT_RADIUS_BASE*~1.8.
-    const HIT_RADIUS_BASE = 32;            // tight core hit radius (was 70)
-    const HIT_RADIUS = Math.max(20, HIT_RADIUS_BASE - this._layersDestroyed * 2);
-    const NEAR_RADIUS = HIT_RADIUS + 26;   // "CLOSE!" band beyond a clean hit
-    const MIN_ALT = 70;      // lowest the jet can fly (dangerous, accurate)
-    const MAX_ALT = H * 0.28; // highest (safe, less accurate)
+    // Hit zone on the fortress. Shrinks slightly per layer destroyed, floored
+    // so the run stays winnable. NEAR-MISS band sits just beyond a clean hit.
+    const HIT_RADIUS_BASE = 38;
+    const HIT_RADIUS = Math.max(26, HIT_RADIUS_BASE - this._layersDestroyed * 2);
+    const NEAR_RADIUS = HIT_RADIUS + 26;
+    const groundY = this._mtnTargetY - 20;
+    const MIN_Y = 70;
+    const MAX_Y = groundY - 25;   // stay above the target so bombs fall onto it
 
-    // ── Between-pass pause ──
-    if (this._passPaused) {
-      this._passPauseTimer -= dt;
-      if (this._passPauseTimer <= 0) {
-        this._passPaused = false;
-        this._passNumber++;
-        if (this._passNumber > this._maxPasses) {
-          // OUT OF PASSES
-          if (!this.bombingEnded && this.mountainHP > 0) {
-            this.bombingEnded = true;
-            this._stopAmbient();
-            this.instrText.setText('ALL PASSES COMPLETE — MISSION FAILED');
-            this.instrText.setColor('#ff4444');
-            this.time.delayedCall(2000, () => {
-              this.phase = 'dead';
-              showDefeatScreen(this, {
-                currentScene: 'B2BomberScene',
-                skipScene: 'LastStandCinematicScene',
-              });
-            });
-          }
-          return;
-        }
-        this._passDir *= -1;  // reverse direction
-        this._bombsThisPass = this._bombsPerPass;
-        this.jetX = this._passDir === 1 ? -40 : W + 40;
-        this.jetVY = 0;
-        // Mild escalation: each pass flies a touch faster (capped).
-        this._passSpeed = Math.min(260, 180 + (this._passNumber - 1) * 14);
-        this._reticleX = this._mtnCenterX; // recenter aim each pass
-        this.instrText.setText(`PASS ${this._passNumber}/${this._maxPasses} — LEFT/RIGHT: Aim | UP/DOWN: Altitude | SPACE: Drop`);
-      }
-      // Still update falling bombs during pause; hide aim markers while banking
-      this._clearAimMarkers();
-      this._updateFallingBombs(dt, BOMB_GRAVITY, HIT_RADIUS, NEAR_RADIUS);
-      this.hudDist.setText(`LAYERS: ${this.mountainHP}/${MOUNTAIN_LAYERS} | PASS ${this._passNumber}/${this._maxPasses} | CHAFF: ${this.chaff}`);
-      return;
-    }
+    // ── Free flight: the player flies the B-2 in all directions ──
+    if (this.keys.left.isDown)  this.jetX -= B2_MOVE_SPEED * dt;
+    if (this.keys.right.isDown) this.jetX += B2_MOVE_SPEED * dt;
+    if (this.keys.up.isDown)    this.jetY -= B2_MOVE_SPEED * dt;
+    if (this.keys.down.isDown)  this.jetY += B2_MOVE_SPEED * dt;
+    this.jetX = Phaser.Math.Clamp(this.jetX, B2_MARGIN, W - B2_MARGIN);
+    this.jetY = Phaser.Math.Clamp(this.jetY, MIN_Y, MAX_Y);
 
-    // ── Auto horizontal movement ──
-    this.jetX += this._passSpeed * this._passDir * dt;
+    // Visual bank when steering left/right
+    if (this.keys.left.isDown) this.jetBankAngle += (-1 - this.jetBankAngle) * 5 * dt;
+    else if (this.keys.right.isDown) this.jetBankAngle += (1 - this.jetBankAngle) * 5 * dt;
+    else this.jetBankAngle += (0 - this.jetBankAngle) * 3 * dt;
 
-    // ── Player controls altitude only (UP = climb, DOWN = dive) ──
-    if (this.keys.up.isDown) {
-      this.jetVY += (-140 - this.jetVY) * 3 * dt;
-    } else if (this.keys.down.isDown) {
-      this.jetVY += (140 - this.jetVY) * 3 * dt;
-    } else {
-      this.jetVY += (0 - this.jetVY) * 2.5 * dt;
-    }
-    this.jetVY = Phaser.Math.Clamp(this.jetVY, -160, 160);
-    this.jetY += this.jetVY * dt;
-    this.jetY = Phaser.Math.Clamp(this.jetY, MIN_ALT, MAX_ALT);
+    // ── Basic bomb sight: a bomb dropped now falls straight down to the ground.
+    // Fly over the fortress, line up, drop. The marker sits directly below you. ──
+    const releaseX = this.jetX, releaseY = this.jetY + 15;
+    this._predImpactX = releaseX;
+    this._onTarget = Math.abs(this._predImpactX - this._mtnCenterX) < HIT_RADIUS;
+    this._drawBombSight(releaseX, releaseY, 0, groundY, HIT_RADIUS, NEAR_RADIUS);
 
-    // ── Player aims the reticle with LEFT/RIGHT ──
-    if (this.keys.left.isDown) this._reticleX -= this._aimSpeed * dt;
-    if (this.keys.right.isDown) this._reticleX += this._aimSpeed * dt;
-    this._reticleX = Phaser.Math.Clamp(this._reticleX, 40, W - 40);
-
-    // ── Predicted bomb-impact marker ──
-    // Bombs are guided to the reticle, so the predicted landing IS the reticle X
-    // (small altitude spread aside). Draw the reticle + a target-relative band.
-    this._predImpactX = this._reticleX;
-    this._drawAimMarkers(this._reticleX, this._predImpactX, this._mtnTargetY - 20, HIT_RADIUS, NEAR_RADIUS);
-
-    // Visual tilt based on climb/dive
-    const tiltNorm = Phaser.Math.Clamp(this.jetVY / 160, -1, 1);
-    this.jetBankAngle = tiltNorm * 12;
-
-    // ── SPACE = drop bomb ──
+    // ── SPACE = drop a bomb (basic straight-down drop) ──
     if (this.bombCooldown > 0) this.bombCooldown -= dt;
-    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.space) && this._bombsThisPass > 0 && this.bombCooldown <= 0) {
-      this._bombsThisPass--;
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.space) && this.busters > 0 && this.bombCooldown <= 0) {
+      this.busters--;
       this.bustersUsed++;
-      this.bombCooldown = 0.35;
+      this.bombCooldown = 0.25;
       try { SoundManager.get().playBombDrop(); } catch (e) { /* audio */ }
 
-      // Bomb is guided toward the reticle: solve for the vx that lands it at
-      // _reticleX given the fall time, then add a tiny altitude-based spread
-      // so very high drops are slightly less precise (skill reward for low passes).
-      const bx = this.jetX, by = this.jetY + 15;
-      const fallY = Math.max(10, (this._mtnTargetY - 20) - by);
-      const tFall = Math.sqrt(2 * fallY / BOMB_GRAVITY);
-      const altFactor = (this.jetY - MIN_ALT) / (MAX_ALT - MIN_ALT); // 0=low, 1=high
-      const spread = altFactor * 18; // small residual inaccuracy from height
-      const drift = (Math.random() - 0.5) * spread;
-      const aimVX = (this._reticleX - bx) / tFall; // vx to reach reticle
-
-      const bomb = this.add.circle(bx, by, 5, 0xffcc00).setDepth(9);
-      const bombOut = this.add.circle(bx, by, 7, 0xff8800, 0).setDepth(9);
+      const bomb = this.add.circle(releaseX, releaseY, 5, 0xffcc00).setDepth(9);
+      const bombOut = this.add.circle(releaseX, releaseY, 7, 0xff8800, 0).setDepth(9);
       bombOut.setStrokeStyle(2, 0xff8800, 0.6);
       this.bombObjects.push({
         sprite: bomb, outline: bombOut,
-        x: bx, y: by,
-        vx: aimVX + drift,
-        vy: 0,
+        x: releaseX, y: releaseY,
+        vx: 0, vy: 0,
       });
-    }
-
-    // ── Chaff ──
-    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.c) && this._samWarning && this.chaff > 0) {
-      this.chaff--;
-      this.chaffUsed++;
-      this._samWarning = false;
-      this.missileSpawnTimer = 0;
-      SoundManager.get().playChaffRelease();
     }
 
     // ── Update falling bombs ──
     this._updateFallingBombs(dt, BOMB_GRAVITY, HIT_RADIUS, NEAR_RADIUS);
 
-    // ── Check if jet has crossed the screen (end of pass) ──
-    const offScreen = this._passDir === 1 ? this.jetX > W + 50 : this.jetX < -50;
-    if (offScreen) {
-      this._passPaused = true;
-      this._passPauseTimer = 1.2;  // brief pause between passes
-      this.instrText.setText('BANKING FOR NEXT PASS...');
+    // ── Out of ordnance (and fortress still standing) → mission failed ──
+    if (this.busters <= 0 && this.bombObjects.length === 0 && this.mountainHP > 0 && !this.bombingEnded) {
+      this.bombingEnded = true;
+      this._stopAmbient();
+      this._clearAimMarkers();
+      this.instrText.setText('OUT OF ORDNANCE — MISSION FAILED');
+      this.instrText.setColor('#ff4444');
+      this.time.delayedCall(2000, () => {
+        this.phase = 'dead';
+        showDefeatScreen(this, {
+          currentScene: 'B2BomberScene',
+          skipScene: 'LastStandCinematicScene',
+        });
+      });
+      return;
     }
 
-    // ── SAM warnings (every 7 seconds) ──
+    // ── Enemy SAMs: periodic tracking missiles you dodge by flying ──
     this.missileSpawnTimer += dt;
-    if (this.missileSpawnTimer >= 7 && !this._samWarning) {
-      this._samWarning = true;
-      this._samWarningTimer = 2.5;
+    const samInterval = DifficultyManager.get().isHard() ? 4 : 5.5;
+    if (this.missileSpawnTimer >= samInterval) {
+      this.missileSpawnTimer = 0;
+      const lx = 80 + Math.random() * (W - 160);
+      this._spawnTrackingMissile(lx, H + 20);  // launched from the ground below
       SoundManager.get().playMissileWarning();
     }
-    if (this._samWarning) {
-      this._samWarningTimer -= dt;
-      if (this._samWarningTimer <= 0) {
-        this._samWarning = false;
-        this.missileSpawnTimer = 0;
-        // SAM hit — lose altitude control briefly
-        SoundManager.get().playExplosion();
-        this.cameras.main.shake(600, 0.025);
-        this.jetVY = 80; // force dive
-      }
-    }
 
-    // Altitude indicator
-    const altPct = Math.round((1 - (this.jetY - MIN_ALT) / (MAX_ALT - MIN_ALT)) * 100);
-    const altLabel = altPct > 70 ? 'HIGH (safe)' : altPct > 35 ? 'MED' : 'LOW (accurate!)';
-    this.hudDist.setText(`LAYERS: ${this.mountainHP}/${MOUNTAIN_LAYERS} | PASS ${this._passNumber}/${this._maxPasses} | BOMBS: ${this._bombsThisPass} | ALT: ${altLabel}`);
+    // ── Chaff (decoys incoming missiles) ──
+    if (Phaser.Input.Keyboard.JustDown(this._rawKeys.c)) this._releaseChaff();
+
+    this._updateMissiles(dt);
+
+    // HUD
+    this._updateHUD();
+    this.hudDist.setText(`LAYERS: ${this.mountainHP}/${MOUNTAIN_LAYERS} | BOMBS: ${this.busters} | CHAFF: ${this.chaff}`);
   }
 
   _updateFallingBombs(dt, gravity, hitRadius, nearRadius = hitRadius * 1.8) {
@@ -1869,7 +1802,7 @@ export default class B2BomberScene extends Phaser.Scene {
         this.bombObjects.splice(i, 1);
 
         if (distToTarget < hitRadius) {
-          // HIT — destroy a layer
+          // ── DIRECT HIT — penetrate a layer ──
           const layerIdx = this._layersDestroyed;
           if (layerIdx < MOUNTAIN_LAYERS && this.mountainLayerHP[layerIdx]) {
             this.mountainLayerHP[layerIdx] = false;
@@ -1877,16 +1810,38 @@ export default class B2BomberScene extends Phaser.Scene {
             this._layersDestroyed++;
           }
 
-          SoundManager.get().playBunkerBusterImpact();
-          this.cameras.main.shake(500, 0.02 + this._layersDestroyed * 0.008);
-          this._addExplosion(this._mtnCenterX, this._mtnTargetY, 30, 0xff8800);
+          // Combo: consecutive direct hits escalate the spectacle.
+          this._combo = (this._combo || 0) + 1;
+          this._bestCombo = Math.max(this._bestCombo || 0, this._combo);
+          const power = Math.min(5, this._combo);
 
-          const msg = `LAYER ${this._layersDestroyed} PENETRATED`;
+          SoundManager.get().playBunkerBusterImpact();
+          this.cameras.main.shake(420 + power * 90, 0.022 + this._layersDestroyed * 0.006 + power * 0.004);
+          this._addExplosion(this._mtnCenterX, this._mtnTargetY, 34 + power * 6, 0xff8800);
+          this._bombShockwave(this._mtnCenterX, this._mtnTargetY, power);
+
+          // Debris chunks blasting off the fortress (more with bigger combos)
+          for (let d = 0; d < 5 + power * 2; d++) {
+            const ang = Math.random() * Math.PI * 2;
+            const spd = 60 + Math.random() * 120;
+            const sz = 2 + Math.random() * 4;
+            const chunk = this.add.rectangle(this._mtnCenterX, this._mtnTargetY, sz, sz, 0x554433, 0.9).setDepth(17);
+            this.tweens.add({
+              targets: chunk,
+              x: this._mtnCenterX + Math.cos(ang) * spd,
+              y: this._mtnTargetY + Math.sin(ang) * spd * 0.7 - 20,
+              rotation: (Math.random() - 0.5) * 8, alpha: 0,
+              duration: 700 + Math.random() * 600, ease: 'Quad.easeOut',
+              onComplete: () => chunk.destroy(),
+            });
+          }
+
+          const msg = this._combo > 1 ? `DIRECT HIT!  x${this._combo}` : `LAYER ${this._layersDestroyed} PENETRATED`;
           const pts = this.add.text(this._mtnCenterX, this._mtnTargetY - 40, msg, {
-            fontFamily: 'monospace', fontSize: '14px', color: '#00ff66',
+            fontFamily: 'monospace', fontSize: `${14 + power * 2}px`, color: '#00ff66',
             shadow: { offsetX: 0, offsetY: 0, color: '#00ff66', blur: 8, fill: true },
           }).setOrigin(0.5).setDepth(25);
-          this.tweens.add({ targets: pts, y: pts.y - 50, alpha: 0, duration: 1500, onComplete: () => pts.destroy() });
+          this.tweens.add({ targets: pts, y: pts.y - 50, alpha: 0, scale: 1.2, duration: 1500, onComplete: () => pts.destroy() });
 
           // WIN
           if (this.mountainHP <= 0 && !this._mtnBunkerHit) {
@@ -1897,8 +1852,8 @@ export default class B2BomberScene extends Phaser.Scene {
             return;
           }
         } else if (distToTarget < nearRadius) {
-          // NEAR-MISS — close but no penetration. Light feedback so the player
-          // knows they were almost on target.
+          // NEAR-MISS — close but no penetration; combo breaks.
+          this._combo = 0;
           this._addExplosion(b.x, b.y, 18, 0xffaa00);
           SoundManager.get().playExplosion();
           this.cameras.main.shake(180, 0.008);
@@ -1908,7 +1863,8 @@ export default class B2BomberScene extends Phaser.Scene {
           }).setOrigin(0.5).setDepth(25);
           this.tweens.add({ targets: close, y: close.y - 30, alpha: 0, duration: 1000, onComplete: () => close.destroy() });
         } else {
-          // MISS — wild
+          // MISS — wild; combo breaks.
+          this._combo = 0;
           this._addExplosion(b.x, b.y, 12, 0xff6600);
           SoundManager.get().playExplosion();
         }
@@ -1924,41 +1880,76 @@ export default class B2BomberScene extends Phaser.Scene {
     }
   }
 
-  // Draw the player aim reticle and the predicted bomb-impact band on the
-  // ground line so skilled timing/aim is rewarded.
-  _drawAimMarkers(reticleX, impactX, groundY, hitRadius, nearRadius) {
-    // Reticle (free-aim crosshair the player steers)
-    if (this._reticleGfx) {
-      const g = this._reticleGfx;
+  // Ballistic bomb sight: a dotted trajectory arc projecting from the plane to
+  // the predicted impact crosshair, plus a fortress target bracket that snaps
+  // bright green the instant your predicted impact is over the kill zone.
+  _drawBombSight(releaseX, releaseY, vx, groundY, hitRadius, nearRadius) {
+    const onTarget = this._onTarget;
+    const predX = this._predImpactX;
+    const tx = this._mtnCenterX;
+    const BOMB_GRAVITY = 400; // must match _updateBombing
+
+    if (this._arcGfx) {
+      const g = this._arcGfx;
       g.clear();
-      g.lineStyle(1.5, 0x66ff99, 0.9);
-      g.strokeCircle(reticleX, groundY, 9);
-      g.lineBetween(reticleX - 14, groundY, reticleX - 4, groundY);
-      g.lineBetween(reticleX + 4, groundY, reticleX + 14, groundY);
-      g.lineBetween(reticleX, groundY - 14, reticleX, groundY - 4);
-      g.lineBetween(reticleX, groundY + 4, reticleX, groundY + 14);
+      // Dotted parabola from the plane to the predicted ground impact
+      const tFall = Math.sqrt(2 * Math.max(10, groundY - releaseY) / BOMB_GRAVITY);
+      const steps = 14;
+      g.fillStyle(onTarget ? 0x66ff99 : 0xffcc33, 0.85);
+      for (let i = 1; i < steps; i++) {
+        const tt = (i / steps) * tFall;
+        const px = releaseX + vx * tt;
+        const py = releaseY + 0.5 * BOMB_GRAVITY * tt * tt;
+        g.fillCircle(px, py, 1.6);
+      }
+      // Predicted impact crosshair on the ground line
+      g.lineStyle(1.5, onTarget ? 0x66ff99 : 0xffcc33, 0.95);
+      g.strokeCircle(predX, groundY, 8);
+      g.lineBetween(predX - 13, groundY, predX - 4, groundY);
+      g.lineBetween(predX + 4, groundY, predX + 13, groundY);
+      g.lineBetween(predX, groundY - 13, predX, groundY - 4);
+      g.lineBetween(predX, groundY + 4, predX, groundY + 13);
     }
-    // Impact preview band: green core (hit) + amber near-miss ring, centered
-    // on the actual target so the player sees exactly when they are on it.
+
     if (this._impactGfx) {
       const g = this._impactGfx;
       g.clear();
-      const tx = this._mtnCenterX;
-      const onTarget = Math.abs(impactX - tx) < hitRadius;
-      // Near-miss ring around target
-      g.lineStyle(1, 0xffaa00, 0.35);
+      // Near-miss ring + pulsing core kill-zone ring on the fortress
+      const pulse = onTarget ? 0.6 + Math.sin((this.phaseTimer || 0) * 18) * 0.3 : 0.4;
+      g.lineStyle(1, 0xffaa00, 0.3);
       g.strokeCircle(tx, groundY, nearRadius);
-      // Core hit ring
-      g.lineStyle(2, onTarget ? 0x00ff66 : 0x33aa55, onTarget ? 0.9 : 0.5);
+      g.lineStyle(onTarget ? 3 : 2, onTarget ? 0x00ff66 : 0x33aa55, pulse);
       g.strokeCircle(tx, groundY, hitRadius);
-      // Predicted impact tick on the ground
-      g.fillStyle(onTarget ? 0x00ff66 : 0xffcc33, 0.9);
-      g.fillRect(impactX - 2, groundY - 3, 4, 6);
+      // Corner brackets around the kill zone (light up when on target)
+      const r = hitRadius + 6, bl = 8;
+      g.lineStyle(2, onTarget ? 0x00ff66 : 0x338855, onTarget ? 0.9 : 0.4);
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        g.lineBetween(tx + sx * r, groundY + sy * r, tx + sx * (r - bl), groundY + sy * r);
+        g.lineBetween(tx + sx * r, groundY + sy * r, tx + sx * r, groundY + sy * (r - bl));
+      }
     }
   }
 
+  // Expanding shockwave ring + white core flash on a direct hit (scales w/ combo)
+  _bombShockwave(x, y, power) {
+    const ring = this.add.circle(x, y, 20, 0x000000, 0).setDepth(18);
+    ring.setStrokeStyle(3, 0xffdd88, 0.9);
+    ring.setScale(0.3);
+    this.tweens.add({
+      targets: ring, scale: 1.6 + power * 0.7, alpha: 0,
+      duration: 380 + power * 60, ease: 'Quad.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+    const flash = this.add.circle(x, y, 14, 0xffffff, 0.8).setDepth(18);
+    this.tweens.add({
+      targets: flash, scale: 2 + power * 0.5, alpha: 0,
+      duration: 220, ease: 'Quad.easeOut',
+      onComplete: () => flash.destroy(),
+    });
+  }
+
   _clearAimMarkers() {
-    if (this._reticleGfx) this._reticleGfx.clear();
+    if (this._arcGfx) this._arcGfx.clear();
     if (this._impactGfx) this._impactGfx.clear();
   }
 
@@ -2060,43 +2051,9 @@ export default class B2BomberScene extends Phaser.Scene {
       }
     }
 
-    // ── B-2 BOMBER (side-view profile flying across) ──
-    const jx = this.jetX;
-    const jy = this.jetY;
-    const dir = this._passDir || 1;
-
-    // B-2 side silhouette (flying left or right)
-    gfx.fillStyle(0x66ff66, 0.85);
-    gfx.beginPath();
-    gfx.moveTo(jx + 22 * dir, jy);            // nose
-    gfx.lineTo(jx - 5 * dir, jy - 14);        // top wing
-    gfx.lineTo(jx - 18 * dir, jy - 6);        // rear top
-    gfx.lineTo(jx - 20 * dir, jy);            // tail
-    gfx.lineTo(jx - 18 * dir, jy + 6);        // rear bottom
-    gfx.lineTo(jx - 5 * dir, jy + 10);        // bottom wing
-    gfx.closePath();
-    gfx.fill();
-
-    // Cockpit
-    gfx.fillStyle(0xaaffaa, 0.6);
-    gfx.fillCircle(jx + 16 * dir, jy, 3);
-
-    // Engine glow
-    gfx.fillStyle(0xccffcc, 0.5);
-    gfx.fillCircle(jx - 20 * dir, jy - 2, 3);
-    gfx.fillCircle(jx - 20 * dir, jy + 2, 3);
-
-    // Altitude indicator lines (shows how low you are)
-    const altPct = (jy - 70) / (H * 0.28 - 70); // 0=low, 1=high
-    const indicatorColor = altPct < 0.3 ? 0xff4400 : altPct < 0.6 ? 0xffaa00 : 0x00ff00;
-    gfx.lineStyle(1, indicatorColor, 0.3);
-    gfx.lineBetween(jx - 25, jy + 16, jx + 25, jy + 16);
-
-    // ── Aiming guide (vertical dashed line from jet to ground) ──
-    gfx.lineStyle(1, 0x00ff00, 0.12);
-    for (let gy = jy + 20; gy < mtnY + 60; gy += 12) {
-      gfx.lineBetween(jx, gy, jx, Math.min(gy + 6, mtnY + 60));
-    }
+    // (The B-2 itself is drawn as the AI top-down sprite via b2Gfx/_drawB2 —
+    // free flight, so no side-view silhouette or fixed pass direction here.)
+    // (Aiming is shown by the drop crosshair + target bracket in _drawBombSight.)
 
     // ── Falling bombs ──
     for (const b of this.bombObjects) {
@@ -2108,17 +2065,6 @@ export default class B2BomberScene extends Phaser.Scene {
       gfx.lineStyle(1, 0xff6600, 0.25);
       gfx.lineBetween(b.x, b.y - 8, b.x - b.vx * 0.05, b.y - 12);
     }
-
-    // ── Pass direction arrow at top ──
-    const arrowX = W / 2;
-    const arrowY = 30;
-    gfx.fillStyle(0x00ff00, 0.2);
-    gfx.beginPath();
-    gfx.moveTo(arrowX + 20 * dir, arrowY);
-    gfx.lineTo(arrowX - 10 * dir, arrowY - 8);
-    gfx.lineTo(arrowX - 10 * dir, arrowY + 8);
-    gfx.closePath();
-    gfx.fill();
 
     // ── SAM WARNING OVERLAY (dramatic) ──
     if (this._samWarning) {
