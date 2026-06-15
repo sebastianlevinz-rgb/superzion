@@ -88,17 +88,17 @@ function enemySoldier(dir, frame, variant) {
 // ── BOMBERMAN BOSS "Foam Beard" — wild-white-bearded militia commander ──
 // Signature trait: an ENORMOUS wild foamy white beard.
 const BOSS1_BASE =
-  "a cartoon militia-commander villain boss, stocky figure, with an ENORMOUS " +
-  "wild bushy foamy WHITE beard covering his chest, olive-green military field " +
-  "fatigues, a black-and-white checkered keffiyeh scarf, no turban, " +
-  "exaggerated comic villain proportions, front view facing camera, " +
-  "detailed pixel art arcade boss";
+  "Ismail Haniyeh as an arcade boss — a stocky heavy-set older middle-eastern man, " +
+  "BALD on top with short grey hair on the sides, a full neatly-TRIMMED grey-and-white beard, " +
+  "a round face, wearing a dark charcoal business SUIT with a white shirt, " +
+  "front view facing the camera, NO keffiyeh, NO turban, NO uniform, NO huge foamy beard, " +
+  "recognizable likeness, detailed pixel art arcade boss";
 
 function boss1(state) {
   const s = {
-    normal: "stern threatening expression, arms crossed",
-    angry: "furious shouting expression, red-faced, fists raised, leaning forward",
-    dead: "defeated, dizzy with spinning stars, slumped over, comical knockout",
+    normal: "standing menacingly, arms crossed, stern authoritative scowl",
+    angry: "ENRAGED — furious shouting, red-faced, fists clenched and raised, leaning forward, suit rumpled",
+    dead: "DEFEATED — slumped and collapsing, dazed dizzy expression, suit dishevelled, comical knockout",
   }[state];
   return `${STYLE}. Boss sprite of ${BOSS1_BASE}, ${s}.`;
 }
@@ -224,7 +224,7 @@ export const SPRITES = {
 
   // Bomberman boss "Foam Beard" — 3 states (64px)
   bm_boss: [
-    { name: "bm_boss1_normal", size: 64, prompt: boss1("normal") },
+    { name: "bm_boss1_normal", size: 64, ref: "parade_foambeard", prompt: boss1("normal") },
     { name: "bm_boss1_angry", size: 64, prompt: boss1("angry"), ref: "bm_boss1_normal" },
     { name: "bm_boss1_dead", size: 64, prompt: boss1("dead"), ref: "bm_boss1_normal" },
   ],
