@@ -74,6 +74,9 @@ export const AI_SPRITES = [
   'cin_natanz', 'cin_gaza', 'cin_destroyed_city', 'cin_cliff_bg', 'cin_ops_room',
   'cin_superzion', 'cin_superzion_cliff',
   '__title_bg', 'b2_silhouette',
+  // Opening intro narrative backdrops + enemy faction flags
+  'intro_empires', 'intro_warzone',
+  'flag_iran_ai', 'flag_hamas_ai', 'flag_hezbollah_ai', 'flag_palestine_ai',
   // Natanz destruction cinematic — target building (sliced floors + roof)
   'target_bldg_floor_0', 'target_bldg_floor_1', 'target_bldg_floor_2',
   'target_bldg_floor_3', 'target_bldg_floor_4', 'target_bldg_roof',

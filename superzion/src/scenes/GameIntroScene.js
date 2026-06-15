@@ -85,45 +85,11 @@ export default class GameIntroScene extends BaseCinematicScene {
 
   /** Page 0 — Flames, dark ruins, floating embers */
   _setupDestructionBg() {
-    // Almost-black gradient background
-    const bg = this.add.graphics().setDepth(0);
+    // AI fallen-empires panorama (Babylon ziggurat, Roman columns, ruins under a
+    // blood-red sky) — replaces the procedural gradient + ruin + empire silhouettes.
+    const bg = this.add.image(W / 2, H / 2, 'intro_empires').setDepth(0);
+    bg.setDisplaySize(W, H);
     this._addPageVisual(bg);
-    for (let y = 0; y < H; y++) {
-      const t = y / H;
-      bg.fillStyle(Phaser.Display.Color.GetColor(
-        8 + t * 25 | 0,
-        2 + t * 6 | 0,
-        2 + t * 4 | 0
-      ));
-      bg.fillRect(0, y, W, 1);
-    }
-
-    // Abstract ruin silhouettes — dark gray rectangles suggesting crumbling buildings
-    const ruins = this.add.graphics().setDepth(1);
-    this._addPageVisual(ruins);
-    const ruinDefs = [
-      { x: 60, w: 35, h: 120 }, { x: 130, w: 20, h: 80 },
-      { x: 200, w: 45, h: 140 }, { x: 780, w: 30, h: 100 },
-      { x: 850, w: 40, h: 130 }, { x: 900, w: 25, h: 90 },
-    ];
-    for (const rd of ruinDefs) {
-      // Main column
-      ruins.fillStyle(0x1a1210, 0.8);
-      ruins.fillRect(rd.x, H - rd.h, rd.w, rd.h);
-      // Jagged top — broken edge
-      ruins.fillStyle(0x1a1210, 0.8);
-      ruins.fillTriangle(
-        rd.x, H - rd.h,
-        rd.x + rd.w * 0.6, H - rd.h - 15,
-        rd.x + rd.w, H - rd.h
-      );
-      // Crack line
-      ruins.lineStyle(1, 0x0d0a08, 0.6);
-      ruins.lineBetween(
-        rd.x + rd.w * 0.4, H - rd.h + 10,
-        rd.x + rd.w * 0.6, H
-      );
-    }
 
     // Animated flame-like graphics at bottom
     const flameColors = [0xff4400, 0xff6600, 0xff8800, 0xcc2200];
@@ -171,97 +137,16 @@ export default class GameIntroScene extends BaseCinematicScene {
         },
       });
     }
-
-    // Historical empire silhouettes (crumbling empires that tried to destroy us)
-    const empireGfx = this.add.graphics().setDepth(6);
-    this._addPageVisual(empireGfx);
-
-    // Babylon — ziggurat/tower silhouette (left)
-    empireGfx.fillStyle(0x443322, 0.3);
-    empireGfx.beginPath();
-    empireGfx.moveTo(80, 140); empireGfx.lineTo(120, 40); empireGfx.lineTo(160, 140);
-    empireGfx.closePath(); empireGfx.fill();
-    // Steps on ziggurat
-    empireGfx.fillRect(90, 100, 60, 5); empireGfx.fillRect(95, 80, 50, 5); empireGfx.fillRect(100, 60, 40, 5);
-
-    // Rome — column/arch silhouette (center-left)
-    empireGfx.fillStyle(0x554433, 0.25);
-    empireGfx.fillRect(310, 50, 12, 100); empireGfx.fillRect(360, 50, 12, 100); // pillars
-    // Arch between pillars
-    empireGfx.lineStyle(3, 0x554433, 0.25);
-    empireGfx.beginPath(); empireGfx.arc(341, 55, 30, Math.PI, 0); empireGfx.strokePath();
-
-    // Swastika crossed out — just an X over a dark square (Nazis, center-right)
-    empireGfx.fillStyle(0x333333, 0.2);
-    empireGfx.fillRect(580, 50, 50, 50);
-    empireGfx.lineStyle(4, 0xff0000, 0.3);
-    empireGfx.lineBetween(580, 50, 630, 100);
-    empireGfx.lineBetween(630, 50, 580, 100);
-    // Circle around
-    empireGfx.lineStyle(3, 0xff0000, 0.25);
-    empireGfx.strokeCircle(605, 75, 30);
-
-    // Crumbling effect — cracks emanating from each symbol
-    empireGfx.lineStyle(1, 0x332211, 0.15);
-    for (let i = 0; i < 8; i++) {
-      const cx = [120, 341, 605][i % 3];
-      const cy = [90, 75, 75][i % 3];
-      const angle = Math.random() * Math.PI * 2;
-      const len = 20 + Math.random() * 30;
-      empireGfx.lineBetween(cx, cy, cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
-    }
+    // (Babylon/Rome/empire silhouettes are now part of the intro_empires AI art.)
   }
 
   /** Page 1 — More intense destruction: wider flames, red glow from below */
   _setupDestructionIntenseBg() {
-    // Dark background with stronger red tint
-    const bg = this.add.graphics().setDepth(0);
+    // AI burning-warzone panorama (collapsed buildings, fire, smoke, blood-red sky)
+    // replaces the procedural gradient + glow + ruin silhouettes.
+    const bg = this.add.image(W / 2, H / 2, 'intro_warzone').setDepth(0);
+    bg.setDisplaySize(W, H);
     this._addPageVisual(bg);
-    for (let y = 0; y < H; y++) {
-      const t = y / H;
-      bg.fillStyle(Phaser.Display.Color.GetColor(
-        12 + t * 45 | 0,
-        2 + t * 6 | 0,
-        2 + t * 4 | 0
-      ));
-      bg.fillRect(0, y, W, 1);
-    }
-
-    // Red glow from below — large gradient circles at bottom
-    const glowGfx = this.add.graphics().setDepth(1);
-    this._addPageVisual(glowGfx);
-    const glowPositions = [
-      { x: W * 0.15, r: 120 }, { x: W * 0.4, r: 140 },
-      { x: W * 0.65, r: 130 }, { x: W * 0.85, r: 110 },
-    ];
-    for (const gp of glowPositions) {
-      // Layered circles for soft gradient effect
-      for (let lr = gp.r; lr > 10; lr -= 15) {
-        const alpha = 0.03 + (1 - lr / gp.r) * 0.06;
-        glowGfx.fillStyle(0xff2200, alpha);
-        glowGfx.fillCircle(gp.x, H + 10, lr);
-      }
-    }
-
-    // More ruin silhouettes — denser, more broken
-    const ruins = this.add.graphics().setDepth(2);
-    this._addPageVisual(ruins);
-    const ruinDefs = [
-      { x: 30, w: 40, h: 150 }, { x: 100, w: 25, h: 90 },
-      { x: 160, w: 50, h: 170 }, { x: 260, w: 30, h: 110 },
-      { x: 680, w: 35, h: 120 }, { x: 750, w: 45, h: 160 },
-      { x: 830, w: 28, h: 95 }, { x: 890, w: 38, h: 140 },
-    ];
-    for (const rd of ruinDefs) {
-      ruins.fillStyle(0x1a0d08, 0.85);
-      ruins.fillRect(rd.x, H - rd.h, rd.w, rd.h);
-      // Jagged broken top
-      ruins.fillTriangle(
-        rd.x - 3, H - rd.h,
-        rd.x + rd.w * 0.5, H - rd.h - 12 - Math.random() * 10,
-        rd.x + rd.w + 3, H - rd.h
-      );
-    }
 
     // Intense flames — wider spread, more layers
     const flameColors = [0xff2200, 0xff4400, 0xff6600, 0xff8800, 0xffaa00];
@@ -736,31 +621,28 @@ export default class GameIntroScene extends BaseCinematicScene {
   _setupEnemyParade() {
     SoundManager.get().playMissileWarning();
 
-    // Red sky
-    const bg = this.add.graphics().setDepth(0);
+    // AI burning-warzone panorama replaces the procedural red sky + ground.
+    const bg = this.add.image(W / 2, H / 2, 'intro_warzone').setDepth(0);
+    bg.setDisplaySize(W, H);
     this._addPageVisual(bg);
-    for (let y = 0; y < H; y++) {
-      const t = y / H;
-      bg.fillStyle(Phaser.Display.Color.GetColor(30 + t * 80 | 0, 2 + t * 8 | 0, 2 + t * 5 | 0));
-      bg.fillRect(0, y, W, 1);
-    }
-    // Ground
-    bg.fillStyle(0x2a1508, 1);
-    bg.fillRect(0, H - 60, W, 60);
 
-    // Real enemy flags waving
+    // Enemy faction flags — AI pixel-art flags on poles (was procedural spritesheets)
     const orgData = [
-      { key: 'flag_iran', x: 120 },
-      { key: 'flag_hamas', x: W / 2 - 120 },
-      { key: 'flag_hezbollah', x: W / 2 + 120 },
-      { key: 'flag_palestine', x: W - 120 },
+      { key: 'flag_iran_ai', x: 120 },
+      { key: 'flag_hamas_ai', x: W / 2 - 120 },
+      { key: 'flag_hezbollah_ai', x: W / 2 + 120 },
+      { key: 'flag_palestine_ai', x: W - 120 },
     ];
     orgData.forEach((fd, i) => {
       if (this.textures.exists(fd.key)) {
-        const flag = this.add.sprite(fd.x, H / 2 - 10, fd.key).setDepth(4).setScale(0.6).setAlpha(0);
-        flag.play(fd.key + '_wave');
+        const flag = this.add.image(fd.x, H / 2 + 20, fd.key).setDepth(4).setScale(0.85).setAlpha(0);
         this._addPageVisual(flag);
         this.tweens.add({ targets: flag, alpha: 1, duration: 500, delay: i * 200 });
+        // subtle cloth flutter
+        this.tweens.add({
+          targets: flag, scaleX: 0.9, duration: 900 + i * 120,
+          yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: i * 200,
+        });
       }
     });
 
@@ -772,7 +654,8 @@ export default class GameIntroScene extends BaseCinematicScene {
       });
     }
 
-    // F-15 formation flyover (3 jets, staggered speeds for dynamic formation)
+    // F-15 formation flyover — AI jet sprites (was a procedural graphics silhouette)
+    const jetKey = this.textures.exists('f15_side') ? 'f15_side' : null;
     const jetDefs = [
       { yOff: 0,  delay: 0,   duration: 2500 },  // Jet 1: fastest, leads
       { yOff: 25, delay: 400, duration: 3000 },  // Jet 2: medium
@@ -780,31 +663,13 @@ export default class GameIntroScene extends BaseCinematicScene {
     ];
     for (const jd of jetDefs) {
       const jetY = H * 0.15 + jd.yOff;
-      const jet = this.add.graphics().setDepth(8);
-      this._addPageVisual(jet);
-      // F-15 side silhouette (small, dark)
-      jet.fillStyle(0x445566, 0.7);
-      jet.beginPath();
-      jet.moveTo(-60, jetY);
-      jet.lineTo(-45, jetY - 3);
-      jet.lineTo(-30, jetY - 2);
-      jet.lineTo(-25, jetY - 8); // wing up
-      jet.lineTo(-20, jetY - 2);
-      jet.lineTo(-10, jetY);
-      jet.lineTo(-20, jetY + 2);
-      jet.lineTo(-25, jetY + 8); // wing down
-      jet.lineTo(-30, jetY + 2);
-      jet.lineTo(-45, jetY + 3);
-      jet.closePath();
-      jet.fill();
-      // Engine glow
-      jet.fillStyle(0xff6600, 0.4);
-      jet.fillCircle(-58, jetY, 3);
-      // Fly across screen
-      this.tweens.add({
-        targets: jet, x: W + 120, duration: jd.duration, delay: jd.delay,
-        ease: 'Linear',
-      });
+      if (jetKey) {
+        const jet = this.add.image(-60, jetY, jetKey).setDepth(8).setScale(0.7);
+        this._addPageVisual(jet);
+        this.tweens.add({
+          targets: jet, x: W + 120, duration: jd.duration, delay: jd.delay, ease: 'Linear',
+        });
+      }
     }
   }
 
@@ -909,52 +774,11 @@ export default class GameIntroScene extends BaseCinematicScene {
       }
     }
 
-    // Epic B-2 flyover — escape-style banked view over sea
-    const b2Gfx = this.add.graphics().setDepth(10).setPosition(-160, H * 0.38);
+    // Epic B-2 flyover — AI stealth-bomber sprite (was a hand-drawn procedural wing)
+    const b2Key = this.textures.exists('b2_silhouette') ? 'b2_silhouette' : 'b2_top';
+    const b2Gfx = this.add.image(-160, H * 0.38, b2Key).setDepth(10).setScale(0.9);
+    b2Gfx.setAngle(90); // nose points along the left→right flight path
     this._addPageVisual(b2Gfx);
-
-    // Draw the B-2 in banked escape view (nose left, one wing up, one wing down)
-    const bs = 1.8;
-    const bx = 0, by = 0;
-    const bankUp = 0.3, bankDown = 0.3;
-
-    // Main body
-    b2Gfx.fillStyle(0x3a3a3a, 1);
-    b2Gfx.beginPath();
-    b2Gfx.moveTo(bx - 25 * bs, by);
-    b2Gfx.lineTo(bx + 10 * bs, by - (55 + bankUp * 25) * bs);
-    b2Gfx.lineTo(bx + 18 * bs, by - (35 + bankUp * 18) * bs);
-    b2Gfx.lineTo(bx + 12 * bs, by);
-    b2Gfx.lineTo(bx + 18 * bs, by + (35 + bankDown * 18) * bs);
-    b2Gfx.lineTo(bx + 10 * bs, by + (55 + bankDown * 25) * bs);
-    b2Gfx.closePath();
-    b2Gfx.fill();
-
-    // Inner surface
-    b2Gfx.fillStyle(0x2e2e2e, 0.5);
-    b2Gfx.beginPath();
-    b2Gfx.moveTo(bx - 18 * bs, by);
-    b2Gfx.lineTo(bx + 8 * bs, by - (30 + bankUp * 12) * bs);
-    b2Gfx.lineTo(bx + 10 * bs, by);
-    b2Gfx.lineTo(bx + 8 * bs, by + (30 + bankDown * 12) * bs);
-    b2Gfx.closePath();
-    b2Gfx.fill();
-
-    // Leading edge highlight
-    b2Gfx.lineStyle(1.5 * bs, 0x5a5a5a, 0.5);
-    b2Gfx.beginPath();
-    b2Gfx.moveTo(bx + 9 * bs, by - (53 + bankUp * 24) * bs);
-    b2Gfx.lineTo(bx - 24 * bs, by);
-    b2Gfx.lineTo(bx + 9 * bs, by + (53 + bankDown * 24) * bs);
-    b2Gfx.strokePath();
-
-    // Engine glow
-    b2Gfx.fillStyle(0xff4400, 0.35);
-    b2Gfx.fillCircle(bx + 14 * bs, by - 8 * bs, 5 * bs);
-    b2Gfx.fillCircle(bx + 14 * bs, by + 8 * bs, 5 * bs);
-    b2Gfx.fillStyle(0xff8800, 0.7);
-    b2Gfx.fillCircle(bx + 14 * bs, by - 8 * bs, 2 * bs);
-    b2Gfx.fillCircle(bx + 14 * bs, by + 8 * bs, 2 * bs);
 
     // Fly across screen (left to right)
     this.tweens.add({ targets: b2Gfx, x: W + 200, duration: 4500, ease: 'Linear' });

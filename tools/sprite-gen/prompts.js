@@ -429,6 +429,22 @@ export const SPRITES = {
       prompt: `16-bit retro pixel-art parallax scenery layer, NO characters, NO people, NO text, NO border. A war-torn middle-eastern city skyline silhouette along the BOTTOM half — damaged dark buildings, broken towers, faint distant fire-glow on a few, smoke; the ENTIRE upper area is a solid flat pure ${KEY_COLOR} green empty sky. Horizontal seamless band, detailed pixel art.` },
     { name: "beirut_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A war-torn city street ground band seen straight-on — cracked asphalt and rubble, scattered debris and craters, dim reddish night lighting, fills the frame as a horizontal seamless terrain band. NO sky.` },
+
+    // ── Opening intro narrative backdrops (GameIntroScene pages) ──
+    { name: "intro_empires", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. The ruins of fallen ancient empires under a dark ominous blood-red and black smoky sky — a crumbling Babylonian ziggurat, broken Roman marble columns, toppled stone monuments and shattered statues, rubble and drifting ash, faint distant fire-glow on the horizon, grim apocalyptic dusk. Cinematic, moody.` },
+    { name: "intro_warzone", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A war-torn modern middle-eastern city in ruins at night — intense orange-red firelight, burning collapsed buildings, thick black smoke columns rising, glowing embers in the air, a deep blood-red sky, apocalyptic destruction. Cinematic, dramatic.` },
+
+    // ── Enemy faction flags on poles (transparent sprites, waving cloth) ──
+    { name: "flag_iran_ai", size: { w: 96, h: 120 },
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, NO text, bold dark outline, clean readable pixels. A waving cloth flag on a tall grey flagpole — the flag has three equal horizontal stripes (top GREEN, middle WHITE, bottom RED) with a small red emblem centered on the white stripe, fabric rippling in the wind. Solid flat pure ${KEY_COLOR} green background.` },
+    { name: "flag_hamas_ai", size: { w: 96, h: 120 },
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, bold dark outline, clean readable pixels. A waving solid GREEN cloth flag on a tall grey flagpole with rows of white arabic-style calligraphic markings across it, fabric rippling in the wind. Solid flat pure ${KEY_COLOR === '#00FF00' ? '#FF00FF magenta' : KEY_COLOR} background.` , key: "magenta" },
+    { name: "flag_hezbollah_ai", size: { w: 96, h: 120 },
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, bold dark outline, clean readable pixels. A waving YELLOW cloth flag on a tall grey flagpole with a green emblem of an upraised arm holding a rifle silhouette, fabric rippling in the wind. Solid flat pure ${KEY_COLOR} green background.` },
+    { name: "flag_palestine_ai", size: { w: 96, h: 120 },
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, NO text, bold dark outline, clean readable pixels. A waving cloth flag on a tall grey flagpole — three equal horizontal stripes (top BLACK, middle WHITE, bottom GREEN) with a RED triangle on the hoist (left) side, fabric rippling in the wind. Solid flat pure ${KEY_COLOR} green background.` },
   ],
 
   // Final boss level (BossScene)
