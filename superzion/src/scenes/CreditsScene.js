@@ -7,7 +7,7 @@ import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import InputManager from '../systems/InputManager.js';
-import { drawStarOfDavid } from '../utils/StarOfDavid.js';
+import { addStarOfDavid } from '../utils/StarOfDavid.js';
 
 export default class CreditsScene extends BaseCinematicScene {
   constructor() { super('CreditsScene'); }
@@ -98,13 +98,16 @@ export default class CreditsScene extends BaseCinematicScene {
       align: 'center', lineSpacing: 10,
     }).setOrigin(0.5, 0).setDepth(10);
 
-    // Draw Star of David as Graphics, positioned in the credits flow
+    // Star of David in the credits flow — ornate AI emblem (falls back to the
+    // procedural drawing inside addStarOfDavid). R=44 matches the prior look.
     const starY = H + 40 + creditsLines.length * 14; // approximate
-    const starGfx = this.add.graphics().setDepth(11);
-    this._drawStarOfDavid(starGfx, W / 2, starY);
+    const starObj = addStarOfDavid(this, W / 2, starY, 44, {
+      lineWidth: 2.5, lineAlpha: 0.85, fillAlpha: 0.10, haloAlpha: 0.16,
+    });
+    starObj.setDepth(11);
 
     // Make star scroll with text by grouping Y offset
-    const scrollContainer = this.add.container(0, 0, [creditsText, starGfx]).setDepth(10);
+    const scrollContainer = this.add.container(0, 0, [creditsText, starObj]).setDepth(10);
 
     // Scroll upward over ~45s
     const totalHeight = creditsText.height + 200;
@@ -128,10 +131,6 @@ export default class CreditsScene extends BaseCinematicScene {
     // Input
     this.enterKey = this.input.keyboard.addKey('ENTER');
     this.mKey = this.input.keyboard.addKey('M');
-  }
-
-  _drawStarOfDavid(gfx, cx, cy) {
-    drawStarOfDavid(gfx, cx, cy, 44, { lineWidth: 2.5, lineAlpha: 0.85, fillAlpha: 0.10, haloAlpha: 0.16 });
   }
 
   _finish() {

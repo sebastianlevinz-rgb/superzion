@@ -114,6 +114,22 @@ export default class B2BomberScene extends Phaser.Scene {
   // GRAPHICS SETUP (no side-view layers needed)
   // ═════════════════════════════════════════════════════════════
   _setupGraphics() {
+    // AI night-terrain base tile (scrolling top-down sea/coast/land).
+    // When the AI textures exist we render the cruise base with a single
+    // tileSprite whose texture we swap per phase; the procedural fills in
+    // _drawFlightTerrain become a fallback gated behind this flag.
+    this._aiFlightTerrain = this.textures.exists('b2_terrain_sea');
+    if (this._aiFlightTerrain) {
+      this._flightTerrainTile = this.add
+        .tileSprite(W / 2, H / 2, W, H, 'b2_terrain_sea')
+        .setDepth(-1)          // below terrainGfx (depth 0) so overlays still draw on top
+        .setVisible(false);
+      this._flightTerrainKey = 'b2_terrain_sea';
+    } else {
+      this._flightTerrainTile = null;
+      this._flightTerrainKey = null;
+    }
+
     // Main terrain graphics layer (drawn every frame)
     this.terrainGfx = this.add.graphics().setDepth(0);
     // B-2 graphics layer (drawn every frame)
@@ -605,6 +621,7 @@ export default class B2BomberScene extends Phaser.Scene {
 
     // Hide gameplay graphics and HUD during takeoff
     this.terrainGfx.setVisible(false);
+    this._hideFlightTerrainTile();
     this.b2Gfx.setVisible(false);
     this.radarGfx.setVisible(false);
     this._setHUDVisible(false);
@@ -922,6 +939,12 @@ export default class B2BomberScene extends Phaser.Scene {
     this.maxDetection = 0;
     this.terrainOffset = 0;
     this.terrainSpeed = 280;    // faster flight
+    // Reset AI base tile to the sea texture for the start of the cruise.
+    if (this._aiFlightTerrain && this._flightTerrainTile) {
+      this._flightTerrainTile.setTexture('b2_terrain_sea');
+      this._flightTerrainKey = 'b2_terrain_sea';
+      this._flightTerrainTile.tilePositionY = 0;
+    }
     this.jetX = W / 2;
     this.jetY = H * 0.65;
     this.jetBankAngle = 0;
@@ -1156,15 +1179,42 @@ export default class B2BomberScene extends Phaser.Scene {
     }
   }
 
+  // Update the AI base tileSprite for the flight phase: pick the texture for
+  // the current SEA→COAST→LAND phase and scroll it downward to match the
+  // procedural terrain (terrainOffset px). No-op without AI textures.
+  _updateFlightTerrainTile(t) {
+    if (!this._aiFlightTerrain || !this._flightTerrainTile) return;
+    const tile = this._flightTerrainTile;
+    tile.setVisible(true);
+    // Match procedural thresholds: sea t<7, coast 7..12, land t>=12.
+    const key = t < 7 ? 'b2_terrain_sea'
+      : (t < 12 ? 'b2_terrain_coast' : 'b2_terrain_land');
+    if (key !== this._flightTerrainKey && this.textures.exists(key)) {
+      tile.setTexture(key);
+      this._flightTerrainKey = key;
+    }
+    // Content scrolls DOWN as the bomber flies forward (terrainOffset grows).
+    tile.tilePositionY = -this.terrainOffset;
+  }
+
+  // Hide the AI base tileSprite (used outside the flight phase).
+  _hideFlightTerrainTile() {
+    if (this._flightTerrainTile) this._flightTerrainTile.setVisible(false);
+  }
+
   _drawFlightTerrain(gfx, t) {
     gfx.clear();
+    this._updateFlightTerrainTile(t);
     const offset = this.terrainOffset;
 
     // Determine terrain type based on phase timer
     if (t < 7) {
       // ── DARK BLUE WATER (sea at night) ──
-      gfx.fillStyle(0x0a1628, 1);
-      gfx.fillRect(0, 0, W, H);
+      // Base fill is supplied by the AI sea tileSprite when available.
+      if (!this._aiFlightTerrain) {
+        gfx.fillStyle(0x0a1628, 1);
+        gfx.fillRect(0, 0, W, H);
+      }
 
       // ── PARALLAX LAYER: Star field (very slow scroll, 0.05x) ──
       const starOffset = offset * 0.05;
@@ -1267,8 +1317,10 @@ export default class B2BomberScene extends Phaser.Scene {
 
       // Land portion at TOP (growing downward — plane approaches from below)
       const landH = H * coastProgress;
-      gfx.fillStyle(0x2a1e10, 1);
-      gfx.fillRect(0, 0, W, landH);
+      if (!this._aiFlightTerrain) {
+        gfx.fillStyle(0x2a1e10, 1);
+        gfx.fillRect(0, 0, W, landH);
+      }
 
       // Some vegetation dots on land — mixed greens and sizes
       if (coastProgress > 0.2) {
@@ -1299,8 +1351,10 @@ export default class B2BomberScene extends Phaser.Scene {
       // Beach strip (between land and water)
       const beachY = landH;
       const beachH = 20 + coastProgress * 15;
-      gfx.fillStyle(0x8a7a5a, 0.8);
-      gfx.fillRect(0, beachY, W, beachH);
+      if (!this._aiFlightTerrain) {
+        gfx.fillStyle(0x8a7a5a, 0.8);
+        gfx.fillRect(0, beachY, W, beachH);
+      }
 
       // ── Palm tree silhouettes along beach transition ──
       if (coastProgress > 0.3) {
@@ -1320,8 +1374,10 @@ export default class B2BomberScene extends Phaser.Scene {
 
       // Water portion at BOTTOM (shrinking — plane has passed over it)
       const waterTop = beachY + beachH;
-      gfx.fillStyle(0x0a1628, 1);
-      gfx.fillRect(0, waterTop, W, H - waterTop);
+      if (!this._aiFlightTerrain) {
+        gfx.fillStyle(0x0a1628, 1);
+        gfx.fillRect(0, waterTop, W, H - waterTop);
+      }
       // Waves in water
       const waveOffset = offset % 60;
       for (let y = waterTop; y < H + 40; y += 40) {
@@ -1335,18 +1391,21 @@ export default class B2BomberScene extends Phaser.Scene {
 
     } else {
       // ── LAND (desert/brown with subtle gradient for depth) ──
+      // Base supplied by the AI land tileSprite when available.
       // Darker at top (far), lighter at bottom (near)
-      const gradSteps = 8;
-      for (let gs = 0; gs < gradSteps; gs++) {
-        const gy = (gs / gradSteps) * H;
-        const gh = H / gradSteps + 1;
-        const lerp = gs / gradSteps;
-        // Blend from 0x1a1408 (top/dark) to 0x2a1e10 (bottom/lighter)
-        const r = Math.round(0x1a + lerp * (0x2a - 0x1a));
-        const g = Math.round(0x14 + lerp * (0x1e - 0x14));
-        const b = Math.round(0x08 + lerp * (0x10 - 0x08));
-        gfx.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
-        gfx.fillRect(0, gy, W, gh);
+      if (!this._aiFlightTerrain) {
+        const gradSteps = 8;
+        for (let gs = 0; gs < gradSteps; gs++) {
+          const gy = (gs / gradSteps) * H;
+          const gh = H / gradSteps + 1;
+          const lerp = gs / gradSteps;
+          // Blend from 0x1a1408 (top/dark) to 0x2a1e10 (bottom/lighter)
+          const r = Math.round(0x1a + lerp * (0x2a - 0x1a));
+          const g = Math.round(0x14 + lerp * (0x1e - 0x14));
+          const b = Math.round(0x08 + lerp * (0x10 - 0x08));
+          gfx.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+          gfx.fillRect(0, gy, W, gh);
+        }
       }
 
       // ── Terrain color patches (scattered rectangles for variety) ──
@@ -2749,6 +2808,7 @@ export default class B2BomberScene extends Phaser.Scene {
         break;
       case 'bombing':
         this._updateBombing(dt);
+        this._hideFlightTerrainTile();
         // Draw bombing terrain + mountain
         this._drawBombingTerrain(this.terrainGfx, this.phaseTimer);
         this.radarGfx.clear();
@@ -2762,6 +2822,7 @@ export default class B2BomberScene extends Phaser.Scene {
         break;
       case 'escape':
         this._updateEscape(dt);
+        this._hideFlightTerrainTile();
         // Draw cinematic ocean scene
         this._drawEscapeTerrain(this.terrainGfx, this.phaseTimer);
         this.radarGfx.clear();
@@ -2770,6 +2831,7 @@ export default class B2BomberScene extends Phaser.Scene {
         this._drawEscapeB2(this.b2Gfx, this._escB2X, this._escB2Y, this._escBank);
         break;
       case 'explosion':
+        this._hideFlightTerrainTile();
         // Terrain still visible during explosion
         if (this.terrainGfx) this._drawBombingTerrain(this.terrainGfx, this.phaseTimer);
         this.b2Gfx.clear();
@@ -2778,6 +2840,7 @@ export default class B2BomberScene extends Phaser.Scene {
       case 'victory':
       case 'dead':
       case 'complete':
+        this._hideFlightTerrainTile();
         this.b2Gfx.clear();
         this.radarGfx.clear();
         this.terrainGfx.clear();

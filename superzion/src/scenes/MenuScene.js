@@ -10,7 +10,7 @@ import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import DifficultyManager from '../systems/DifficultyManager.js';
 import InputManager from '../systems/InputManager.js';
-import { drawStarOfDavid } from '../utils/StarOfDavid.js';
+import { drawStarOfDavid, addStarOfDavid } from '../utils/StarOfDavid.js';
 
 const W = 960;
 const H = 540;
@@ -179,10 +179,10 @@ export default class MenuScene extends Phaser.Scene {
 
     // Crisp golden Maguen David (two interlocking triangles) with a soft blue
     // halo — sits behind the title as the menu's identity mark.
-    const starGfx = this.add.graphics().setDepth(-4);
-    drawStarOfDavid(starGfx, starCx, starCy, starR, { lineAlpha: 0.55 });
+    const star = addStarOfDavid(this, starCx, starCy, starR);
+    star.setDepth(-4).setAlpha(0.55);
     this.tweens.add({
-      targets: starGfx, alpha: { from: 0.6, to: 1 },
+      targets: star, alpha: { from: 0.4, to: 0.7 },
       duration: 3500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 

@@ -162,23 +162,42 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
         color: '#FFD700', size: 26, y: H * 0.82,
         setup: () => {
           this._darkOverlay();
-          // B-2 silhouette visual
-          const b2 = this.add.graphics().setDepth(10);
-          this._addPageVisual(b2);
           const cx = W / 2, cy = H * 0.4;
-          b2.fillStyle(0x333344, 1);
-          b2.beginPath();
-          b2.moveTo(cx, cy - 5);
-          b2.lineTo(cx + 120, cy + 10);
-          b2.lineTo(cx + 100, cy + 15);
-          b2.lineTo(cx, cy + 8);
-          b2.lineTo(cx - 100, cy + 15);
-          b2.lineTo(cx - 120, cy + 10);
-          b2.closePath();
-          b2.fill();
-          // Spotlight
-          b2.fillStyle(0xffffcc, 0.06);
-          b2.fillTriangle(cx, 0, cx - 80, cy - 20, cx + 80, cy - 20);
+          // Spotlight (kept for both AI sprite and procedural fallback)
+          const spot = this.add.graphics().setDepth(9);
+          this._addPageVisual(spot);
+          spot.fillStyle(0xffffcc, 0.06);
+          spot.fillTriangle(cx, 0, cx - 80, cy - 20, cx + 80, cy - 20);
+          // B-2 silhouette visual
+          if (this.textures.exists('b2_silhouette')) {
+            const b2 = this.add.image(cx, cy, 'b2_silhouette').setDepth(10);
+            b2.setDisplaySize(260, 260 * (b2.height / b2.width));
+            this._addPageVisual(b2);
+            // Dramatic reveal: fade + zoom in
+            b2.setAlpha(0);
+            const finalScaleX = b2.scaleX, finalScaleY = b2.scaleY;
+            b2.setScale(finalScaleX * 0.7, finalScaleY * 0.7);
+            this.tweens.add({
+              targets: b2,
+              alpha: { from: 0, to: 1 },
+              scaleX: { from: finalScaleX * 0.7, to: finalScaleX },
+              scaleY: { from: finalScaleY * 0.7, to: finalScaleY },
+              duration: 1200, ease: 'Sine.easeOut',
+            });
+          } else {
+            const b2 = this.add.graphics().setDepth(10);
+            this._addPageVisual(b2);
+            b2.fillStyle(0x333344, 1);
+            b2.beginPath();
+            b2.moveTo(cx, cy - 5);
+            b2.lineTo(cx + 120, cy + 10);
+            b2.lineTo(cx + 100, cy + 15);
+            b2.lineTo(cx, cy + 8);
+            b2.lineTo(cx - 100, cy + 15);
+            b2.lineTo(cx - 120, cy + 10);
+            b2.closePath();
+            b2.fill();
+          }
           const b2Ref = this._ambientRef = SoundManager.get().playB2Engine();
           this.time.delayedCall(4000, () => {
             try { if (b2Ref && b2Ref.source) b2Ref.source.stop(); if (b2Ref && b2Ref.osc) b2Ref.osc.stop(); } catch(e) {}

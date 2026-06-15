@@ -9,7 +9,7 @@ import BaseCinematicScene, { W, H } from './BaseCinematicScene.js';
 import SoundManager from '../systems/SoundManager.js';
 import MusicManager from '../systems/MusicManager.js';
 import { drawSuperZionForward } from '../utils/SuperZionRenderer.js';
-import { drawStarOfDavid } from '../utils/StarOfDavid.js';
+import { addStarOfDavid } from '../utils/StarOfDavid.js';
 
 export default class VictoryScene extends BaseCinematicScene {
   constructor() { super('VictoryScene'); }
@@ -269,18 +269,17 @@ export default class VictoryScene extends BaseCinematicScene {
    * Fades in with tween. For pages 6-8.
    */
   _drawGiantStar() {
-    const starGfx = this.add.graphics().setDepth(3);
-    this._addPageVisual(starGfx);
     const cx = W / 2, cy = H * 0.38;
-    const r = 120;
 
-    // Shared Maguen David (gold body, soft blue halo)
-    drawStarOfDavid(starGfx, cx, cy, r, { fillAlpha: 0.22, lineAlpha: 0.7, haloAlpha: 0.12 });
+    // Ornate AI Maguen David emblem (falls back to the procedural drawing)
+    const star = addStarOfDavid(this, cx, cy, 120);
+    star.setDepth(3);
+    this._addPageVisual(star);
 
     // Fade in
-    starGfx.setAlpha(0);
+    star.setAlpha(0);
     this.tweens.add({
-      targets: starGfx, alpha: 1, duration: 1000,
+      targets: star, alpha: 1, duration: 1000,
       onComplete: () => {
         SoundManager.get().playFinalVictory();
         this.cameras.main.shake(200, 0.01);

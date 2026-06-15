@@ -263,8 +263,13 @@ export default class PortSwapScene extends Phaser.Scene {
   // ════════════════════════════════════════════════════════════
 
   _buildPort() {
-    // Mountain backdrop at top
-    this.add.image(480, 25, 'ps_mountains_bg').setOrigin(0.5, 0.5).setDepth(-5);
+    // Mountain backdrop at top — AI PNG is 960x360 native, so force it to the
+    // intended backdrop strip (full width W=960, height of the top band HUD_H=50)
+    // centered at (W/2, HUD_H/2) so it fills the same area the procedural texture did.
+    this.add.image(W / 2, HUD_H / 2, 'ps_mountains_bg')
+      .setOrigin(0.5, 0.5)
+      .setDisplaySize(W, HUD_H)
+      .setDepth(-5);
 
     // Water area (top strip)
     for (let x = 0; x < 30; x++) {

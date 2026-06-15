@@ -89,8 +89,8 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
         text: 'Inside: Hassan Nasrallah. Every rocket that fell on our schools, our hospitals, our homes \u2014 he gave the order.',
         color: '#ff4444', size: 18, y: H * 0.82,
         setup: () => {
-          if (this.textures.exists('cin_lebanon_coast')) {
-            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_lebanon_coast').setDisplaySize(W, H).setDepth(0));
+          if (this.textures.exists('cin_fortress')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_fortress').setDisplaySize(W, H).setDepth(0));
           }
           this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.45).setDepth(1));
           if (this.textures.exists('parade_turboturban')) {

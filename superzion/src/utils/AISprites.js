@@ -31,8 +31,8 @@ export const AI_SPRITES = [
   'plt_player_idle', 'plt_player_run_0', 'plt_player_run_1',
   'plt_player_run_2', 'plt_player_run_3', 'plt_player_jump',
   'plt_guard_walk_0', 'plt_guard_walk_1', 'plt_guard_walk_2', 'plt_guard_walk_3',
-  // Parallax background bands (night Tehran)
-  'plt_mountains', 'plt_skyline', 'plt_near_buildings',
+  // Parallax background bands (night Tehran) + night sky
+  'plt_mountains', 'plt_skyline', 'plt_near_buildings', 'plt_stars_sky',
 
   // ── Port Swap (PortSwapScene) ──
   'ps_player_down_0', 'ps_player_down_1', 'ps_player_up_0', 'ps_player_up_1',
@@ -94,7 +94,11 @@ export const AI_SPRITES = [
   'ps_container_green', 'ps_container_green_marked',
   'ps_container_yellow', 'ps_container_yellow_marked',
   'ps_container_orange', 'ps_container_orange_marked',
-  'ps_ship', 'ps_crane', 'ps_building',
+  'ps_ship', 'ps_crane', 'ps_building', 'ps_mountains_bg',
+  // B-2 night-flight terrain tiles
+  'b2_terrain_sea', 'b2_terrain_coast', 'b2_terrain_land',
+  // Ornate Star of David emblem (used by StarOfDavid.js everywhere)
+  'star_of_david',
   'armchair', 'armchair_side',
 ];
 

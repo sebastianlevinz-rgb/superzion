@@ -409,6 +409,9 @@ export const SPRITES = {
     // sits dimmed behind the SUPERZION title + level list).
     { name: "menu_bg", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A majestic panorama of the JERUSALEM old-city skyline at golden dusk — ancient pale-gold limestone walls, towers and the silhouette of domes and the Tower of David along the lower third, gentle Judean hills behind, a warm glowing golden-orange sunset sky deepening through amber to deep navy-blue at the top with a few soft wispy clouds and the first faint stars, soft hopeful majestic light, cinematic title-screen backdrop. The upper half is mostly open sky. NO text, NO people, NO modern skyscrapers.` },
+    // Ornate metallic Star of David — used everywhere (menu/victory/credits) via StarOfDavid.js
+    { name: "star_of_david", size: 256, key: "magenta",
+      prompt: `16-bit pixel-art game emblem, a single ORNATE METALLIC GOLD Star of David (Magen David — a six-pointed hexagram of TWO interlocking equilateral triangles), centered and facing front, FILLING the frame. Polished gold with a bright beveled metallic sheen and darker gold shadows for depth, the two triangles clearly WOVEN over and under each other at each crossing, a thin engraved inner double-line border running along each band, a small glowing pale-blue gem set at each of the six points. Bold clean readable edges, NO text, NO scenery, NO extra symbols, NO glow, NO halo, NO aura, NO colored circle or disc behind it. The ENTIRE background behind and around the star is a solid flat pure magenta #FF00FF and nothing else.` },
     { name: "b2_silhouette", size: { w: 200, h: 80 }, ref: "b2_top",
       prompt: `${STYLE}. Sprite of a USAF B-2 Spirit stealth bomber as an EXACT top-down planform from DIRECTLY overhead. A pure FLYING WING shaped like a wide flat BOOMERANG / MANTA / BAT: ONE single smooth seamless triangular wing, a sharp pointed beak nose at the TOP-CENTER, two long straight leading edges sweeping back to two sharp wingtips, and the UNMISTAKABLE jagged double-W SAWTOOTH trailing edge along the BOTTOM (four shallow V-notches). Matte MEDIUM-DARK CHARCOAL GREY, almost black, flat and non-reflective. ABSOLUTELY NO tail, NO vertical fins, NO fuselage tube, NO nose cone, NO raised cockpit canopy, NO engine nozzles, NO fighter-jet swept wings. NOT a fighter jet. Instantly recognizable B-2 boomerang shape, detailed pixel art, bold dark outline.` },
   ],
@@ -434,9 +437,25 @@ export const SPRITES = {
     { name: "beirut_ground", size: { w: 768, h: 128 }, tile: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A war-torn city street ground band seen straight-on — cracked asphalt and rubble, scattered debris and craters, dim reddish night lighting, fills the frame as a horizontal seamless terrain band. NO sky.` },
 
+    // ── Platformer (L1 Tehran rooftops) NIGHT sky — fixes day/night clash with the night parallax bands ──
+    { name: "plt_stars_sky", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. ONLY a deep NIGHT sky over a middle-eastern city — dark navy-blue to near-black gradient, scattered faint stars, thin wispy dark clouds, a soft distant city-glow haze low on the horizon. NO moon, NO ground, NO mountains, NO buildings, just night sky. Calm and moody.` },
+
+    // ── Beirut/Hong Kong port (PortSwap) coastal backdrop ──
+    { name: "ps_mountains_bg", size: { w: 960, h: 360 }, bg: true, aspect: "16:9",
+      prompt: `${BG_STYLE}. A hazy daytime COASTAL HARBOR backdrop seen from across the water — distant blue-grey mountains and hills behind a far port-city skyline of cranes, warehouses and low buildings, calm sea haze, soft overcast light. A wide horizontal backdrop strip, atmospheric and distant. NO text, NO people, NO foreground.` },
+
+    // ── B-2 night-flight terrain (Mountain Breaker) — top-down seamless dark tiles ──
+    { name: "b2_terrain_sea", size: { w: 512, h: 512 }, bg: true,
+      prompt: `${BG_STYLE}. EXACT top-down aerial view straight down at a dark NIGHT OCEAN — deep navy-black water with faint cool moonlit ripple highlights evenly scattered, a SEAMLESS repeating texture with no horizon, no land, no center feature, uniform across the whole frame. Moody night.` },
+    { name: "b2_terrain_coast", size: { w: 512, h: 512 }, bg: true,
+      prompt: `${BG_STYLE}. EXACT top-down aerial NIGHT view straight down at a coastline — dark navy sea on one side meeting a faint moonlit sandy shore and dark scrubland on the other, subtle, a seamless horizontal-ish band, moody night, no center feature.` },
+    { name: "b2_terrain_land", size: { w: 512, h: 512 }, bg: true,
+      prompt: `${BG_STYLE}. EXACT top-down aerial NIGHT view straight down at dark desert farmland and rocky ground — muted dark browns and greys with faint thin roads and field patches under moonlight, a SEAMLESS repeating texture, uniform, no center feature, moody night.` },
+
     // ── GameIntro finale: Tel Aviv beach sunset (palm trees) — "they fight to conquer, we fight to exist" ──
     { name: "intro_telaviv_sunset", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
-      prompt: `${BG_STYLE}. A breathtaking TEL AVIV beach at golden-hour SUNSET — tall PALM TREE silhouettes along a sandy Mediterranean shore, calm sea with a warm shimmering golden sun reflection, gentle waves, a distant modern city skyline silhouette on the right, a glowing orange-to-purple sunset sky with soft clouds, peaceful hopeful majestic atmosphere, cinematic. NO text, NO people.` },
+      prompt: `${BG_STYLE}. A breathtaking, INSTANTLY RECOGNIZABLE TEL AVIV beachfront at golden-hour sunset. Foreground: the sandy Mediterranean beach and the curving seaside PROMENADE (tayelet) with tall leaning PALM TREES and beach umbrellas. Midground skyline along the shore clearly showing Tel Aviv's iconic landmarks: the three distinctive AZRIELI CENTER skyscrapers (one CIRCULAR tower, one TRIANGULAR tower, one SQUARE tower standing together) and rows of white Bauhaus buildings. On the far-left headland, the historic OLD JAFFA hill with its stone clock tower and church spire jutting into the sea. Calm sea with a warm shimmering golden sun reflection, glowing orange-to-purple sunset sky with soft clouds, peaceful hopeful majestic atmosphere, cinematic pixel-art panorama. NO text, NO people.` },
 
     // ── L3/L4 brief: underground tunnel network cross-section ──
     { name: "cin_tunnel_xsection", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",

@@ -570,13 +570,23 @@ export default class GameIntroScene extends BaseCinematicScene {
   _setupBossSilhouettes() {
     SoundManager.get().playBossEntrance();
 
-    // Very dark bg
-    const bg = this.add.graphics().setDepth(0);
-    this._addPageVisual(bg);
-    for (let y = 0; y < H; y++) {
-      const t = y / H;
-      bg.fillStyle(Phaser.Display.Color.GetColor(8 + t * 20 | 0, 2 + t * 5 | 0, 2 + t * 5 | 0));
-      bg.fillRect(0, y, W, 1);
+    // Backdrop: AI warzone panorama (sits behind the boss sprites + red glows),
+    // with a dark scrim to keep the villains readable. Falls back to the
+    // procedural dark gradient when the AI texture isn't available.
+    if (this.textures.exists('intro_warzone')) {
+      const bg = this.add.image(W / 2, H / 2, 'intro_warzone').setDepth(-1).setDisplaySize(W, H);
+      this._addPageVisual(bg);
+      const scrim = this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.55).setDepth(-0.9);
+      this._addPageVisual(scrim);
+    } else {
+      // Very dark bg
+      const bg = this.add.graphics().setDepth(0);
+      this._addPageVisual(bg);
+      for (let y = 0; y < H; y++) {
+        const t = y / H;
+        bg.fillStyle(Phaser.Display.Color.GetColor(8 + t * 20 | 0, 2 + t * 5 | 0, 2 + t * 5 | 0));
+        bg.fillRect(0, y, W, 1);
+      }
     }
 
     // Boss sprites as dark silhouettes with red backlight

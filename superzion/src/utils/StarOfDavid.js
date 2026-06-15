@@ -53,3 +53,21 @@ export function drawStarOfDavid(gfx, cx, cy, R, opts = {}) {
   gfx.lineStyle(lineWidth, gold, lineAlpha);
   tris(R, 'stroke');
 }
+
+// ===================================================================
+// addStarOfDavid(scene, cx, cy, R, opts)
+//   Prefers the ornate AI `star_of_david` emblem image; falls back to the
+//   procedural drawing above. Returns the created object (Image or Graphics).
+//   R is the star's outer radius, so displaySize = 2R fits the same footprint.
+// ===================================================================
+export function addStarOfDavid(scene, cx, cy, R, opts = {}) {
+  // Prefer the AI emblem image; fall back to the procedural drawing.
+  if (scene.textures.exists('star_of_david')) {
+    const img = scene.add.image(cx, cy, 'star_of_david');
+    img.setDisplaySize(R * 2, R * 2);
+    return img;
+  }
+  const gfx = scene.add.graphics();
+  drawStarOfDavid(gfx, cx, cy, R, opts);
+  return gfx;
+}
