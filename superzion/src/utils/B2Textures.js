@@ -6,275 +6,232 @@
 const W = 960;
 const H = 540;
 
-// ── B-2 Spirit top-down planform sprite (140×90) facing RIGHT ─
-// Wide, flat flying wing with swept-back leading edges and gentle W trailing edge
+// ── B-2 Spirit SIDE VIEW sprite (120×40) facing RIGHT ─────────
+// Flying wing in profile: extremely wide, razor-thin, no vertical tail
+// Boomerang/flying-wing silhouette with serrated trailing edge
 export function createB2SideSprite(scene) {
   if (scene.textures.exists('b2_side')) scene.textures.remove('b2_side');
 
-  const w = 140, h = 90;
+  const w = 120, h = 40;
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
-  const cx = 74, cy = h / 2; // center offset right so nose has room
+  // Center the aircraft in the canvas; nose points right
+  const cx = 58, cy = h / 2; // 58, 20
 
-  // Helper: draw the full B-2 contour path (wider, flatter, gentle W trailing edge)
-  // Wingspan extends to y~4 and y~86 for maximum spread
+  // ── Helper: full B-2 side-view contour ──
+  // Side profile of a flying wing: long horizontal span, very thin
+  // Max thickness ~12px at center body, tapering to ~2px at wingtips
   function b2Path() {
     ctx.beginPath();
-    // Nose (facing right)
-    ctx.moveTo(cx + 50, cy);              // nose tip
-    // Upper leading edge — wide swept-back
-    ctx.lineTo(cx + 38, cy - 5);          // upper nose ridge
-    ctx.lineTo(cx + 14, cy - 13);         // forward fuselage
-    ctx.lineTo(cx - 14, cy - 26);         // mid-wing leading edge
-    ctx.lineTo(cx - 42, cy - 37);         // outer wing
-    ctx.lineTo(cx - 62, cy - 41);         // left wingtip
-    // Upper trailing edge — gentle W-serrations (shallow, not deep V)
-    ctx.lineTo(cx - 56, cy - 38);         // wingtip trailing notch
-    ctx.lineTo(cx - 40, cy - 28);         // outer W-tooth
-    ctx.lineTo(cx - 32, cy - 22);         // outer W-valley (shallow)
-    ctx.lineTo(cx - 24, cy - 14);         // inner W-tooth
-    ctx.lineTo(cx - 18, cy - 8);          // inner W-valley
-    ctx.lineTo(cx - 20, cy);              // center trailing notch
-    // Lower trailing edge — mirror gentle W
-    ctx.lineTo(cx - 18, cy + 8);          // inner W-valley
-    ctx.lineTo(cx - 24, cy + 14);         // inner W-tooth
-    ctx.lineTo(cx - 32, cy + 22);         // outer W-valley (shallow)
-    ctx.lineTo(cx - 40, cy + 28);         // outer W-tooth
-    ctx.lineTo(cx - 56, cy + 38);         // wingtip trailing notch
-    ctx.lineTo(cx - 62, cy + 41);         // right wingtip
-    // Lower leading edge — swept-back
-    ctx.lineTo(cx - 42, cy + 37);         // outer wing
-    ctx.lineTo(cx - 14, cy + 26);         // mid-wing
-    ctx.lineTo(cx + 14, cy + 13);         // forward fuselage
-    ctx.lineTo(cx + 38, cy + 5);          // lower nose ridge
+    // ── Nose (rightmost point) ──
+    ctx.moveTo(cx + 52, cy);               // sharp nose tip
+
+    // ── UPPER profile (top surface) — left to right ──
+    ctx.lineTo(cx + 48, cy - 1.5);         // nose upper edge
+    ctx.lineTo(cx + 40, cy - 3);           // forward fuselage upper
+    ctx.lineTo(cx + 30, cy - 4.5);         // cockpit area (flush — no bubble)
+    ctx.lineTo(cx + 18, cy - 5.5);         // forward wing root upper
+    ctx.lineTo(cx + 6, cy - 6);            // center body — thickest point upper
+    ctx.lineTo(cx - 8, cy - 5.5);          // aft center body
+    ctx.lineTo(cx - 20, cy - 4.5);         // inner wing upper
+    ctx.lineTo(cx - 32, cy - 3.5);         // mid wing upper
+    ctx.lineTo(cx - 44, cy - 2.5);         // outer wing upper
+    ctx.lineTo(cx - 54, cy - 1.5);         // near wingtip upper
+    ctx.lineTo(cx - 60, cy - 1);           // left wingtip (top)
+
+    // ── TRAILING EDGE — serrated sawtooth (stealth feature) ──
+    // 5 sawtooth notches along the trailing edge
+    ctx.lineTo(cx - 57, cy + 0.5);         // sawtooth 1 down
+    ctx.lineTo(cx - 54, cy - 0.5);         // sawtooth 1 up
+    ctx.lineTo(cx - 48, cy + 1);           // sawtooth 2 down
+    ctx.lineTo(cx - 44, cy - 0.2);         // sawtooth 2 up
+    ctx.lineTo(cx - 38, cy + 1.5);         // sawtooth 3 down
+    ctx.lineTo(cx - 33, cy + 0.2);         // sawtooth 3 up
+    ctx.lineTo(cx - 26, cy + 2);           // sawtooth 4 down
+    ctx.lineTo(cx - 22, cy + 0.8);         // sawtooth 4 up
+    ctx.lineTo(cx - 16, cy + 3);           // sawtooth 5 down (center trailing area)
+    ctx.lineTo(cx - 12, cy + 2);           // center trailing notch
+
+    // ── LOWER profile (bottom surface) — heading right back to nose ──
+    ctx.lineTo(cx - 8, cy + 5.5);          // aft center body lower
+    ctx.lineTo(cx + 6, cy + 6);            // center body — thickest point lower
+    ctx.lineTo(cx + 18, cy + 5.5);         // forward wing root lower
+    ctx.lineTo(cx + 30, cy + 4);           // cockpit area lower
+    ctx.lineTo(cx + 40, cy + 2.5);         // forward fuselage lower
+    ctx.lineTo(cx + 48, cy + 1);           // nose lower edge
     ctx.closePath();
   }
 
-  // ── Shadow (offset 3px down-left) ──
+  // ── Drop shadow ──
   ctx.save();
-  ctx.translate(3, 4);
-  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.translate(2, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
   b2Path();
   ctx.fill();
   ctx.restore();
 
-  // ── Main body — dark charcoal stealth coating ──
+  // ── Main body fill — dark charcoal stealth coating (#2a2a30) ──
   ctx.fillStyle = '#2a2a30';
   b2Path();
   ctx.fill();
 
-  // ── Slightly lighter center fuselage (color variation) ──
+  // ── Top surface highlight (#3a3a44) — lighter upper half ──
   ctx.save();
   b2Path();
   ctx.clip();
-  ctx.fillStyle = '#33333a';
-  ctx.beginPath();
-  ctx.moveTo(cx + 42, cy);
-  ctx.lineTo(cx + 18, cy - 9);
-  ctx.lineTo(cx - 6, cy - 16);
-  ctx.lineTo(cx - 16, cy - 8);
-  ctx.lineTo(cx - 12, cy);
-  ctx.lineTo(cx - 16, cy + 8);
-  ctx.lineTo(cx - 6, cy + 16);
-  ctx.lineTo(cx + 18, cy + 9);
-  ctx.closePath();
-  ctx.fill();
+  const topGrad = ctx.createLinearGradient(0, cy - 6, 0, cy);
+  topGrad.addColorStop(0, '#3a3a44');
+  topGrad.addColorStop(0.4, '#33333c');
+  topGrad.addColorStop(1, 'rgba(42,42,48,0)');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(0, 0, w, cy);
   ctx.restore();
 
-  // ── Darker wing edges (color variation) ──
+  // ── Underside shadow — darker lower half ──
   ctx.save();
   b2Path();
   ctx.clip();
-  // Upper wing edge band
-  ctx.fillStyle = '#222228';
-  ctx.beginPath();
-  ctx.moveTo(cx - 14, cy - 26);
-  ctx.lineTo(cx - 62, cy - 41);
-  ctx.lineTo(cx - 56, cy - 38);
-  ctx.lineTo(cx - 40, cy - 28);
-  ctx.lineTo(cx - 14, cy - 20);
-  ctx.closePath();
-  ctx.fill();
-  // Lower wing edge band
-  ctx.beginPath();
-  ctx.moveTo(cx - 14, cy + 26);
-  ctx.lineTo(cx - 62, cy + 41);
-  ctx.lineTo(cx - 56, cy + 38);
-  ctx.lineTo(cx - 40, cy + 28);
-  ctx.lineTo(cx - 14, cy + 20);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // ── Lower wing shadow (underside darker) ──
-  ctx.save();
-  b2Path();
-  ctx.clip();
-  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.fillRect(0, cy, w, h);
   ctx.restore();
 
-  // ── Panel lines — nose-to-tail (chordwise) ──
+  // ── Angular stealth facets — subtle panel shade variations ──
   ctx.save();
   b2Path();
   ctx.clip();
-  ctx.strokeStyle = 'rgba(60,60,70,0.35)';
-  ctx.lineWidth = 0.5;
-  // Centerline
+  // Forward facet (slightly lighter wedge)
+  ctx.fillStyle = 'rgba(70,70,80,0.12)';
   ctx.beginPath();
-  ctx.moveTo(cx + 48, cy);
-  ctx.lineTo(cx - 18, cy);
-  ctx.stroke();
-  // Upper inner panel line
+  ctx.moveTo(cx + 48, cy - 1.5);
+  ctx.lineTo(cx + 20, cy - 5);
+  ctx.lineTo(cx + 20, cy + 5);
+  ctx.lineTo(cx + 48, cy + 1);
+  ctx.closePath();
+  ctx.fill();
+  // Mid-body facet
+  ctx.fillStyle = 'rgba(50,50,60,0.10)';
   ctx.beginPath();
-  ctx.moveTo(cx + 30, cy - 4);
-  ctx.lineTo(cx - 22, cy - 10);
-  ctx.stroke();
-  // Upper outer panel line
-  ctx.beginPath();
-  ctx.moveTo(cx + 16, cy - 10);
-  ctx.lineTo(cx - 48, cy - 34);
-  ctx.stroke();
-  // Lower inner panel line
-  ctx.beginPath();
-  ctx.moveTo(cx + 30, cy + 4);
-  ctx.lineTo(cx - 22, cy + 10);
-  ctx.stroke();
-  // Lower outer panel line
-  ctx.beginPath();
-  ctx.moveTo(cx + 16, cy + 10);
-  ctx.lineTo(cx - 48, cy + 34);
-  ctx.stroke();
-
-  // ── Spanwise panel lines (perpendicular to leading edge) ──
-  // Forward spanwise
-  ctx.beginPath();
-  ctx.moveTo(cx + 10, cy - 13);
-  ctx.lineTo(cx + 10, cy + 13);
-  ctx.stroke();
-  // Mid spanwise
-  ctx.beginPath();
-  ctx.moveTo(cx - 10, cy - 20);
-  ctx.lineTo(cx - 10, cy + 20);
-  ctx.stroke();
-  // Rear spanwise
-  ctx.beginPath();
-  ctx.moveTo(cx - 30, cy - 26);
-  ctx.lineTo(cx - 30, cy + 26);
-  ctx.stroke();
+  ctx.moveTo(cx + 20, cy - 5);
+  ctx.lineTo(cx - 10, cy - 5.5);
+  ctx.lineTo(cx - 10, cy + 5.5);
+  ctx.lineTo(cx + 20, cy + 5);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 
-  // ── Cockpit window (dark diamond/trapezoid near nose) ──
+  // ── Panel lines (very fine) ──
+  ctx.save();
+  b2Path();
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(60,60,70,0.30)';
+  ctx.lineWidth = 0.4;
+  // Horizontal centerline
+  ctx.beginPath();
+  ctx.moveTo(cx + 50, cy);
+  ctx.lineTo(cx - 55, cy);
+  ctx.stroke();
+  // Upper panel line
+  ctx.beginPath();
+  ctx.moveTo(cx + 44, cy - 2);
+  ctx.lineTo(cx - 50, cy - 1.8);
+  ctx.stroke();
+  // Lower panel line
+  ctx.beginPath();
+  ctx.moveTo(cx + 44, cy + 1.8);
+  ctx.lineTo(cx - 12, cy + 2.5);
+  ctx.stroke();
+  // Cross panel lines (chordwise, 3 of them)
+  for (const px of [cx + 25, cx + 5, cx - 18]) {
+    ctx.beginPath();
+    ctx.moveTo(px, cy - 5);
+    ctx.lineTo(px, cy + 5);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── Cockpit (flush with surface — dark slit, not a bubble) ──
   ctx.fillStyle = '#1a1a22';
   ctx.beginPath();
-  ctx.moveTo(cx + 42, cy);
-  ctx.lineTo(cx + 30, cy - 4);
-  ctx.lineTo(cx + 22, cy - 3);
-  ctx.lineTo(cx + 22, cy + 3);
-  ctx.lineTo(cx + 30, cy + 4);
+  ctx.moveTo(cx + 38, cy - 2.5);
+  ctx.lineTo(cx + 28, cy - 4);
+  ctx.lineTo(cx + 24, cy - 3.5);
+  ctx.lineTo(cx + 32, cy - 2.2);
   ctx.closePath();
   ctx.fill();
-  // Glass reflection highlight
-  ctx.fillStyle = 'rgba(100,140,180,0.18)';
+  // Faint glass glint
+  ctx.fillStyle = 'rgba(120,160,200,0.15)';
   ctx.beginPath();
-  ctx.moveTo(cx + 38, cy - 1);
-  ctx.lineTo(cx + 30, cy - 3);
-  ctx.lineTo(cx + 26, cy - 2);
-  ctx.lineTo(cx + 30, cy);
+  ctx.moveTo(cx + 36, cy - 2.6);
+  ctx.lineTo(cx + 30, cy - 3.5);
+  ctx.lineTo(cx + 28, cy - 3.2);
+  ctx.lineTo(cx + 34, cy - 2.4);
   ctx.closePath();
   ctx.fill();
 
-  // ── Engine intake bumps (two elliptical raised areas behind cockpit) ──
-  ctx.fillStyle = '#222228';
-  ctx.beginPath();
-  ctx.ellipse(cx + 5, cy - 8, 7, 3, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(cx + 5, cy + 8, 7, 3, 0.3, 0, Math.PI * 2);
-  ctx.fill();
-  // Intake shadow edges
-  ctx.strokeStyle = 'rgba(15,15,20,0.4)';
-  ctx.lineWidth = 0.5;
-  ctx.beginPath();
-  ctx.ellipse(cx + 5, cy - 8, 7, 3, -0.3, Math.PI * 0.8, Math.PI * 1.8);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.ellipse(cx + 5, cy + 8, 7, 3, 0.3, Math.PI * 0.2, Math.PI * 1.2);
-  ctx.stroke();
-
-  // ── 1px outline around full contour ──
+  // ── Outline — subtle edge glow ──
   b2Path();
-  ctx.strokeStyle = 'rgba(160,180,210,0.55)';
-  ctx.lineWidth = 1.0;
-  ctx.stroke();
-
-  // ── Moonlight highlight — bright edge along ENTIRE upper leading edge ──
-  ctx.strokeStyle = 'rgba(180,200,230,0.60)';
+  ctx.strokeStyle = 'rgba(140,160,190,0.40)';
   ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(cx + 50, cy);
-  ctx.lineTo(cx + 38, cy - 5);
-  ctx.lineTo(cx + 14, cy - 13);
-  ctx.lineTo(cx - 14, cy - 26);
-  ctx.lineTo(cx - 42, cy - 37);
-  ctx.lineTo(cx - 62, cy - 41);
-  ctx.stroke();
-  // Dimmer lower leading edge highlight
-  ctx.strokeStyle = 'rgba(180,200,230,0.35)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(cx + 50, cy);
-  ctx.lineTo(cx + 38, cy + 5);
-  ctx.lineTo(cx + 14, cy + 13);
-  ctx.lineTo(cx - 14, cy + 26);
-  ctx.lineTo(cx - 42, cy + 37);
-  ctx.lineTo(cx - 62, cy + 41);
   ctx.stroke();
 
-  // ── Engine exhaust glow — faint blue-white at trailing edge center ──
-  const exGlow1 = ctx.createRadialGradient(cx - 18, cy - 5, 1, cx - 18, cy - 5, 10);
-  exGlow1.addColorStop(0, 'rgba(80,140,220,0.25)');
-  exGlow1.addColorStop(0.5, 'rgba(60,120,200,0.10)');
-  exGlow1.addColorStop(1, 'rgba(60,120,200,0)');
-  ctx.fillStyle = exGlow1;
-  ctx.fillRect(cx - 28, cy - 15, 20, 20);
-  const exGlow2 = ctx.createRadialGradient(cx - 18, cy + 5, 1, cx - 18, cy + 5, 10);
-  exGlow2.addColorStop(0, 'rgba(80,140,220,0.25)');
-  exGlow2.addColorStop(0.5, 'rgba(60,120,200,0.10)');
-  exGlow2.addColorStop(1, 'rgba(60,120,200,0)');
-  ctx.fillStyle = exGlow2;
-  ctx.fillRect(cx - 28, cy - 5, 20, 20);
+  // ── Moonlight edge highlight — upper leading edge only ──
+  ctx.strokeStyle = 'rgba(180,200,230,0.50)';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(cx + 52, cy);
+  ctx.lineTo(cx + 48, cy - 1.5);
+  ctx.lineTo(cx + 40, cy - 3);
+  ctx.lineTo(cx + 30, cy - 4.5);
+  ctx.lineTo(cx + 18, cy - 5.5);
+  ctx.lineTo(cx + 6, cy - 6);
+  ctx.lineTo(cx - 8, cy - 5.5);
+  ctx.lineTo(cx - 20, cy - 4.5);
+  ctx.lineTo(cx - 32, cy - 3.5);
+  ctx.lineTo(cx - 44, cy - 2.5);
+  ctx.lineTo(cx - 54, cy - 1.5);
+  ctx.lineTo(cx - 60, cy - 1);
+  ctx.stroke();
 
-  // ── Heat distortion / exhaust trail behind engines ──
-  for (let i = 0; i < 4; i++) {
-    const trailX = cx - 26 - i * 6;
-    const trailR = 4 + i * 2;
-    const trailAlpha = 0.12 - i * 0.025;
-    const trail1 = ctx.createRadialGradient(trailX, cy - 5, 0, trailX, cy - 5, trailR);
-    trail1.addColorStop(0, `rgba(70,120,200,${trailAlpha})`);
-    trail1.addColorStop(1, 'rgba(70,120,200,0)');
-    ctx.fillStyle = trail1;
+  // ── Engine exhaust glow — faint blue (#0044ff, alpha 0.3) at rear center ──
+  // Two engine ports at the aft center area
+  const eng1Y = cy - 2, eng2Y = cy + 2;
+  const engX = cx - 14;
+  for (const ey of [eng1Y, eng2Y]) {
+    // Core hot spot
+    const core = ctx.createRadialGradient(engX, ey, 0.5, engX, ey, 6);
+    core.addColorStop(0, 'rgba(100,160,255,0.30)');
+    core.addColorStop(0.4, 'rgba(0,68,255,0.18)');
+    core.addColorStop(1, 'rgba(0,68,255,0)');
+    ctx.fillStyle = core;
+    ctx.fillRect(engX - 6, ey - 6, 12, 12);
+  }
+  // Wider exhaust plume glow
+  const plume = ctx.createRadialGradient(engX - 4, cy, 2, engX - 4, cy, 14);
+  plume.addColorStop(0, 'rgba(0,68,255,0.15)');
+  plume.addColorStop(0.5, 'rgba(60,120,220,0.06)');
+  plume.addColorStop(1, 'rgba(60,120,220,0)');
+  ctx.fillStyle = plume;
+  ctx.fillRect(engX - 18, cy - 14, 28, 28);
+
+  // ── Faint heat trail extending behind ──
+  for (let i = 0; i < 5; i++) {
+    const tx = engX - 10 - i * 5;
+    const tr = 3 + i * 1.5;
+    const ta = 0.08 - i * 0.014;
+    const tg = ctx.createRadialGradient(tx, cy, 0, tx, cy, tr);
+    tg.addColorStop(0, `rgba(60,120,220,${ta})`);
+    tg.addColorStop(1, 'rgba(60,120,220,0)');
+    ctx.fillStyle = tg;
     ctx.beginPath();
-    ctx.arc(trailX, cy - 5, trailR, 0, Math.PI * 2);
-    ctx.fill();
-    const trail2 = ctx.createRadialGradient(trailX, cy + 5, 0, trailX, cy + 5, trailR);
-    trail2.addColorStop(0, `rgba(70,120,200,${trailAlpha})`);
-    trail2.addColorStop(1, 'rgba(70,120,200,0)');
-    ctx.fillStyle = trail2;
-    ctx.beginPath();
-    ctx.arc(trailX, cy + 5, trailR, 0, Math.PI * 2);
+    ctx.arc(tx, cy, tr, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // ── Wingtip navigation lights (very faint) ──
-  ctx.fillStyle = 'rgba(255,80,80,0.15)';
+  // ── Navigation lights (very faint, at wingtip) ──
+  ctx.fillStyle = 'rgba(255,60,60,0.18)';
   ctx.beginPath();
-  ctx.arc(cx - 61, cy - 40, 1.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(80,255,80,0.15)';
-  ctx.beginPath();
-  ctx.arc(cx - 61, cy + 40, 1.2, 0, Math.PI * 2);
+  ctx.arc(cx - 59, cy - 0.8, 1, 0, Math.PI * 2);
   ctx.fill();
 
   scene.textures.addCanvas('b2_side', c);
@@ -897,6 +854,182 @@ export function createNatanzMountain(scene) {
       ctx.arc(centX + 1.5, centYr + 3, 2, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+
+  // ── Tunnel entrance / reinforced blast doors at mountain base ──
+  const tunnelX = cx - 30;
+  const tunnelY = mh - 55;
+  const tunnelW = 60;
+  const tunnelH = 35;
+  // Recessed entrance cavity (dark shadow)
+  ctx.fillStyle = 'rgba(8,8,6,0.9)';
+  ctx.beginPath();
+  ctx.moveTo(tunnelX + 5, tunnelY);
+  ctx.lineTo(tunnelX + tunnelW - 5, tunnelY);
+  ctx.lineTo(tunnelX + tunnelW, tunnelY + tunnelH);
+  ctx.lineTo(tunnelX, tunnelY + tunnelH);
+  ctx.closePath();
+  ctx.fill();
+  // Reinforced steel blast doors (two halves)
+  ctx.fillStyle = 'rgba(60,62,65,0.7)';
+  ctx.fillRect(tunnelX + 6, tunnelY + 2, tunnelW / 2 - 7, tunnelH - 4);
+  ctx.fillRect(tunnelX + tunnelW / 2 + 1, tunnelY + 2, tunnelW / 2 - 7, tunnelH - 4);
+  // Door seam (center crack)
+  ctx.strokeStyle = 'rgba(20,20,18,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(tunnelX + tunnelW / 2, tunnelY + 2);
+  ctx.lineTo(tunnelX + tunnelW / 2, tunnelY + tunnelH - 2);
+  ctx.stroke();
+  // Horizontal reinforcement bars on doors
+  ctx.strokeStyle = 'rgba(80,82,85,0.5)';
+  ctx.lineWidth = 1;
+  for (let by = tunnelY + 8; by < tunnelY + tunnelH - 4; by += 10) {
+    ctx.beginPath();
+    ctx.moveTo(tunnelX + 8, by);
+    ctx.lineTo(tunnelX + tunnelW - 8, by);
+    ctx.stroke();
+  }
+  // Concrete door frame
+  ctx.strokeStyle = 'rgba(100,98,90,0.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(tunnelX + 4, tunnelY);
+  ctx.lineTo(tunnelX + 4, tunnelY + tunnelH);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(tunnelX + tunnelW - 4, tunnelY);
+  ctx.lineTo(tunnelX + tunnelW - 4, tunnelY + tunnelH);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(tunnelX + 3, tunnelY + 1);
+  ctx.lineTo(tunnelX + tunnelW - 3, tunnelY + 1);
+  ctx.stroke();
+  // Warning stripes at entrance (yellow/black hazard)
+  ctx.fillStyle = 'rgba(180,160,40,0.25)';
+  ctx.fillRect(tunnelX + 4, tunnelY + tunnelH - 4, tunnelW - 8, 3);
+  // Red warning light above entrance
+  ctx.fillStyle = 'rgba(255,0,0,0.5)';
+  ctx.beginPath();
+  ctx.arc(tunnelX + tunnelW / 2, tunnelY - 4, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  const doorGlow = ctx.createRadialGradient(tunnelX + tunnelW / 2, tunnelY - 4, 0, tunnelX + tunnelW / 2, tunnelY - 4, 10);
+  doorGlow.addColorStop(0, 'rgba(255,0,0,0.15)');
+  doorGlow.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = doorGlow;
+  ctx.fillRect(tunnelX + tunnelW / 2 - 10, tunnelY - 14, 20, 20);
+  // Access road leading to entrance
+  ctx.strokeStyle = 'rgba(50,45,35,0.35)';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(tunnelX + tunnelW / 2, tunnelY + tunnelH);
+  ctx.lineTo(tunnelX + tunnelW / 2 + 40, mh);
+  ctx.stroke();
+
+  // ── Antenna / radar dishes on peak ──
+  // Large communications antenna near peak
+  const antX = peakX + 8, antBaseY = peakY + 15;
+  // Antenna mast
+  ctx.strokeStyle = 'rgba(120,120,130,0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(antX, antBaseY);
+  ctx.lineTo(antX, antBaseY - 20);
+  ctx.stroke();
+  // Dish (small parabola)
+  ctx.strokeStyle = 'rgba(140,140,150,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(antX + 4, antBaseY - 18, 6, Math.PI * 0.6, Math.PI * 1.4);
+  ctx.stroke();
+  // Red aviation warning light on top
+  ctx.fillStyle = 'rgba(255,30,30,0.6)';
+  ctx.beginPath();
+  ctx.arc(antX, antBaseY - 21, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Smaller radar dish on right shoulder
+  const rd2X = 300, rd2Y = mountainTopY(300) + 8;
+  ctx.strokeStyle = 'rgba(110,110,120,0.5)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(rd2X, rd2Y);
+  ctx.lineTo(rd2X, rd2Y - 12);
+  ctx.stroke();
+  // Small rotating dish
+  ctx.beginPath();
+  ctx.ellipse(rd2X, rd2Y - 12, 5, 2, -0.3, 0, Math.PI);
+  ctx.stroke();
+
+  // ── Industrial details (ventilation shafts, utility poles) ──
+  // Ventilation shaft 1 (rectangular protrusion on slope)
+  const ventX = cx + 50, ventBaseY = mountainTopY(cx + 50) + 5;
+  ctx.fillStyle = 'rgba(55,55,58,0.5)';
+  ctx.fillRect(ventX - 4, ventBaseY - 8, 8, 8);
+  ctx.strokeStyle = 'rgba(80,80,85,0.4)';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(ventX - 4, ventBaseY - 8, 8, 8);
+  // Grate lines
+  ctx.strokeStyle = 'rgba(40,40,42,0.5)';
+  for (let gy = ventBaseY - 6; gy < ventBaseY - 1; gy += 2) {
+    ctx.beginPath();
+    ctx.moveTo(ventX - 3, gy);
+    ctx.lineTo(ventX + 3, gy);
+    ctx.stroke();
+  }
+
+  // Ventilation shaft 2
+  const vent2X = cx - 40, vent2BaseY = mountainTopY(cx - 40) + 5;
+  ctx.fillStyle = 'rgba(55,55,58,0.5)';
+  ctx.fillRect(vent2X - 3, vent2BaseY - 6, 6, 6);
+  ctx.strokeStyle = 'rgba(80,80,85,0.4)';
+  ctx.strokeRect(vent2X - 3, vent2BaseY - 6, 6, 6);
+
+  // Power lines / utility poles leading to entrance
+  const polePositions = [tunnelX - 30, tunnelX - 60, tunnelX - 90];
+  for (const px of polePositions) {
+    const pBaseY = mountainTopY(px);
+    if (pBaseY < mh - 10) {
+      ctx.strokeStyle = 'rgba(70,65,55,0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, pBaseY + 3);
+      ctx.lineTo(px, pBaseY - 10);
+      ctx.stroke();
+      // Cross-arm
+      ctx.beginPath();
+      ctx.moveTo(px - 4, pBaseY - 8);
+      ctx.lineTo(px + 4, pBaseY - 8);
+      ctx.stroke();
+    }
+  }
+  // Power line wires between poles
+  ctx.strokeStyle = 'rgba(60,60,55,0.2)';
+  ctx.lineWidth = 0.3;
+  for (let i = 0; i < polePositions.length - 1; i++) {
+    const p1 = polePositions[i], p2 = polePositions[i + 1];
+    const p1Y = mountainTopY(p1) - 8, p2Y = mountainTopY(p2) - 8;
+    const sagY = Math.max(p1Y, p2Y) + 4; // wire sag
+    ctx.beginPath();
+    ctx.moveTo(p1, p1Y);
+    ctx.quadraticCurveTo((p1 + p2) / 2, sagY, p2, p2Y);
+    ctx.stroke();
+  }
+
+  // ── Security perimeter fence at base ──
+  ctx.strokeStyle = 'rgba(80,80,80,0.25)';
+  ctx.lineWidth = 0.5;
+  const fenceY = mh - 18;
+  ctx.beginPath();
+  ctx.moveTo(tunnelX - 80, fenceY);
+  ctx.lineTo(tunnelX + tunnelW + 80, fenceY);
+  ctx.stroke();
+  // Fence posts
+  for (let fx = tunnelX - 80; fx <= tunnelX + tunnelW + 80; fx += 15) {
+    ctx.beginPath();
+    ctx.moveTo(fx, fenceY);
+    ctx.lineTo(fx, fenceY - 5);
+    ctx.stroke();
   }
 
   scene.textures.addCanvas('natanz_mountain', c);

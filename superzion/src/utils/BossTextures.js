@@ -6,7 +6,7 @@
 const W = 960;
 const H = 540;
 
-// ── Player Fighter (64×64) — top-down fighter jet ─────────────
+// ── Player Fighter (64×64) — side-view military fighter jet (F-16 style) ──
 export function createPlayerFighter(scene) {
   if (scene.textures.exists('player_fighter')) scene.textures.remove('player_fighter');
 
@@ -15,54 +15,228 @@ export function createPlayerFighter(scene) {
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
 
-  const cx = w / 2, cy = h / 2;
+  // Jet faces RIGHT (nose on right side)
+  // Colors — military gray tones
+  const fuselageDark = '#5a5a62';
+  const fuselageMain = '#6a6a72';
+  const fuselageLight = '#7a7a82';
+  const fuselageHighlight = '#8a8a92';
+  const canopyGlass = '#2a3a5a';
+  const canopyGlare = '#5a7aaa';
 
-  // Delta wings
-  ctx.fillStyle = '#3a6a9f';
+  // ── Main fuselage body ──
+  ctx.fillStyle = fuselageMain;
   ctx.beginPath();
-  ctx.moveTo(cx, 6);           // nose
-  ctx.lineTo(cx + 28, 50);     // right wing tip
-  ctx.lineTo(cx + 8, 44);      // right wing root
-  ctx.lineTo(cx - 8, 44);      // left wing root
-  ctx.lineTo(cx - 28, 50);     // left wing tip
+  ctx.moveTo(58, 30);          // nose tip (pointed, rightward)
+  ctx.lineTo(52, 27);          // upper nose
+  ctx.lineTo(40, 25);          // upper fuselage before cockpit
+  ctx.lineTo(20, 24);          // mid upper fuselage
+  ctx.lineTo(8, 23);           // rear upper fuselage
+  ctx.lineTo(4, 22);           // tail root upper
+  ctx.lineTo(2, 28);           // tail nozzle upper
+  ctx.lineTo(2, 34);           // tail nozzle lower
+  ctx.lineTo(4, 40);           // tail root lower
+  ctx.lineTo(8, 39);           // rear lower fuselage
+  ctx.lineTo(16, 38);          // mid lower fuselage
+  ctx.lineTo(30, 37);          // lower fuselage
+  ctx.lineTo(48, 34);          // lower nose
+  ctx.lineTo(55, 32);          // chin
   ctx.closePath();
   ctx.fill();
 
-  // Fuselage body
-  ctx.fillStyle = '#4a7ab5';
+  // ── Fuselage underside (slightly darker) ──
+  ctx.fillStyle = fuselageDark;
   ctx.beginPath();
-  ctx.moveTo(cx, 4);           // pointed nose
-  ctx.lineTo(cx + 7, 20);
-  ctx.lineTo(cx + 8, 52);
-  ctx.lineTo(cx + 4, 58);      // engine rear
-  ctx.lineTo(cx - 4, 58);
-  ctx.lineTo(cx - 8, 52);
-  ctx.lineTo(cx - 7, 20);
+  ctx.moveTo(55, 32);
+  ctx.lineTo(48, 34);
+  ctx.lineTo(30, 37);
+  ctx.lineTo(16, 38);
+  ctx.lineTo(8, 39);
+  ctx.lineTo(4, 40);
+  ctx.lineTo(2, 34);
+  ctx.lineTo(4, 36);
+  ctx.lineTo(30, 35);
+  ctx.lineTo(50, 33);
   ctx.closePath();
   ctx.fill();
 
-  // Wing edge highlights
-  ctx.strokeStyle = '#8ac4ff';
-  ctx.lineWidth = 1;
+  // ── Fuselage top highlight (lighter stripe) ──
+  ctx.fillStyle = fuselageHighlight;
   ctx.beginPath();
-  ctx.moveTo(cx - 2, 6);
-  ctx.lineTo(cx - 28, 50);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx + 2, 6);
-  ctx.lineTo(cx + 28, 50);
-  ctx.stroke();
-
-  // Cockpit
-  ctx.fillStyle = '#b0d8ff';
-  ctx.beginPath();
-  ctx.ellipse(cx, 18, 3, 5, 0, 0, Math.PI * 2);
+  ctx.moveTo(56, 28);
+  ctx.lineTo(40, 25);
+  ctx.lineTo(20, 24);
+  ctx.lineTo(10, 24);
+  ctx.lineTo(10, 26);
+  ctx.lineTo(20, 26);
+  ctx.lineTo(40, 27);
+  ctx.lineTo(54, 29);
+  ctx.closePath();
   ctx.fill();
 
-  // Gold Star of David (small on fuselage)
+  // ── Pointed nose / radome ──
+  ctx.fillStyle = '#4a4a52';
+  ctx.beginPath();
+  ctx.moveTo(62, 30);          // very tip
+  ctx.lineTo(56, 27);
+  ctx.lineTo(52, 28);
+  ctx.lineTo(56, 30);
+  ctx.lineTo(54, 33);
+  ctx.lineTo(56, 32);
+  ctx.closePath();
+  ctx.fill();
+  // Radome stripe
+  ctx.strokeStyle = '#3a3a42';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(55, 28);
+  ctx.lineTo(55, 33);
+  ctx.stroke();
+
+  // ── Cockpit canopy ──
+  // Canopy frame
+  ctx.fillStyle = '#555560';
+  ctx.beginPath();
+  ctx.moveTo(46, 25);
+  ctx.lineTo(38, 24);
+  ctx.lineTo(36, 25);
+  ctx.lineTo(36, 28);
+  ctx.lineTo(38, 29);
+  ctx.lineTo(46, 28);
+  ctx.closePath();
+  ctx.fill();
+  // Glass
+  ctx.fillStyle = canopyGlass;
+  ctx.beginPath();
+  ctx.moveTo(45, 25.5);
+  ctx.lineTo(38, 24.5);
+  ctx.lineTo(37, 25.5);
+  ctx.lineTo(37, 27.5);
+  ctx.lineTo(38, 28.5);
+  ctx.lineTo(45, 27.5);
+  ctx.closePath();
+  ctx.fill();
+  // Glass glare highlight
+  ctx.fillStyle = canopyGlare;
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.moveTo(44, 26);
+  ctx.lineTo(40, 25.5);
+  ctx.lineTo(40, 26.5);
+  ctx.lineTo(43, 26.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // ── Delta / swept wings (side-view = triangular shape extending down) ──
+  ctx.fillStyle = fuselageMain;
+  ctx.beginPath();
+  ctx.moveTo(28, 30);          // wing root leading edge
+  ctx.lineTo(16, 30);          // wing root trailing edge
+  ctx.lineTo(10, 46);          // wing tip trailing edge (extends down)
+  ctx.lineTo(22, 46);          // wing tip leading edge
+  ctx.lineTo(26, 38);          // wing sweep back
+  ctx.closePath();
+  ctx.fill();
+
+  // Wing edge highlight
+  ctx.strokeStyle = fuselageHighlight;
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(28, 30);
+  ctx.lineTo(22, 46);
+  ctx.stroke();
+
+  // Wing underside shading
+  ctx.fillStyle = fuselageDark;
+  ctx.beginPath();
+  ctx.moveTo(16, 32);
+  ctx.lineTo(11, 46);
+  ctx.lineTo(22, 46);
+  ctx.lineTo(26, 38);
+  ctx.lineTo(20, 32);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Weapons pylons under wing (small rectangles) ──
+  ctx.fillStyle = '#4a4a50';
+  ctx.fillRect(18, 40, 3, 5);   // pylon 1
+  ctx.fillRect(23, 38, 3, 4);   // pylon 2
+  // Missiles/bombs on pylons
+  ctx.fillStyle = '#888888';
+  ctx.fillRect(18, 45, 3, 2);
+  ctx.fillRect(23, 42, 3, 2);
+
+  // ── Tail section — vertical stabilizer (extends upward) ──
+  ctx.fillStyle = fuselageLight;
+  ctx.beginPath();
+  ctx.moveTo(10, 23);           // stabilizer base leading edge
+  ctx.lineTo(4, 10);            // stabilizer top
+  ctx.lineTo(2, 10);            // top trailing
+  ctx.lineTo(4, 22);            // trailing base
+  ctx.closePath();
+  ctx.fill();
+  // Stabilizer edge
+  ctx.strokeStyle = fuselageHighlight;
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(10, 23);
+  ctx.lineTo(4, 10);
+  ctx.stroke();
+  // Rudder line
+  ctx.strokeStyle = fuselageDark;
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(5, 12);
+  ctx.lineTo(5, 22);
+  ctx.stroke();
+
+  // ── Horizontal stabilizers (small wing-like shapes at tail) ──
+  ctx.fillStyle = fuselageMain;
+  ctx.beginPath();
+  ctx.moveTo(8, 34);
+  ctx.lineTo(2, 34);
+  ctx.lineTo(0, 42);
+  ctx.lineTo(6, 42);
+  ctx.lineTo(8, 38);
+  ctx.closePath();
+  ctx.fill();
+  // Upper stabilizer
+  ctx.beginPath();
+  ctx.moveTo(8, 24);
+  ctx.lineTo(2, 24);
+  ctx.lineTo(0, 18);
+  ctx.lineTo(6, 18);
+  ctx.lineTo(8, 22);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Engine exhaust / nozzle at rear ──
+  ctx.fillStyle = '#3a3a42';
+  ctx.beginPath();
+  ctx.moveTo(4, 27);
+  ctx.lineTo(1, 28);
+  ctx.lineTo(1, 34);
+  ctx.lineTo(4, 35);
+  ctx.closePath();
+  ctx.fill();
+  // Exhaust glow
+  ctx.fillStyle = '#ff6600';
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.ellipse(0, 31, 3, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffaa33';
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.ellipse(1, 31, 1.5, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // ── Gold Star of David (small on fuselage) ──
   ctx.strokeStyle = '#FFD700';
-  ctx.lineWidth = 1;
-  const sx = cx, sy = 30, sr = 4;
+  ctx.lineWidth = 0.8;
+  const sx = 30, sy = 30, sr = 3;
   // Triangle up
   ctx.beginPath();
   ctx.moveTo(sx, sy - sr);
@@ -78,26 +252,26 @@ export function createPlayerFighter(scene) {
   ctx.closePath();
   ctx.stroke();
 
-  // Engine glow at rear
-  ctx.fillStyle = '#ff6600';
+  // ── Panel lines (subtle detail) ──
+  ctx.strokeStyle = fuselageDark;
+  ctx.lineWidth = 0.3;
+  // Horizontal panel line along fuselage
   ctx.beginPath();
-  ctx.ellipse(cx - 3, 58, 2, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(50, 29);
+  ctx.lineTo(10, 29);
+  ctx.stroke();
+  // Panel near cockpit
   ctx.beginPath();
-  ctx.ellipse(cx + 3, 58, 2, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#ffaa00';
-  ctx.beginPath();
-  ctx.ellipse(cx - 3, 58, 1, 2, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(cx + 3, 58, 1, 2, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(35, 25);
+  ctx.lineTo(35, 35);
+  ctx.stroke();
 
   scene.textures.addCanvas('player_fighter', c);
 }
 
-// ── Bunker Fortress (256×256) — fortified military bunker ─────
+// ── Bunker Fortress / Supreme Turban (256×256) — final boss face ──
+// Ancient, powerful, terrifying. Massive dark turban, blade-like white beard,
+// menacing glowing staff. The most imposing boss of all.
 export function createBunkerFortress(scene) {
   if (scene.textures.exists('bunker_fortress')) scene.textures.remove('bunker_fortress');
 
@@ -108,195 +282,557 @@ export function createBunkerFortress(scene) {
 
   const cx = w / 2, cy = h / 2;
 
-  // ── Main bunker body — thick concrete walls ──
-  const bodyGrad = ctx.createLinearGradient(cx - 90, cy - 50, cx + 90, cy + 70);
-  bodyGrad.addColorStop(0, '#5a5a5a');
-  bodyGrad.addColorStop(0.4, '#4a4a4a');
-  bodyGrad.addColorStop(0.7, '#3a3a3a');
-  bodyGrad.addColorStop(1, '#2a2a2a');
-  ctx.fillStyle = bodyGrad;
+  // Determine boss expression from scene data (default normal)
+  const expression = (scene._bossExpression) || 'normal';
+
+  // ── Skin tint based on expression ──
+  let skinBase, skinDark, skinLight;
+  if (expression === 'furious') {
+    skinBase = '#8a2a1a'; skinDark = '#5a1a10'; skinLight = '#aa3a28';
+  } else if (expression === 'angry') {
+    skinBase = '#7a4a2a'; skinDark = '#5a3218'; skinLight = '#8a5a38';
+  } else {
+    skinBase = '#6a4020'; skinDark = '#4a2a14'; skinLight = '#7a5030';
+  }
+
+  // ── STAFF (behind body, glowing menacingly) ──
+  // Staff shaft
+  ctx.strokeStyle = '#3a2a18';
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(cx - 100, cy - 50);
-  ctx.lineTo(cx + 100, cy - 50);
-  ctx.lineTo(cx + 110, cy - 30);
-  ctx.lineTo(cx + 110, cy + 70);
-  ctx.lineTo(cx + 100, cy + 80);
-  ctx.lineTo(cx - 100, cy + 80);
-  ctx.lineTo(cx - 110, cy + 70);
-  ctx.lineTo(cx - 110, cy - 30);
+  ctx.moveTo(cx + 70, cy - 70);
+  ctx.lineTo(cx + 55, cy + 100);
+  ctx.stroke();
+  // Staff ornament top (crescent)
+  ctx.fillStyle = '#8a7020';
+  ctx.beginPath();
+  ctx.arc(cx + 72, cy - 76, 10, Math.PI * 0.8, Math.PI * 2.2);
+  ctx.fill();
+  // Staff glow
+  const staffGlow = ctx.createRadialGradient(cx + 72, cy - 76, 4, cx + 72, cy - 76, 30);
+  const glowIntensity = expression === 'furious' ? 0.6 : expression === 'angry' ? 0.4 : 0.25;
+  staffGlow.addColorStop(0, `rgba(255, 80, 0, ${glowIntensity})`);
+  staffGlow.addColorStop(0.5, `rgba(200, 40, 0, ${glowIntensity * 0.5})`);
+  staffGlow.addColorStop(1, 'rgba(150, 20, 0, 0)');
+  ctx.fillStyle = staffGlow;
+  ctx.beginPath();
+  ctx.arc(cx + 72, cy - 76, 30, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── ROBES / SHOULDERS (behind head) ──
+  ctx.fillStyle = '#1a1812';
+  ctx.beginPath();
+  ctx.moveTo(cx - 70, cy + 50);
+  ctx.lineTo(cx - 80, cy + 110);
+  ctx.lineTo(cx - 100, cy + 128);
+  ctx.lineTo(cx + 100, cy + 128);
+  ctx.lineTo(cx + 80, cy + 110);
+  ctx.lineTo(cx + 70, cy + 50);
+  ctx.closePath();
+  ctx.fill();
+  // Robe texture
+  ctx.strokeStyle = '#2a2818';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 6; i++) {
+    const ry = cy + 60 + i * 10;
+    ctx.beginPath();
+    ctx.moveTo(cx - 75, ry);
+    ctx.quadraticCurveTo(cx, ry + 5, cx + 75, ry);
+    ctx.stroke();
+  }
+
+  // ── ANGULAR HEAD SHAPE — aged, powerful, terrifying ──
+  ctx.fillStyle = skinBase;
+  ctx.beginPath();
+  ctx.moveTo(cx - 44, cy - 30);   // top-left
+  ctx.lineTo(cx + 44, cy - 30);   // top-right
+  ctx.lineTo(cx + 52, cy - 15);   // right temple
+  ctx.lineTo(cx + 56, cy + 5);    // right cheekbone
+  ctx.lineTo(cx + 50, cy + 20);   // right mid
+  ctx.lineTo(cx + 42, cy + 32);   // right jaw
+  ctx.lineTo(cx + 30, cy + 38);   // right chin
+  ctx.lineTo(cx, cy + 42);        // chin point
+  ctx.lineTo(cx - 30, cy + 38);   // left chin
+  ctx.lineTo(cx - 42, cy + 32);   // left jaw
+  ctx.lineTo(cx - 50, cy + 20);   // left mid
+  ctx.lineTo(cx - 56, cy + 5);    // left cheekbone
+  ctx.lineTo(cx - 52, cy - 15);   // left temple
   ctx.closePath();
   ctx.fill();
 
-  // Outer concrete border
-  ctx.strokeStyle = '#6a6a6a';
+  // Deep wrinkles and age lines
+  ctx.strokeStyle = skinDark;
+  ctx.lineWidth = 1.5;
+  // Forehead wrinkles (deep, aged)
+  for (let i = 0; i < 4; i++) {
+    const wy = cy - 24 + i * 5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, wy);
+    ctx.quadraticCurveTo(cx, wy - 2, cx + 30, wy);
+    ctx.stroke();
+  }
+  // Nasolabial folds (deep creases from nose to mouth)
   ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 14, cy + 4);
+  ctx.quadraticCurveTo(cx - 18, cy + 18, cx - 22, cy + 28);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + 14, cy + 4);
+  ctx.quadraticCurveTo(cx + 18, cy + 18, cx + 22, cy + 28);
   ctx.stroke();
 
-  // ── Reinforced layers (horizontal concrete bands) ──
-  ctx.fillStyle = '#4a4a50';
-  ctx.fillRect(cx - 108, cy - 28, 216, 6);
-  ctx.fillRect(cx - 108, cy + 10, 216, 6);
-  ctx.fillRect(cx - 108, cy + 45, 216, 6);
-
-  // ── Reinforced steel door (center) ──
-  ctx.fillStyle = '#4a4a55';
-  ctx.fillRect(cx - 20, cy + 30, 40, 50);
-  ctx.strokeStyle = '#3a3a40';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(cx - 20, cy + 30, 40, 50);
-  // Door rivets
-  ctx.fillStyle = '#5a5a60';
-  ctx.beginPath(); ctx.arc(cx - 12, cy + 42, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 12, cy + 42, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx - 12, cy + 66, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 12, cy + 66, 2, 0, Math.PI * 2); ctx.fill();
-  // Door handle
-  ctx.fillStyle = '#666670';
-  ctx.fillRect(cx + 6, cy + 52, 8, 4);
-
-  // ── SAM launcher on roof (angled tube pointing left) ──
-  ctx.fillStyle = '#3a4a3a';
-  ctx.save();
-  ctx.translate(cx + 30, cy - 55);
-  ctx.rotate(-0.5); // angled left
-  ctx.fillRect(-4, -20, 8, 24);
-  // SAM tube
-  ctx.fillStyle = '#555';
-  ctx.fillRect(-3, -22, 6, 6);
-  ctx.restore();
-
-  // Second SAM mount
-  ctx.fillStyle = '#3a4a3a';
-  ctx.save();
-  ctx.translate(cx - 20, cy - 55);
-  ctx.rotate(-0.4);
-  ctx.fillRect(-3, -16, 6, 20);
-  ctx.fillStyle = '#555';
-  ctx.fillRect(-2, -18, 4, 5);
-  ctx.restore();
-
-  // ── Radar dish on top ──
-  ctx.fillStyle = '#555560';
-  ctx.fillRect(cx - 2, cy - 80, 4, 25);
-  // Dish
-  ctx.fillStyle = '#6a6a72';
+  // Cheekbone highlights (gaunt, skeletal)
+  ctx.fillStyle = skinLight;
   ctx.beginPath();
-  ctx.arc(cx, cy - 82, 12, Math.PI, Math.PI * 2);
+  ctx.moveTo(cx + 40, cy - 5);
+  ctx.lineTo(cx + 54, cy + 2);
+  ctx.lineTo(cx + 48, cy + 14);
+  ctx.lineTo(cx + 36, cy + 8);
+  ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = '#888';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  // Dish arm
-  ctx.fillStyle = '#777';
-  ctx.fillRect(cx - 1, cy - 94, 2, 12);
-
-  // ── Antenna array ──
-  ctx.fillStyle = '#555';
-  ctx.fillRect(cx + 50, cy - 70, 2, 22);
-  ctx.fillRect(cx + 46, cy - 68, 10, 2);
-  ctx.fillRect(cx + 46, cy - 60, 10, 2);
-  // Antenna tip light
-  ctx.fillStyle = '#ff4444';
-  ctx.beginPath(); ctx.arc(cx + 51, cy - 72, 2, 0, Math.PI * 2); ctx.fill();
-
-  // ── Gun ports (dark slits with red interior glow) ──
-  const gunPorts = [
-    [cx - 108, cy - 15, 14, 6],
-    [cx - 108, cy + 20, 14, 6],
-    [cx + 94, cy - 15, 14, 6],
-    [cx + 94, cy + 20, 14, 6],
-    [cx - 108, cy + 55, 14, 6],
-    [cx + 94, cy + 55, 14, 6],
-  ];
-  for (const [gx, gy, gw, gh] of gunPorts) {
-    // Dark slit
-    ctx.fillStyle = '#111118';
-    ctx.fillRect(gx, gy, gw, gh);
-    // Red interior glow
-    ctx.fillStyle = 'rgba(255, 50, 20, 0.5)';
-    ctx.fillRect(gx + 2, gy + 1, gw - 4, gh - 2);
-    // Muzzle glow
-    ctx.fillStyle = 'rgba(255, 100, 0, 0.2)';
-    ctx.beginPath();
-    ctx.arc(gx < cx ? gx : gx + gw, gy + gh / 2, 6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // ── Sandbag positions at base ──
-  ctx.fillStyle = '#6a6040';
-  for (let sx = cx - 95; sx < cx - 25; sx += 18) {
-    // Row of sandbags
-    ctx.beginPath();
-    ctx.ellipse(sx + 9, cy + 82, 9, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  for (let sx = cx + 25; sx < cx + 95; sx += 18) {
-    ctx.beginPath();
-    ctx.ellipse(sx + 9, cy + 82, 9, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // Second row (stacked)
-  ctx.fillStyle = '#5a5035';
-  for (let sx = cx - 90; sx < cx - 30; sx += 18) {
-    ctx.beginPath();
-    ctx.ellipse(sx + 12, cy + 76, 8, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  for (let sx = cx + 30; sx < cx + 90; sx += 18) {
-    ctx.beginPath();
-    ctx.ellipse(sx + 6, cy + 76, 8, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // ── Camouflage netting hints (olive green patches) ──
-  ctx.fillStyle = 'rgba(60, 80, 40, 0.35)';
-  ctx.fillRect(cx - 80, cy - 48, 40, 20);
-  ctx.fillRect(cx + 40, cy - 48, 35, 18);
-  ctx.fillStyle = 'rgba(50, 70, 35, 0.25)';
-  ctx.fillRect(cx - 60, cy - 20, 50, 15);
-
-  // ── Red warning lights ──
-  ctx.fillStyle = '#ff2222';
-  ctx.shadowColor = '#ff0000';
-  ctx.shadowBlur = 12;
-  ctx.beginPath(); ctx.arc(cx - 90, cy - 45, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 90, cy - 45, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx, cy - 52, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.shadowBlur = 0;
-
-  // ── Surface detail — rivet lines ──
-  ctx.strokeStyle = '#2a2a30';
-  ctx.lineWidth = 1;
-  // Vertical panel seams
-  ctx.beginPath(); ctx.moveTo(cx - 40, cy - 48); ctx.lineTo(cx - 40, cy + 78); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + 40, cy - 48); ctx.lineTo(cx + 40, cy + 78); ctx.stroke();
-
-  // ── Corner bolts ──
-  ctx.fillStyle = '#7a7a82';
-  const boltPositions = [
-    [cx - 95, cy - 45], [cx + 95, cy - 45],
-    [cx - 95, cy + 70], [cx + 95, cy + 70],
-    [cx - 40, cy - 45], [cx + 40, cy - 45],
-    [cx - 40, cy + 70], [cx + 40, cy + 70],
-  ];
-  for (const [bx, by] of boltPositions) {
-    ctx.beginPath();
-    ctx.arc(bx, by, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // ── Edge highlights ──
-  ctx.strokeStyle = 'rgba(140, 140, 140, 0.3)';
-  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(cx - 100, cy - 50);
-  ctx.lineTo(cx + 100, cy - 50);
-  ctx.lineTo(cx + 110, cy - 30);
-  ctx.stroke();
+  ctx.moveTo(cx - 40, cy - 5);
+  ctx.lineTo(cx - 54, cy + 2);
+  ctx.lineTo(cx - 48, cy + 14);
+  ctx.lineTo(cx - 36, cy + 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Sunken cheeks (dark hollows)
+  ctx.fillStyle = skinDark;
   ctx.beginPath();
-  ctx.moveTo(cx - 100, cy - 50);
-  ctx.lineTo(cx - 110, cy - 30);
+  ctx.ellipse(cx - 28, cy + 12, 10, 8, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 28, cy + 12, 10, 8, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── EARS (aged, large) ──
+  ctx.fillStyle = skinDark;
+  ctx.beginPath();
+  ctx.moveTo(cx - 56, cy - 10);
+  ctx.lineTo(cx - 62, cy - 2);
+  ctx.lineTo(cx - 60, cy + 12);
+  ctx.lineTo(cx - 56, cy + 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + 56, cy - 10);
+  ctx.lineTo(cx + 62, cy - 2);
+  ctx.lineTo(cx + 60, cy + 12);
+  ctx.lineTo(cx + 56, cy + 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── MASSIVE DARK TURBAN — the most imposing of all ──
+  const turbanBase = '#0a0806';
+  const turbanMid = '#1a1410';
+  const turbanHighlight = '#2a2218';
+
+  // Main turban mass — very tall, very dark
+  ctx.fillStyle = turbanBase;
+  ctx.beginPath();
+  ctx.moveTo(cx - 48, cy - 30);
+  ctx.lineTo(cx - 54, cy - 44);
+  ctx.lineTo(cx - 50, cy - 62);
+  ctx.lineTo(cx - 40, cy - 78);
+  ctx.lineTo(cx - 24, cy - 90);
+  ctx.lineTo(cx - 8, cy - 96);
+  ctx.lineTo(cx + 8, cy - 96);
+  ctx.lineTo(cx + 24, cy - 90);
+  ctx.lineTo(cx + 40, cy - 78);
+  ctx.lineTo(cx + 50, cy - 62);
+  ctx.lineTo(cx + 54, cy - 44);
+  ctx.lineTo(cx + 48, cy - 30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Turban fabric fold lines (subtle texture)
+  ctx.strokeStyle = turbanMid;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 8; i++) {
+    const wy = cy - 34 - i * 8;
+    const spread = 48 - i * 4;
+    const wave = Math.sin(i * 1.5) * 4;
+    ctx.beginPath();
+    ctx.moveTo(cx - spread, wy);
+    ctx.quadraticCurveTo(cx + wave, wy - 4, cx + spread, wy);
+    ctx.stroke();
+  }
+
+  // Turban top highlight
+  ctx.strokeStyle = turbanHighlight;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 36, cy - 82);
+  ctx.quadraticCurveTo(cx, cy - 100, cx + 36, cy - 82);
   ctx.stroke();
+
+  // Turban center jewel (menacing dark red gem, larger)
+  ctx.fillStyle = '#660000';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 38);
+  ctx.lineTo(cx + 8, cy - 32);
+  ctx.lineTo(cx, cy - 26);
+  ctx.lineTo(cx - 8, cy - 32);
+  ctx.closePath();
+  ctx.fill();
+  // Inner gem glow
+  ctx.fillStyle = '#aa0000';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 36);
+  ctx.lineTo(cx + 4, cy - 32);
+  ctx.lineTo(cx, cy - 28);
+  ctx.lineTo(cx - 4, cy - 32);
+  ctx.closePath();
+  ctx.fill();
+  // Gem radial glow
+  const gemGlow = ctx.createRadialGradient(cx, cy - 32, 2, cx, cy - 32, 18);
+  gemGlow.addColorStop(0, 'rgba(255, 0, 0, 0.5)');
+  gemGlow.addColorStop(0.5, 'rgba(200, 0, 0, 0.2)');
+  gemGlow.addColorStop(1, 'rgba(150, 0, 0, 0)');
+  ctx.fillStyle = gemGlow;
+  ctx.beginPath();
+  ctx.arc(cx, cy - 32, 18, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── THICK ANGRY EYEBROWS — dominating, ancient fury ──
+  const browColor = expression === 'dead' ? '#3a3a3a' : '#1a1008';
+  ctx.fillStyle = browColor;
+  // Left eyebrow — massive, angled severely down toward center
+  ctx.beginPath();
+  ctx.moveTo(cx - 44, cy - 18);
+  ctx.lineTo(cx - 8, cy - 6);
+  ctx.lineTo(cx - 8, cy - 12);
+  ctx.lineTo(cx - 44, cy - 26);
+  ctx.closePath();
+  ctx.fill();
+  // Right eyebrow
+  ctx.beginPath();
+  ctx.moveTo(cx + 44, cy - 18);
+  ctx.lineTo(cx + 8, cy - 6);
+  ctx.lineTo(cx + 8, cy - 12);
+  ctx.lineTo(cx + 44, cy - 26);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eyebrow hair texture
+  ctx.strokeStyle = browColor;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 10; i++) {
+    const bx = cx - 40 + i * 6;
+    const by = cy - 22 + i * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + 5, by + 4);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 10; i++) {
+    const bx = cx + 40 - i * 6;
+    const by = cy - 22 + i * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx - 5, by + 4);
+    ctx.stroke();
+  }
+
+  // ── EYES — deeply sunken, glowing, ancient and hateful ──
+  if (expression === 'dead') {
+    // Spiral eyes
+    ctx.strokeStyle = '#555555';
+    ctx.lineWidth = 2.5;
+    for (const ex of [cx - 24, cx + 24]) {
+      ctx.beginPath();
+      for (let a = 0; a < Math.PI * 5; a += 0.2) {
+        const r = a * 1.3;
+        ctx.lineTo(ex + Math.cos(a) * r, cy - 4 + Math.sin(a) * r);
+      }
+      ctx.stroke();
+    }
+    // Heavy bruises
+    ctx.fillStyle = 'rgba(80, 30, 100, 0.5)';
+    ctx.beginPath(); ctx.ellipse(cx - 24, cy + 4, 12, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 24, cy + 4, 12, 6, 0, 0, Math.PI * 2); ctx.fill();
+  } else {
+    let irisColor, scleraColor, glowColor;
+    if (expression === 'furious') {
+      irisColor = '#ee0000'; scleraColor = '#ffaaaa'; glowColor = 'rgba(255, 0, 0, 0.6)';
+    } else if (expression === 'angry') {
+      irisColor = '#cc2200'; scleraColor = '#ffe0c0'; glowColor = 'rgba(255, 50, 0, 0.4)';
+    } else {
+      irisColor = '#aa5500'; scleraColor = '#eee8d0'; glowColor = 'rgba(200, 100, 0, 0.25)';
+    }
+
+    // Deep sunken eye sockets
+    ctx.fillStyle = 'rgba(20, 10, 5, 0.5)';
+    ctx.beginPath(); ctx.ellipse(cx - 24, cy - 4, 16, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 24, cy - 4, 16, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+    for (const side of [-1, 1]) {
+      const ex = cx + side * 24;
+      const ey = cy - 4;
+
+      // Very narrow, piercing eyes
+      ctx.fillStyle = scleraColor;
+      ctx.beginPath();
+      ctx.moveTo(ex - 12, ey);
+      ctx.quadraticCurveTo(ex, ey - 4, ex + 12, ey);
+      ctx.quadraticCurveTo(ex, ey + 3, ex - 12, ey);
+      ctx.closePath();
+      ctx.fill();
+
+      // Small intense iris
+      ctx.fillStyle = irisColor;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pinpoint pupil
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(ex, ey, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Menacing glow around eyes
+      ctx.fillStyle = glowColor;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Deep dark circles / bags
+      ctx.fillStyle = 'rgba(30, 10, 15, 0.5)';
+      ctx.beginPath();
+      ctx.ellipse(ex, ey + 8, 10, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ── NOSE — long, hooked, ancient ──
+  ctx.fillStyle = skinDark;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 4);
+  ctx.lineTo(cx + 6, cy + 10);
+  ctx.lineTo(cx + 8, cy + 14);
+  ctx.lineTo(cx + 4, cy + 16);
+  ctx.lineTo(cx - 4, cy + 16);
+  ctx.lineTo(cx - 8, cy + 14);
+  ctx.lineTo(cx - 6, cy + 10);
+  ctx.closePath();
+  ctx.fill();
+  // Nostrils
+  ctx.fillStyle = '#1a0805';
+  ctx.beginPath(); ctx.arc(cx - 4, cy + 14, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 4, cy + 14, 2.5, 0, Math.PI * 2); ctx.fill();
+
+  // ── MOUTH — cold, cruel grimace ──
+  if (expression === 'dead') {
+    ctx.strokeStyle = '#3a1a10';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, cy + 22);
+    ctx.lineTo(cx - 6, cy + 26);
+    ctx.lineTo(cx + 8, cy + 23);
+    ctx.lineTo(cx + 18, cy + 25);
+    ctx.stroke();
+  } else {
+    // Thin cruel line that opens to show teeth
+    ctx.fillStyle = '#1a0505';
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy + 20);
+    ctx.quadraticCurveTo(cx, cy + 25, cx + 20, cy + 20);
+    ctx.lineTo(cx + 18, cy + 26);
+    ctx.quadraticCurveTo(cx, cy + 30, cx - 18, cy + 26);
+    ctx.closePath();
+    ctx.fill();
+
+    // Teeth — aged, yellowish
+    ctx.fillStyle = '#ccc8a8';
+    const teethY = cy + 21;
+    const teethH = expression === 'furious' ? 6 : expression === 'angry' ? 5 : 4;
+    for (let t = -3; t <= 3; t++) {
+      ctx.fillRect(cx + t * 5 - 2, teethY, 4, teethH);
+    }
+    // Gaps
+    ctx.fillStyle = '#0a0505';
+    for (let t = -3; t <= 2; t++) {
+      ctx.fillRect(cx + t * 5 + 2, teethY, 1, teethH);
+    }
+    // Missing tooth (one gap wider)
+    ctx.fillStyle = '#1a0505';
+    ctx.fillRect(cx + 8, teethY, 4, teethH);
+  }
+
+  // ── LONG WHITE BEARD — sharp/pointed like a blade ──
+  const beardWhite = '#e0dcd0';
+  const beardLight = '#ccc8b8';
+  const beardMid = '#b8b4a4';
+  const beardShadow = '#a09c90';
+
+  // Main beard shape — sharp blade-like point
+  ctx.fillStyle = beardWhite;
+  ctx.beginPath();
+  ctx.moveTo(cx - 36, cy + 24);
+  ctx.lineTo(cx - 40, cy + 34);
+  ctx.lineTo(cx - 38, cy + 50);
+  ctx.lineTo(cx - 30, cy + 65);
+  ctx.lineTo(cx - 18, cy + 80);
+  ctx.lineTo(cx - 8, cy + 95);
+  ctx.lineTo(cx, cy + 108);       // sharp blade point
+  ctx.lineTo(cx + 8, cy + 95);
+  ctx.lineTo(cx + 18, cy + 80);
+  ctx.lineTo(cx + 30, cy + 65);
+  ctx.lineTo(cx + 38, cy + 50);
+  ctx.lineTo(cx + 40, cy + 34);
+  ctx.lineTo(cx + 36, cy + 24);
+  ctx.closePath();
+  ctx.fill();
+
+  // Beard depth layers
+  ctx.fillStyle = beardLight;
+  ctx.beginPath();
+  ctx.moveTo(cx - 30, cy + 30);
+  ctx.lineTo(cx - 28, cy + 50);
+  ctx.lineTo(cx - 16, cy + 75);
+  ctx.lineTo(cx, cy + 100);
+  ctx.lineTo(cx + 16, cy + 75);
+  ctx.lineTo(cx + 28, cy + 50);
+  ctx.lineTo(cx + 30, cy + 30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Center shadow crease
+  ctx.fillStyle = beardShadow;
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, cy + 30);
+  ctx.lineTo(cx, cy + 105);
+  ctx.lineTo(cx + 4, cy + 30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Beard strand texture (many fine lines, 3 shades)
+  const beardStrands = [beardWhite, beardLight, beardMid, beardShadow];
+  ctx.lineWidth = 0.8;
+  for (let i = 0; i < 100; i++) {
+    const sx = cx + (Math.random() - 0.5) * 60;
+    const sy = cy + 28 + Math.random() * 10;
+    const endX = cx + (sx - cx) * 0.2 + (Math.random() - 0.5) * 4;
+    const endY = sy + 30 + Math.random() * 50;
+    ctx.strokeStyle = beardStrands[Math.floor(Math.random() * beardStrands.length)];
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo(sx + (Math.random() - 0.5) * 6, (sy + endY) / 2, endX, endY);
+    ctx.stroke();
+  }
+
+  // Wispy jagged edges at beard boundary
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 30; i++) {
+    const angle = -0.2 + Math.random() * 0.4 + Math.PI / 2;
+    const bx = cx + (Math.random() - 0.5) * 70;
+    const by = cy + 40 + Math.random() * 40;
+    const len = 4 + Math.random() * 8;
+    ctx.strokeStyle = beardStrands[Math.floor(Math.random() * beardStrands.length)];
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + Math.cos(angle) * len, by + Math.sin(angle) * len);
+    ctx.stroke();
+  }
+
+  // ── DAMAGE EXPRESSIONS ──
+  if (expression === 'angry' || expression === 'furious') {
+    // Forehead veins
+    ctx.strokeStyle = expression === 'furious' ? '#dd2020' : '#bb4040';
+    ctx.lineWidth = expression === 'furious' ? 2.5 : 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, cy - 26);
+    ctx.lineTo(cx - 22, cy - 18);
+    ctx.lineTo(cx - 26, cy - 12);
+    ctx.lineTo(cx - 18, cy - 8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 30, cy - 26);
+    ctx.lineTo(cx + 22, cy - 18);
+    ctx.lineTo(cx + 26, cy - 12);
+    ctx.lineTo(cx + 18, cy - 8);
+    ctx.stroke();
+  }
+
+  if (expression === 'furious') {
+    // Deep red tint
+    ctx.fillStyle = 'rgba(160, 10, 5, 0.12)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Throbbing temple veins
+    ctx.strokeStyle = '#dd2020';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 52, cy - 8);
+    ctx.lineTo(cx - 46, cy - 2);
+    ctx.lineTo(cx - 50, cy + 4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 52, cy - 8);
+    ctx.lineTo(cx + 46, cy - 2);
+    ctx.lineTo(cx + 50, cy + 4);
+    ctx.stroke();
+
+    // Steam/smoke above turban
+    ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+    for (let i = 0; i < 8; i++) {
+      const px = cx + (Math.random() - 0.5) * 50;
+      const py = cy - 98 - Math.random() * 18;
+      const pr = 4 + Math.random() * 6;
+      ctx.beginPath();
+      ctx.arc(px, py, pr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Enhanced staff glow
+    ctx.fillStyle = 'rgba(255, 60, 0, 0.3)';
+    ctx.beginPath();
+    ctx.arc(cx + 72, cy - 76, 20, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (expression === 'dead') {
+    // Heavy bruises across face
+    ctx.fillStyle = 'rgba(80, 30, 100, 0.45)';
+    ctx.beginPath(); ctx.arc(cx - 28, cy + 2, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 30, cy + 8, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx - 10, cy + 18, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 14, cy + 22, 7, 0, Math.PI * 2); ctx.fill();
+
+    // Cracks
+    ctx.strokeStyle = 'rgba(50, 25, 15, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 16, cy - 24);
+    ctx.lineTo(cx - 10, cy - 10);
+    ctx.lineTo(cx - 16, cy + 2);
+    ctx.lineTo(cx - 8, cy + 14);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 20, cy - 20);
+    ctx.lineTo(cx + 14, cy - 6);
+    ctx.lineTo(cx + 22, cy + 8);
+    ctx.stroke();
+
+    // Turban cracked
+    ctx.strokeStyle = 'rgba(60, 50, 30, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy - 80);
+    ctx.lineTo(cx - 10, cy - 60);
+    ctx.lineTo(cx - 18, cy - 42);
+    ctx.stroke();
+
+    // Staff gem dimmed
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.beginPath();
+    ctx.arc(cx + 72, cy - 76, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   scene.textures.addCanvas('bunker_fortress', c);
 }

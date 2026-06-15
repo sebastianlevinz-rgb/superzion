@@ -70,21 +70,25 @@ export function drawSuperZionSide(ctx, cx, cy, scale, facing, opts = {}) {
     ctx.translate(-2 * cx, 0);
   }
 
-  // ── HAIR (top of head) ──
+  // ── HAIR (pompadour, matching forward view volume) ──
   ctx.fillStyle = '#1A1A1A';
   ctx.beginPath();
-  ctx.moveTo(cx - 5 * s, top + 3 * s);
-  ctx.bezierCurveTo(cx - 6 * s, top, cx + 6 * s, top - 1 * s, cx + 5 * s, top + 3 * s);
-  ctx.lineTo(cx + 5 * s, top + 6 * s);
-  ctx.lineTo(cx - 5 * s, top + 6 * s);
+  ctx.moveTo(cx - 5.5 * s, top + 3 * s);
+  ctx.bezierCurveTo(cx - 6.5 * s, top - 1.5 * s, cx + 6.5 * s, top - 2 * s, cx + 5.5 * s, top + 3 * s);
+  ctx.lineTo(cx + 5.5 * s, top + 6 * s);
+  ctx.lineTo(cx - 5.5 * s, top + 6 * s);
   ctx.closePath();
+  ctx.fill();
+  // Extra pompadour volume (front rise, matching forward view)
+  ctx.beginPath();
+  ctx.ellipse(cx, top + 1 * s, 5 * s, 2.5 * s, 0, Math.PI, 0);
   ctx.fill();
   // Hair highlight
   ctx.strokeStyle = '#2A2A2A';
   ctx.lineWidth = 0.8 * s;
   ctx.beginPath();
-  ctx.moveTo(cx - 5 * s, top + 3 * s);
-  ctx.bezierCurveTo(cx - 5 * s, top + 1 * s, cx + 5 * s, top, cx + 5 * s, top + 3 * s);
+  ctx.moveTo(cx - 5.5 * s, top + 3 * s);
+  ctx.bezierCurveTo(cx - 5.5 * s, top, cx + 5.5 * s, top - 0.5 * s, cx + 5.5 * s, top + 3 * s);
   ctx.stroke();
 
   // ── FACE (skin ellipse) ──
@@ -116,8 +120,8 @@ export function drawSuperZionSide(ctx, cx, cy, scale, facing, opts = {}) {
   ctx.moveTo(cx - 0.5 * s, top + 7 * s);
   ctx.lineTo(cx + 0.5 * s, top + 7 * s);
   ctx.stroke();
-  // Reflection (cyan diagonal on each lens)
-  ctx.strokeStyle = 'rgba(68, 136, 204, 0.5)';
+  // Reflection (matching forward view's B4DCFF tone)
+  ctx.strokeStyle = 'rgba(180, 220, 255, 0.4)';
   ctx.lineWidth = 1.2 * s;
   ctx.beginPath();
   ctx.moveTo(cx - 3.5 * s, top + 6 * s);
@@ -168,7 +172,7 @@ export function drawSuperZionSide(ctx, cx, cy, scale, facing, opts = {}) {
   const torsoTop = top + 16 * s;
   const torsoBot = top + 31 * s;
 
-  // Tactical vest body
+  // Black shirt base
   ctx.fillStyle = '#1A1A1A';
   ctx.beginPath();
   ctx.moveTo(cx - shoulderW, torsoTop);
@@ -176,6 +180,17 @@ export function drawSuperZionSide(ctx, cx, cy, scale, facing, opts = {}) {
   ctx.bezierCurveTo(cx + shoulderW, torsoBot - 4 * s, cx + waistW, torsoBot, cx + waistW, torsoBot);
   ctx.lineTo(cx - waistW, torsoBot);
   ctx.bezierCurveTo(cx - waistW, torsoBot, cx - shoulderW, torsoBot - 4 * s, cx - shoulderW, torsoTop);
+  ctx.closePath();
+  ctx.fill();
+
+  // Tactical vest overlay (gray, matching forward view)
+  ctx.fillStyle = '#3A3A3A';
+  ctx.beginPath();
+  ctx.moveTo(cx - shoulderW + 3 * s, torsoTop + 2 * s);
+  ctx.lineTo(cx + shoulderW - 3 * s, torsoTop + 2 * s);
+  ctx.bezierCurveTo(cx + shoulderW - 3 * s, torsoBot - 3 * s, cx + waistW + 1 * s, torsoBot - 1 * s, cx + waistW + 1 * s, torsoBot - 1 * s);
+  ctx.lineTo(cx - waistW - 1 * s, torsoBot - 1 * s);
+  ctx.bezierCurveTo(cx - waistW - 1 * s, torsoBot - 1 * s, cx - shoulderW + 3 * s, torsoBot - 3 * s, cx - shoulderW + 3 * s, torsoTop + 2 * s);
   ctx.closePath();
   ctx.fill();
 
@@ -197,9 +212,9 @@ export function drawSuperZionSide(ctx, cx, cy, scale, facing, opts = {}) {
   ctx.closePath();
   ctx.fill();
 
-  // Vest strap lines
-  ctx.strokeStyle = '#333333';
-  ctx.lineWidth = 0.5 * s;
+  // Vest strap lines (lighter to match forward view)
+  ctx.strokeStyle = '#444448';
+  ctx.lineWidth = 0.7 * s;
   ctx.beginPath();
   ctx.moveTo(cx - shoulderW + 3 * s, torsoTop + 1 * s);
   ctx.lineTo(cx - 2 * s, torsoTop + 8 * s);
@@ -209,14 +224,26 @@ export function drawSuperZionSide(ctx, cx, cy, scale, facing, opts = {}) {
   ctx.lineTo(cx + 2 * s, torsoTop + 8 * s);
   ctx.stroke();
 
-  // Pockets
-  ctx.strokeStyle = '#2A2A2A';
+  // Pockets (lighter to match forward view)
+  ctx.strokeStyle = '#4E4E52';
   ctx.lineWidth = 0.5 * s;
   ctx.strokeRect(cx - 6 * s, torsoTop + 9 * s, 4 * s, 3 * s);
   ctx.strokeRect(cx + 2 * s, torsoTop + 9 * s, 4 * s, 3 * s);
 
-  // ── STAR OF DAVID (centered on chest) ──
-  drawStarOfDavid(ctx, cx, torsoTop + (torsoBot - torsoTop) * 0.4, 3.5 * s);
+  // ── BELT (matching forward view) ──
+  ctx.fillStyle = '#1A1A1A';
+  ctx.fillRect(cx - waistW - 0.5 * s, torsoBot - 1 * s, (waistW + 0.5) * 2 * s, 2 * s);
+  // Gold buckle
+  ctx.fillStyle = '#FFD700';
+  ctx.globalAlpha = 0.8;
+  ctx.fillRect(cx - 1.2 * s, torsoBot - 0.5 * s, 2.4 * s, 1.2 * s);
+  ctx.globalAlpha = 1;
+
+  // ── STAR OF DAVID (centered on chest, larger with glow) ──
+  ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+  _drawStar6(ctx, cx, torsoTop + (torsoBot - torsoTop) * 0.38, 5 * s);
+  ctx.fill();
+  drawStarOfDavid(ctx, cx, torsoTop + (torsoBot - torsoTop) * 0.38, 4.2 * s);
 
   // ── ARMS ──
   // Left arm (against body)

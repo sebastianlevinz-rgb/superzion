@@ -249,11 +249,10 @@ export function createOperativeAtDesk(scene) {
     skin0: '#8a6040', skin1: '#b08657', skin2: '#c49668',
     skin3: '#d2a679', skin4: '#e0b689',
     hair0: '#0e0e0e', hair1: '#1c1610',
-    kip0: '#0e1445', kip1: '#1a237e', kip2: '#283593',
-    tac0: '#3a5530', tac1: '#4a6840', tac2: '#5a7a50',
-    tac3: '#6a8a62', tac4: '#7a9a72',
-    vest0: '#5a5a60', vest1: '#6a6a70', vest2: '#7a7a80',
-    blk0: '#2a2018', blk1: '#3a3028', blk2: '#4a4038',
+    tac0: '#1a1a1a', tac1: '#222222', tac2: '#2a2a2a',
+    tac3: '#333333', tac4: '#3a3a3a',
+    vest0: '#3a3a3e', vest1: '#444448', vest2: '#4e4e52',
+    blk0: '#121212', blk1: '#1a1a1a', blk2: '#222222',
   };
 
   // ── Chair ──
@@ -330,10 +329,10 @@ export function createOperativeAtDesk(scene) {
   ctx.beginPath();
   ctx.arc(ox - 2, oy - 12, 10, -Math.PI * 0.8, Math.PI * 0.1);
   ctx.fill();
-  // Kippah
-  ctx.fillStyle = PAL.kip1;
+  // Slicked-back black hair (Mossad agent)
+  ctx.fillStyle = '#0e0e0e';
   ctx.beginPath();
-  ctx.arc(ox, oy - 16, 7, Math.PI, 0);
+  ctx.ellipse(ox, oy - 16, 8, 3, 0, Math.PI, 0);
   ctx.fill();
   // Ear (right side visible)
   ctx.fillStyle = PAL.skin1;
