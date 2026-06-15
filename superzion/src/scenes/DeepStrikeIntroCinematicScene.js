@@ -22,52 +22,6 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
     // Military HUD overlay (amber for this level)
     this._drawMilitaryHUD(this, 'OPERATION DEEP STRIKE', "33\u00b050'N 35\u00b045'E", '#CCAA00');
 
-    // Status LEDs on HUD border — blinking green dots
-    for (let i = 0; i < 3; i++) {
-      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
-      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
-    }
-
-    // Background silhouette: F-15 jet + stars
-    this._drawDeepStrikeSilhouette();
-
-    // -- Animated radar sweep (rotating line on subtle radar circle) --
-    const radarCx = W * 0.85, radarCy = H * 0.2, radarR = 40;
-    const radarBg = this.add.graphics().setDepth(6);
-    radarBg.lineStyle(1, 0xCCAA00, 0.08);
-    radarBg.strokeCircle(radarCx, radarCy, radarR);
-    radarBg.strokeCircle(radarCx, radarCy, radarR * 0.5);
-    radarBg.fillStyle(0xCCAA00, 0.03);
-    radarBg.fillCircle(radarCx, radarCy, radarR);
-    // Crosshair lines
-    radarBg.lineStyle(1, 0xCCAA00, 0.05);
-    radarBg.lineBetween(radarCx - radarR, radarCy, radarCx + radarR, radarCy);
-    radarBg.lineBetween(radarCx, radarCy - radarR, radarCx, radarCy + radarR);
-
-    const sweepLine = this.add.graphics().setDepth(7);
-    sweepLine.lineStyle(2, 0xCCAA00, 0.25);
-    sweepLine.lineBetween(0, 0, radarR, 0);
-    sweepLine.setPosition(radarCx, radarCy);
-    this.tweens.add({
-      targets: sweepLine, angle: 360, duration: 3000, repeat: -1, ease: 'Linear',
-    });
-
-    // -- Blinking status lights at screen edges --
-    const edgeLights = [
-      { x: W - 20, y: H * 0.3, color: 0xCCAA00 },
-      { x: W - 20, y: H * 0.5, color: 0xff4444 },
-      { x: W - 20, y: H * 0.7, color: 0xCCAA00 },
-      { x: 20, y: H * 0.4, color: 0x44ff44 },
-      { x: 20, y: H * 0.6, color: 0xff4444 },
-    ];
-    for (const el of edgeLights) {
-      const dot = this.add.circle(el.x, el.y, 2, el.color, 0.5).setDepth(6);
-      this.tweens.add({
-        targets: dot, alpha: 0.05, duration: 600 + Math.random() * 800,
-        yoyo: true, repeat: -1, delay: Math.random() * 1000,
-      });
-    }
-
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
       {
@@ -123,7 +77,10 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
         text: 'Inside: Hassan Nasrallah. Every rocket that fell on our schools, our hospitals, our homes \u2014 he gave the order.',
         color: '#ff4444', size: 18, y: H * 0.82,
         setup: () => {
-          this._darkOverlay();
+          if (this.textures.exists('cin_lebanon_coast')) {
+            this._addPageVisual(this.add.image(W / 2, H / 2, 'cin_lebanon_coast').setDisplaySize(W, H).setDepth(0));
+          }
+          this._addPageVisual(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.45).setDepth(1));
           if (this.textures.exists('parade_turboturban')) {
             const boss = this.add.sprite(W / 2, H * 0.4, 'parade_turboturban').setDepth(10).setScale(1.5).setAlpha(0);
             this._addPageVisual(boss);
@@ -166,7 +123,7 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
           this._addPageVisual(glow);
           glow.fillStyle(0xffaa00, 0.12);
           glow.fillCircle(W * 0.3, H * 0.35, 60);
-          SoundManager.get().playJetEngine();
+          this._ambientRef = SoundManager.get().playJetEngine();
           if (this.textures.exists('cin_superzion')) {
             const hero = this.add.image(W / 2, H * 0.45, 'cin_superzion').setScale(1.6).setDepth(10).setAlpha(0);
             this._addPageVisual(hero);
@@ -190,72 +147,6 @@ export default class DeepStrikeIntroCinematicScene extends BaseCinematicScene {
     const crt = this.add.graphics().setDepth(2);
     this._addPageVisual(crt);
     for (let y = 0; y < H; y += 3) { crt.fillStyle(0x00ff00, 0.003); crt.fillRect(0, y, W, 1); }
-  }
-
-  /** L3 silhouette: F-15 jet + stars */
-  _drawDeepStrikeSilhouette() {
-    const gfx = this.add.graphics().setDepth(5).setScrollFactor(0);
-    const c = 0xCCAA00;
-    const a = 0.17;
-
-    // Stars scattered across the upper area
-    gfx.fillStyle(c, 0.12);
-    const starPositions = [
-      [80, 100], [200, 60], [340, 120], [450, 80], [550, 140],
-      [680, 70], [780, 110], [860, 90], [150, 160], [620, 180],
-      [380, 50], [720, 160], [50, 140], [900, 130],
-    ];
-    for (const [sx, sy] of starPositions) {
-      gfx.fillCircle(sx, sy, 1 + Math.random() * 1.5);
-    }
-
-    // F-15 jet silhouette (center, angled slightly)
-    gfx.fillStyle(c, a);
-    const jx = W * 0.5, jy = H * 0.42;
-    // Fuselage
-    gfx.beginPath();
-    gfx.moveTo(jx - 80, jy + 5);   // nose
-    gfx.lineTo(jx - 40, jy - 3);
-    gfx.lineTo(jx + 60, jy - 5);
-    gfx.lineTo(jx + 80, jy - 2);   // tail
-    gfx.lineTo(jx + 80, jy + 8);
-    gfx.lineTo(jx + 60, jy + 10);
-    gfx.lineTo(jx - 40, jy + 8);
-    gfx.closePath();
-    gfx.fill();
-    // Wings (swept back)
-    gfx.beginPath();
-    gfx.moveTo(jx - 10, jy - 3);
-    gfx.lineTo(jx + 30, jy - 45);
-    gfx.lineTo(jx + 50, jy - 40);
-    gfx.lineTo(jx + 20, jy - 3);
-    gfx.closePath();
-    gfx.fill();
-    gfx.beginPath();
-    gfx.moveTo(jx - 10, jy + 8);
-    gfx.lineTo(jx + 30, jy + 50);
-    gfx.lineTo(jx + 50, jy + 45);
-    gfx.lineTo(jx + 20, jy + 8);
-    gfx.closePath();
-    gfx.fill();
-    // Twin tail fins
-    gfx.beginPath();
-    gfx.moveTo(jx + 65, jy - 5);
-    gfx.lineTo(jx + 75, jy - 25);
-    gfx.lineTo(jx + 82, jy - 22);
-    gfx.lineTo(jx + 80, jy - 2);
-    gfx.closePath();
-    gfx.fill();
-    gfx.beginPath();
-    gfx.moveTo(jx + 65, jy + 10);
-    gfx.lineTo(jx + 75, jy + 30);
-    gfx.lineTo(jx + 82, jy + 27);
-    gfx.lineTo(jx + 80, jy + 8);
-    gfx.closePath();
-    gfx.fill();
-    // Exhaust glow
-    gfx.fillStyle(c, 0.08);
-    gfx.fillCircle(jx + 85, jy + 3, 8);
   }
 
   update() { this._handlePageInput(); }

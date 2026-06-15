@@ -1211,7 +1211,9 @@ export default class BomberScene extends Phaser.Scene {
     this.camoGfx.fillRect(BUNKER_X - 130, BUNKER_TOP_Y - 12, 260, 15);
 
     // ── BUNKER AREA DETAIL: walls, guard towers, road ──
-    const bunkerAreaGfx = this.add.graphics().setDepth(1.5);
+    // Stored on `this` so _cleanupBunkerSprites() can destroy it — otherwise the
+    // perimeter wall/tower outlines stay stuck on screen forever after the explosion.
+    const bunkerAreaGfx = this.bunkerAreaGfx = this.add.graphics().setDepth(1.5);
 
     // Perimeter wall (rectangular outline around bunker complex)
     bunkerAreaGfx.lineStyle(2, 0x6a6a5a, 0.4);
@@ -1978,6 +1980,7 @@ export default class BomberScene extends Phaser.Scene {
     if (this.camoGfx) { this.camoGfx.destroy(); this.camoGfx = null; }
     if (this.bunkerInteriorGfx) { this.bunkerInteriorGfx.destroy(); this.bunkerInteriorGfx = null; }
     if (this.bunkerDamageGfx) { this.bunkerDamageGfx.destroy(); this.bunkerDamageGfx = null; }
+    if (this.bunkerAreaGfx) { this.bunkerAreaGfx.destroy(); this.bunkerAreaGfx = null; }
     // Cleanup bunker fire sprites
     if (this._bunkerFireSprites) {
       for (const fs of this._bunkerFireSprites) { if (fs && fs.active) fs.destroy(); }

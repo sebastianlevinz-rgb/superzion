@@ -22,44 +22,6 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
     // Military HUD overlay
     this._drawMilitaryHUD(this, 'OPERATION LAST CHAIR', "31\u00b025'N 34\u00b023'E", '#00AA44');
 
-    // Status LEDs on HUD border — blinking green dots
-    for (let i = 0; i < 3; i++) {
-      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
-      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
-    }
-
-    // Background silhouette: destroyed building rubble
-    this._drawUndergroundSilhouette();
-
-    // -- Subtle pulsing red ambient glow (tunnel danger atmosphere) --
-    const redGlow = this.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0.02).setDepth(6);
-    this.tweens.add({
-      targets: redGlow, alpha: { from: 0.02, to: 0.06 },
-      duration: 2500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
-
-    // -- Static/noise effect: random pixels flashing each frame --
-    const staticGfx = this.add.graphics().setDepth(6);
-    this._staticTimer = this.time.addEvent({
-      delay: 120, repeat: -1,
-      callback: () => {
-        if (this.skipped) return;
-        staticGfx.clear();
-        for (let i = 0; i < 30; i++) {
-          const sx = Math.random() * W;
-          const sy = Math.random() * H;
-          staticGfx.fillStyle(0xffffff, 0.03 + Math.random() * 0.04);
-          staticGfx.fillRect(sx, sy, 1 + Math.random() * 2, 1);
-        }
-      },
-    });
-
-    // -- Scan line (slower, darker for underground atmosphere) --
-    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0x00ff00, 0.04).setDepth(6);
-    this.tweens.add({
-      targets: scanLine, y: H, duration: 5000, repeat: -1, ease: 'Linear',
-    });
-
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
       {
@@ -213,78 +175,6 @@ export default class UndergroundIntroCinematicScene extends BaseCinematicScene {
     if (this.textures.exists("cin_gaza")) { this._addPageVisual(this.add.image(W / 2, H / 2, "cin_gaza").setDepth(0).setAlpha(0.6)); }
     const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080a10).setDepth(1).setAlpha(0.55);
     this._addPageVisual(bg);
-  }
-
-  /** L4 silhouette: destroyed building rubble */
-  _drawUndergroundSilhouette() {
-    const gfx = this.add.graphics().setDepth(5).setScrollFactor(0);
-    const c = 0x00AA44;
-    const a = 0.15;
-
-    gfx.fillStyle(c, a);
-
-    // Building 1 - partially destroyed (left)
-    const b1x = W * 0.15;
-    gfx.fillRect(b1x, H * 0.5, 50, H * 0.25);
-    // Jagged top (destroyed)
-    gfx.beginPath();
-    gfx.moveTo(b1x, H * 0.5);
-    gfx.lineTo(b1x + 10, H * 0.45);
-    gfx.lineTo(b1x + 20, H * 0.52);
-    gfx.lineTo(b1x + 30, H * 0.42);
-    gfx.lineTo(b1x + 40, H * 0.48);
-    gfx.lineTo(b1x + 50, H * 0.5);
-    gfx.lineTo(b1x + 50, H * 0.5);
-    gfx.closePath();
-    gfx.fill();
-
-    // Building 2 - collapsed center
-    const b2x = W * 0.35;
-    gfx.fillRect(b2x, H * 0.55, 70, H * 0.2);
-    gfx.beginPath();
-    gfx.moveTo(b2x, H * 0.55);
-    gfx.lineTo(b2x + 15, H * 0.5);
-    gfx.lineTo(b2x + 35, H * 0.58);
-    gfx.lineTo(b2x + 50, H * 0.48);
-    gfx.lineTo(b2x + 70, H * 0.55);
-    gfx.closePath();
-    gfx.fill();
-
-    // Rubble pile (center)
-    gfx.fillStyle(c, 0.12);
-    gfx.beginPath();
-    gfx.moveTo(W * 0.4, H * 0.75);
-    gfx.lineTo(W * 0.45, H * 0.68);
-    gfx.lineTo(W * 0.5, H * 0.72);
-    gfx.lineTo(W * 0.55, H * 0.65);
-    gfx.lineTo(W * 0.6, H * 0.7);
-    gfx.lineTo(W * 0.65, H * 0.75);
-    gfx.lineTo(W * 0.4, H * 0.75);
-    gfx.closePath();
-    gfx.fill();
-
-    // Building 3 - tall, partially standing (right)
-    gfx.fillStyle(c, a);
-    const b3x = W * 0.75;
-    gfx.fillRect(b3x, H * 0.4, 40, H * 0.35);
-    gfx.beginPath();
-    gfx.moveTo(b3x, H * 0.4);
-    gfx.lineTo(b3x + 10, H * 0.35);
-    gfx.lineTo(b3x + 20, H * 0.42);
-    gfx.lineTo(b3x + 30, H * 0.38);
-    gfx.lineTo(b3x + 40, H * 0.4);
-    gfx.closePath();
-    gfx.fill();
-
-    // Scattered debris dots
-    gfx.fillStyle(c, 0.1);
-    for (let i = 0; i < 15; i++) {
-      gfx.fillRect(W * 0.1 + Math.random() * W * 0.8, H * 0.7 + Math.random() * H * 0.08, 3 + Math.random() * 5, 2 + Math.random() * 3);
-    }
-
-    // Ground line
-    gfx.lineStyle(1, c, a * 0.8);
-    gfx.lineBetween(0, H * 0.76, W, H * 0.76);
   }
 
   update() { this._handlePageInput(); }

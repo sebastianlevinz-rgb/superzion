@@ -22,57 +22,6 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
     // Military HUD overlay (amber)
     this._drawMilitaryHUD(this, 'OPERATION MOUNTAIN BREAKER', "33\u00b043'N 51\u00b043'E", '#CCAA00');
 
-    // Status LEDs on HUD border — blinking green dots
-    for (let i = 0; i < 3; i++) {
-      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
-      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
-    }
-
-    // Background silhouette: B-2 bomber + mountain + radiation symbol
-    this._drawMountainBreakerSilhouette();
-
-    // -- Night sky twinkling stars --
-    for (let i = 0; i < 20; i++) {
-      const sx = Math.random() * W;
-      const sy = Math.random() * (H * 0.45);
-      const star = this.add.circle(sx, sy, 0.8 + Math.random() * 1.2, 0xffffff, 0.15 + Math.random() * 0.2).setDepth(4);
-      this.tweens.add({
-        targets: star,
-        alpha: { from: star.alpha, to: 0.03 },
-        duration: 1500 + Math.random() * 2500,
-        yoyo: true, repeat: -1,
-        delay: Math.random() * 3000,
-        ease: 'Sine.easeInOut',
-      });
-    }
-
-    // -- Subtle crosshair animation tracking across screen --
-    const crosshairGfx = this.add.graphics().setDepth(7);
-    crosshairGfx.lineStyle(1, 0xCCAA00, 0.12);
-    // Horizontal line
-    crosshairGfx.lineBetween(-12, 0, -4, 0);
-    crosshairGfx.lineBetween(4, 0, 12, 0);
-    // Vertical line
-    crosshairGfx.lineBetween(0, -12, 0, -4);
-    crosshairGfx.lineBetween(0, 4, 0, 12);
-    // Center dot
-    crosshairGfx.fillStyle(0xCCAA00, 0.15);
-    crosshairGfx.fillCircle(0, 0, 1.5);
-    crosshairGfx.setPosition(W * 0.3, H * 0.35);
-    // Slow drift across the screen
-    this.tweens.add({
-      targets: crosshairGfx,
-      x: { from: W * 0.3, to: W * 0.7 },
-      y: { from: H * 0.35, to: H * 0.45 },
-      duration: 12000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
-
-    // -- Scan line (amber for this level) --
-    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0xCCAA00, 0.05).setDepth(6);
-    this.tweens.add({
-      targets: scanLine, y: H, duration: 4500, repeat: -1, ease: 'Linear',
-    });
-
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
       {
@@ -231,60 +180,6 @@ export default class MountainBreakerIntroCinematicScene extends BaseCinematicSce
     if (this.textures.exists("cin_natanz")) { this._addPageVisual(this.add.image(W / 2, H / 2, "cin_natanz").setDepth(0).setAlpha(0.6)); }
     const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x080a10).setDepth(1).setAlpha(0.55);
     this._addPageVisual(bg);
-  }
-
-  /** L5 silhouette: B-2 bomber + mountain + radiation symbol */
-  _drawMountainBreakerSilhouette() {
-    const gfx = this.add.graphics().setDepth(5).setScrollFactor(0);
-    const c = 0xCCAA00;
-    const a = 0.15;
-
-    // Mountain range at bottom
-    gfx.fillStyle(c, a);
-    gfx.beginPath();
-    gfx.moveTo(0, H * 0.78);
-    gfx.lineTo(100, H * 0.6);
-    gfx.lineTo(200, H * 0.65);
-    gfx.lineTo(350, H * 0.48);  // main peak
-    gfx.lineTo(500, H * 0.55);
-    gfx.lineTo(600, H * 0.5);
-    gfx.lineTo(750, H * 0.58);
-    gfx.lineTo(900, H * 0.65);
-    gfx.lineTo(W, H * 0.72);
-    gfx.lineTo(W, H);
-    gfx.lineTo(0, H);
-    gfx.closePath();
-    gfx.fill();
-
-    // B-2 stealth bomber silhouette (upper area)
-    gfx.fillStyle(c, 0.18);
-    const bx = W * 0.6, by = H * 0.28;
-    gfx.beginPath();
-    gfx.moveTo(bx, by - 3);          // nose
-    gfx.lineTo(bx + 80, by + 6);     // right wing tip
-    gfx.lineTo(bx + 65, by + 10);    // right wing trailing
-    gfx.lineTo(bx + 20, by + 5);
-    gfx.lineTo(bx, by + 4);          // center
-    gfx.lineTo(bx - 20, by + 5);
-    gfx.lineTo(bx - 65, by + 10);    // left wing trailing
-    gfx.lineTo(bx - 80, by + 6);     // left wing tip
-    gfx.closePath();
-    gfx.fill();
-
-    // Radiation symbol (inside the mountain)
-    const rx = W * 0.37, ry = H * 0.56;
-    gfx.fillStyle(c, 0.12);
-    gfx.fillCircle(rx, ry, 6);
-    gfx.lineStyle(2, c, 0.12);
-    for (let ai = 0; ai < 3; ai++) {
-      const angle = ai * (Math.PI * 2 / 3) - Math.PI / 2;
-      gfx.beginPath();
-      gfx.arc(rx, ry, 14, angle - 0.35, angle + 0.35, false);
-      gfx.strokePath();
-    }
-    // Outer ring
-    gfx.lineStyle(1, c, 0.08);
-    gfx.strokeCircle(rx, ry, 20);
   }
 
   update() { this._handlePageInput(); }

@@ -141,7 +141,7 @@ const PORT_WORKER = "a civilian port dock worker, plain work clothes, white hard
 // ── AIR COMBAT: vehicles, drone-level enemies, boss "Turbo Turban" ──
 const VEH = {
   f15: "a sleek F-15 fighter jet, side view facing right, grey military jet, swept wings, twin tails, glowing afterburner exhaust",
-  b2: "a B-2 Spirit stealth bomber, side/low-angle view facing right, dark angular flying-wing shape, sleek black aircraft",
+  b2: "a B-2 Spirit stealth bomber in a dramatic low banked 3/4 rear view flying right — the unmistakable smooth dark-grey FLYING-WING shape with NO tail and NO fuselage, a single seamless blended wing, sharp pointed nose, long swept wings, a jagged W-shaped sawtooth trailing edge, a low cockpit bulge near the nose, faint blue engine glow, sleek and menacing",
   drone: "a military quad-rotor combat drone seen from directly above (top-down), four rotors, central camera, dark grey",
   carrier: "a massive naval aircraft carrier, side view, long grey flight deck, control tower island, military warship",
 };
@@ -269,7 +269,7 @@ export const SPRITES = {
     { name: "f15_side", size: { w: 64, h: 32 }, prompt: vehicle("f15") },
     { name: "b2_side", size: { w: 120, h: 40 }, prompt: vehicle("b2") },
     { name: "b2_top", size: { w: 128, h: 76 },
-      prompt: `${STYLE}. Sprite of a B-2 Spirit stealth bomber seen from DIRECTLY ABOVE (top-down bird's-eye view), dark charcoal-grey flying-wing bat/boomerang silhouette shape, pointed nose at top, swept back wings, two faintly glowing engine exhausts at the rear edge, sleek angular stealth aircraft, detailed pixel art.` },
+      prompt: `${STYLE}. Sprite of a B-2 Spirit stealth bomber — EXACT top-down planform (directly overhead bird's-eye view). The iconic flying-wing shape: ONE smooth seamless dark gunmetal-grey wing, a sharp pointed nose at the TOP center, two long wings sweeping back and down to sharp tips, and the distinctive jagged W-shaped SAWTOOTH trailing edge across the bottom, NO tail fins, NO separate fuselage, faint blue engine-exhaust glow at the rear. Instantly recognizable B-2, crisp detailed pixel art, bold dark outline.` },
     { name: "drone_top", size: 64, prompt: vehicle("drone") },
     { name: "carrier_side", size: { w: 480, h: 200 }, prompt: vehicle("carrier") },
     { name: "turbo_turban", size: 128, prompt: turban("normal") },
@@ -406,7 +406,7 @@ export const SPRITES = {
     { name: "__title_bg", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A dramatic war-torn middle-eastern city skyline at dusk under a dark ominous orange-black sky, ruined silhouetted buildings, smoke columns, distant fire glow, cinematic title-screen backdrop.` },
     { name: "b2_silhouette", size: { w: 200, h: 80 }, ref: "b2_top",
-      prompt: `${STYLE}. Sprite of a B-2 Spirit stealth bomber seen from DIRECTLY ABOVE (top-down planform), dark charcoal flying-wing bat shape, pointed nose, swept wings, faint engine glow, detailed pixel art.` },
+      prompt: `${STYLE}. Sprite of a B-2 Spirit stealth bomber — EXACT top-down planform (directly overhead). ONE smooth seamless dark charcoal flying-wing, sharp pointed nose at the TOP center, long swept-back wings to sharp tips, the distinctive jagged W-shaped SAWTOOTH trailing edge at the bottom, NO tail, NO fuselage, faint engine glow. Instantly recognizable B-2 boomerang shape, detailed pixel art.` },
   ],
 
   // Graphics-overhaul batch: remaining procedural backdrops → AI
@@ -432,19 +432,20 @@ export const SPRITES = {
 
     // ── Opening intro narrative backdrops (GameIntroScene pages) ──
     { name: "intro_empires", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
-      prompt: `${BG_STYLE}. The ruins of fallen ancient empires under a dark ominous blood-red and black smoky sky — a crumbling Babylonian ziggurat, broken Roman marble columns, toppled stone monuments and shattered statues, rubble and drifting ash, faint distant fire-glow on the horizon, grim apocalyptic dusk. Cinematic, moody.` },
+      prompt: `${BG_STYLE}. The ruins of fallen ancient MIDDLE-EASTERN empires (Babylon, Mesopotamia, Rome) under a dark ominous blood-red and black smoky sky — a crumbling ancient MESOPOTAMIAN ziggurat with the Ishtar-gate style and a tall stepped temple-tower, broken Roman marble columns and arches, toppled stone lamassu statues, desert rubble and drifting ash, faint distant fire-glow on the horizon, grim apocalyptic dusk. NOT aztec, NOT mayan, NOT a mesoamerican pyramid — this is ancient near-east / middle-east. Cinematic, moody.` },
     { name: "intro_warzone", size: { w: 960, h: 540 }, bg: true, aspect: "16:9",
       prompt: `${BG_STYLE}. A war-torn modern middle-eastern city in ruins at night — intense orange-red firelight, burning collapsed buildings, thick black smoke columns rising, glowing embers in the air, a deep blood-red sky, apocalyptic destruction. Cinematic, dramatic.` },
 
-    // ── Enemy faction flags on poles (transparent sprites, waving cloth) ──
-    { name: "flag_iran_ai", size: { w: 96, h: 120 },
-      prompt: `16-bit pixel-art game sprite, NO people, NO characters, NO text, bold dark outline, clean readable pixels. A waving cloth flag on a tall grey flagpole — the flag has three equal horizontal stripes (top GREEN, middle WHITE, bottom RED) with a small red emblem centered on the white stripe, fabric rippling in the wind. Solid flat pure ${KEY_COLOR} green background.` },
-    { name: "flag_hamas_ai", size: { w: 96, h: 120 },
-      prompt: `16-bit pixel-art game sprite, NO people, NO characters, bold dark outline, clean readable pixels. A waving solid GREEN cloth flag on a tall grey flagpole with rows of white arabic-style calligraphic markings across it, fabric rippling in the wind. Solid flat pure ${KEY_COLOR === '#00FF00' ? '#FF00FF magenta' : KEY_COLOR} background.` , key: "magenta" },
-    { name: "flag_hezbollah_ai", size: { w: 96, h: 120 },
-      prompt: `16-bit pixel-art game sprite, NO people, NO characters, bold dark outline, clean readable pixels. A waving YELLOW cloth flag on a tall grey flagpole with a green emblem of an upraised arm holding a rifle silhouette, fabric rippling in the wind. Solid flat pure ${KEY_COLOR} green background.` },
-    { name: "flag_palestine_ai", size: { w: 96, h: 120 },
-      prompt: `16-bit pixel-art game sprite, NO people, NO characters, NO text, bold dark outline, clean readable pixels. A waving cloth flag on a tall grey flagpole — three equal horizontal stripes (top BLACK, middle WHITE, bottom GREEN) with a RED triangle on the hoist (left) side, fabric rippling in the wind. Solid flat pure ${KEY_COLOR} green background.` },
+    // ── Enemy faction flags on poles. MAGENTA key (the flags contain GREEN, which a
+    //    green key would erase). THICK dark outline so they read against busy art. ──
+    { name: "flag_iran_ai", size: { w: 96, h: 120 }, key: "magenta",
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, NO text, THICK bold black outline around the whole flag and pole, clean readable pixels, high contrast. A waving cloth flag on a tall dark-grey flagpole — three equal horizontal stripes (top GREEN, middle WHITE, bottom RED) with a small red emblem centered on the white stripe, fabric rippling in the wind, fully opaque solid colours. Solid flat pure #FF00FF magenta background only behind/around the flag.` },
+    { name: "flag_hamas_ai", size: { w: 96, h: 120 }, key: "magenta",
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, THICK bold black outline around the whole flag and pole, clean readable pixels, high contrast. A waving solid GREEN cloth flag on a tall dark-grey flagpole with rows of white arabic-style calligraphic markings across it, fabric rippling in the wind, fully opaque. Solid flat pure #FF00FF magenta background only.` },
+    { name: "flag_hezbollah_ai", size: { w: 96, h: 120 }, key: "magenta",
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, THICK bold black outline around the whole flag and pole, clean readable pixels, high contrast. A waving YELLOW cloth flag on a tall dark-grey flagpole with a green emblem of an upraised arm holding a rifle silhouette, fabric rippling in the wind, fully opaque. Solid flat pure #FF00FF magenta background only.` },
+    { name: "flag_palestine_ai", size: { w: 96, h: 120 }, key: "magenta",
+      prompt: `16-bit pixel-art game sprite, NO people, NO characters, NO text, THICK bold black outline around the whole flag and pole, clean readable pixels, high contrast. A waving cloth flag on a tall dark-grey flagpole — three equal horizontal stripes (top BLACK, middle WHITE, bottom GREEN) with a RED triangle on the hoist (left) side, fabric rippling in the wind, fully opaque. Solid flat pure #FF00FF magenta background only.` },
   ],
 
   // Final boss level (BossScene)
@@ -460,5 +461,16 @@ export const SPRITES = {
       prompt: sprite("the SAME massive armored war-machine fortress boss, heavily battle-damaged — cracked dented plating, sparks and exposed wiring, one turret broken, blazing white-hot overloading core, smoke wisps, desperate furious") },
     { name: "bunker_fortress_dead", size: 256, ref: "bunker_fortress",
       prompt: sprite("the SAME massive armored war-machine fortress boss, DESTROYED and defeated — shattered blackened scorched plating, dark dead lifeless core, slumped broken posture, heavy smoke and small fading embers, wreckage") },
+
+    // FINAL BOSS = Supreme Turban / Ayatollah CHARACTER (not the mech). HP-state
+    // variants swapped via setTexture; ref the brief portrait for consistency.
+    { name: "boss_ayatollah", size: 256, ref: "parade_supremeturban",
+      prompt: sprite("a colossal imposing final-boss cartoon supreme-leader villain, full body front view, a dignified medium BLACK turban, round glasses, a long flowing WHITE beard down to his chest, flowing dark-charcoal robes, raising a tall golden crescent-moon staff that glows, faintly glowing RED eyes, floating menacingly above a dark ornate throne/fortress base, epic boss-fight presence, comic-villain proportions") },
+    { name: "boss_ayatollah_angry", size: 256, ref: "boss_ayatollah",
+      prompt: sprite("the SAME colossal supreme-leader villain boss (black turban, round glasses, long white beard, dark robes, golden crescent staff), now ENRAGED — bright glowing RED eyes, the crescent staff blazing with energy, robes billowing, arms raised casting power, furious snarl, dramatic boss-fight pose") },
+    { name: "boss_ayatollah_furious", size: 256, ref: "boss_ayatollah",
+      prompt: sprite("the SAME supreme-leader villain boss (black turban, glasses, white beard, dark robes, crescent staff), DESPERATE and wounded — robes torn and scorched, turban askew, the cracked staff sputtering, intense burning red eyes and a wild furious expression, surrounded by dark crackling energy, last-stand rage") },
+    { name: "boss_ayatollah_dead", size: 256, ref: "boss_ayatollah",
+      prompt: sprite("the SAME supreme-leader villain boss (black turban, glasses, white beard, dark robes), DEFEATED — slumped and collapsing, robes tattered and smoking, the golden crescent staff broken and falling, dim lifeless eyes, the throne behind him crumbling, fading embers, vanquished") },
   ],
 };

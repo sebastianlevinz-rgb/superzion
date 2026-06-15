@@ -289,8 +289,8 @@ export default class BossScene extends Phaser.Scene {
     // Player fighter — side-view, nose already points right
     this.playerSprite = this.add.image(this.playerX, this.playerY, 'player_fighter').setDepth(10);
 
-    // Boss character — hidden until attack phase
-    this.bunkerSprite = this.add.image(this.bunkerX, this.bunkerY, 'bunker_fortress').setDepth(10);
+    // Boss character — the Ayatollah / Supreme Turban (hidden until attack phase)
+    this.bunkerSprite = this.add.image(this.bunkerX, this.bunkerY, 'boss_ayatollah').setDepth(10);
     this.bunkerSprite.setVisible(false);
 
     // Graphics layers
@@ -1913,18 +1913,13 @@ export default class BossScene extends Phaser.Scene {
       this._lastBossExpression = targetExpression;
       this._bossExpression = targetExpression;
       // Each HP state is a SEPARATE AI texture key (the AI-override patch can't
-      // re-render a single key — see aiTexturePatch). Swap to it; if the per-state
-      // PNG is missing, fall back to the procedural redraw of the base key.
+      // re-render a single key — see aiTexturePatch). Swap the Ayatollah boss to it.
       const aiKey = targetExpression === 'normal'
-        ? 'bunker_fortress'
-        : `bunker_fortress_${targetExpression}`;
+        ? 'boss_ayatollah'
+        : `boss_ayatollah_${targetExpression}`;
       if (this.bunkerSprite && this.bunkerSprite.active) {
-        if (this.textures.exists(aiKey)) {
-          this.bunkerSprite.setTexture(aiKey);
-        } else {
-          createBunkerFortress(this);
-          this.bunkerSprite.setTexture('bunker_fortress');
-        }
+        const key = this.textures.exists(aiKey) ? aiKey : 'boss_ayatollah';
+        this.bunkerSprite.setTexture(key);
       }
     }
   }
@@ -3136,7 +3131,8 @@ export default class BossScene extends Phaser.Scene {
   }
 
   _extractBunkerPixels() {
-    const texKey = 'bunker_fortress';
+    // Disintegrate whatever boss texture is currently shown (the Ayatollah).
+    const texKey = (this.bunkerSprite && this.bunkerSprite.texture && this.bunkerSprite.texture.key) || 'boss_ayatollah_dead';
     const source = this.textures.get(texKey).getSourceImage();
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = source.width;

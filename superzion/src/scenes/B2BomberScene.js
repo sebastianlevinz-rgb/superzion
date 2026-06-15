@@ -616,6 +616,10 @@ export default class B2BomberScene extends Phaser.Scene {
     this.takeoffGfx = this.add.graphics().setDepth(20);
     this.takeoffObjects.push(this.takeoffGfx);
 
+    // AI B-2 sprite for the takeoff (replaces the procedural vector B-2)
+    this.takeoffB2Sprite = this.add.image(W / 2, H / 2, 'b2_top').setDepth(20.5).setVisible(false);
+    this.takeoffObjects.push(this.takeoffB2Sprite);
+
     // Engine glow circles
     const cx = W / 2;
     const cy = H / 2 + 60;
@@ -783,41 +787,15 @@ export default class B2BomberScene extends Phaser.Scene {
       }
     }
 
-    // Top-down B-2 shape (nose points UP)
+    // Top-down B-2 — AI sprite (nose points UP), replaces the procedural shape.
     const bx = cx;
     const by = Math.max(80, Math.min(H - 40, bomberScreenY));
     const bs = scale * liftScale;
 
-    gfx.fillStyle(0x3a3a3a, 1);
-    gfx.beginPath();
-    gfx.moveTo(bx, by - 20 * bs);
-    gfx.lineTo(bx + 60 * bs, by + 15 * bs);
-    gfx.lineTo(bx + 40 * bs, by + 20 * bs);
-    gfx.lineTo(bx, by + 10 * bs);
-    gfx.lineTo(bx - 40 * bs, by + 20 * bs);
-    gfx.lineTo(bx - 60 * bs, by + 15 * bs);
-    gfx.closePath();
-    gfx.fill();
-
-    gfx.fillStyle(0x2e2e2e, 0.6);
-    gfx.beginPath();
-    gfx.moveTo(bx, by - 15 * bs);
-    gfx.lineTo(bx + 35 * bs, by + 12 * bs);
-    gfx.lineTo(bx, by + 8 * bs);
-    gfx.lineTo(bx - 35 * bs, by + 12 * bs);
-    gfx.closePath();
-    gfx.fill();
-
-    gfx.lineStyle(0.5 * bs, 0x555555, 0.5);
-    gfx.lineBetween(bx, by - 18 * bs, bx, by + 8 * bs);
-    gfx.lineBetween(bx - 20 * bs, by + 5 * bs, bx + 20 * bs, by + 5 * bs);
-
-    gfx.lineStyle(1 * bs, 0x4a4a4a, 0.6);
-    gfx.beginPath();
-    gfx.moveTo(bx - 58 * bs, by + 14 * bs);
-    gfx.lineTo(bx, by - 19 * bs);
-    gfx.lineTo(bx + 58 * bs, by + 14 * bs);
-    gfx.strokePath();
+    if (this.takeoffB2Sprite) {
+      // b2_top is 128px wide; the old vector spanned ~120*bs → match it
+      this.takeoffB2Sprite.setVisible(true).setPosition(bx, by).setScale(bs * 0.95);
+    }
 
     // Engine glow positions
     const engLX = bx - 14 * bs;
@@ -2341,6 +2319,9 @@ export default class B2BomberScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(40).setAlpha(0);
     this.tweens.add({ targets: this._escSub, alpha: 0.8, duration: 2000, delay: 1000 });
 
+    // Stop the bombing-phase engine before starting the escape engine, so two
+    // B-2 engine loops don't overlap and bleed until victory.
+    this._stopAmbient();
     this.ambientRef = SoundManager.get().playB2Engine();
   }
 

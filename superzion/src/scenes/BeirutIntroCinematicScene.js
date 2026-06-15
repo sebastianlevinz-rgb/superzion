@@ -23,28 +23,6 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
     // Military HUD overlay
     this._drawMilitaryHUD(this, 'OPERATION GRIM BEEPER', "33\u00b053'N 35\u00b030'E", '#00AA44');
 
-    // Status LEDs on HUD border -- blinking green dots
-    for (let i = 0; i < 3; i++) {
-      const led = this.add.circle(W * 0.1 + i * 15, H - 20, 2, 0x00ff44, 0.6).setDepth(5);
-      this.tweens.add({ targets: led, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, delay: i * 500 });
-    }
-
-    // Background silhouette: port crane + container stacks
-    this._drawBeirutSilhouette();
-
-    // -- Animated horizontal scan line (military terminal aesthetic) --
-    const scanLine = this.add.rectangle(W / 2, 0, W, 2, 0x00ff00, 0.06).setDepth(6);
-    this.tweens.add({
-      targets: scanLine, y: H, duration: 3500, repeat: -1, ease: 'Linear',
-    });
-
-    // -- Subtle CRT flicker overlay --
-    const crtFlicker = this.add.rectangle(W / 2, H / 2, W, H, 0x00ff00, 0.01).setDepth(6);
-    this.tweens.add({
-      targets: crtFlicker, alpha: { from: 0.01, to: 0.03 },
-      duration: 150, yoyo: true, repeat: -1,
-    });
-
     this._initPages([
       // -- RECAP PAGE: Previously on SuperZion --
       {
@@ -146,55 +124,6 @@ export default class BeirutIntroCinematicScene extends BaseCinematicScene {
       crt.fillStyle(0x00ff00, 0.003);
       crt.fillRect(0, y, W, 1);
     }
-  }
-
-  /** L2 silhouette: port crane + container stacks */
-  _drawBeirutSilhouette() {
-    const gfx = this.add.graphics().setDepth(5).setScrollFactor(0);
-    const c = 0x00AA44;
-    const a = 0.15;
-
-    // Port crane #1 (left)
-    gfx.fillStyle(c, a);
-    const cx1 = W * 0.25, cBase = H * 0.72;
-    // Vertical mast
-    gfx.fillRect(cx1 - 3, cBase - 130, 6, 130);
-    // Boom (horizontal arm)
-    gfx.fillRect(cx1 - 60, cBase - 130, 120, 5);
-    // Cable lines
-    gfx.lineStyle(1, c, a * 1.2);
-    gfx.lineBetween(cx1, cBase - 130, cx1 - 50, cBase - 90);
-    gfx.lineBetween(cx1, cBase - 130, cx1 + 50, cBase - 90);
-    // Hook
-    gfx.lineBetween(cx1 + 40, cBase - 125, cx1 + 40, cBase - 90);
-
-    // Port crane #2 (right)
-    const cx2 = W * 0.72;
-    gfx.fillStyle(c, a);
-    gfx.fillRect(cx2 - 3, cBase - 120, 6, 120);
-    gfx.fillRect(cx2 - 55, cBase - 120, 110, 5);
-    gfx.lineStyle(1, c, a * 1.2);
-    gfx.lineBetween(cx2, cBase - 120, cx2 - 45, cBase - 85);
-    gfx.lineBetween(cx2, cBase - 120, cx2 + 45, cBase - 85);
-
-    // Container stacks
-    gfx.fillStyle(c, 0.18);
-    // Stack 1
-    gfx.fillRect(W * 0.35, cBase - 25, 50, 12);
-    gfx.fillRect(W * 0.36, cBase - 37, 48, 12);
-    gfx.fillRect(W * 0.37, cBase - 49, 46, 12);
-    // Stack 2
-    gfx.fillRect(W * 0.5, cBase - 20, 55, 12);
-    gfx.fillRect(W * 0.51, cBase - 32, 53, 12);
-    // Stack 3
-    gfx.fillRect(W * 0.82, cBase - 30, 45, 12);
-    gfx.fillRect(W * 0.83, cBase - 42, 43, 12);
-    gfx.fillRect(W * 0.84, cBase - 54, 41, 12);
-    gfx.fillRect(W * 0.85, cBase - 66, 39, 12);
-
-    // Water line at base
-    gfx.lineStyle(1, c, a * 0.8);
-    gfx.lineBetween(0, cBase + 5, W, cBase + 5);
   }
 
   update() { this._handlePageInput(); }

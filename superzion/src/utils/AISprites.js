@@ -63,6 +63,8 @@ export const AI_SPRITES = [
   'player_fighter', 'bunker_fortress',
   // HP-driven damage states (swapped via setTexture as the boss loses health)
   'bunker_fortress_angry', 'bunker_fortress_furious', 'bunker_fortress_dead',
+  // Final boss = Ayatollah / Supreme Turban CHARACTER (replaces the mech)
+  'boss_ayatollah', 'boss_ayatollah_angry', 'boss_ayatollah_furious', 'boss_ayatollah_dead',
   'beirut_city', 'beirut_ground',
 
   // ── Full-screen backgrounds (opaque) ──
