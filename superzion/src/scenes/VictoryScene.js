@@ -173,359 +173,39 @@ export default class VictoryScene extends BaseCinematicScene {
    * @param {number} progress - 0.3 (barely visible) to 1.0 (full golden hour)
    */
   _drawSunrise(progress) {
-    const skyGfx = this.add.graphics().setDepth(0);
-    this._addPageVisual(skyGfx);
-
-    // ── Horizon line ──
     const horizonY = H * 0.62;
 
-    // ── Multi-stop dawn sky gradient (deep blue-purple top -> pink -> orange-gold at horizon) ──
-    const preDawn = [
-      { pos: 0.00, r: 8, g: 6, b: 28 },
-      { pos: 0.30, r: 18, g: 10, b: 52 },
-      { pos: 0.60, r: 40, g: 16, b: 60 },
-      { pos: 1.00, r: 52, g: 22, b: 10 },
-    ];
-    const dawnBreak = [
-      { pos: 0.00, r: 12, g: 14, b: 44 },
-      { pos: 0.25, r: 36, g: 18, b: 68 },
-      { pos: 0.55, r: 140, g: 50, b: 90 },
-      { pos: 0.80, r: 210, g: 100, b: 42 },
-      { pos: 1.00, r: 255, g: 190, b: 60 },
-    ];
-    const midSunrise = [
-      { pos: 0.00, r: 22, g: 38, b: 82 },
-      { pos: 0.20, r: 60, g: 60, b: 120 },
-      { pos: 0.45, r: 190, g: 110, b: 130 },
-      { pos: 0.70, r: 240, g: 155, b: 50 },
-      { pos: 1.00, r: 255, g: 235, b: 170 },
-    ];
-    const fullSunrise = [
-      { pos: 0.00, r: 50, g: 90, b: 160 },
-      { pos: 0.20, r: 100, g: 150, b: 210 },
-      { pos: 0.45, r: 200, g: 180, b: 200 },
-      { pos: 0.70, r: 255, g: 220, b: 160 },
-      { pos: 1.00, r: 255, g: 240, b: 200 },
-    ];
+    // ── AI Tel Aviv sunrise panorama — dawn breaks (dusky blue → full gold)
+    //    as `progress` climbs 0.3 → 1.0 across the closing pages. ──
+    if (this.textures.exists('credits_sky')) {
+      const sky = this.add.image(W / 2, H / 2, 'credits_sky').setDepth(0);
+      sky.setDisplaySize(W, H);
+      const f = Math.min(1, Math.max(0, (progress - 0.3) / 0.7));
+      const ch = (floor) => Math.round(floor + (255 - floor) * f);
+      // Multiply-tint: pre-dawn blue at low progress, full colour at golden hour.
+      sky.setTint(Phaser.Display.Color.GetColor(ch(78), ch(90), ch(132)));
+      this._addPageVisual(sky);
 
-    let stopsA, stopsB, localT;
-    if (progress <= 0.0) {
-      stopsA = preDawn; stopsB = preDawn; localT = 0;
-    } else if (progress <= 0.3) {
-      stopsA = preDawn; stopsB = dawnBreak; localT = progress / 0.3;
-    } else if (progress <= 0.6) {
-      stopsA = dawnBreak; stopsB = midSunrise; localT = (progress - 0.3) / 0.3;
-    } else {
-      stopsA = midSunrise; stopsB = fullSunrise; localT = (progress - 0.6) / 0.4;
-    }
-    localT = Math.min(1, Math.max(0, localT));
-
-    const sampleStops = (stops, t) => {
-      let lo = stops[0], hi = stops[stops.length - 1];
-      for (let s = 0; s < stops.length - 1; s++) {
-        if (t >= stops[s].pos && t <= stops[s + 1].pos) {
-          lo = stops[s]; hi = stops[s + 1]; break;
-        }
+      // Dark shoreline so the hero and crowd have ground to stand on.
+      const shore = this.add.graphics().setDepth(0.5);
+      this._addPageVisual(shore);
+      const shoreTop = H * 0.82;
+      for (let y = Math.floor(shoreTop); y < H; y++) {
+        const t = (y - shoreTop) / (H - shoreTop);
+        shore.fillStyle(0x140e06, 0.35 + t * 0.5);
+        shore.fillRect(0, y, W, 1);
       }
-      const segT = (hi.pos === lo.pos) ? 0 : (t - lo.pos) / (hi.pos - lo.pos);
-      return {
-        r: lo.r + (hi.r - lo.r) * segT,
-        g: lo.g + (hi.g - lo.g) * segT,
-        b: lo.b + (hi.b - lo.b) * segT,
-      };
-    };
-
-    // Draw sky portion (above horizon)
-    for (let y = 0; y < Math.ceil(horizonY); y++) {
-      const t = y / horizonY;
-      const cA = sampleStops(stopsA, t);
-      const cB = sampleStops(stopsB, t);
-      const r = cA.r + (cB.r - cA.r) * localT;
-      const g = cA.g + (cB.g - cA.g) * localT;
-      const b = cA.b + (cB.b - cA.b) * localT;
-      skyGfx.fillStyle(Phaser.Display.Color.GetColor(r | 0, g | 0, b | 0), 1);
-      skyGfx.fillRect(0, y, W, 1);
+      return;
     }
 
-    // ── Mediterranean Sea (below horizon, with golden reflection) ──
-    const seaGfx = this.add.graphics().setDepth(0);
-    this._addPageVisual(seaGfx);
-    const seaBottom = H * 0.88;
-    const warmth = Math.min(1, progress * 1.3);
-    for (let y = Math.floor(horizonY); y < seaBottom; y++) {
-      const seaT = (y - horizonY) / (seaBottom - horizonY);
-      // Base sea: dark teal fading deeper
-      const bR = 8 + 14 * (1 - seaT) * warmth + 20 * warmth * Math.max(0, 1 - seaT * 3);
-      const bG = 20 + 30 * (1 - seaT) * warmth * 0.4;
-      const bB = 40 + 40 * (1 - seaT) - 20 * warmth;
-      seaGfx.fillStyle(Phaser.Display.Color.GetColor(
-        Math.min(255, Math.max(0, bR | 0)),
-        Math.min(255, Math.max(0, bG | 0)),
-        Math.min(255, Math.max(0, bB | 0))
-      ), 1);
-      seaGfx.fillRect(0, y, W, 1);
-    }
-
-    // Golden sun reflection on water (vertical strip under sun)
-    if (progress > 0.1) {
-      const reflGfx = this.add.graphics().setDepth(0);
-      this._addPageVisual(reflGfx);
-      const reflAlpha = Math.min(0.25, progress * 0.3);
-      const sunX = W * 0.5;
-      for (let y = Math.floor(horizonY) + 2; y < seaBottom - 4; y++) {
-        const seaT = (y - horizonY) / (seaBottom - horizonY);
-        const spreadWidth = 30 + seaT * 60 + Math.sin(y * 0.15) * 8;
-        const lineAlpha = reflAlpha * (1 - seaT * 0.7) * (0.6 + Math.sin(y * 0.3) * 0.4);
-        if (lineAlpha > 0.01) {
-          reflGfx.fillStyle(0xffcc44, lineAlpha);
-          reflGfx.fillRect(sunX - spreadWidth / 2, y, spreadWidth, 1);
-        }
-      }
-    }
-
-    // ── Sand / beach strip at very bottom ──
-    const sandGfx = this.add.graphics().setDepth(0);
-    this._addPageVisual(sandGfx);
-    for (let y = Math.floor(seaBottom); y < H; y++) {
-      const sandT = (y - seaBottom) / (H - seaBottom);
-      const sR = Math.round(60 + 40 * warmth - 15 * sandT);
-      const sG = Math.round(45 + 25 * warmth - 10 * sandT);
-      const sB = Math.round(25 + 10 * warmth - 8 * sandT);
-      sandGfx.fillStyle(Phaser.Display.Color.GetColor(sR, sG, sB), 1);
-      sandGfx.fillRect(0, y, W, 1);
-    }
-
-    // ── Stars (only visible at low progress) ──
-    if (progress < 0.5) {
-      const starAlpha = progress < 0.3 ? (0.5 + Math.random() * 0.3) : (0.2 * (1 - (progress - 0.3) / 0.2));
-      if (starAlpha > 0.02) {
-        const starGfx = this.add.graphics().setDepth(1);
-        this._addPageVisual(starGfx);
-        const starPositions = [
-          [80,40],[180,70],[310,30],[420,90],[530,55],[640,35],[750,80],[870,50],
-          [120,120],[260,100],[380,60],[500,25],[620,110],[730,45],[830,95],
-          [150,55],[340,85],[460,42],[580,75],[700,60],[810,30],[900,70],
-          [60,100],[210,45],[440,115],[560,38],[680,90],[780,55],[850,42],
-          [100,80],[290,50],[470,70],[610,48],[740,105],[880,35],[170,95],
-        ];
-        starGfx.fillStyle(0xffffff, starAlpha);
-        for (const [sx, sy] of starPositions) {
-          if (sy < horizonY * 0.7) {
-            const size = 1 + (sx % 3 === 0 ? 1 : 0);
-            starGfx.fillCircle(sx, sy, size);
-          }
-        }
-      }
-    }
-
-    // ── Sun rising from horizon ──
-    const sunX = W * 0.5;
-    let sunTargetY, sunRadius;
-    if (progress <= 0.0) {
-      sunTargetY = horizonY + 50;
-      sunRadius = 30;
-    } else if (progress <= 0.3) {
-      sunTargetY = horizonY + 5;    // barely peeking
-      sunRadius = 38;
-    } else if (progress <= 0.6) {
-      sunTargetY = horizonY - 25;   // half-risen
-      sunRadius = 44;
-    } else {
-      sunTargetY = horizonY - 60;   // fully above horizon
-      sunRadius = 52;
-    }
-
-    if (progress > 0.0) {
-      const glowAlpha = Math.min(1, progress * 1.5);
-      const glowLayers = [
-        { radius: sunRadius * 3.2, color: 0xffcc40, alpha: 0.04 * glowAlpha },
-        { radius: sunRadius * 2.5, color: 0xffaa20, alpha: 0.08 * glowAlpha },
-        { radius: sunRadius * 1.8, color: 0xffbb30, alpha: 0.14 * glowAlpha },
-        { radius: sunRadius * 1.3, color: 0xffcc55, alpha: 0.22 * glowAlpha },
-        { radius: sunRadius * 0.85, color: 0xffdd88, alpha: 0.40 * glowAlpha },
-        { radius: sunRadius * 0.55, color: 0xffeebb, alpha: 0.65 * glowAlpha },
-        { radius: sunRadius * 0.3,  color: 0xffffff, alpha: 0.90 * glowAlpha },
-      ];
-      for (const gl of glowLayers) {
-        const glow = this.add.circle(sunX, sunTargetY, gl.radius, gl.color, gl.alpha).setDepth(2);
-        this._addPageVisual(glow);
-      }
-
-      // Sun disc — animate upward slowly
-      const sunStartY = sunTargetY + 25;
-      this._sunCircle = this.add.circle(sunX, sunStartY, sunRadius, 0xffeeaa, 0.95).setDepth(2);
-      this._addPageVisual(this._sunCircle);
-      this._sunTween = this.tweens.add({
-        targets: this._sunCircle,
-        y: sunTargetY - 8,
-        duration: 8000,
-        ease: 'Sine.easeOut',
-      });
-
-      // Sun rays at higher progress
-      if (progress >= 0.6) {
-        const rayGfx = this.add.graphics().setDepth(2);
-        this._addPageVisual(rayGfx);
-        const numRays = 10;
-        for (let i = 0; i < numRays; i++) {
-          const angle = (Math.PI * 2 * i) / numRays - Math.PI / 2;
-          const length = 140 + Math.random() * 100;
-          const halfWidth = 6 + Math.random() * 8;
-          const perpAngle = angle + Math.PI / 2;
-          const tipX = sunX + Math.cos(angle) * length;
-          const tipY = sunTargetY + Math.sin(angle) * length;
-          const baseX1 = sunX + Math.cos(perpAngle) * halfWidth;
-          const baseY1 = sunTargetY + Math.sin(perpAngle) * halfWidth;
-          const baseX2 = sunX - Math.cos(perpAngle) * halfWidth;
-          const baseY2 = sunTargetY - Math.sin(perpAngle) * halfWidth;
-          rayGfx.fillStyle(0xffcc40, 0.04 + Math.random() * 0.04);
-          rayGfx.fillTriangle(baseX1, baseY1, baseX2, baseY2, tipX, tipY);
-        }
-      }
-    }
-
-    // ── Dawn clouds (3-4 wispy clouds with warm colors) ──
-    const cloudGfx = this.add.graphics().setDepth(3);
-    this._addPageVisual(cloudGfx);
-    const cloudDefs = [
-      { cx: W * 0.15, cy: horizonY * 0.28, w: 120, h: 14 },
-      { cx: W * 0.42, cy: horizonY * 0.18, w: 150, h: 18 },
-      { cx: W * 0.72, cy: horizonY * 0.35, w: 110, h: 12 },
-      { cx: W * 0.88, cy: horizonY * 0.22, w: 90,  h: 10 },
-    ];
-    const cloudAlpha = Math.min(0.35, progress * 0.4);
-    // Cloud color shifts from purple-gray at low progress to pink-orange at high
-    const cR = Math.round(80 + 160 * progress);
-    const cG = Math.round(50 + 100 * progress);
-    const cB = Math.round(80 + 60 * progress);
-    const cloudColor = Phaser.Display.Color.GetColor(
-      Math.min(255, cR), Math.min(255, cG), Math.min(255, cB)
-    );
-    for (const cd of cloudDefs) {
-      // Each cloud: overlapping ellipses
-      for (let e = 0; e < 5; e++) {
-        const eOff = (e - 2) * cd.w * 0.18;
-        const eW = cd.w * (0.35 + Math.abs(2 - e) * 0.08);
-        const eH = cd.h * (0.7 + (e % 2) * 0.3);
-        const eAlpha = cloudAlpha * (0.6 + 0.4 * (1 - Math.abs(2 - e) / 2));
-        cloudGfx.fillStyle(cloudColor, eAlpha);
-        cloudGfx.fillEllipse(cd.cx + eOff, cd.cy - (e % 2) * cd.h * 0.25, eW, eH);
-      }
-    }
-
-    // ── Tel Aviv skyline silhouette (left side, dark against dawn sky) ──
-    const skylineGfx = this.add.graphics().setDepth(4);
-    this._addPageVisual(skylineGfx);
-    const skyAlpha = 0.15 + progress * 0.35;
-    // Dark silhouette color: very dark blue-gray, gets slightly warm at high progress
-    const slR = Math.round(10 + 15 * progress);
-    const slG = Math.round(12 + 10 * progress);
-    const slB = Math.round(25 + 5 * progress);
-    const silColor = Phaser.Display.Color.GetColor(slR, slG, slB);
-    skylineGfx.fillStyle(silColor, skyAlpha);
-
-    // Building shapes along left portion (x: 0 to ~W*0.35)
-    const buildings = [
-      { x: 0,   w: 28, h: 70 },   // wide low block
-      { x: 28,  w: 14, h: 95 },   // tall narrow tower
-      { x: 42,  w: 22, h: 60 },
-      { x: 64,  w: 10, h: 110 },  // antenna tower
-      { x: 74,  w: 30, h: 75 },
-      { x: 104, w: 16, h: 130 },  // tallest — Azrieli-ish
-      { x: 120, w: 18, h: 120 },
-      { x: 138, w: 24, h: 85 },
-      { x: 162, w: 12, h: 100 },
-      { x: 174, w: 30, h: 55 },
-      { x: 204, w: 20, h: 70 },
-      { x: 224, w: 16, h: 40 },
-      { x: 240, w: 28, h: 50 },
-      { x: 268, w: 14, h: 30 },
-    ];
-    for (const b of buildings) {
-      skylineGfx.fillRect(b.x, horizonY - b.h, b.w, b.h + 4);
-    }
-    // Azrieli-style rounded tower cap on the tallest building
-    skylineGfx.fillEllipse(112, horizonY - 132, 20, 10);
-
-    // Tiny lit windows (golden dots) at higher progress
-    if (progress >= 0.5) {
-      const winAlpha = (progress - 0.5) * 0.6;
-      skylineGfx.fillStyle(0xffcc44, winAlpha);
-      const windowPositions = [
-        [32, horizonY - 85], [36, horizonY - 78], [34, horizonY - 70],
-        [108, horizonY - 120], [112, horizonY - 110], [116, horizonY - 100],
-        [110, horizonY - 90], [114, horizonY - 80],
-        [124, horizonY - 108], [128, horizonY - 98], [126, horizonY - 88],
-        [80, horizonY - 65], [84, horizonY - 55],
-        [144, horizonY - 75], [148, horizonY - 65],
-        [166, horizonY - 90], [168, horizonY - 80],
-      ];
-      for (const [wx, wy] of windowPositions) {
-        skylineGfx.fillRect(wx, wy, 2, 2);
-      }
-    }
-
-    // ── Palm tree silhouettes (right side, 2-3 palms) ──
-    const palmGfx = this.add.graphics().setDepth(4);
-    this._addPageVisual(palmGfx);
-    const palmAlpha = 0.2 + progress * 0.4;
-    const palmColor = Phaser.Display.Color.GetColor(slR, slG, slB);
-
-    const drawPalm = (baseX, baseY, trunkH, lean, frondSize) => {
-      palmGfx.fillStyle(palmColor, palmAlpha);
-      // Trunk: slightly curved, 3px wide
-      const topX = baseX + lean;
-      const topY = baseY - trunkH;
-      for (let seg = 0; seg < 8; seg++) {
-        const t1 = seg / 8;
-        const t2 = (seg + 1) / 8;
-        const x1 = baseX + lean * t1 * t1;
-        const y1 = baseY - trunkH * t1;
-        const x2 = baseX + lean * t2 * t2;
-        const y2 = baseY - trunkH * t2;
-        palmGfx.fillStyle(palmColor, palmAlpha);
-        palmGfx.fillRect(Math.min(x1, x2) - 1, Math.min(y1, y2), Math.abs(x2 - x1) + 3, Math.abs(y2 - y1) + 1);
-      }
-      // Fronds: 5 drooping leaf arcs
-      const fronds = [
-        { angle: -0.6, len: frondSize },
-        { angle: -0.2, len: frondSize * 1.1 },
-        { angle: 0.15, len: frondSize * 0.95 },
-        { angle: 0.5,  len: frondSize * 1.05 },
-        { angle: 0.9,  len: frondSize * 0.8 },
-      ];
-      for (const f of fronds) {
-        const endX = topX + Math.cos(f.angle) * f.len;
-        const endY = topY + Math.abs(Math.sin(f.angle)) * f.len * 0.4 + f.len * 0.15;
-        const midX = topX + Math.cos(f.angle) * f.len * 0.5;
-        const midY = topY - f.len * 0.08;
-        // Draw frond as series of small rects along arc
-        for (let ft = 0; ft <= 1; ft += 0.1) {
-          const fx = topX + (midX - topX) * ft * 2 * Math.min(ft, 0.5) + (endX - topX) * ft;
-          const fy = topY + (midY - topY) * 2 * ft * (1 - ft) + (endY - topY) * ft * ft;
-          palmGfx.fillRect(fx - 1, fy, 3, 2);
-        }
-      }
-      // Coconut cluster
-      palmGfx.fillCircle(topX - 2, topY + 3, 2.5);
-      palmGfx.fillCircle(topX + 2, topY + 4, 2);
-    };
-
-    drawPalm(W * 0.78, horizonY + 2, 90, 12, 40);
-    drawPalm(W * 0.88, horizonY + 2, 75, -8, 34);
-    drawPalm(W * 0.95, horizonY + 2, 60, 6,  28);
-
-    // ── Warm golden light wash on lower sky ──
-    if (progress > 0.0) {
-      const washStart = progress >= 0.6 ? 0.35 : 0.45;
-      const washIntensity = progress >= 0.6 ? 0.10 : 0.05;
-      const washGfx = this.add.graphics().setDepth(1);
-      this._addPageVisual(washGfx);
-      for (let y = Math.floor(horizonY * washStart); y < horizonY; y++) {
-        const t = (y - horizonY * washStart) / (horizonY * (1 - washStart));
-        washGfx.fillStyle(0xffcc40, t * t * washIntensity);
-        washGfx.fillRect(0, y, W, 1);
-      }
+    // ── Fallback: simple warm gradient if the panorama PNG is missing ──
+    const fb = this.add.graphics().setDepth(0);
+    this._addPageVisual(fb);
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      fb.fillStyle(Phaser.Display.Color.GetColor(
+        Math.min(255, 20 + t * 200 | 0), Math.min(255, 14 + t * 130 | 0), Math.max(0, 50 - t * 30 | 0)), 1);
+      fb.fillRect(0, y, W, 1);
     }
   }
 
@@ -534,59 +214,19 @@ export default class VictoryScene extends BaseCinematicScene {
    * @param {number} progress - 0.0 to 1.0 controlling cloud illumination
    */
   _drawClouds(progress) {
-    // Cloud definitions: x, y, width, height
-    const cloudDefs = [
-      { x: 100, y: 80,  w: 180, h: 28 },
-      { x: 300, y: 55,  w: 220, h: 32 },
-      { x: 520, y: 95,  w: 160, h: 24 },
-      { x: 700, y: 65,  w: 200, h: 30 },
-      { x: 850, y: 110, w: 170, h: 26 },
-      { x: 200, y: 140, w: 140, h: 22 },
-      { x: 620, y: 150, w: 190, h: 28 },
-    ];
+    if (!this.textures.exists('cloud_layer')) return;
 
-    // Colors shift from dark purple/gray at low progress to illuminated pink/orange/white at high progress
-    let darkColor, brightColor, hotColor;
-    let darkAlpha, brightAlpha, hotAlpha;
-    if (progress < 0.3) {
-      darkColor = 0x2a1030;   darkAlpha = 0.25;
-      brightColor = 0x553060; brightAlpha = 0.15;
-      hotColor = 0x774080;    hotAlpha = 0.10;
-    } else if (progress < 0.6) {
-      darkColor = 0x551830;   darkAlpha = 0.22;
-      brightColor = 0xcc7755; brightAlpha = 0.20;
-      hotColor = 0xffaa77;    hotAlpha = 0.15;
-    } else {
-      darkColor = 0x885533;   darkAlpha = 0.18;
-      brightColor = 0xffaa55; brightAlpha = 0.25;
-      hotColor = 0xffddaa;    hotAlpha = 0.20;
-    }
-
-    for (const cd of cloudDefs) {
-      // Dark bottom of cloud
-      const darkCloud = this.add.ellipse(cd.x, cd.y + 4, cd.w, cd.h, darkColor, darkAlpha).setDepth(2);
-      this._addPageVisual(darkCloud);
-      // Bright illuminated upper edge
-      const brightCloud = this.add.ellipse(cd.x, cd.y - 3, cd.w * 0.95, cd.h * 0.7, brightColor, brightAlpha).setDepth(2);
-      this._addPageVisual(brightCloud);
-      // Hot bright inner highlight
-      const hotEdge = this.add.ellipse(cd.x, cd.y - 6, cd.w * 0.7, cd.h * 0.4, hotColor, hotAlpha).setDepth(2);
-      this._addPageVisual(hotEdge);
-
-      // Horizontal drift tween — leftward, ~60px over 10 seconds
-      const driftDuration = 10000 + (cd.x % 3) * 1000;
-      const driftAmount = -60 - (cd.y % 20);
-      for (const layer of [darkCloud, brightCloud, hotEdge]) {
-        this.tweens.add({
-          targets: layer,
-          x: layer.x + driftAmount,
-          duration: driftDuration,
-          ease: 'Linear',
-          yoyo: true,
-          repeat: -1,
-        });
-      }
-    }
+    // AI cloud band drifting across the upper sky; warms + brightens as the
+    // sun rises. Scrolled in update() via this._cloudTile.
+    const clouds = this.add.tileSprite(W / 2, H * 0.2, W, 150, 'cloud_layer')
+      .setDepth(2)
+      .setAlpha(Math.min(0.6, 0.22 + progress * 0.35));
+    const f = Math.min(1, Math.max(0, (progress - 0.3) / 0.7));
+    const ch = (floor) => Math.round(floor + (255 - floor) * f);
+    // Pink-orange dawn clouds at low progress → bright white at golden hour.
+    clouds.setTint(Phaser.Display.Color.GetColor(255, ch(190), ch(165)));
+    this._addPageVisual(clouds);
+    this._cloudTile = clouds;
   }
 
   /**
@@ -1209,5 +849,8 @@ export default class VictoryScene extends BaseCinematicScene {
     });
   }
 
-  update() { this._handlePageInput(); }
+  update() {
+    if (this._cloudTile && this._cloudTile.active) this._cloudTile.tilePositionX += 0.12;
+    this._handlePageInput();
+  }
 }
