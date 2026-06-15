@@ -69,7 +69,7 @@ export const AI_SPRITES = [
 
   // ── Full-screen backgrounds (opaque) ──
   'sunset_sky', 'night_sky', 'daytime_sky', 'beirut_sky',
-  'command_room', 'target_building', 'credits_sky',
+  'command_room', 'target_building', 'credits_sky', 'menu_bg',
 
   // ── Cinematic panoramas + hero portraits ──
   'cin_tehran', 'cin_beirut_port', 'cin_lebanon_coast', 'cin_fortress',

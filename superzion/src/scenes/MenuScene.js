@@ -44,21 +44,43 @@ export default class MenuScene extends Phaser.Scene {
     createDestroyedCityBg(this);
 
     // =====================================================================
-    // BACKGROUND: dark blue gradient (top #0A0A2E to bottom #050510)
+    // BACKGROUND: AI Jerusalem-skyline backdrop (dimmed for legibility),
+    // with the original dark-blue gradient as a safe fallback.
     // =====================================================================
-    const bg = this.add.graphics().setDepth(-10);
-    for (let y = 0; y < H; y++) {
-      const t = y / H;
-      const r = Math.max(0, Math.round(10 + t * (5 - 10)));
-      const g = Math.max(0, Math.round(10 + t * (5 - 10)));
-      const b = Math.max(0, Math.round(46 + t * (16 - 46)));
-      bg.fillStyle(Phaser.Display.Color.GetColor(r, g, b));
-      bg.fillRect(0, y, W, 1);
+    const useBg = this.textures.exists('menu_bg');
+    if (useBg) {
+      this.add.image(W / 2, H / 2, 'menu_bg').setDepth(-10).setDisplaySize(W, H);
+      // Vertical darkening — deeper toward the bottom so UI text stays readable.
+      const ov = this.add.graphics().setDepth(-9.6);
+      for (let y = 0; y < H; y++) {
+        const t = y / H;
+        ov.fillStyle(0x05060f, 0.18 + t * 0.5);
+        ov.fillRect(0, y, W, 1);
+      }
+      // Extra left-column shading behind the mission list.
+      const lo = this.add.graphics().setDepth(-9.5);
+      const lw = Math.floor(W * 0.60);
+      for (let x = 0; x < lw; x++) {
+        lo.fillStyle(0x05060f, 0.40 * (1 - x / lw));
+        lo.fillRect(x, 0, 1, H);
+      }
+    } else {
+      const bg = this.add.graphics().setDepth(-10);
+      for (let y = 0; y < H; y++) {
+        const t = y / H;
+        const r = Math.max(0, Math.round(10 + t * (5 - 10)));
+        const g = Math.max(0, Math.round(10 + t * (5 - 10)));
+        const b = Math.max(0, Math.round(46 + t * (16 - 46)));
+        bg.fillStyle(Phaser.Display.Color.GetColor(r, g, b));
+        bg.fillRect(0, y, W, 1);
+      }
     }
 
     // =====================================================================
     // Subtle Tel Aviv coastline silhouette (whisper of beach vibe)
+    // Only when there's NO AI backdrop (the skyline already provides one).
     // =====================================================================
+    if (!useBg) {
     const coastGfx = this.add.graphics().setDepth(-9.5);
 
     // Thin strip of darker sea at bottom (y > H*0.85)
@@ -102,6 +124,7 @@ export default class MenuScene extends Phaser.Scene {
     gridGfx.lineStyle(1, 0x1A1A4A, 0.12);
     for (let gx = 0; gx < W; gx += 25) { gridGfx.lineBetween(gx, 0, gx, H); }
     for (let gy = 0; gy < H; gy += 25) { gridGfx.lineBetween(0, gy, W, gy); }
+    } // end !useBg (coastline + grid)
 
     // =====================================================================
     // Scanlines: every 2px
@@ -150,24 +173,37 @@ export default class MenuScene extends Phaser.Scene {
     // =====================================================================
     // LARGE MAGUEN DAVID (behind title)
     // =====================================================================
-    const starCx = W / 2, starCy = 100;
-    const starR = 200;
+    const starCx = W / 2, starCy = 96;
+    const starR = 150;
 
-    // Use the metallic star from intro if available, else draw simple one
-    if (this.textures.exists('__star_metal_tex')) {
-      const starImg = this.add.image(starCx, starCy, '__star_metal_tex').setDepth(-4).setAlpha(0.25).setScale(starR / 230);
-      this.tweens.add({
-        targets: starImg, alpha: { from: 0.15, to: 0.3 },
-        duration: 3500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-      });
-    } else {
-      // Fallback: simple triangle star
-      const starGfx = this.add.graphics().setDepth(-4);
-      starGfx.fillStyle(0xFFD700, 0.25);
-      starGfx.fillTriangle(starCx, starCy - starR, starCx - starR * 0.866, starCy + starR * 0.5, starCx + starR * 0.866, starCy + starR * 0.5);
-      starGfx.fillTriangle(starCx, starCy + starR, starCx - starR * 0.866, starCy - starR * 0.5, starCx + starR * 0.866, starCy - starR * 0.5);
-      this.tweens.add({ targets: starGfx, alpha: { from: 0.2, to: 0.3 }, duration: 3500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    }
+    // Crisp golden Maguen David (two interlocking triangles) with a soft blue
+    // halo — sits behind the title as the menu's identity mark.
+    const starGfx = this.add.graphics().setDepth(-4);
+    const drawStar = (gfx, cx, cy, R, mode) => {
+      for (const off of [0, Math.PI]) {
+        gfx.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const a = -Math.PI / 2 + off + i * (Math.PI * 2 / 3);
+          const px = cx + Math.cos(a) * R, py = cy + Math.sin(a) * R;
+          if (i === 0) gfx.moveTo(px, py); else gfx.lineTo(px, py);
+        }
+        gfx.closePath();
+        if (mode === 'fill') gfx.fillPath(); else gfx.strokePath();
+      }
+    };
+    // soft blue outer halo
+    starGfx.lineStyle(10, 0x1b4dad, 0.18);
+    drawStar(starGfx, starCx, starCy, starR + 4, 'stroke');
+    // faint gold body
+    starGfx.fillStyle(0xFFD700, 0.07);
+    drawStar(starGfx, starCx, starCy, starR, 'fill');
+    // crisp gold outline
+    starGfx.lineStyle(3, 0xFFD700, 0.55);
+    drawStar(starGfx, starCx, starCy, starR, 'stroke');
+    this.tweens.add({
+      targets: starGfx, alpha: { from: 0.6, to: 1 },
+      duration: 3500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
 
     // =====================================================================
     // SUPERZION TITLE -- 5-layer pseudo-3D using canvas texture
@@ -195,37 +231,42 @@ export default class MenuScene extends Phaser.Scene {
 
     for (let li = 0; li < letters.length; li++) {
       const lx = letterX + letterWidths[li] / 2;
+      const ch = letters[li];
 
-      // Layer 1: Black stroke outline
-      tCtx.strokeStyle = '#000000';
-      tCtx.lineWidth = 4;
-      tCtx.lineJoin = 'round';
-      tCtx.strokeText(letters[li], lx + 3, drawY + 3);
-      tCtx.strokeText(letters[li], lx + 2, drawY + 2);
-      tCtx.strokeText(letters[li], lx + 1, drawY + 1);
-      tCtx.strokeText(letters[li], lx, drawY);
-
-      // Layer 2: Deep shadow
-      tCtx.fillStyle = '#000000';
-      tCtx.fillText(letters[li], lx + 3, drawY + 3);
-
-      // Layer 3: Brown depth
-      tCtx.fillStyle = '#8B6914';
-      tCtx.fillText(letters[li], lx + 2, drawY + 2);
-
-      // Layer 4: Gold edge
-      tCtx.fillStyle = '#CC9900';
-      tCtx.fillText(letters[li], lx + 1, drawY + 1);
-
-      // Layer 5: Main gold
-      tCtx.fillStyle = '#FFD700';
-      tCtx.fillText(letters[li], lx, drawY);
-
-      // Layer 6: Top highlight
+      // Layer 0: soft blue glow halo (Israeli blue)
       tCtx.save();
-      tCtx.globalAlpha = 0.4;
-      tCtx.fillStyle = '#FFEC80';
-      tCtx.fillText(letters[li], lx, drawY - 1);
+      tCtx.shadowColor = '#1b4dad';
+      tCtx.shadowBlur = 12;
+      tCtx.fillStyle = '#2a5bd0';
+      tCtx.fillText(ch, lx, drawY);
+      tCtx.fillText(ch, lx, drawY);
+      tCtx.restore();
+
+      // Layer 1: deep navy-blue outline for definition
+      tCtx.strokeStyle = '#0a1c3f';
+      tCtx.lineJoin = 'round';
+      tCtx.lineWidth = 6;
+      tCtx.strokeText(ch, lx, drawY);
+
+      // Layer 2: 3D extrude (dark brown -> gold edge), 6px down-right
+      for (let d = 6; d >= 1; d--) {
+        const t = d / 6;
+        const r = Math.round(0x5a + (0xcc - 0x5a) * (1 - t));
+        const g = Math.round(0x47 + (0x99 - 0x47) * (1 - t));
+        const b = Math.round(0x08 + (0x00 - 0x08) * (1 - t));
+        tCtx.fillStyle = `rgb(${r},${g},${b})`;
+        tCtx.fillText(ch, lx + d, drawY + d);
+      }
+
+      // Layer 3: main gold face
+      tCtx.fillStyle = '#FFD700';
+      tCtx.fillText(ch, lx, drawY);
+
+      // Layer 4: chrome top highlight
+      tCtx.save();
+      tCtx.globalAlpha = 0.55;
+      tCtx.fillStyle = '#FFF3B0';
+      tCtx.fillText(ch, lx, drawY - 1.5);
       tCtx.restore();
 
       letterX += letterWidths[li];
