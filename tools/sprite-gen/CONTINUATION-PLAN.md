@@ -157,13 +157,19 @@ New AI assets generated + integrated this session (group `overhaul` in prompts.j
 - Fixed generate.js stale log line (said superzion-kaplay; output is superzion/).
 - Rebuilt + committed `superzion/dist` for the live deploy.
 
+**VictoryScene finale → NOW AI** (later in this session, per Sebastian "seguí forzando AI
+en el finale"): `_drawSunrise(progress)` rewritten to lay the AI `credits_sky` Tel Aviv
+panorama, multiply-tinted pre-dawn-blue → full-gold as progress 0.3→1.0 (dawn-breaking
+effect), + AI `cloud_layer` drift (scrolled in update via `this._cloudTile`) + a dark
+shoreline strip to ground the hero/crowd. `_drawClouds` rewritten too. The giant Maguen
+David, celebrators, fireworks, hero & title still composite on top (depths 3-50). ~350
+lines of dead procedural sun/sea/skyline/palm code removed. NOTE: `_drawSunrise` is called
+ONCE PER PAGE (in each page `setup()`), NOT per-frame — earlier handoff note was wrong.
+
 **Verified by screenshot, left PROCEDURAL by judgment (detailed/deliberate, NOT crude):**
 - DroneScene city = grey building OBSTACLES (gameplay collision); clean readable arcade.
 - B2BomberScene = atmospheric top-down night-stealth terrain (ocean→coast→land, faint at
   10 km altitude) — deliberate minimal mood, an elaborate procedural renderer.
-- VictoryScene finale = animated procedural sunrise (`_drawSunrise(progress)` redraws
-  per-frame) with AI hero + fireworks; warm-tinted clouds animate cohesively. Swapping in
-  AI clouds would need a risky refactor of the per-frame redraw — not worth it.
 - GameIntro "empire silhouettes" (Babylon/Rome/Swastika-X) are intentionally FAINT
   (alpha 0.2-0.3) thematic symbols on a dark narrative page — not crude foreground sprites.
   Title reveal already uses `__title_bg` (AI).
