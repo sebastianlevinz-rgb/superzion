@@ -17,6 +17,7 @@ import { placeBomb } from "../entities/bomb.js";
 import { createGuard } from "../entities/guard.js";
 import { createBombermanHUD } from "../ui/hud.js";
 import { screenFlash, pickupParticles } from "../systems/game-juice.js";
+import { createTouchControls, isMobile } from "../systems/touch-input.js";
 
 export function level1BombermanScene(k) {
   // Ensure textures are generated (idempotent)
@@ -426,65 +427,17 @@ function handleLevelComplete(k, gameState, player, hud) {
   screenFlash(k, 0, 255, 100, 400, 0.4);
   k.shake(5);
 
+  // Pass stats to the explosion cinematic via global
+  const guardsKilled = gameState.guards.filter((g) => !g.alive).length;
+  window.__superzion_explosion_stats = {
+    guardsKilled,
+    hp: player.hp || 3,
+    maxHp: player.maxHp || 3,
+    elapsed: (hud.elapsed || 0) * 1000,  // convert to ms
+  };
+
+  // Transition to explosion cinematic after brief delay
   k.wait(0.8, () => {
-    k.add([
-      k.rect(960, 540),
-      k.pos(0, 0),
-      k.color(0, 0, 0),
-      k.opacity(0.7),
-      k.fixed(),
-      k.z(200),
-    ]);
-
-    k.add([
-      k.text("MISSION COMPLETE", { size: 36, font: "monospace" }),
-      k.pos(480, 200),
-      k.anchor("center"),
-      k.color(0, 255, 100),
-      k.fixed(),
-      k.z(201),
-    ]);
-
-    k.add([
-      k.text("Operation Tehran - Phase 1 Successful", { size: 14, font: "monospace" }),
-      k.pos(480, 250),
-      k.anchor("center"),
-      k.color(200, 200, 200),
-      k.fixed(),
-      k.z(201),
-    ]);
-
-    const guardsKilled = gameState.guards.filter((g) => !g.alive).length;
-    k.add([
-      k.text(`Hostiles neutralized: ${guardsKilled}/${gameState.guards.length}`, { size: 12, font: "monospace" }),
-      k.pos(480, 290),
-      k.anchor("center"),
-      k.color(150, 150, 170),
-      k.fixed(),
-      k.z(201),
-    ]);
-
-    const continueText = k.add([
-      k.text("PRESS SPACE TO CONTINUE", { size: 16, font: "monospace" }),
-      k.pos(480, 360),
-      k.anchor("center"),
-      k.color(255, 215, 0),
-      k.fixed(),
-      k.z(201),
-    ]);
-
-    let bt = 0;
-    continueText.onUpdate(() => {
-      bt += k.dt();
-      continueText.opacity = Math.sin(bt * 3) > 0 ? 1 : 0.3;
-    });
-
-    k.onKeyPress("space", () => {
-      k.go("menu");
-    });
-
-    k.onClick(() => {
-      k.go("menu");
-    });
+    k.go("explosion");
   });
 }

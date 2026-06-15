@@ -94,13 +94,14 @@ export function createBombermanPlayer(k, x, y) {
       }
     }
 
-    // Movement
+    // Movement (keyboard + touch)
+    const t = player._touch;
     let dx = 0, dy = 0;
-    if (k.isKeyDown("left") || k.isKeyDown("a")) { dx = -1; player.facing = "left"; }
-    else if (k.isKeyDown("right") || k.isKeyDown("d")) { dx = 1; player.facing = "right"; }
+    if (k.isKeyDown("left") || k.isKeyDown("a") || t?.left) { dx = -1; player.facing = "left"; }
+    else if (k.isKeyDown("right") || k.isKeyDown("d") || t?.right) { dx = 1; player.facing = "right"; }
 
-    if (k.isKeyDown("up") || k.isKeyDown("w")) { dy = -1; player.facing = "up"; }
-    else if (k.isKeyDown("down") || k.isKeyDown("s")) { dy = 1; player.facing = "down"; }
+    if (k.isKeyDown("up") || k.isKeyDown("w") || t?.up) { dy = -1; player.facing = "up"; }
+    else if (k.isKeyDown("down") || k.isKeyDown("s") || t?.down) { dy = 1; player.facing = "down"; }
 
     // Normalize diagonal movement
     if (dx !== 0 && dy !== 0) {

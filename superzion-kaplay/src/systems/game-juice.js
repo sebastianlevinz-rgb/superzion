@@ -55,3 +55,24 @@ export function deathParticles(k, x, y) {
 export function pickupParticles(k, x, y) {
   impactParticles(k, x, y, 6, [[255, 255, 100], [255, 215, 0], [200, 200, 50]]);
 }
+
+export function bossPhaseTransition(k, text, r, g, b) {
+  // Full-screen dramatic phase transition text with flash
+  screenFlash(k, r, g, b, 400, 0.5);
+  k.shake(8);
+  const label = k.add([
+    k.text(text, { size: 36, font: 'monospace' }),
+    k.pos(480, 270),
+    k.anchor('center'),
+    k.color(r, g, b),
+    k.opacity(0),
+    k.fixed(),
+    k.z(998),
+  ]);
+  k.tween(0, 1, 0.3, (v) => { label.opacity = v; }, k.easings.linear).onEnd(() => {
+    k.wait(1.2, () => {
+      k.tween(1, 0, 0.5, (v) => { if (label.exists()) label.opacity = v; }, k.easings.linear)
+        .onEnd(() => { if (label.exists()) label.destroy(); });
+    });
+  });
+}
