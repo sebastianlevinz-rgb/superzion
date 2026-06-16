@@ -13,16 +13,13 @@ import { showControlsOverlay, showTutorialOverlay } from '../ui/ControlsOverlay.
 import InputManager from '../systems/InputManager.js';
 import { screenFlash, impactParticles, hitFeedback } from '../systems/GameJuice.js';
 import {
-  createF15SideSprite, createCarrierSide, createSunsetSky,
-  createCloudLayer, createSeaSurface, createSeaShine, createFarMountains,
-  createCoastGround, createMountainGround, createValleyGround,
+  createF15SideSprite, createCarrierSide, createSunsetSky, createCloudLayer,
   createTurboTurbanSprite, createTurboTurbanYelling, createMiniSoldier,
 } from '../utils/BomberTextures.js';
 
 const W = 960;
 const H = 540;
 const GROUND_Y = 420;     // horizon / ground line
-const GROUND_FADE_MS = 200; // terrain-band crossfade duration (short, to avoid muddy two-texture blend)
 const DECK_Y = 395;       // carrier deck surface Y
 const GRAVITY = 480;      // bomb gravity px/s²
 const JET_SPEED = 440;    // base horizontal speed px/s (doubled for phase-23)
@@ -60,6 +57,40 @@ const TILT_MAX_DEG = 20;         // max visual tilt in degrees
 const TILT_LERP_SPEED = 6;      // smooth tilt interpolation speed
 const LANDING_CRASH_VY = 165;    // max safe landing descent speed — above this = crash
 
+// ═══════════════════════════════════════════════════════════════
+// CONTINUOUS TERRAIN RENDERER
+// The ground/water is no longer a flat tile-band clipped at the horizon.
+// Every frame we draw a filled silhouette whose top edge is a smooth function
+// of world position, so land rises into the sky organically (no rectangular
+// "cut") and biomes morph smoothly as the jet flies. Colours are stored as
+// [r,g,b] so the current biome can be eased toward a target on transitions.
+// `base` is the surface baseline (≈ GROUND_Y, the collision line); the profile
+// only ever rises ABOVE it (peaks poke into the sky).
+const TERRAIN_STEP = 12;          // px between profile samples
+const BIOME_EASE = 1.6;           // per-second easing rate toward the target biome
+const BIOMES = {
+  sea: {
+    base: GROUND_Y, amp: 4, rough: 0, far: 0, water: 1, feat: 'none',
+    top: [0x16, 0x55, 0x6e], bot: [0x07, 0x1c, 0x28], rim: [0x2a, 0x7e, 0x9c],
+  },
+  coast: {
+    base: GROUND_Y, amp: 30, rough: 9, far: 0.7, water: 0, feat: 'city',
+    top: [0xa0, 0x88, 0x48], bot: [0x33, 0x2e, 0x2a], rim: [0xc4, 0xa0, 0x60],
+  },
+  mountain: {
+    base: GROUND_Y, amp: 108, rough: 28, far: 1, water: 0, feat: 'trees',
+    top: [0x4a, 0x60, 0x38], bot: [0x14, 0x20, 0x12], rim: [0x6a, 0x80, 0x50],
+  },
+  valley: {
+    base: GROUND_Y, amp: 34, rough: 11, far: 0.6, water: 0, feat: 'scrub',
+    top: [0x5a, 0x52, 0x38], bot: [0x22, 0x1e, 0x16], rim: [0x7a, 0x6c, 0x46],
+  },
+};
+// Maps the old tile-texture keys (still referenced by gameplay code) to biomes.
+const BIOME_FOR_TEXTURE = {
+  sea_surface: 'sea', coast_ground: 'coast', mountain_ground: 'mountain', valley_ground: 'valley',
+};
+
 export default class BomberScene extends Phaser.Scene {
   constructor() { super('BomberScene'); }
 
@@ -79,12 +110,6 @@ export default class BomberScene extends Phaser.Scene {
     createCarrierSide(this);
     createSunsetSky(this);
     createCloudLayer(this);
-    createSeaSurface(this);
-    createSeaShine(this);
-    createFarMountains(this);
-    createCoastGround(this);
-    createMountainGround(this);
-    createValleyGround(this);
     createTurboTurbanSprite(this);
     createTurboTurbanYelling(this);
     createMiniSoldier(this);
@@ -226,39 +251,27 @@ export default class BomberScene extends Phaser.Scene {
     this.cloudTile3 = this.add.tileSprite(W / 2, 180, W, 100, 'cloud_layer')
       .setDepth(-6).setAlpha(0.15).setScale(0.7, 0.5);
 
-    // Far mountains (mid parallax) — hidden during sea phases.
-    // Anchored so the band's BOTTOM sits on the horizon (Y center GROUND_Y-95,
-    // height 250 → bottom ≈ 445, slightly overlapping the ground band at 420),
-    // instead of floating up in the sky.
-    this.farTerrain = this.add.tileSprite(W / 2, GROUND_Y - 95, W, 250, 'far_mountains').setDepth(-5);
-    this.farTerrain.setVisible(false);
-    this._farTerrainShown = false; // guard so the fade-in only runs once per reveal
+    // ── Continuous terrain (drawn per-frame as silhouettes) ──
+    // Far ridge (parallax backdrop) sits behind everything, near ridge is the
+    // foreground ground. No more flat tile-bands — see BIOMES / _drawTerrain.
+    this.farTerrainGfx = this.add.graphics().setDepth(-5);
+    this.nearTerrainGfx = this.add.graphics().setDepth(1);
 
-    // Ground (near parallax). 180px tall, anchored to the bottom of the screen
-    // (center at GROUND_Y+30 → spans Y 360..540). The terrain textures keep the
-    // top portion transparent above an organic silhouette, so land rises into
-    // the sky with a real skyline instead of a flat-topped rectangle. GROUND_Y
-    // (the horizon / collision line) sits at the textures' TERRAIN_HORIZON row.
-    const BAND_H = 180;
-    const BAND_CY = GROUND_Y + 30; // = 450, so the band's bottom edge is at 540
-    this.groundTile = this.add.tileSprite(W / 2, BAND_CY, W, BAND_H, 'sea_surface').setDepth(1);
-    // Crossfade overlay ground tile — used to blend between terrain bands
-    this.groundFade = this.add.tileSprite(W / 2, BAND_CY, W, BAND_H, 'sea_surface')
-      .setDepth(1.2).setAlpha(0);
-    // Animated water-shine overlay (only visible over the sea band; covers the
-    // water region below the horizon, so it keeps its original 120px footprint).
-    this.seaShine = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_shine')
-      .setDepth(1.3).setAlpha(0.5);
-    this._seaShineT = 0;
-
-    // ── Ground detail overlay (drawn per-frame based on flight stage) ──
-    this.groundDetailGfx = this.add.graphics().setDepth(1.5);
+    // Terrain scroll position (world px) + the live, eased biome state.
+    this.terrainScroll = 0;
+    this._terrainT = 0;  // seconds, drives water shimmer independent of scroll
+    this._biome = this._cloneBiome(BIOMES.sea);
+    this._biomeTarget = this._cloneBiome(BIOMES.sea);
+    this._farReveal = 0; // 0..1 extra gate from _revealFarTerrain/_hideFarTerrain
 
     // Carrier sprite (shown during takeoff/landing)
     this.carrierSprite = this.add.image(240, GROUND_Y - 10, 'carrier_side').setDepth(2);
 
     // F-15Z jet sprite
     this.jetSprite = this.add.image(this.jetX, this.jetY, 'f15_side').setDepth(10);
+
+    // Initial paint so the first frame isn't empty.
+    this._drawTerrain();
   }
 
   _setupHUD() {
@@ -334,105 +347,215 @@ export default class BomberScene extends Phaser.Scene {
   }
 
   // ═════════════════════════════════════════════════════════════
-  // SCROLLING & UTILITY
+  // SCROLLING & CONTINUOUS TERRAIN
   // ═════════════════════════════════════════════════════════════
+  _cloneBiome(b) {
+    return {
+      base: b.base, amp: b.amp, rough: b.rough, far: b.far, water: b.water,
+      feat: b.feat, top: [...b.top], bot: [...b.bot], rim: [...b.rim],
+    };
+  }
+
+  // Advance clouds + terrain scroll. Biome easing and the actual redraw happen
+  // every frame in update() (via _updateTerrain) so static phases (bombing,
+  // landing) still morph biomes and animate water.
   _scrollLayers(speed, dt) {
     const dx = speed * dt;
     this.scrollX += dx;
-    this.cloudTile.tilePositionX += dx * 0.1;
+    this.terrainScroll += dx;
+    if (this.cloudTile) this.cloudTile.tilePositionX += dx * 0.1;
     if (this.cloudTile2) this.cloudTile2.tilePositionX += dx * 0.04;
     if (this.cloudTile3) this.cloudTile3.tilePositionX += dx * 0.18;
-    this.farTerrain.tilePositionX += dx * 0.3;
-    this.groundTile.tilePositionX += dx * 0.8;
-    if (this.groundFade) this.groundFade.tilePositionX = this.groundTile.tilePositionX;
+  }
 
-    // ── Animated water-shine: only over sea; scroll faster + gentle pulse ──
-    if (this.seaShine) {
-      // Over sea only while the BASE ground is sea AND we are not currently
-      // crossfading to a land texture (otherwise glints linger over sand).
-      const fadingToLand = this._groundFadeTween
-        && this._groundFadePending && this._groundFadePending !== 'sea_surface';
-      const overSea = !fadingToLand
-        && this.groundTile.texture && this.groundTile.texture.key === 'sea_surface';
-      if (overSea) {
-        this._seaShineT += dt;
-        this.seaShine.visible = true;
-        this.seaShine.tilePositionX += dx * 1.25;          // drifts faster than water
-        this.seaShine.tilePositionY = Math.sin(this._seaShineT * 0.8) * 3; // bob
-        this.seaShine.setAlpha(0.4 + Math.sin(this._seaShineT * 2.0) * 0.18); // shimmer pulse
-      } else {
-        this.seaShine.visible = false;
-      }
+  // Called every active frame from update(): ease the biome and repaint.
+  _updateTerrain(dt) {
+    this._terrainT += dt;
+    this._easeBiome(dt);
+    this._drawTerrain();
+  }
+
+  // Adapter kept for the gameplay code: pick the biome for an old texture key
+  // and ease toward it (smooth morph, no hard cut).
+  _setGroundTexture(key) {
+    const name = BIOME_FOR_TEXTURE[key];
+    if (name) this._setBiome(name, false);
+  }
+
+  // Set the target biome. instant=true snaps (used on phase resets).
+  _setBiome(name, instant = true) {
+    const preset = BIOMES[name];
+    if (!preset) return;
+    this._biomeTarget = this._cloneBiome(preset);
+    if (instant) this._biome = this._cloneBiome(preset);
+  }
+
+  _easeBiome(dt) {
+    const k = Math.min(1, dt * BIOME_EASE);
+    const c = this._biome, t = this._biomeTarget;
+    c.base += (t.base - c.base) * k;
+    c.amp += (t.amp - c.amp) * k;
+    c.rough += (t.rough - c.rough) * k;
+    c.water += (t.water - c.water) * k;
+    // far ridge gated by both the target biome and the reveal/hide flag
+    const farTgt = Math.min(t.far, this._farReveal);
+    c.far += (farTgt - c.far) * k;
+    for (let i = 0; i < 3; i++) {
+      c.top[i] += (t.top[i] - c.top[i]) * k;
+      c.bot[i] += (t.bot[i] - c.bot[i]) * k;
+      c.rim[i] += (t.rim[i] - c.rim[i]) * k;
+    }
+    c.feat = t.feat; // discrete — features fade in/out via far/alpha anyway
+  }
+
+  // Far ridge is gated by _farReveal so the existing reveal/hide calls still work.
+  _revealFarTerrain() { this._farReveal = 1; }
+  _hideFarTerrain() { this._farReveal = 0; }
+
+  static _rgb(a) {
+    return (Math.round(a[0]) << 16) | (Math.round(a[1]) << 8) | Math.round(a[2]);
+  }
+
+  // Surface height (screen Y) of the near ground at screen column sx.
+  // The profile only rises above `base`, so peaks poke into the sky.
+  _surfaceY(sx) {
+    const b = this._biome;
+    const w = this.terrainScroll + sx;
+    const n = (Math.sin(w * 0.0019) * 0.5 + 0.5) * b.amp * 0.6
+            + (Math.sin(w * 0.0041 + 1.7) * 0.5 + 0.5) * b.amp * 0.4
+            + (Math.sin(w * 0.0123 + 0.6) * 0.5 + 0.5) * b.rough;
+    return b.base - n;
+  }
+
+  // Far ridge: flatter, slower parallax, sits a little higher than the near one.
+  _farSurfaceY(sx) {
+    const b = this._biome;
+    const amp = b.amp * 0.5 + 22;
+    const w = this.terrainScroll * 0.45 + sx;
+    const n = (Math.sin(w * 0.0013 + 2.1) * 0.5 + 0.5) * amp * 0.7
+            + (Math.sin(w * 0.0031 + 0.4) * 0.5 + 0.5) * amp * 0.3;
+    return (b.base - 26) - n;
+  }
+
+  _fillProfile(g, fn) {
+    g.beginPath();
+    g.moveTo(-40, H + 40);
+    g.lineTo(-40, fn(-40));
+    for (let x = -40; x <= W + 40; x += TERRAIN_STEP) g.lineTo(x, fn(x));
+    g.lineTo(W + 40, H + 40);
+    g.closePath();
+    g.fillPath();
+  }
+
+  _strokeProfile(g, fn) {
+    g.beginPath();
+    g.moveTo(-40, fn(-40));
+    for (let x = -40; x <= W + 40; x += TERRAIN_STEP) g.lineTo(x, fn(x));
+    g.strokePath();
+  }
+
+  // Deterministic 0..1 hash for placing world-anchored features.
+  _hash(n) {
+    const s = Math.sin(n * 12.9898) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
+  _drawTerrain() {
+    const b = this._biome;
+    const near = this.nearTerrainGfx;
+    const far = this.farTerrainGfx;
+    far.clear();
+    near.clear();
+
+    // ── Far ridge backdrop (parallax, desaturated toward the sky) ──
+    if (b.far > 0.03) {
+      const sky = [0x6b, 0x3f, 0x70]; // muted sunset purple to fade hills into
+      const fc = [
+        b.rim[0] * 0.6 + sky[0] * 0.4,
+        b.rim[1] * 0.6 + sky[1] * 0.4,
+        b.rim[2] * 0.6 + sky[2] * 0.4,
+      ];
+      far.fillStyle(BomberScene._rgb(fc), 0.62 * b.far);
+      this._fillProfile(far, (x) => this._farSurfaceY(x));
     }
 
-    // ── Ground detail: roads, building clusters, river ──
-    if (this.groundDetailGfx) {
-      this.groundDetailGfx.clear();
-      const gd = this.groundDetailGfx;
-      const baseY = GROUND_Y;
-      const scrollOff = this.scrollX;
+    // ── Near ground: solid body + lit top rim ──
+    near.fillStyle(BomberScene._rgb(b.bot), 1);
+    this._fillProfile(near, (x) => this._surfaceY(x));
+    near.lineStyle(8, BomberScene._rgb(b.top), 1);
+    this._strokeProfile(near, (x) => this._surfaceY(x));
+    near.lineStyle(2.5, BomberScene._rgb(b.rim), 1);
+    this._strokeProfile(near, (x) => this._surfaceY(x));
 
-      if (this.flightTerrainStage === 0) {
-        // SEA: tiny boat shapes and moonlight reflection
-        gd.fillStyle(0xffffff, 0.06);
-        // Moonlight streak
-        for (let i = 0; i < 6; i++) {
-          const sx = ((i * 170 + 50) - scrollOff * 0.2) % W;
-          const shimmer = Math.sin(scrollOff * 0.01 + i) * 2;
-          gd.fillRect(sx < 0 ? sx + W : sx, baseY + 10 + shimmer, 3, 12);
+    // ── Surface dressing: water shimmer or land features ──
+    if (b.water > 0.5) this._drawWater(near);
+    else this._drawLandFeatures(near);
+  }
+
+  _drawWater(g) {
+    const t = this.terrainScroll;       // parallax drift while flying
+    const tt = this._terrainT;          // wall-clock so water shimmers even when static
+    // Sun-glint dashes drifting across the surface
+    g.fillStyle(0xffe9b0, 0.16);
+    const span = W + 240;
+    for (let i = 0; i < 46; i++) {
+      const wx = ((i * 90 - t * 0.6 - tt * 14) % span + span) % span - 120;
+      const row = i % 6;
+      const wy = this._surfaceY(wx) + 6 + row * 14 + Math.sin(tt * 1.6 + i) * 1.5;
+      g.fillRect(wx, wy, 9 + (i % 4) * 6, 1.3);
+    }
+    // Gentle wave lines deeper in the water
+    g.lineStyle(1, 0x1b5e74, 0.35);
+    for (let row = 1; row <= 4; row++) {
+      g.beginPath();
+      for (let x = -40; x <= W + 40; x += 24) {
+        const y = this._surfaceY(x) + 18 + row * 18 + Math.sin(x * 0.03 + tt * 1.4) * 2.5;
+        if (x === -40) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.strokePath();
+    }
+  }
+
+  _drawLandFeatures(g) {
+    const b = this._biome;
+    const t = this.terrainScroll;
+    const slot = 44;
+    const startWorld = Math.floor((t - 80) / slot) * slot;
+    for (let wx = startWorld; wx < t + W + 80; wx += slot) {
+      const sx = wx - t;            // screen X
+      const surf = this._surfaceY(sx);
+      const h = this._hash(wx);
+      const h2 = this._hash(wx * 1.7 + 3.1);
+
+      if (b.feat === 'city') {
+        // Urban skyline: buildings sitting on the coast, poking into the sky
+        if (h < 0.78) {
+          const bw = 7 + h2 * 13;
+          const bh = 10 + h * 34;
+          g.fillStyle(BomberScene._rgb([b.bot[0] + 18, b.bot[1] + 16, b.bot[2] + 14]), 1);
+          g.fillRect(sx - bw / 2, surf - bh, bw, bh);
+          // warm window dots
+          g.fillStyle(0xffcc66, 0.35);
+          for (let wy = surf - bh + 4; wy < surf - 3; wy += 5) g.fillRect(sx - 1, wy, 2, 2);
+        }
+      } else if (b.feat === 'trees') {
+        // Cedar silhouettes + snow caps on high peaks
+        if (surf < b.base - b.amp * 0.62) {
+          g.fillStyle(0xdfe8f0, 0.55);
+          g.fillTriangle(sx - 5, surf + 6, sx, surf - 1, sx + 5, surf + 6);
+        }
+        if (h < 0.6) {
+          const ts = 4 + h2 * 5;
+          g.fillStyle(0x16280f, 1);
+          g.fillTriangle(sx - ts, surf + 2, sx, surf - ts * 2.4, sx + ts, surf + 2);
+        }
+      } else if (b.feat === 'scrub') {
+        if (h < 0.5) {
+          g.fillStyle(0x39491f, 0.6);
+          g.fillEllipse(sx, surf + 3, 6 + h2 * 8, 3 + h2 * 2);
         }
       }
-      // LAND (stage >= 1): no procedural overlay — the AI terrain tile shows clean.
     }
-  }
-
-  // Crossfade the ground band to a new terrain texture (no hard color cut).
-  // Uses the overlay tile (groundFade) faded in over GROUND_FADE_MS, then
-  // promoted to the base tile.
-  _setGroundTexture(key, duration = GROUND_FADE_MS) {
-    if (!this.groundTile) return;
-    if (this.groundTile.texture && this.groundTile.texture.key === key) return;
-    if (!this.groundFade) { this.groundTile.setTexture(key); return; }
-
-    // Cancel any in-flight fade and commit it instantly to avoid flicker.
-    if (this._groundFadeTween) {
-      this._groundFadeTween.stop();
-      if (this._groundFadePending) this.groundTile.setTexture(this._groundFadePending);
-    }
-    this._groundFadePending = key;
-    this.groundFade.setTexture(key);
-    this.groundFade.tilePositionX = this.groundTile.tilePositionX;
-    this.groundFade.setAlpha(0);
-    this._groundFadeTween = this.tweens.add({
-      targets: this.groundFade,
-      alpha: 1,
-      duration,
-      ease: 'Sine.easeInOut',
-      onComplete: () => {
-        this.groundTile.setTexture(key);
-        this.groundFade.setAlpha(0);
-        this._groundFadeTween = null;
-        this._groundFadePending = null;
-      },
-    });
-  }
-
-  // Reveal the far-mountains band with a soft fade-in (only once per reveal).
-  // Call _hideFarTerrain() to hide and re-arm the guard.
-  _revealFarTerrain() {
-    if (!this.farTerrain) return;
-    if (this._farTerrainShown && this.farTerrain.visible) return;
-    this._farTerrainShown = true;
-    this.farTerrain.setVisible(true);
-    this.farTerrain.setAlpha(0);
-    this.tweens.add({ targets: this.farTerrain, alpha: 1, duration: 500, ease: 'Sine.easeInOut' });
-  }
-
-  _hideFarTerrain() {
-    if (!this.farTerrain) return;
-    this.farTerrain.setVisible(false);
-    this.farTerrain.setAlpha(1);
-    this._farTerrainShown = false;
   }
 
   _updateHUD() {
@@ -560,7 +683,7 @@ export default class BomberScene extends Phaser.Scene {
     this.carrierSprite.setVisible(true);
     this.carrierSprite.setPosition(240, GROUND_Y - 10);
     this._hideFarTerrain();
-    this.groundTile.setTexture('sea_surface');
+    this._setBiome('sea');
 
     this.instrText.setText('Engines spooling up... get ready to PULL UP!');
 
@@ -777,7 +900,7 @@ export default class BomberScene extends Phaser.Scene {
     this.flightTerrainStage = 0;
 
     this._hideFarTerrain();
-    this.groundTile.setTexture('sea_surface');
+    this._setBiome('sea');
 
     this.instrText.setText('ARROWS to dodge \u2014 C for chaff \u2014 Approaching target...');
     this.instrText.setColor('#888888');
@@ -2097,7 +2220,7 @@ export default class BomberScene extends Phaser.Scene {
     this.returnTerrainStage = 0;
     this.returnDistance = 0;
 
-    this.groundTile.setTexture('mountain_ground');
+    this._setBiome('mountain');
     this._revealFarTerrain();
 
     this.jetSprite.setRotation(0); // level out
@@ -2195,7 +2318,8 @@ export default class BomberScene extends Phaser.Scene {
       targets: this.carrierSprite, x: 240, duration: 2000, ease: 'Quad.easeOut',
     });
 
-    this.groundTile.setTexture('sea_surface');
+    this._setBiome('sea');
+    this._hideFarTerrain();
 
     this.instrText.setText('UP to slow descent \u2014 DOWN to descend \u2014 watch your SINK RATE!');
     this.instrText.setColor('#ffaa00');
@@ -2577,6 +2701,7 @@ export default class BomberScene extends Phaser.Scene {
 
     // Update shared systems
     if (this.phase !== 'victory' && this.phase !== 'dead') {
+      this._updateTerrain(dt);   // ease biome + repaint continuous terrain
       this._updateExplosions(dt);
       this._updateHUD();
     }
