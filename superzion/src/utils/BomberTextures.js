@@ -6,6 +6,28 @@
 const W = 960;
 const H = 540;
 
+// ── Terrain band geometry (shared by sea / coast / mountain / valley) ──
+// The ground band is 180px tall and anchored to the BOTTOM of the screen
+// (spans screen Y 360..540). GROUND_Y — the horizon / collision line at
+// screen Y 420 — sits at canvas Y = TERRAIN_HORIZON (60) inside every band
+// texture. Everything ABOVE each terrain's silhouette is left transparent so
+// the sky, clouds and far-mountain backdrop show through. This removes the
+// hard rectangular "cut" that flat-topped land bands used to produce: land
+// now rises into the sky with an organic skyline instead of a straight edge.
+export const TERRAIN_BAND_H = 180;
+export const TERRAIN_HORIZON = 60;
+
+// Seamless (horizontally tileable) ridge height at column x.
+// Sum of sines whose periods evenly divide W, so the curve at x=0 matches the
+// curve at x=W and the band tiles without a visible seam as it scrolls.
+function _ridge(x, base, layers) {
+  let y = base;
+  for (const [cycles, amp, phase] of layers) {
+    y += Math.sin((x / W) * cycles * Math.PI * 2 + phase) * amp;
+  }
+  return y;
+}
+
 function _drawMiniStar(ctx, cx, cy, r, color) {
   ctx.strokeStyle = color;
   ctx.lineWidth = 0.8;
@@ -459,38 +481,56 @@ export function createCloudLayer(scene) {
 export function createSeaSurface(scene) {
   if (scene.textures.exists('sea_surface')) return;
 
-  const tw = W, th = 120;
+  const tw = W, th = TERRAIN_BAND_H;
   const c = document.createElement('canvas');
   c.width = tw; c.height = th;
   const ctx = c.getContext('2d');
 
-  // Dark teal water
-  const waterGrad = ctx.createLinearGradient(0, 0, 0, th);
+  // Transparent above the horizon — only the water body is painted, so sky
+  // shows through and there is no hard rectangular edge against it.
+  ctx.clearRect(0, 0, tw, th);
+
+  // Gentle wavy horizon line (water meets sky). Seamless across the tile.
+  const horizon = (x) => _ridge(x, TERRAIN_HORIZON, [[6, 1.2, 0], [3, 0.8, 1.0]]);
+
+  // Water body path: from the wavy horizon down to the bottom of the band.
+  ctx.beginPath();
+  ctx.moveTo(0, th);
+  ctx.lineTo(0, horizon(0));
+  for (let x = 0; x <= tw; x += 8) ctx.lineTo(x, horizon(x));
+  ctx.lineTo(tw, th);
+  ctx.closePath();
+
+  const waterGrad = ctx.createLinearGradient(0, TERRAIN_HORIZON, 0, th);
   waterGrad.addColorStop(0, '#0c3848');
   waterGrad.addColorStop(0.3, '#0a3040');
   waterGrad.addColorStop(1, '#081e2a');
   ctx.fillStyle = waterGrad;
-  ctx.fillRect(0, 0, tw, th);
+  ctx.fill();
 
-  // Orange/gold sunset reflections
+  // Clip all detail to the water body so nothing spills into the sky.
+  ctx.save();
+  ctx.clip();
+
+  // Orange/gold sunset reflections (near the horizon)
   for (let i = 0; i < 30; i++) {
     const rx = Math.random() * tw;
-    const ry = Math.random() * 40;
+    const ry = TERRAIN_HORIZON + Math.random() * 45;
     ctx.fillStyle = `rgba(243,156,18,${0.03 + Math.random() * 0.05})`;
     ctx.fillRect(rx, ry, 20 + Math.random() * 80, 1.5);
   }
   // Pink reflections
   for (let i = 0; i < 15; i++) {
     const rx = Math.random() * tw;
-    const ry = 10 + Math.random() * 50;
+    const ry = TERRAIN_HORIZON + 10 + Math.random() * 55;
     ctx.fillStyle = `rgba(232,67,147,${0.02 + Math.random() * 0.03})`;
     ctx.fillRect(rx, ry, 15 + Math.random() * 50, 1);
   }
 
   // Wave patterns — stronger so the band clearly reads as moving water
-  for (let y = 0; y < th; y += 6) {
+  for (let y = TERRAIN_HORIZON + 4; y < th; y += 6) {
     // Alternate a brighter crest line and a darker trough line
-    const crest = (y / 6) % 2 === 0;
+    const crest = ((y - TERRAIN_HORIZON) / 6) % 2 < 1;
     ctx.strokeStyle = crest ? 'rgba(120,200,225,0.22)' : 'rgba(20,50,70,0.20)';
     ctx.lineWidth = crest ? 1.4 : 1.0;
     ctx.beginPath();
@@ -505,7 +545,7 @@ export function createSeaSurface(scene) {
   ctx.fillStyle = 'rgba(255,235,170,0.18)';
   for (let i = 0; i < 40; i++) {
     const sx = Math.random() * tw;
-    const sy = Math.random() * th;
+    const sy = TERRAIN_HORIZON + Math.random() * (th - TERRAIN_HORIZON);
     ctx.fillRect(sx, sy, 6 + Math.random() * 10, 1.2);
   }
 
@@ -514,10 +554,11 @@ export function createSeaSurface(scene) {
   for (let i = 0; i < 14; i++) {
     const sx = Math.random() * tw;
     ctx.beginPath();
-    ctx.ellipse(sx, 5 + Math.random() * 50, 14, 1.8, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, TERRAIN_HORIZON + 5 + Math.random() * 50, 14, 1.8, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
+  ctx.restore();
   scene.textures.addCanvas('sea_surface', c);
 }
 
@@ -653,63 +694,56 @@ export function createFarMountains(scene) {
 export function createCoastGround(scene) {
   if (scene.textures.exists('coast_ground')) return;
 
-  const tw = W, th = 120;
+  const tw = W, th = TERRAIN_BAND_H;
   const c = document.createElement('canvas');
   c.width = tw; c.height = th;
   const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, tw, th);
 
-  // Ground base
-  const grad = ctx.createLinearGradient(0, 0, 0, th);
-  grad.addColorStop(0, '#c4a060');  // sandy beach
-  grad.addColorStop(0.15, '#a08848');
-  grad.addColorStop(0.25, '#5a5550'); // urban
-  grad.addColorStop(1, '#3a3834');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, tw, th);
+  // Gentle rolling coastline a touch above the horizon — seamless across tiles.
+  const H0 = TERRAIN_HORIZON;
+  const surf = (x) => _ridge(x, H0 + 2, [[5, 3, 0.4], [9, 1.5, 1.2]]);
 
-  // Beach sand detail
-  ctx.fillStyle = 'rgba(210,185,130,0.2)';
-  for (let i = 0; i < 15; i++) {
-    ctx.fillRect(Math.random() * tw, Math.random() * 15, 20 + Math.random() * 40, 1.5);
-  }
-
-  // Coastal road
-  ctx.fillStyle = 'rgba(55,55,60,0.8)';
-  ctx.fillRect(0, 16, tw, 5);
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 0.5;
-  ctx.setLineDash([6, 6]);
-  ctx.beginPath(); ctx.moveTo(0, 18.5); ctx.lineTo(tw, 18.5); ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Buildings (rectangles with windows, warm sunset light)
-  for (let i = 0; i < 40; i++) {
+  // ── Urban skyline FIRST (drawn behind the ground, poking into the sky) ──
+  // Buildings sit on the coastline and rise above it into the transparent sky,
+  // so the land reads as a real skyline rather than a flat-topped strip.
+  for (let i = 0; i < 46; i++) {
     const bx = Math.random() * tw;
-    const bh = 8 + Math.random() * 22;
+    const baseY = surf(bx) + 2;
+    const bh = 10 + Math.random() * 34;
     const bw = 6 + Math.random() * 14;
-    const by = 25 + Math.random() * 20;
-    ctx.fillStyle = `hsl(${30 + Math.random() * 20}, ${15 + Math.random() * 10}%, ${35 + Math.random() * 15}%)`;
+    const by = baseY - bh;
+    ctx.fillStyle = `hsl(${30 + Math.random() * 20}, ${15 + Math.random() * 10}%, ${30 + Math.random() * 15}%)`;
     ctx.fillRect(bx, by, bw, bh);
     // Sunset light on left edge
-    ctx.fillStyle = 'rgba(243,156,18,0.15)';
+    ctx.fillStyle = 'rgba(243,156,18,0.18)';
     ctx.fillRect(bx, by, 2, bh);
     // Windows
-    ctx.fillStyle = 'rgba(255,200,80,0.12)';
-    for (let wy = 2; wy < bh - 2; wy += 4) {
+    ctx.fillStyle = 'rgba(255,200,80,0.14)';
+    for (let wy = 3; wy < bh - 2; wy += 4) {
       for (let wx = 2; wx < bw - 2; wx += 4) {
         ctx.fillRect(bx + wx, by + wy, 2, 2);
       }
     }
   }
 
-  // Palm trees
-  for (let i = 0; i < 6; i++) {
+  // Mosque dome + minaret silhouette poking above the skyline
+  const mqBase = surf(455);
+  ctx.fillStyle = '#3a3530';
+  ctx.beginPath();
+  ctx.arc(450, mqBase - 26, 8, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(442, mqBase - 26, 16, 26);
+  ctx.fillRect(468, mqBase - 38, 3, 38);
+  ctx.beginPath(); ctx.arc(469.5, mqBase - 38, 2, 0, Math.PI * 2); ctx.fill();
+
+  // Palm trees along the shore
+  for (let i = 0; i < 7; i++) {
     const px = 80 + Math.random() * 800;
-    const py = 22;
+    const py = surf(px);
     ctx.strokeStyle = '#4a3820';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 1, py - 18); ctx.stroke();
-    // Fronds
     ctx.strokeStyle = '#2a4a1a';
     ctx.lineWidth = 1.5;
     for (let f = 0; f < 5; f++) {
@@ -721,15 +755,38 @@ export function createCoastGround(scene) {
     }
   }
 
-  // Mosque dome silhouette
-  ctx.fillStyle = '#3a3530';
+  // ── Ground mass (filled below the rolling coastline) ──
   ctx.beginPath();
-  ctx.arc(450, 26, 8, Math.PI, 0);
-  ctx.fillRect(442, 26, 16, 12);
+  ctx.moveTo(0, th);
+  ctx.lineTo(0, surf(0));
+  for (let x = 0; x <= tw; x += 8) ctx.lineTo(x, surf(x));
+  ctx.lineTo(tw, th);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, H0, 0, th);
+  grad.addColorStop(0, '#c4a060');  // sandy beach
+  grad.addColorStop(0.18, '#a08848');
+  grad.addColorStop(0.32, '#5a5550'); // urban
+  grad.addColorStop(1, '#3a3834');
+  ctx.fillStyle = grad;
   ctx.fill();
-  // Minaret
-  ctx.fillRect(468, 14, 3, 24);
-  ctx.beginPath(); ctx.arc(469.5, 14, 2, 0, Math.PI * 2); ctx.fill();
+
+  // Clip detail to the ground mass.
+  ctx.save();
+  ctx.clip();
+  // Beach sand detail near the surface
+  ctx.fillStyle = 'rgba(210,185,130,0.2)';
+  for (let i = 0; i < 18; i++) {
+    const sx = Math.random() * tw;
+    ctx.fillRect(sx, surf(sx) + Math.random() * 14, 20 + Math.random() * 40, 1.5);
+  }
+  // Coastal road following the surface
+  ctx.strokeStyle = 'rgba(45,45,50,0.8)';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(0, surf(0) + 18);
+  for (let x = 0; x <= tw; x += 12) ctx.lineTo(x, surf(x) + 18);
+  ctx.stroke();
+  ctx.restore();
 
   scene.textures.addCanvas('coast_ground', c);
 }
@@ -738,43 +795,82 @@ export function createCoastGround(scene) {
 export function createMountainGround(scene) {
   if (scene.textures.exists('mountain_ground')) return;
 
-  const tw = W, th = 120;
+  const tw = W, th = TERRAIN_BAND_H;
   const c = document.createElement('canvas');
   c.width = tw; c.height = th;
   const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, tw, th);
 
-  // Green/brown terrain
-  const grad = ctx.createLinearGradient(0, 0, 0, th);
-  grad.addColorStop(0, '#3a5530');
-  grad.addColorStop(0.4, '#2a4020');
-  grad.addColorStop(1, '#1a2a15');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, tw, th);
+  // Two jagged ridge lines (seamless). The FAR ridge climbs high above the
+  // horizon — its peaks poke into the transparent sky, so the terrain no longer
+  // looks "cut" by a flat rectangle edge.
+  const farRidge = (x) => _ridge(x, 34, [[4, 20, 0.2], [7, 9, 1.1], [13, 4, 2.0]]);
+  const nearRidge = (x) => _ridge(x, 60, [[3, 14, 1.5], [6, 7, 0.3], [11, 3, 2.4]]);
 
-  // Undulating top edge (rocky)
-  ctx.fillStyle = '#4a6038';
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  for (let x = 0; x <= tw; x += 30) {
-    ctx.lineTo(x, 5 + Math.sin(x * 0.02) * 4 + Math.random() * 3);
+  const fillBelow = (ridge, style, step = 6) => {
+    ctx.beginPath();
+    ctx.moveTo(0, th);
+    ctx.lineTo(0, ridge(0));
+    for (let x = 0; x <= tw; x += step) ctx.lineTo(x, ridge(x));
+    ctx.lineTo(tw, th);
+    ctx.closePath();
+    ctx.fillStyle = style;
+    ctx.fill();
+  };
+
+  // Far ridge (darker, cooler) — fills the whole lower band.
+  const farGrad = ctx.createLinearGradient(0, 10, 0, th);
+  farGrad.addColorStop(0, '#3a4a40');
+  farGrad.addColorStop(0.5, '#283d30');
+  farGrad.addColorStop(1, '#1a281c');
+  fillBelow(farRidge, farGrad);
+
+  // Snow caps on the highest far peaks
+  ctx.fillStyle = 'rgba(220,230,240,0.5)';
+  for (let x = 0; x <= tw; x += 6) {
+    const y = farRidge(x);
+    if (y < 26) ctx.fillRect(x - 3, y, 6, 3 + (26 - y) * 0.4);
   }
-  ctx.lineTo(tw, 0);
+
+  // Near ridge (warmer green) — drawn ON TOP, lower, leaving far peaks visible.
+  const nearGrad = ctx.createLinearGradient(0, 40, 0, th);
+  nearGrad.addColorStop(0, '#4a6038');
+  nearGrad.addColorStop(0.5, '#2a4020');
+  nearGrad.addColorStop(1, '#1a2a15');
+  fillBelow(nearRidge, nearGrad);
+
+  // Detail clipped to the near ridge mass.
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, th);
+  ctx.lineTo(0, nearRidge(0));
+  for (let x = 0; x <= tw; x += 6) ctx.lineTo(x, nearRidge(x));
+  ctx.lineTo(tw, th);
   ctx.closePath();
-  ctx.fill();
+  ctx.clip();
 
   // Rocky patches
   ctx.fillStyle = 'rgba(80,70,50,0.3)';
-  for (let i = 0; i < 20; i++) {
-    ctx.fillRect(Math.random() * tw, Math.random() * th, 5 + Math.random() * 15, 3 + Math.random() * 8);
+  for (let i = 0; i < 24; i++) {
+    const rx = Math.random() * tw;
+    ctx.fillRect(rx, nearRidge(rx) + Math.random() * 90, 5 + Math.random() * 15, 3 + Math.random() * 8);
   }
 
-  // Cedar trees
+  // Winding road
+  ctx.strokeStyle = 'rgba(100,90,70,0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, nearRidge(0) + 45);
+  for (let x = 0; x < tw; x += 40) ctx.lineTo(x, nearRidge(x) + 45 + Math.sin(x * 0.01) * 8);
+  ctx.stroke();
+  ctx.restore();
+
+  // Cedar trees standing on the near ridge crest (poke above into sky)
   ctx.fillStyle = '#1a3012';
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 22; i++) {
     const tx = Math.random() * tw;
-    const ty = 5 + Math.random() * 30;
+    const ty = nearRidge(tx) + 1;
     const ts = 3 + Math.random() * 5;
-    // Triangular tree
     ctx.beginPath();
     ctx.moveTo(tx, ty - ts * 2.5);
     ctx.lineTo(tx - ts, ty);
@@ -784,24 +880,6 @@ export function createMountainGround(scene) {
     ctx.fillRect(tx - 0.5, ty, 1, ts * 0.4);
   }
 
-  // Small mountain village buildings
-  ctx.fillStyle = 'rgba(200,180,150,0.3)';
-  for (let i = 0; i < 8; i++) {
-    const vx = Math.random() * tw;
-    const vy = 15 + Math.random() * 25;
-    ctx.fillRect(vx, vy, 4 + Math.random() * 6, 3 + Math.random() * 5);
-  }
-
-  // Road
-  ctx.strokeStyle = 'rgba(100,90,70,0.4)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, 50);
-  for (let x = 0; x < tw; x += 40) {
-    ctx.lineTo(x, 50 + Math.sin(x * 0.01) * 10);
-  }
-  ctx.stroke();
-
   scene.textures.addCanvas('mountain_ground', c);
 }
 
@@ -809,44 +887,59 @@ export function createMountainGround(scene) {
 export function createValleyGround(scene) {
   if (scene.textures.exists('valley_ground')) return;
 
-  const tw = W, th = 120;
+  const tw = W, th = TERRAIN_BAND_H;
   const c = document.createElement('canvas');
   c.width = tw; c.height = th;
   const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, tw, th);
 
-  // Brown/olive terrain
-  const grad = ctx.createLinearGradient(0, 0, 0, th);
+  // Low rolling valley floor — gentle, mostly at the horizon. Seamless.
+  const surf = (x) => _ridge(x, TERRAIN_HORIZON - 2, [[4, 4, 0.7], [8, 2, 1.8]]);
+
+  // Ground mass below the rolling surface.
+  ctx.beginPath();
+  ctx.moveTo(0, th);
+  ctx.lineTo(0, surf(0));
+  for (let x = 0; x <= tw; x += 8) ctx.lineTo(x, surf(x));
+  ctx.lineTo(tw, th);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, TERRAIN_HORIZON, 0, th);
   grad.addColorStop(0, '#4a4430');
   grad.addColorStop(0.5, '#3a3828');
   grad.addColorStop(1, '#2a2820');
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, tw, th);
+  ctx.fill();
 
+  // Clip detail to the ground mass.
+  ctx.save();
+  ctx.clip();
   // Rocky/dusty texture
   ctx.fillStyle = 'rgba(70,60,40,0.3)';
-  for (let i = 0; i < 50; i++) {
-    ctx.fillRect(Math.random() * tw, Math.random() * th, 3 + Math.random() * 10, 2 + Math.random() * 5);
+  for (let i = 0; i < 55; i++) {
+    const rx = Math.random() * tw;
+    ctx.fillRect(rx, surf(rx) + Math.random() * (th - TERRAIN_HORIZON), 3 + Math.random() * 10, 2 + Math.random() * 5);
   }
-
   // Scrub patches
   ctx.fillStyle = 'rgba(50,70,30,0.25)';
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 14; i++) {
     const sx = Math.random() * tw;
-    const sy = Math.random() * th;
+    const sy = surf(sx) + 4 + Math.random() * (th - TERRAIN_HORIZON - 6);
     ctx.beginPath();
     ctx.ellipse(sx, sy, 4 + Math.random() * 8, 2 + Math.random() * 3, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-
-  // Tire tracks / paths
+  // Tire tracks / paths following the surface
   ctx.strokeStyle = 'rgba(60,55,40,0.3)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(0, 30); ctx.lineTo(tw, 35);
+  ctx.moveTo(0, surf(0) + 22);
+  for (let x = 0; x <= tw; x += 16) ctx.lineTo(x, surf(x) + 22);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(0, 80); ctx.lineTo(tw, 75);
+  ctx.moveTo(0, surf(0) + 62);
+  for (let x = 0; x <= tw; x += 16) ctx.lineTo(x, surf(x) + 62);
   ctx.stroke();
+  ctx.restore();
 
   scene.textures.addCanvas('valley_ground', c);
 }

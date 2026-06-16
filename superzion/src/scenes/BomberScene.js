@@ -234,12 +234,19 @@ export default class BomberScene extends Phaser.Scene {
     this.farTerrain.setVisible(false);
     this._farTerrainShown = false; // guard so the fade-in only runs once per reveal
 
-    // Ground (near parallax)
-    this.groundTile = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_surface').setDepth(1);
+    // Ground (near parallax). 180px tall, anchored to the bottom of the screen
+    // (center at GROUND_Y+30 → spans Y 360..540). The terrain textures keep the
+    // top portion transparent above an organic silhouette, so land rises into
+    // the sky with a real skyline instead of a flat-topped rectangle. GROUND_Y
+    // (the horizon / collision line) sits at the textures' TERRAIN_HORIZON row.
+    const BAND_H = 180;
+    const BAND_CY = GROUND_Y + 30; // = 450, so the band's bottom edge is at 540
+    this.groundTile = this.add.tileSprite(W / 2, BAND_CY, W, BAND_H, 'sea_surface').setDepth(1);
     // Crossfade overlay ground tile — used to blend between terrain bands
-    this.groundFade = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_surface')
+    this.groundFade = this.add.tileSprite(W / 2, BAND_CY, W, BAND_H, 'sea_surface')
       .setDepth(1.2).setAlpha(0);
-    // Animated water-shine overlay (only visible over the sea band)
+    // Animated water-shine overlay (only visible over the sea band; covers the
+    // water region below the horizon, so it keeps its original 120px footprint).
     this.seaShine = this.add.tileSprite(W / 2, GROUND_Y + 60, W, 120, 'sea_shine')
       .setDepth(1.3).setAlpha(0.5);
     this._seaShineT = 0;
